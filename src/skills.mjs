@@ -450,6 +450,35 @@ function resolveInsideRoot(candidate, root) {
   return target;
 }
 
+/**
+ * Hash a source directory from Git's committed tree, never from working-tree bytes.
+ * @param {string} sourceRoot @param {string} sourceDirectory @param {string} commit
+ */
+function gitDirectoryHash(sourceRoot, sourceDirectory, commit) {
+  const listing = execFileSync("git", ["ls-tree", "-r", "-z", commit, "--", sourceDirectory], {
+    cwd: sourceRoot,
+  }).toString("utf8");
+  const records = listing.split("\0").filter(Boolean).map((record) => {
+    const match = record.match(/^(\d+) blob ([a-f0-9]{40,64})\t(.+)$/);
+    if (!match) throw new Error(`Unsupported Git tree entry for ${sourceDirectory}: ${record}`);
+    const [, mode, objectId, path] = match;
+    if (mode === "120000") throw new Error(`Canonical Git source contains symbolic link: ${path}`);
+    const prefix = `${sourceDirectory.replace(/\/$/, "")}/`;
+    if (!path.startsWith(prefix)) throw new Error(`Git source path escapes directory: ${path}`);
+    return { objectId, path: path.slice(prefix.length) };
+  });
+  if (records.length === 0) throw new Error(`Canonical skill source is absent from Git ${commit}: ${sourceDirectory}`);
+  records.sort((left, right) => left.path.localeCompare(right.path));
+  const hash = createHash("sha256");
+  for (const record of records) {
+    hash.update(record.path);
+    hash.update("\0");
+    hash.update(execFileSync("git", ["cat-file", "blob", record.objectId], { cwd: sourceRoot }));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
 /** @param {string} path */
 async function entryMetadata(path) {
   try {
@@ -501,6 +530,20 @@ export async function synchronizeSkillCatalog(options) {
   }
   if (repositoryCommit && installCommit !== repositoryCommit) {
     throw new Error(`Skill source commit ${installCommit} does not match checkout HEAD ${repositoryCommit}`);
+  }
+  const committedHashes = new Map();
+  for (const skill of options.catalog.skills) {
+    for (const variant of skill.variants) {
+      if (!variant.sourceDirectory) throw new Error(`${variant.id} is missing sourceDirectory`);
+      let committedHash = committedHashes.get(variant.sourceDirectory);
+      if (!committedHash) {
+        committedHash = gitDirectoryHash(sourceRoot, variant.sourceDirectory, installCommit);
+        committedHashes.set(variant.sourceDirectory, committedHash);
+      }
+      if (committedHash !== variant.folderSha256) {
+        throw new Error(`${variant.id} canonical folder hash does not match Git ${installCommit}`);
+      }
+    }
   }
 
   const existingStatePath = resolveInsideHome(home, ".development-system/skill-sync-state.json");

@@ -310,3 +310,40 @@ test("catalog validation rejects nested symbolic links in canonical skill source
 
   assert.match(errors.join("\n"), /contains symbolic link/i);
 });
+
+test("skill synchronization rejects source bytes absent from the recorded Git commit", async () => {
+  const sourceRoot = await mkdtemp(resolve(tmpdir(), "aohys-skill-untracked-source-"));
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-skill-untracked-home-"));
+  execFileSync("git", ["init", "-q"], { cwd: sourceRoot });
+  await writeFile(resolve(sourceRoot, ".gitignore"), "ignored-skill/\n", "utf8");
+  execFileSync("git", ["add", ".gitignore"], { cwd: sourceRoot });
+  execFileSync("git", ["-c", "user.name=AOHYS Test", "-c", "user.email=test@example.invalid", "commit", "-qm", "fixture"], { cwd: sourceRoot });
+  await mkdir(resolve(sourceRoot, "ignored-skill"));
+  await writeFile(resolve(sourceRoot, "ignored-skill", "SKILL.md"), skillBody, "utf8");
+
+  const catalog = {
+    schemaVersion: 1,
+    catalogVersion: "0.2.0",
+    supportedHarnesses: [{ id: "codex" }, { id: "t3code" }, { id: "factory" }],
+    supportedRoots: [".agents/skills"],
+    maxCatalogEntries: 8,
+    cleanup: [],
+    skills: [{
+      logicalName: "tracer-skill",
+      source: { repository: "https://example.test/source", commit: "a".repeat(40), path: "ignored-skill" },
+      variants: [{
+        id: "tracer.codex",
+        harness: "codex",
+        sourceDirectory: "ignored-skill",
+        destination: ".agents/skills/tracer-skill",
+        folderSha256: skillHash(),
+        expectedMirrorOf: null,
+      }],
+    }],
+  };
+
+  await assert.rejects(
+    synchronizeSkillCatalog({ home, sourceRoot, catalog }),
+    /absent from Git/i,
+  );
+});
