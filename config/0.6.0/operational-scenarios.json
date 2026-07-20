@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ao-root",
+      "fixture": "ao",
+      "relativeCwd": ".",
+      "surfaces": ["codex"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "simple-repository",
+      "fixture": "simple",
+      "relativeCwd": "development-system",
+      "surfaces": ["factory"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "nutriplan-read-only",
+      "fixture": "mature-nutriplan",
+      "relativeCwd": "nutri-plan",
+      "surfaces": ["codex", "factory", "t3code"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "barber-read-only",
+      "fixture": "mature-barber",
+      "relativeCwd": "the-barber-central",
+      "surfaces": ["codex", "factory", "t3code"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "aohys-nested-read-only",
+      "fixture": "nested-aohys",
+      "relativeCwd": "aohys/apps/dashboard",
+      "surfaces": ["codex", "factory", "t3code"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    }
+  ]
+}

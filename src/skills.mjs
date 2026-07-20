@@ -325,6 +325,11 @@ export async function auditSkillCatalog(options) {
     status: problems.length === 0 ? "healthy" : "invalid",
     logicalSkillCount: catalog.skills.length,
     physicalVariantCount: skills.length,
+    evidenceCoverage: {
+      structuralLogicalSkills: catalog.skills.length,
+      liveRequiredSkills: [...(catalog.operationalEvidenceSkills ?? [])],
+      exhaustiveLiveInfluence: (catalog.operationalEvidenceSkills ?? []).length === catalog.skills.length,
+    },
     catalogHealth: {
       entries: catalogEntries,
       limit: catalog.maxCatalogEntries,

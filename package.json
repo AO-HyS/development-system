@@ -1,6 +1,6 @@
 {
   "name": "@aohys/development-system",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -8,19 +8,21 @@
     "aohys-development-system": "./bin/development-system.mjs"
   },
   "scripts": {
-    "audit": "node ./bin/development-system.mjs audit",
+    "audit": "./bin/development-system audit",
     "benchmark": "node ./scripts/run-benchmarks.mjs",
-    "install:local": "node ./bin/development-system.mjs install --version 0.5.0",
+    "install:local": "./bin/development-system install --version 0.6.0",
     "harnesses:validate": "node ./scripts/validate-harnesses.mjs",
-    "implement-preview": "node ./bin/development-system.mjs implement-preview",
-    "skills:audit": "node ./bin/development-system.mjs audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json",
+    "implement-preview": "./bin/development-system implement-preview",
+    "skills:audit": "./bin/development-system audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",
-    "skills:sync": "node ./bin/development-system.mjs sync-skills --version 0.2.0",
+    "skills:sync": "./bin/development-system sync-skills --version 0.2.0",
+    "smoke:repositories": "node ./scripts/smoke-repository-audits.mjs",
     "scenario": "node ./scripts/reproduce-installation.mjs && node ./scripts/reproduce-skills.mjs && node ./scripts/reproduce-lifecycle.mjs && node ./scripts/reproduce-repository-preparation.mjs && node --test test/harness-scenario.test.mjs test/benchmark-scenario.test.mjs test/delivery-preview.test.mjs",
     "test": "node --test test/*.test.mjs",
     "test:acceptance": "node --test test/installation-scenario.test.mjs test/lifecycle-scenario.test.mjs",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "validate:repository": "node ./bin/development-system.mjs validate-repository",
+    "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
+    "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run typecheck && pnpm run test && pnpm run validate:repository"
   },
   "engines": {

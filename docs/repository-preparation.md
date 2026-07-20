@@ -1,11 +1,11 @@
 # Repository audit and preparation
 
-Version `0.5.0` adds one read-only audit and two explicit preparation transitions for product repositories.
+Version `0.6.0` hardens the read-only audit introduced in `0.5.0`; the two explicit preparation transitions remain unchanged in scope.
 
 ## Audit without mutation
 
 ```sh
-node ./bin/development-system.mjs audit-repository \
+./bin/development-system audit-repository \
   --repository /absolute/path/to/product \
   --json
 ```
@@ -20,12 +20,14 @@ The report includes:
 - readiness and concrete gaps for Codex, T3Code, and Factory;
 - the manual, proposal-only architecture diagnostic.
 
+Fingerprint evidence also reports deterministic exclusions for Git metadata, dependency/build caches, generated outputs, and temporary outputs. Ordinary files are read with a 1 MiB cap; larger source files use a bounded first/last sample plus exact size, so a multi-gigabyte cache cannot cause an unbounded read. Preservation-only Impeccable references are reported under `allowedReferences`; inherited product rules remain under `residue`.
+
 Without operational evidence, `loaded` and `influenced` remain false. Supply an evidence JSON file with `repositoryFingerprint` and `observations` using `--evidence`; stale evidence is rejected. A not-ready audit still exits successfully because findings are the requested result and no repair was attempted.
 
 ## Initialize a new repository
 
 ```sh
-node ./bin/development-system.mjs initialize-repository \
+./bin/development-system initialize-repository \
   --repository /absolute/path/to/product \
   --confirm initialize \
   --json
@@ -44,7 +46,7 @@ The generated contract selects existing review, validation, QA, and preview comm
 ## Normalize an existing repository
 
 ```sh
-node ./bin/development-system.mjs normalize-repository \
+./bin/development-system normalize-repository \
   --repository /absolute/path/to/product \
   --confirm normalize \
   --json

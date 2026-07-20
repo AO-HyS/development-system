@@ -106,3 +106,73 @@ test("the roster is capability-based and resolves Factory inherit reproducibly",
   delete broken.capabilities.review.factory.resolvedModel;
   assert.throws(() => resolveCapabilityRoster(broken), /inherit.*resolved/i);
 });
+
+test("benchmark reports validated, timeout, permission-blocked, and provisional evidence without ranking incomplete runs", async () => {
+  const report = await runBenchmarkSuite({
+    suite,
+    runId: "bench-statuses",
+    runtime: async ({ benchmarkCase, candidate }) => {
+      if (benchmarkCase.capability === "orchestration" && candidate.harness === "codex") {
+        return {
+          completed: false,
+          checksPassed: false,
+          durationMs: 60_000,
+          correctionMs: 0,
+          tokens: 0,
+          costUsd: null,
+          corrections: 0,
+          findings: 1,
+          output: "deadline exceeded",
+          command: "codex exec",
+          exitCode: null,
+          failureKind: "timeout",
+        };
+      }
+      if (benchmarkCase.capability === "implementation" && candidate.harness === "factory") {
+        return {
+          completed: false,
+          checksPassed: false,
+          durationMs: 10,
+          correctionMs: 0,
+          tokens: 0,
+          costUsd: null,
+          corrections: 0,
+          findings: 1,
+          output: "insufficient permission",
+          command: "droid exec",
+          exitCode: 1,
+          failureKind: "permission-blocked",
+        };
+      }
+      const provisional = benchmarkCase.capability === "architecture" && candidate.harness === "codex";
+      return {
+        completed: true,
+        checksPassed: !provisional,
+        durationMs: 100,
+        correctionMs: 0,
+        tokens: 100,
+        costUsd: null,
+        corrections: 0,
+        findings: provisional ? 1 : 0,
+        output: provisional ? "partial evidence" : `${benchmarkCase.capability}:verified`,
+        command: `${candidate.harness} exec`,
+        exitCode: 0,
+      };
+    },
+  });
+
+  assert.equal(report.ok, false);
+  assert.equal(report.summary.validated > 0, true);
+  assert.equal(report.summary.timeout, 1);
+  assert.equal(report.summary["permission-blocked"], 1);
+  assert.equal(report.summary.provisional, 1);
+  assert.equal(
+    report.rankings.orchestration.some((entry) => entry.harness === "codex"),
+    false,
+  );
+  assert.equal(
+    report.rankings.implementation.some((entry) => entry.harness === "factory"),
+    false,
+  );
+  assert.ok(report.records.every((record) => typeof record.evidenceStatus === "string"));
+});

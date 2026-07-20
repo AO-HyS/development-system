@@ -197,7 +197,7 @@ test("operational checks fail closed when a harness only self-reports green bool
   assert.match(report.failures.map((failure) => failure.message).join("\n"), /instructions|catalog|load/i);
 });
 
-test("resume replaces scenario-wide failures and their stale results", () => {
+test("resume preserves first-failure evidence while replacing stale scenario results", () => {
   const merged = mergeOperationalReports({
     contractVersion: "0.4.0",
     resumeReport: {
@@ -220,4 +220,38 @@ test("resume replaces scenario-wide failures and their stale results", () => {
   assert.equal(merged.ok, true);
   assert.equal(merged.failures.length, 0);
   assert.equal(merged.results.length, 2);
+  assert.deepEqual(merged.recoveredFailures, [
+    { scenario: "simple", surface: null, source: "repo-policy", message: "stale" },
+  ]);
+  assert.equal(merged.attempts.length, 2);
+});
+
+test("nested T3Code accepts explicit no-state evidence without a manual rerun", async () => {
+  const nested = scenarios.find((scenario) => scenario.id === "nested-cwd");
+  const report = await validateOperationalScenarios({
+    registry,
+    scenarios: [{ ...nested, surfaces: ["codex", "t3code"] }],
+    runtime: async (request) => ({
+      executable: request.adapter.executable,
+      version: "fixture-runtime-1",
+      model: "gpt-5.6-sol",
+      reasoning: "high",
+      role: "orchestrator",
+      evidence: {
+        ...observableEvidence,
+        externalState: request.surface === "t3code"
+          ? "No persisted lifecycle state exists and nothing was written"
+          : "unchanged",
+      },
+      catalogProof: true,
+      catalogOverflowProof: true,
+      loadProof: true,
+      behavior: expectedBehavior,
+      diagnostics: [],
+    }),
+  });
+
+  assert.equal(report.ok, true);
+  assert.equal(report.failures.length, 0);
+  assert.ok(report.results.every((result) => result.checks.externalState));
 });

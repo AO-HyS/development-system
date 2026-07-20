@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.6.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    { "id": "codex", "adapter": "native" },
+    { "id": "t3code", "adapter": "codex" },
+    { "id": "factory", "adapter": "native" }
+  ],
+  "artifacts": [
+    {
+      "id": "hardening-contract.codex",
+      "logicalName": "hardening-contract",
+      "sourcePath": "artifacts/0.6.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "dacbf45330f42dd281912f381c8076a8daab7225f05df4e3ee40bbe50b22d7ee",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "hardening-contract.factory",
+      "logicalName": "hardening-contract",
+      "sourcePath": "artifacts/0.6.0/contract.md",
+      "destination": ".factory/development-system/contract.md",
+      "harness": "factory",
+      "sha256": "dacbf45330f42dd281912f381c8076a8daab7225f05df4e3ee40bbe50b22d7ee",
+      "expectedMirrorOf": "hardening-contract.codex"
+    },
+    {
+      "id": "harness-adapters.codex",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/0.6.0/harness-adapters.json",
+      "destination": ".codex/development-system/harness-adapters.json",
+      "harness": "codex",
+      "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "harness-adapters.factory",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/0.6.0/harness-adapters.json",
+      "destination": ".factory/development-system/harness-adapters.json",
+      "harness": "factory",
+      "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+      "expectedMirrorOf": "harness-adapters.codex"
+    },
+    {
+      "id": "capability-roster.codex",
+      "logicalName": "capability-roster",
+      "sourcePath": "config/0.6.0/capability-roster.json",
+      "destination": ".codex/development-system/capability-roster.json",
+      "harness": "codex",
+      "sha256": "4ef916b6339f63f0e2e49742ac79f77367d9eea1c2dca0b41c21fca9fcd3ee4b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "capability-roster.factory",
+      "logicalName": "capability-roster",
+      "sourcePath": "config/0.6.0/capability-roster.json",
+      "destination": ".factory/development-system/capability-roster.json",
+      "harness": "factory",
+      "sha256": "4ef916b6339f63f0e2e49742ac79f77367d9eea1c2dca0b41c21fca9fcd3ee4b",
+      "expectedMirrorOf": "capability-roster.codex"
+    },
+    {
+      "id": "benchmark-suite.codex",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".codex/development-system/benchmark-suite.json",
+      "harness": "codex",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "benchmark-suite.factory",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".factory/development-system/benchmark-suite.json",
+      "harness": "factory",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": "benchmark-suite.codex"
+    },
+    {
+      "id": "skill-catalog.codex",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.2.0.json",
+      "destination": ".codex/development-system/skills.json",
+      "harness": "codex",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "skill-catalog.factory",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.2.0.json",
+      "destination": ".factory/development-system/skills.json",
+      "harness": "factory",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+      "expectedMirrorOf": "skill-catalog.codex"
+    },
+    {
+      "id": "global-validator.shared",
+      "logicalName": "global-validator",
+      "sourcePath": "artifacts/0.6.0/validate-development-system.py",
+      "destination": ".agents/scripts/validate-development-system.py",
+      "harness": "codex",
+      "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+      "expectedMirrorOf": null
+    }
+  ]
+}

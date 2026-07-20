@@ -12,7 +12,7 @@ import {
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const suite = JSON.parse(await readFile(resolve(repositoryRoot, "benchmarks/suite.json"), "utf8"));
-const roster = JSON.parse(await readFile(resolve(repositoryRoot, "config/capability-roster.json"), "utf8"));
+const roster = JSON.parse(await readFile(resolve(repositoryRoot, "config/0.6.0/capability-roster.json"), "utf8"));
 resolveCapabilityRoster(roster);
 for (const benchmarkCase of suite.cases) {
   benchmarkCase.fixtureContents = await readFile(resolve(repositoryRoot, benchmarkCase.fixture), "utf8");
@@ -37,5 +37,5 @@ const outputPath = outputIndex >= 0
   : resolve(repositoryRoot, "evidence", "benchmarks", `${runId}.json`);
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-process.stdout.write(`${JSON.stringify({ ok: report.ok, runId, outputPath, rankings: report.rankings }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: report.ok, runId, outputPath, summary: report.summary, rankings: report.rankings }, null, 2)}\n`);
 if (!report.ok) process.exitCode = 1;

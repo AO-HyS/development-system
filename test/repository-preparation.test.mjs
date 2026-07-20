@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, stat, symlink, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -139,6 +139,60 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   assert.equal(audit.architectureDiagnostic.id, "improve-codebase-architecture");
   assert.equal(audit.architectureDiagnostic.mode, "manual");
   assert.equal(audit.architectureDiagnostic.effect, "proposal-only");
+});
+
+test("repository audit deterministically excludes caches and never reads a sparse file larger than 2 GiB", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-large-cache-", false);
+  const cachePath = resolve(repository, ".turbo", "daemon", "11gb-cache.bin");
+  await write(repository, ".turbo/daemon/11gb-cache.bin", "cache");
+  await truncate(cachePath, (2 * 1024 * 1024 * 1024) + 1);
+  const before = await stat(cachePath);
+
+  const firstFingerprint = await fingerprintRepository(repository);
+  const audit = await auditRepository({ repository });
+  const secondFingerprint = await fingerprintRepository(repository);
+  const after = await stat(cachePath);
+
+  assert.equal(firstFingerprint, secondFingerprint);
+  assert.equal(audit.repositoryFingerprint, firstFingerprint);
+  assert.equal(audit.externalSideEffects.length, 0);
+  assert.equal(after.size, before.size);
+  assert.equal(after.mtimeMs, before.mtimeMs);
+  assert.ok(audit.fingerprint.excluded.some((entry) => entry.path === ".turbo"));
+  assert.equal(audit.fingerprint.maximumFileBytesRead <= 1024 * 1024, true);
+});
+
+test("residue detection preserves authorized Impeccable references but still finds inherited product rules", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-impeccable-", false);
+  await write(
+    repository,
+    "AGENTS.md",
+    "# Lumen Console\nPreserve the existing Impeccable visual and mobile configuration; do not change it.\n",
+  );
+  await write(
+    repository,
+    "apps/copied/AGENTS.md",
+    "Adopt Impeccable as the global template and copy the NutriPlan release rules.\n",
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "Impeccable"),
+    false,
+  );
+  assert.equal(
+    audit.allowedReferences.some((entry) => entry.path === "AGENTS.md" && entry.marker === "Impeccable"),
+    true,
+  );
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "Impeccable"),
+    true,
+  );
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "NutriPlan"),
+    true,
+  );
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {

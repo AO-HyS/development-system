@@ -281,7 +281,25 @@ export function mergeOperationalReports(options) {
     (/** @type {any} */ failure) =>
       !rerunAllScenarios.has(failure.scenario) && !rerunKeys.has(`${failure.scenario}:${failure.surface}`),
   );
-  const failures = [...retainedFailures, ...options.scenarioReports.flatMap((item) => item.failures)];
+  const currentFailures = options.scenarioReports.flatMap((item) => item.failures);
+  const failures = [...retainedFailures, ...currentFailures];
+  const replacedFailures = (options.resumeReport?.failures ?? []).filter(
+    (/** @type {any} */ failure) => !retainedFailures.includes(failure),
+  );
+  const recoveredFailures = replacedFailures.filter((/** @type {any} */ previous) =>
+    !currentFailures.some((/** @type {any} */ current) =>
+      current.scenario === previous.scenario &&
+      (previous.surface === null || current.surface === previous.surface)
+    )
+  );
+  const attempts = options.resumeReport
+    ? [
+        ...(Array.isArray(options.resumeReport.attempts) && options.resumeReport.attempts.length > 0
+          ? options.resumeReport.attempts
+          : [{ source: "previous-run", ok: (options.resumeReport.failures ?? []).length === 0 }]),
+        { source: "current-run", ok: currentFailures.length === 0 },
+      ]
+    : [{ source: "current-run", ok: currentFailures.length === 0 }];
   return {
     ok: failures.length === 0,
     operation: "validate-harnesses",
@@ -292,6 +310,8 @@ export function mergeOperationalReports(options) {
     ])].sort(),
     results: [...retainedResults, ...options.scenarioReports.flatMap((item) => item.results)],
     failures,
+    recoveredFailures,
+    attempts,
   };
 }
 

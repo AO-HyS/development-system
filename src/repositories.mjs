@@ -1,11 +1,33 @@
 // @ts-check
 
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, readdir, readlink, rename, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, readdir, readlink, rename, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 
-const contractVersion = "0.5.0";
-const ignoredDirectories = new Set([".git", "node_modules", ".next", "dist", "build", "coverage"]);
+const contractVersion = "0.6.0";
+const ignoredDirectories = new Map([
+  [".git", "source-control-metadata"],
+  ["node_modules", "dependency-cache"],
+  [".next", "generated-output"],
+  [".nuxt", "generated-output"],
+  [".output", "generated-output"],
+  ["dist", "generated-output"],
+  ["build", "generated-output"],
+  ["out", "generated-output"],
+  ["coverage", "generated-output"],
+  [".turbo", "build-cache"],
+  [".cache", "build-cache"],
+  [".parcel-cache", "build-cache"],
+  [".vite", "build-cache"],
+  [".nx", "build-cache"],
+  [".gradle", "build-cache"],
+  ["DerivedData", "build-cache"],
+  ["tmp", "temporary-output"],
+  ["temp", "temporary-output"],
+]);
+const maximumFingerprintFileBytes = 1024 * 1024;
+const fingerprintSampleBytes = 64 * 1024;
+const maximumGovernedTextBytes = 1024 * 1024;
 const instructionNames = new Set(["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules"]);
 const foreignProductMarkers = ["NutriPlan", "The Barber Central", "AOHYS", "Escuela 360", "Impeccable"];
 const managedFiles = [
@@ -24,18 +46,29 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-/** @param {string} root @param {string} current @returns {Promise<string[]>} */
-async function listFiles(root, current = root) {
+/**
+ * @param {string} root
+ * @param {string} current
+ * @param {Array<{path:string,reason:string}>} excluded
+ * @returns {Promise<string[]>}
+ */
+async function listFiles(root, current = root, excluded = []) {
   /** @type {string[]} */
   const files = [];
   for (const entry of await readdir(current, { withFileTypes: true })) {
-    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const target = resolve(current, entry.name);
+    if (entry.isDirectory() && ignoredDirectories.has(entry.name)) {
+      excluded.push({
+        path: normalizedPath(relative(root, target)),
+        reason: /** @type {string} */ (ignoredDirectories.get(entry.name)),
+      });
+      continue;
+    }
     if (entry.isSymbolicLink()) {
       files.push(relative(root, target));
       continue;
     }
-    if (entry.isDirectory()) files.push(...await listFiles(root, target));
+    if (entry.isDirectory()) files.push(...await listFiles(root, target, excluded));
     else if (entry.isFile()) files.push(relative(root, target));
   }
   return files.sort();
@@ -50,7 +83,8 @@ function normalizedPath(path) {
 async function readableText(root, path) {
   try {
     const target = resolve(root, path);
-    if ((await lstat(target)).isSymbolicLink()) return "";
+    const metadata = await lstat(target);
+    if (metadata.isSymbolicLink() || metadata.size > maximumGovernedTextBytes) return "";
     const contents = await readFile(target);
     if (contents.includes(0)) return "";
     return contents.toString("utf8");
@@ -60,21 +94,78 @@ async function readableText(root, path) {
   }
 }
 
+/**
+ * @param {import("node:crypto").Hash} hash
+ * @param {string} target
+ * @param {number} size
+ * @returns {Promise<number>}
+ */
+async function updateFingerprintWithFile(hash, target, size) {
+  if (size <= maximumFingerprintFileBytes) {
+    hash.update(await readFile(target));
+    return size;
+  }
+  const handle = await open(target, "r");
+  try {
+    const firstLength = Math.min(fingerprintSampleBytes, size);
+    const lastLength = Math.min(fingerprintSampleBytes, Math.max(0, size - firstLength));
+    const first = Buffer.alloc(firstLength);
+    const last = Buffer.alloc(lastLength);
+    if (firstLength > 0) await handle.read(first, 0, firstLength, 0);
+    if (lastLength > 0) await handle.read(last, 0, lastLength, size - lastLength);
+    hash.update(`bounded:${size}:`);
+    hash.update(first);
+    hash.update("\0");
+    hash.update(last);
+    return firstLength + lastLength;
+  } finally {
+    await handle.close();
+  }
+}
+
 /** @param {string} repository */
-export async function fingerprintRepository(repository) {
+async function inspectRepositoryFingerprint(repository) {
   const root = resolve(repository);
+  /** @type {Array<{path:string,reason:string}>} */
+  const excluded = [];
+  const files = (await listFiles(root, root, excluded)).map(normalizedPath);
   const hash = createHash("sha256");
-  for (const rawPath of await listFiles(root)) {
-    const path = normalizedPath(rawPath);
+  /** @type {Array<{path:string,size:number,bytesRead:number}>} */
+  const boundedFiles = [];
+  let maximumFileBytesRead = 0;
+  for (const path of files) {
     hash.update(path);
     hash.update("\0");
-    const target = resolve(root, rawPath);
+    const target = resolve(root, path);
     const metadata = await lstat(target);
-    if (metadata.isSymbolicLink()) hash.update(`symlink:${await readlink(target)}`);
-    else hash.update(await readFile(target));
+    if (metadata.isSymbolicLink()) {
+      hash.update(`symlink:${await readlink(target)}`);
+    } else {
+      const bytesRead = await updateFingerprintWithFile(hash, target, metadata.size);
+      maximumFileBytesRead = Math.max(maximumFileBytesRead, bytesRead);
+      if (metadata.size > maximumFingerprintFileBytes) {
+        boundedFiles.push({ path, size: metadata.size, bytesRead });
+      }
+    }
     hash.update("\0");
   }
-  return hash.digest("hex");
+  return {
+    value: hash.digest("hex"),
+    files,
+    evidence: {
+      policy: "source-v1-bounded",
+      excluded: excluded.sort((left, right) => left.path.localeCompare(right.path)),
+      boundedFiles,
+      maximumFileBytesRead,
+      perFileLimitBytes: maximumFingerprintFileBytes,
+      sampleBytes: fingerprintSampleBytes,
+    },
+  };
+}
+
+/** @param {string} repository */
+export async function fingerprintRepository(repository) {
+  return (await inspectRepositoryFingerprint(repository)).value;
 }
 
 /** @param {string} path */
@@ -267,14 +358,31 @@ async function detectResidue(repository, entries, identityName) {
   const owned = ownMarker(identityName);
   /** @type {Array<{path:string, marker:string}>} */
   const residue = [];
+  /** @type {Array<{path:string, marker:string, reason:string}>} */
+  const allowedReferences = [];
   for (const entry of entries) {
     const contents = await readableText(repository, entry.path);
     for (const marker of foreignProductMarkers) {
       if (marker === owned) continue;
-      if (contents.toLowerCase().includes(marker.toLowerCase())) residue.push({ path: entry.path, marker });
+      const matchingLines = contents.split("\n").filter((line) =>
+        line.toLowerCase().includes(marker.toLowerCase())
+      );
+      if (matchingLines.length === 0) continue;
+      const allowed = marker === "Impeccable" && matchingLines.every((line) =>
+        /\b(?:preserve(?:d|s|ing)?|keep|retain(?:ed|s|ing)?|left intact|leave intact|do not (?:change|replace|modify)|must not (?:change|replace|modify)|separate visual|existing (?:visual|mobile|configuration))\b/i.test(line)
+      );
+      if (allowed) {
+        allowedReferences.push({
+          path: entry.path,
+          marker,
+          reason: "explicit-preservation-rule",
+        });
+      } else {
+        residue.push({ path: entry.path, marker });
+      }
     }
   }
-  return residue;
+  return { residue, allowedReferences };
 }
 
 /** @param {any} commands @param {Array<{states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
@@ -298,8 +406,9 @@ export async function auditRepository(options) {
   const repository = resolve(options.repository);
   const metadata = await stat(repository);
   if (!metadata.isDirectory()) throw new Error(`Repository is not a directory: ${repository}`);
-  const files = (await listFiles(repository)).map(normalizedPath);
-  const repositoryFingerprint = await fingerprintRepository(repository);
+  const fingerprint = await inspectRepositoryFingerprint(repository);
+  const files = fingerprint.files;
+  const repositoryFingerprint = fingerprint.value;
   /** @type {string[]} */
   const warnings = [];
   let evidence = options.evidence;
@@ -354,7 +463,8 @@ export async function auditRepository(options) {
     ...inventory.droids,
     ...inventory.hooks,
   ];
-  const residue = await detectResidue(repository, governedEntries, identity.name);
+  const residueResult = await detectResidue(repository, governedEntries, identity.name);
+  const residue = residueResult.residue;
   const managed = managedFiles.every((path) => files.includes(path));
   const baseGaps = readinessGaps(identity.commands, inventory.skills, residue, managed);
   const codexGaps = [...baseGaps];
@@ -372,6 +482,7 @@ export async function auditRepository(options) {
     status: Object.values(readiness).every((entry) => entry.status === "prepared") ? "prepared" : "needs-preparation",
     repositoryRoot: repository,
     repositoryFingerprint,
+    fingerprint: fingerprint.evidence,
     product: { name: identity.name, packageManager: identity.packageManager },
     stack: identity.stack,
     commands: identity.commands,
@@ -382,6 +493,7 @@ export async function auditRepository(options) {
     inventory,
     precedence: inventory.instructions.map((entry) => ({ path: entry.path, scope: entry.scope, precedence: entry.precedence })),
     residue,
+    allowedReferences: residueResult.allowedReferences,
     readiness,
     evidence: { accepted: Boolean(evidence), warnings },
     architectureDiagnostic: {

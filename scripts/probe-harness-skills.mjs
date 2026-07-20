@@ -154,6 +154,13 @@ const probeSucceeded = Boolean(
 const evidence = {
   schemaVersion: 1,
   catalogVersion: "0.2.0",
+  evidenceScope: {
+    kind: "critical-capability-live-probe",
+    structuralCatalogLogicalSkills: 20,
+    liveInfluenceSkills: ["research"],
+    exhaustive: false,
+    claim: "Live influence is proven only for the named skill and harness observations.",
+  },
   generatedAt: new Date().toISOString(),
   home: probeHome,
   skill: "research",

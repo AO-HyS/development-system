@@ -25,9 +25,9 @@ const output = argument("--output", undefined);
 const resumePath = argument("--resume", undefined);
 const timeoutMs = Number(argument("--timeout-ms", "60000"));
 if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("--timeout-ms must be positive");
-const registry = JSON.parse(await readFile(resolve(repositoryRoot, "config/harness-adapters.json"), "utf8"));
+const registry = JSON.parse(await readFile(resolve(repositoryRoot, "config/0.6.0/harness-adapters.json"), "utf8"));
 const scenarioDocument = JSON.parse(
-  await readFile(resolve(repositoryRoot, "config/operational-scenarios.json"), "utf8"),
+  await readFile(resolve(repositoryRoot, "config/0.6.0/operational-scenarios.json"), "utf8"),
 );
 let resumeReport = null;
 if (resumePath) resumeReport = JSON.parse(await readFile(resolve(resumePath), "utf8"));

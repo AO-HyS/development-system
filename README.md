@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.5.0` adds read-only product-repository audit plus explicit, idempotent initialization and normalization. The operational adapters, benchmark/roster, and Implement Preview loop from `0.4.0` remain in force, and the pinned `0.2.0` skill catalog remains the current skill source.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.6.0` hardens repository fingerprinting, residue policy, operational validation, physical mirrors, benchmark evidence, skill-evidence claims, and runtime preflight before product rollout. The pinned `0.2.0` skill catalog remains the current skill source.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,21 +16,21 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-node ./bin/development-system.mjs install --version 0.5.0
-node ./bin/development-system.mjs sync-skills --version 0.2.0
-node ./bin/development-system.mjs audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json
-node ./bin/development-system.mjs audit
-node ./bin/development-system.mjs validate
-node ./bin/development-system.mjs rollback-skills
-node ./bin/development-system.mjs rollback
+./bin/development-system install --version 0.6.0
+./bin/development-system sync-skills --version 0.2.0
+./bin/development-system audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json
+./bin/development-system audit
+./bin/development-system validate
+./bin/development-system rollback-skills
+./bin/development-system rollback
 ```
 
 Audit and prepare a product repository with distinct operations:
 
 ```sh
-node ./bin/development-system.mjs audit-repository --repository /absolute/path/to/product --json
-node ./bin/development-system.mjs initialize-repository --repository /absolute/path/to/product --confirm initialize --json
-node ./bin/development-system.mjs normalize-repository --repository /absolute/path/to/product --confirm normalize --json
+./bin/development-system audit-repository --repository /absolute/path/to/product --json
+./bin/development-system initialize-repository --repository /absolute/path/to/product --confirm initialize --json
+./bin/development-system normalize-repository --repository /absolute/path/to/product --confirm normalize --json
 ```
 
 Audit never writes. Initialization and normalization manage only the Development System namespace, preserve product-owned files, and never activate paid services; see `docs/repository-preparation.md`.
@@ -38,10 +38,10 @@ Audit never writes. Initialization and normalization manage only the Development
 Lifecycle requests use natural language but persist canonical operation names:
 
 ```sh
-node ./bin/development-system.mjs lifecycle-request --workflow AOH-142 --mode transition --request "Inicia grill-with-docs"
-node ./bin/development-system.mjs lifecycle-request --workflow AOH-142 --mode transition --request "Apruebo los requisitos"
-node ./bin/development-system.mjs lifecycle-status --workflow AOH-142
-node ./bin/development-system.mjs lifecycle-execute --workflow AOH-142 --operation validate
+./bin/development-system lifecycle-request --workflow AOH-142 --mode transition --request "Inicia grill-with-docs"
+./bin/development-system lifecycle-request --workflow AOH-142 --mode transition --request "Apruebo los requisitos"
+./bin/development-system lifecycle-status --workflow AOH-142
+./bin/development-system lifecycle-execute --workflow AOH-142 --operation validate
 ```
 
 Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode recommend` for a read-only recommendation; it never persists a transition or grants authority. Use `--json` to inspect the exact transition, authorization source, evidence, stage, and reported external side effects.
@@ -49,7 +49,7 @@ Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode re
 After `Implement Preview` is authorized, execute a private structured plan with:
 
 ```sh
-node ./bin/development-system.mjs implement-preview \
+./bin/development-system implement-preview \
   --workflow AOH-145 \
   --plan /private/path/implement-preview.json
 ```
@@ -82,12 +82,12 @@ The audit reports six distinct states: `exists`, `discovered`, `catalogued`, `lo
 
 ```sh
 pnpm run skills:probe -- --output evidence/skills-live-$(date +%F).json
-node ./bin/development-system.mjs audit-skills \
+./bin/development-system audit-skills \
   --evidence evidence/skills-live-$(date +%F).json \
   --json
 ```
 
-The probe uses read-only, ephemeral Codex execution and read-only Factory Droid execution. Evidence includes executable path, version, command, explicit activation/read signal, a three-part behavior signature taken only from the loaded skill, scanner errors, and catalog warnings. The expected answer is not supplied in the prompt. Description shortening is reported separately from actual skill omission. `audit-skills` intentionally fails without operational evidence for catalog-critical skills.
+The probe uses read-only, ephemeral Codex execution and read-only Factory Droid execution. Structural evidence covers the 20 logical catalog entries; the current live behavioral probe covers only the critical `research` capability in Codex and Factory. It does not claim exhaustive influence for all 20 skills. Evidence includes executable path, version, command, explicit activation/read signal, a three-part behavior signature taken only from the loaded skill, scanner errors, and catalog warnings. The expected answer is not supplied in the prompt.
 
 ## Operational harness parity
 
@@ -98,9 +98,9 @@ pnpm run harnesses:validate -- \
   --output evidence/harnesses-live-$(date +%F).json
 ```
 
-After a failed run, add `--resume evidence/harnesses-live-YYYY-MM-DD.json` to re-run only failed surfaces and retain prior green evidence.
+After a failed run, add `--resume evidence/harnesses-live-YYYY-MM-DD.json` to re-run only failed surfaces. The merged report retains the first failure under `recoveredFailures` and records each attempt; recovery never rewrites the initial evidence.
 
-The validator launches the installed Codex and Factory executables against AO, simple, mature, and nested-CWD scenarios. T3Code is exercised through the Codex adapter and must preserve the same state namespace and observable behavior. Results check instructions, catalog, actual load, hooks, roster, model/role, side effects, external state, and overflow. Failures identify canonical-source, adapter, harness-runtime, or repo-policy ownership. Commands are read-only, do not infer success from file presence, and fail diagnostically when an individual probe exceeds its configured deadline.
+The validator launches installed Codex and Factory executables against AO root, the Development System, NutriPlan, The Barber Central, and AOHYS nested CWDs. T3Code is exercised through the Codex adapter and must preserve the same state namespace and observable behavior. Commands are read-only and do not initialize, normalize, or declare any product ready.
 
 ## Capability benchmark and roster
 
@@ -108,7 +108,7 @@ The validator launches the installed Codex and Factory executables against AO, s
 pnpm run benchmark -- --concurrency 3 --timeout-ms 60000
 ```
 
-The suite compares identical fixtures for orchestration, implementation, review, architecture, browser QA, and visual judgment. Timestamped history under `evidence/benchmarks/` records fixture hash, harness, model, reasoning, checks, time, tokens, reported cost, corrections, findings, slop, and time to verified delivery. Rankings are per capability; no universal model winner is inferred. `config/capability-roster.json` records the supporting run and keeps challenged/permission-blocked mappings visibly provisional. The first live run validated Spark Low for Codex implementation, Sol Medium for Codex review, Sol High for Factory orchestration, Opus 4.8 for Factory review/visual judgment, and Sonnet 5 for Factory browser QA; architecture and several Codex mappings remain challenged by deadline evidence. Every Factory `inherit` mapping still resolves to an explicit model.
+The suite compares identical fixtures for orchestration, implementation, review, architecture, browser QA, and visual judgment. Each record is explicitly `validated`, `provisional`, `timeout`, or `permission-blocked`; only validated records enter rankings. `config/0.6.0/capability-roster.json` separates a mapping's validated/provisional status from its supporting evidence status. No incomplete result is declared a winner.
 
 ## Reproducible acceptance scenario
 
@@ -122,7 +122,7 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.5.0 del sistema de desarrollo” → `install --version 0.5.0` plus `sync-skills --version 0.2.0`
+- “Instala la versión 0.6.0 del sistema de desarrollo” → `install --version 0.6.0` plus `sync-skills --version 0.2.0`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -141,8 +141,8 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target, `0.1.0` is the first canonical contract, `0.2.0` is the skill-catalog contract, `0.3.0` is the lifecycle-gates contract, `0.4.0` is the operational adapters, benchmark, and Implement Preview contract, and `0.5.0` is the repository audit and explicit preparation contract. Published manifests and artifacts are immutable. The installed manifest resolves `$INSTALL_COMMIT` to the exact commit used for installation; upstream skills pin the exact authoritative commit directly.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.5.0` retain their published contracts; `0.6.0` is the pre-rollout hardening contract. Published manifests and artifacts are immutable.
 
 ## Current boundary
 
-This slice completes read-only repository audit and explicit repository initialization/normalization on top of the global adapters, validator, benchmark/roster, and delivery loop. The three product pilots remain a later, separately authorized rollout; this version does not modify or declare any real product repository ready.
+This slice hardens the Development System before rollout. The three product pilots remain AOH-147: this version audits them read-only, but does not modify, normalize, initialize, or declare any product repository ready.

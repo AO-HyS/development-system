@@ -40,7 +40,7 @@ Commands that return structured evidence should print a final JSON object. Revie
 Run only after the lifecycle state has reached `delivery_authorized`:
 
 ```sh
-node ./bin/development-system.mjs implement-preview \
+./bin/development-system implement-preview \
   --workflow AOH-145 \
   --plan /private/path/implement-preview.json \
   --home /isolated/or/operator/home

@@ -11,6 +11,7 @@ const requiredCapabilities = [
   "browser-qa",
   "visual-judgment",
 ];
+const benchmarkEvidenceStatuses = new Set(["validated", "provisional", "timeout", "permission-blocked"]);
 
 /** @param {unknown} value */
 function isRecord(value) {
@@ -94,6 +95,13 @@ export async function runBenchmarkSuite(options) {
       const { benchmarkCase, candidate, caseIndex, candidateIndex } = job;
       const hash = fixtureHash(benchmarkCase);
       const result = await options.runtime({ benchmarkCase, candidate });
+      const evidenceStatus = result.completed === true && result.checksPassed === true
+        ? "validated"
+        : result.failureKind === "timeout"
+          ? "timeout"
+          : result.failureKind === "permission-blocked"
+            ? "permission-blocked"
+            : "provisional";
       records.push({
         schemaVersion: 1,
         runId: options.runId,
@@ -109,6 +117,8 @@ export async function runBenchmarkSuite(options) {
         checks: [...benchmarkCase.checks],
         completed: result.completed === true,
         checksPassed: result.checksPassed === true,
+        evidenceStatus,
+        correctionStatus: result.corrections > 0 ? "corrected" : "none",
         durationMs: result.durationMs,
         correctionMs: result.correctionMs,
         verifiedDeliveryMs: result.durationMs + result.correctionMs,
@@ -135,7 +145,7 @@ export async function runBenchmarkSuite(options) {
   const rankings = Object.fromEntries(requiredCapabilities.map((capability) => [
     capability,
     records
-      .filter((record) => record.capability === capability)
+      .filter((record) => record.capability === capability && record.evidenceStatus === "validated")
       .sort((left, right) =>
         Number(right.checksPassed) - Number(left.checksPassed) ||
         left.verifiedDeliveryMs - right.verifiedDeliveryMs ||
@@ -154,6 +164,12 @@ export async function runBenchmarkSuite(options) {
         slop: record.slop,
       })),
   ]));
+  const summary = Object.fromEntries(
+    [...benchmarkEvidenceStatuses].map((status) => [
+      status,
+      records.filter((record) => record.evidenceStatus === status).length,
+    ]),
+  );
   return {
     ok: records.every((record) => record.completed && record.checksPassed),
     operation: "benchmark-run",
@@ -161,6 +177,7 @@ export async function runBenchmarkSuite(options) {
     suiteId: options.suite.suiteId,
     records,
     rankings,
+    summary,
   };
 }
 
@@ -187,10 +204,18 @@ export function resolveCapabilityRoster(roster) {
       )) {
         throw new Error(`${capability}.${harness} inherit must have a resolved model`);
       }
+      if (candidate.mappingStatus !== undefined && !["validated", "provisional"].includes(candidate.mappingStatus)) {
+        throw new Error(`${capability}.${harness} mappingStatus is invalid`);
+      }
+      if (candidate.evidenceStatus !== undefined && !benchmarkEvidenceStatuses.has(candidate.evidenceStatus)) {
+        throw new Error(`${capability}.${harness} evidenceStatus is invalid`);
+      }
       capabilities[capability][harness] = {
         requestedModel: candidate.model,
         model: candidate.model === "inherit" ? candidate.resolvedModel : candidate.model,
         reasoning: candidate.reasoning,
+        mappingStatus: candidate.mappingStatus ?? "provisional",
+        evidenceStatus: candidate.evidenceStatus ?? "provisional",
       };
     }
   }
@@ -305,6 +330,13 @@ export function createProcessBenchmarkRuntime(options) {
     const inputTokens = findNumericValue(events, ["input_tokens", "inputTokens"]) ?? 0;
     const outputTokens = findNumericValue(events, ["output_tokens", "outputTokens"]) ?? 0;
     const costUsd = findNumericValue(events, ["cost_usd", "costUsd"]);
+    const finalRun = correction?.run ?? first.run;
+    const combinedProcessOutput = `${first.combined}\n${correction?.combined ?? ""}`;
+    const timedOut = [first.run.error, correction?.run.error].some(
+      (error) => error && "code" in error && error.code === "ETIMEDOUT",
+    );
+    const permissionBlocked = /insufficient permission|permission denied|re-run with --auto|requires? permission/i
+      .test(combinedProcessOutput);
     return {
       completed: first.run.status === 0 && (!correction || correction.run.status === 0),
       checksPassed: first.run.status === 0 && (!correction || correction.run.status === 0) && missingChecks.length === 0,
@@ -317,7 +349,8 @@ export function createProcessBenchmarkRuntime(options) {
       slop,
       output,
       command: [executable, ...first.args.slice(0, -1), "<fixture-prompt>"].join(" "),
-      exitCode: correction?.run.status ?? first.run.status,
+      exitCode: finalRun.status,
+      failureKind: timedOut ? "timeout" : permissionBlocked ? "permission-blocked" : null,
     };
   };
 }
