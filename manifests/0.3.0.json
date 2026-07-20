@@ -17,7 +17,7 @@
       "sourcePath": "artifacts/0.3.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "66e617c290b3a969748c3ad00a64799ee38feac3c2ea2df8a60810c9129a0e76",
+      "sha256": "cbf36b5392ed0ac6ec375e0bd2ea6ce2cfa81afbd57f19909a3589bb9ec7573f",
       "expectedMirrorOf": null
     },
     {
@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/0.3.0/contract.md",
       "destination": ".factory/development-system/contract.md",
       "harness": "factory",
-      "sha256": "66e617c290b3a969748c3ad00a64799ee38feac3c2ea2df8a60810c9129a0e76",
+      "sha256": "cbf36b5392ed0ac6ec375e0bd2ea6ce2cfa81afbd57f19909a3589bb9ec7573f",
       "expectedMirrorOf": "lifecycle-contract.codex"
     },
     {

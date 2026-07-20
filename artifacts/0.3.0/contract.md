@@ -17,11 +17,11 @@ The normal persisted stages are:
 7. Implement Preview authorized for one named terminal slice;
 8. pre-release evidence ready for the final human gate.
 
-Natural-language requests map to exact transition records. Every record includes the original request, operation, authorization source, prior stage, next stage, and timestamp. Out-of-order manual transitions are denied without persistence or external side effects.
+Natural-language requests map to exact transition records. Every record includes the original request, operation, authorization source, prior stage, next stage, and timestamp. Negated, ambiguous, and out-of-order manual transitions are denied without persistence or external side effects.
 
 ## Operation-specific authorization
 
-Implement Preview authorizes only the named terminal slice and its delivery loop: implementation, edits, tests, validation, review, correction, proportional QA, commits, push, pull request, preview, PR updates, and recap. It does not authorize merge, release, production, paid activation, or destructive operations.
+Implement Preview authorizes only the named terminal slice and its delivery loop: implementation, edits, tests, validation, review, correction, proportional QA, commits, push, pull request, preview, PR updates, and recap. Pre-release cannot become ready until evidence records implementation, tests, validation, review, QA, commit, push, PR, and preview. It does not authorize merge, release, production, paid activation, or destructive operations.
 
 Merge, release, production, paid activation, and destructive operations each require a separate explicit authorization after pre-release evidence is ready. Each grant is exact and one-shot; consuming one operation never authorizes another operation or a later repetition.
 

@@ -77,6 +77,22 @@ assert.equal(
   step(["lifecycle-execute", "--workflow", workflow, "--operation", "merge"], 1).execution.status,
   "denied",
 );
+for (const operation of [
+  "implement",
+  "test",
+  "validate",
+  "review",
+  "qa",
+  "commit",
+  "push",
+  "open_pr",
+  "publish_preview",
+]) {
+  assert.equal(
+    step(["lifecycle-execute", "--workflow", workflow, "--operation", operation]).execution.status,
+    "authorized",
+  );
+}
 assert.equal(
   step(["lifecycle-execute", "--workflow", workflow, "--operation", "generate_recap"]).state.stage,
   "pre_release_ready",

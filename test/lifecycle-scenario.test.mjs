@@ -78,6 +78,16 @@ test("the normal lifecycle persists every human gate and manual stage as a disti
     assert.equal(result.ok, true, request);
     assert.equal(result.transition.operation, operation);
     assert.equal(result.state.stage, stage);
+    if (operation === "create_spec_plan") {
+      const contradictoryApproval = await runLifecycleRequest({
+        home,
+        workflowId,
+        mode: "transition",
+        request: "Apruebo el spec pero rechazo el plan",
+      });
+      assert.equal(contradictoryApproval.ok, false);
+      assert.equal(contradictoryApproval.state.stage, "spec_plan_ready");
+    }
   }
 
   const implementPreview = await runLifecycleRequest({
@@ -136,6 +146,14 @@ test("Implement Preview grants only the delivery loop while sensitive operations
   assert.equal(commit.ok, true);
   assert.deepEqual(commit.externalSideEffects, [{ operation: "commit", scope: "AOH-201 terminal slice" }]);
 
+  const prematureRecap = await executeLifecycleOperation({
+    home,
+    workflowId,
+    operation: "generate_recap",
+  });
+  assert.equal(prematureRecap.ok, false);
+  assert.match(prematureRecap.execution.reason, /missing delivery evidence/i);
+
   for (const operation of [
     "merge",
     "release",
@@ -149,6 +167,19 @@ test("Implement Preview grants only the delivery loop while sensitive operations
     assert.equal(denied.externalSideEffects.length, 0);
   }
 
+  for (const operation of [
+    "implement",
+    "test",
+    "validate",
+    "review",
+    "qa",
+    "push",
+    "open_pr",
+    "publish_preview",
+  ]) {
+    assert.equal((await executeLifecycleOperation({ home, workflowId, operation })).ok, true);
+  }
+
   const recap = await executeLifecycleOperation({
     home,
     workflowId,
@@ -157,22 +188,97 @@ test("Implement Preview grants only the delivery loop while sensitive operations
   assert.equal(recap.ok, true);
   assert.equal(recap.state.stage, "pre_release_ready");
 
+  const negatedMerge = await runLifecycleRequest({
+    home,
+    workflowId,
+    mode: "transition",
+    request: "I don't authorize merge for AOH-201",
+  });
+  assert.equal(negatedMerge.ok, false);
+  assert.equal(negatedMerge.transition.status, "not-mapped");
+  assert.equal(negatedMerge.state.authorizations.length, 0);
+
+  const distantNegation = await runLifecycleRequest({
+    home,
+    workflowId,
+    mode: "transition",
+    request: "I do not, under any circumstances, authorize production",
+  });
+  assert.equal(distantNegation.ok, false);
+  assert.equal(distantNegation.state.authorizations.length, 0);
+
+  for (const request of ["Authorize production? No.", "I authorize production—actually, no"]) {
+    const trailingRevocation = await runLifecycleRequest({
+      home,
+      workflowId,
+      mode: "transition",
+      request,
+    });
+    assert.equal(trailingRevocation.ok, false, request);
+    assert.equal(trailingRevocation.state.authorizations.length, 0, request);
+  }
+
   const mergeAuthorization = await runLifecycleRequest({
     home,
     workflowId,
     mode: "transition",
-    request: "Autorizo únicamente el merge de AOH-201",
+    request: "Authorize merge, not release, for AOH-201",
   });
   assert.equal(mergeAuthorization.transition.operation, "authorize_merge");
   assert.equal(mergeAuthorization.state.authorizations.at(-1).operation, "merge");
 
-  assert.equal((await executeLifecycleOperation({ home, workflowId, operation: "merge" })).ok, true);
-  assert.equal((await executeLifecycleOperation({ home, workflowId, operation: "merge" })).ok, false);
+  const lockPath = resolve(home, ".development-system", "lifecycles", `${workflowId}.json.lock`);
+  await writeFile(lockPath, "", "utf8");
+  const freshPartialLock = await executeLifecycleOperation({ home, workflowId, operation: "merge" });
+  assert.equal(freshPartialLock.ok, false);
+  assert.match(freshPartialLock.execution.reason, /already in progress/i);
+
+  await writeFile(
+    lockPath,
+    `${JSON.stringify({
+      pid: 2_147_483_647,
+      token: "crashed-owner",
+      createdAt: "2000-01-01T00:00:00.000Z",
+    })}\n`,
+    "utf8",
+  );
+
+  const concurrentMerge = await Promise.all([
+    executeLifecycleOperation({ home, workflowId, operation: "merge" }),
+    executeLifecycleOperation({ home, workflowId, operation: "merge" }),
+  ]);
+  assert.deepEqual(
+    concurrentMerge.map((result) => result.ok).sort(),
+    [false, true],
+  );
   assert.equal((await executeLifecycleOperation({ home, workflowId, operation: "release" })).ok, false);
 
+  assert.equal(
+    (
+      await runLifecycleRequest({
+        home,
+        workflowId,
+        mode: "transition",
+        request: "Autorizo el release",
+      })
+    ).ok,
+    true,
+  );
+  const [releaseExecution, productionAuthorization] = await Promise.all([
+    executeLifecycleOperation({ home, workflowId, operation: "release" }),
+    runLifecycleRequest({
+      home,
+      workflowId,
+      mode: "transition",
+      request: "Autorizo producción",
+    }),
+  ]);
+  assert.equal(releaseExecution.ok, true);
+  assert.equal(productionAuthorization.ok, true);
+  assert.equal((await executeLifecycleOperation({ home, workflowId, operation: "release" })).ok, false);
+  assert.equal((await executeLifecycleOperation({ home, workflowId, operation: "production" })).ok, true);
+
   for (const [operation, request] of [
-    ["release", "Autorizo el release"],
-    ["production", "Autorizo producción"],
     ["paid_activation", "Autorizo la activación pagada"],
     ["destructive_operation", "Autorizo la operación destructiva"],
   ]) {
@@ -193,22 +299,70 @@ test("manual-only stages and delivery operations stay inert before their exact t
   const workflowId = "AOH-202";
   const statePath = resolve(home, ".development-system", "lifecycles", `${workflowId}.json`);
 
-  const prematureSpec = await runLifecycleRequest({
+  const grillRecommendation = await runLifecycleRequest({
+    home,
+    workflowId,
+    mode: "recommend",
+    request: "Necesito aclarar los requisitos del producto",
+  });
+  assert.equal(grillRecommendation.selectedStage, "grill-with-docs");
+  assert.equal(grillRecommendation.externalSideEffects.length, 0);
+  await assert.rejects(access(statePath));
+
+  for (const request of [
+    "Apruebo los requisitos",
+    "Genera el spec con to-spec",
+    "Apruebo el spec y el plan",
+    "Genera tickets con to-tickets",
+    "Apruebo los tickets",
+    "Implementa y entrega el preview",
+  ]) {
+    const premature = await runLifecycleRequest({
+      home,
+      workflowId,
+      mode: "transition",
+      request,
+      terminalSlice: "must remain unauthorized",
+    });
+    assert.equal(premature.ok, false, request);
+    assert.equal(premature.transition.status, "denied", request);
+    assert.equal(premature.state.stage, "idle", request);
+    assert.equal(premature.externalSideEffects.length, 0, request);
+  }
+  for (const operation of [
+    "merge",
+    "release",
+    "production",
+    "paid_activation",
+    "destructive_operation",
+  ]) {
+    const premature = await executeLifecycleOperation({ home, workflowId, operation });
+    assert.equal(premature.ok, false, operation);
+    assert.equal(premature.externalSideEffects.length, 0, operation);
+  }
+  await assert.rejects(access(statePath));
+
+  const start = await runLifecycleRequest({
     home,
     workflowId,
     mode: "transition",
-    request: "Genera el spec con to-spec",
+    request: "Inicia grill-with-docs",
   });
-  assert.equal(prematureSpec.ok, false);
-  assert.equal(prematureSpec.transition.status, "denied");
-  assert.equal(prematureSpec.state.stage, "idle");
-  assert.equal(prematureSpec.externalSideEffects.length, 0);
+  assert.equal(start.state.stage, "requirements_in_progress");
+  const negatedApproval = await runLifecycleRequest({
+    home,
+    workflowId,
+    mode: "transition",
+    request: "No apruebo los requisitos",
+  });
+  assert.equal(negatedApproval.ok, false);
+  assert.equal(negatedApproval.state.stage, "requirements_in_progress");
 
   const prematureCommit = await executeLifecycleOperation({ home, workflowId, operation: "commit" });
   assert.equal(prematureCommit.ok, false);
   assert.equal(prematureCommit.execution.status, "denied");
   assert.equal(prematureCommit.externalSideEffects.length, 0);
-  await assert.rejects(access(statePath));
+  assert.equal((await readLifecycleState({ home, workflowId })).stage, "requirements_in_progress");
 });
 
 test("the CLI exposes natural-language lifecycle requests and read-only status", async () => {
@@ -260,4 +414,20 @@ test("lifecycle persistence refuses symlink escapes and invalid state schemas", 
     "utf8",
   );
   await assert.rejects(readLifecycleState({ home: schemaHome, workflowId: "AOH-205" }), /schema/i);
+
+  const nestedStatePath = resolve(schemaHome, ".development-system", "lifecycles", "AOH-206.json");
+  await writeFile(
+    nestedStatePath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      workflowId: "AOH-206",
+      stage: "pre_release_ready",
+      optionalStage: null,
+      terminalSlice: "slice",
+      evidence: [],
+      authorizations: [{ operation: "merge", consumedAt: null }],
+    })}\n`,
+    "utf8",
+  );
+  await assert.rejects(readLifecycleState({ home: schemaHome, workflowId: "AOH-206" }), /schema/i);
 });
