@@ -160,3 +160,12 @@ test("self-declared statuses cannot reach readiness without bound runtime eviden
   assert.ok(result.errors.some((error) => error.includes("harness evidence is not bound")));
   assert.ok(result.errors.some((error) => error.includes("nutri-plan attestation is not bound")));
 });
+
+test("a compact packet can source every pilot claim from its hash-bound attestation", () => {
+  const document = evidence();
+  const bound = verification(document);
+  document.pilots = document.pilots.map(({ name, attestation }) => ({ name, attestation }));
+
+  const result = validatePilotRolloutEvidence(document, bound);
+  assert.equal(result.ok, true);
+});

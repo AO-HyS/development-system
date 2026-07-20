@@ -98,39 +98,42 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
   for (const pilot of pilots) {
     const name = nonEmpty(pilot?.name) ? pilot.name : "unnamed pilot";
     if (!expectedPilots.has(name)) errors.push(`${name} is outside the authorized pilot set`);
-    if (!hex(pilot?.baseCommit, 40)) errors.push(`${name} baseCommit must be a full Git commit`);
-    if (!hex(pilot?.productCommit, 40)) errors.push(`${name} productCommit must be a full Git commit`);
     const pilotVerification = verification?.pilots?.[name];
     if (!artifactBound(pilot?.attestation, pilotVerification)) {
       errors.push(`${name} attestation is not bound to verified bytes`);
-    } else {
+    } else if (hex(pilot?.baseCommit, 40)) {
       const { attestation: _attestation, ...pilotClaims } = pilot;
       if (!isDeepStrictEqual(pilotVerification.document, pilotClaims)) {
         errors.push(`${name} attestation does not match the rollout packet`);
       }
     }
+    const claims = artifactBound(pilot?.attestation, pilotVerification)
+      ? pilotVerification.document
+      : pilot;
+    if (!hex(claims?.baseCommit, 40)) errors.push(`${name} baseCommit must be a full Git commit`);
+    if (!hex(claims?.productCommit, 40)) errors.push(`${name} productCommit must be a full Git commit`);
     if (pilotVerification?.commitExists !== true) errors.push(`${name} product commit was not verified`);
     if (pilotVerification?.recapExists !== true) errors.push(`${name} private Local Visual Recap path was not verified`);
-    if (!hex(pilot?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
-    if (JSON.stringify(pilot?.managedMutationScope) !== JSON.stringify(managedMutationScope)) {
+    if (!hex(claims?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
+    if (JSON.stringify(claims?.managedMutationScope) !== JSON.stringify(managedMutationScope)) {
       errors.push(`${name} managed mutation scope is not exact`);
     }
-    if (!object(pilot?.preserved) || !Array.isArray(pilot.preserved.releasePolicyFiles) || !Array.isArray(pilot.preserved.designFiles)) {
+    if (!object(claims?.preserved) || !Array.isArray(claims.preserved.releasePolicyFiles) || !Array.isArray(claims.preserved.designFiles)) {
       errors.push(`${name} preserved release and design evidence is required`);
     }
     for (const kind of commandKinds) {
-      if (!nonEmpty(pilot?.commands?.[kind])) errors.push(`${name} ${kind} command is required`);
+      if (!nonEmpty(claims?.commands?.[kind])) errors.push(`${name} ${kind} command is required`);
     }
     for (const harness of harnesses) {
-      if (pilot?.harnesses?.[harness] !== "validated") errors.push(`${name} ${harness} harness is not validated`);
+      if (claims?.harnesses?.[harness] !== "validated") errors.push(`${name} ${harness} harness is not validated`);
     }
-    if (!object(pilot?.review) || pilot.review.blocker !== 0 || pilot.review.high !== 0 ||
-      !Number.isInteger(pilot.review.medium) || !Array.isArray(pilot.review.mediumDispositions) ||
-      pilot.review.mediumDispositions.length !== pilot.review.medium || !nonEmpty(pilot.review.evidence)) {
+    if (!object(claims?.review) || claims.review.blocker !== 0 || claims.review.high !== 0 ||
+      !Number.isInteger(claims.review.medium) || !Array.isArray(claims.review.mediumDispositions) ||
+      claims.review.mediumDispositions.length !== claims.review.medium || !nonEmpty(claims.review.evidence)) {
       errors.push(`${name} review evidence has unresolved blocker, high, or medium findings`);
     }
-    if (!object(pilot?.qaSelection) || !["full", "lightweight", "omitted"].includes(pilot.qaSelection.level) ||
-      !nonEmpty(pilot.qaSelection.reason) || !nonEmpty(pilot.qaSelection.evidence)) {
+    if (!object(claims?.qaSelection) || !["full", "lightweight", "omitted"].includes(claims.qaSelection.level) ||
+      !nonEmpty(claims.qaSelection.reason) || !nonEmpty(claims.qaSelection.evidence)) {
       errors.push(`${name} QA selection requires a level, reason, and evidence`);
     }
     const scenario = pilotScenarios.get(name);
@@ -138,25 +141,25 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
     if (scenario && (!Array.isArray(liveResults) || harnesses.some((surface) => !liveResults.some((result) =>
       result?.scenario === scenario && result?.surface === surface && result?.status === "passed"
     )))) errors.push(`${name} does not have live three-surface harness evidence`);
-    if (!Array.isArray(pilot?.checks) || pilot.checks.length === 0 || pilot.checks.some((/** @type {any} */ check) =>
+    if (!Array.isArray(claims?.checks) || claims.checks.length === 0 || claims.checks.some((/** @type {any} */ check) =>
       !nonEmpty(check?.id) || !nonEmpty(check?.command) || check?.status !== "passed" || !nonEmpty(check?.evidence)
     )) errors.push(`${name} checks require passed command evidence`);
-    if (pilot?.pullRequest?.status !== "open" || !/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(pilot?.pullRequest?.url ?? "")) {
+    if (claims?.pullRequest?.status !== "open" || !/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(claims?.pullRequest?.url ?? "")) {
       errors.push(`${name} pull request is not open and reviewable`);
     }
-    if (pilot?.preview?.status !== "ready" || !/^https?:\/\//.test(pilot?.preview?.url ?? "")) {
+    if (claims?.preview?.status !== "ready" || !/^https?:\/\//.test(claims?.preview?.url ?? "")) {
       errors.push(`${name} preview is not ready`);
     }
-    if (!Array.isArray(pilot?.residualRisks) || pilot.residualRisks.length === 0) {
+    if (!Array.isArray(claims?.residualRisks) || claims.residualRisks.length === 0) {
       errors.push(`${name} residual risks must be explicit`);
     }
-    if (pilot?.rollback?.kind !== "revert-product-commit" || !nonEmpty(pilot?.rollback?.command)) {
+    if (claims?.rollback?.kind !== "revert-product-commit" || !nonEmpty(claims?.rollback?.command)) {
       errors.push(`${name} rollback evidence is incomplete`);
     }
-    if (pilot?.localVisualRecap?.status !== "written" || !nonEmpty(pilot?.localVisualRecap?.privatePath)) {
+    if (claims?.localVisualRecap?.status !== "written" || !nonEmpty(claims?.localVisualRecap?.privatePath)) {
       errors.push(`${name} private Local Visual Recap is missing`);
     }
-    if (pilot?.decision !== "ready-for-human") errors.push(`${name} has not reached ready-for-human`);
+    if (claims?.decision !== "ready-for-human") errors.push(`${name} has not reached ready-for-human`);
   }
 
   const escuela = Array.isArray(document.excludedRepositories)

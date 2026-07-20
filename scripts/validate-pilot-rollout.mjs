@@ -68,11 +68,13 @@ try {
 if (evidence) {
   const pilotPairs = await Promise.all((evidence.pilots ?? []).map(async (/** @type {any} */ pilot) => {
     const repository = /** @type {Record<string, string>} */ (repositoryPaths)[pilot.name];
+    const artifact = await loadArtifact(pilot.attestation);
+    const claims = artifact?.document ?? pilot;
     return [pilot.name, {
-      ...(await loadArtifact(pilot.attestation)),
-      commitExists: Boolean(repository) && commitExists(repository, pilot.productCommit),
-      recapExists: typeof pilot.localVisualRecap?.privatePath === "string" &&
-        await pathExists(resolve(homedir(), pilot.localVisualRecap.privatePath)),
+      ...artifact,
+      commitExists: Boolean(repository) && commitExists(repository, claims.productCommit),
+      recapExists: typeof claims.localVisualRecap?.privatePath === "string" &&
+        await pathExists(resolve(homedir(), claims.localVisualRecap.privatePath)),
     }];
   }));
   const verification = {
