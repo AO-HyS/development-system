@@ -110,6 +110,8 @@ pnpm run benchmark -- --concurrency 3 --timeout-ms 60000
 
 The suite compares identical fixtures for orchestration, implementation, review, architecture, browser QA, and visual judgment. Each record is explicitly `validated`, `provisional`, `timeout`, or `permission-blocked`; only validated records enter rankings. `config/0.6.0/capability-roster.json` separates a mapping's validated/provisional status from its supporting evidence status. No incomplete result is declared a winner.
 
+Use `--provisional-only` to rerun only mappings the versioned roster still marks provisional while validating the complete suite definition first.
+
 ## Reproducible acceptance scenario
 
 ```sh

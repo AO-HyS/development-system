@@ -71,7 +71,9 @@ test("0.6 operational coverage includes every read-only smoke target and the ros
     scenarios.scenarios.map((scenario) => scenario.relativeCwd),
     [".", "development-system", "nutri-plan", "the-barber-central", "aohys/apps/dashboard"],
   );
-  assert.deepEqual(scenarios.scenarios[3].surfaces, ["codex", "factory", "t3code"]);
+  assert.ok(scenarios.scenarios.every((scenario) =>
+    ["codex", "factory", "t3code"].every((surface) => scenario.surfaces.includes(surface))
+  ));
 
   const roster = JSON.parse(
     await readFile(resolve(repositoryRoot, "config", "0.6.0", "capability-roster.json"), "utf8"),

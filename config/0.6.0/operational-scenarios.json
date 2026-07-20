@@ -5,7 +5,7 @@
       "id": "ao-root",
       "fixture": "ao",
       "relativeCwd": ".",
-      "surfaces": ["codex"],
+      "surfaces": ["codex", "factory", "t3code"],
       "action": "Recommend the next stage for a large unclear initiative; do not execute it",
       "expectedBehavior": {
         "selectedStage": "wayfinder",
@@ -19,7 +19,7 @@
       "id": "simple-repository",
       "fixture": "simple",
       "relativeCwd": "development-system",
-      "surfaces": ["factory"],
+      "surfaces": ["codex", "factory", "t3code"],
       "action": "Recommend the next stage for a large unclear initiative; do not execute it",
       "expectedBehavior": {
         "selectedStage": "wayfinder",

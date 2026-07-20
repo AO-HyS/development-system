@@ -6,6 +6,8 @@ import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { hasBehaviorSignature } from "../src/skills.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -126,8 +128,6 @@ try {
 const codexCombined = `${codex.stdout}\n${codex.stderr}`;
 const codexAll = `${codexCatalog.stdout}\n${codexCatalog.stderr}\n${codexCombined}`;
 const factoryCombined = `${factory.stdout}\n${factory.stderr}`;
-/** @param {string} text */
-const hasBehaviorSignature = (text) => behaviorSignature.every((term) => text.toLowerCase().includes(term));
 const codexMessages = jsonLines(codex.stdout)
   .filter((event) => event?.type === "item.completed" && event.item?.type === "agent_message")
   .map((event) => event.item.text);
@@ -147,8 +147,8 @@ const factoryLoaded = /Skill ["']research["'] activated/i.test(factoryCombined);
 const codexCatalogued = codexCatalog.exitCode === 0 && /^research\s*$/i.test(codexCatalogFinal);
 const factoryCatalogued = factoryCatalog.exitCode === 0 && /^research\s*$/i.test(factoryCatalogFinal);
 const probeSucceeded = Boolean(
-  codexCatalogued && codexLoaded && hasBehaviorSignature(codexFinal) &&
-  factoryCatalogued && factoryLoaded && hasBehaviorSignature(factoryFinal) &&
+  codexCatalogued && codexLoaded && hasBehaviorSignature(codexFinal, behaviorSignature) &&
+  factoryCatalogued && factoryLoaded && hasBehaviorSignature(factoryFinal, behaviorSignature) &&
   codex.exitCode === 0 && factory.exitCode === 0
 );
 const evidence = {
@@ -174,7 +174,7 @@ const evidence = {
     research: {
       catalogued: codexCatalogued,
       loaded: codexLoaded,
-      influenced: codexLoaded && hasBehaviorSignature(codexFinal),
+      influenced: codexLoaded && hasBehaviorSignature(codexFinal, behaviorSignature),
       command: codex.command,
       version: codexVersion.stdout.trim(),
       exitCode: codex.exitCode,
@@ -190,7 +190,7 @@ const evidence = {
     research: {
       catalogued: factoryCatalogued,
       loaded: factoryLoaded,
-      influenced: factoryLoaded && hasBehaviorSignature(factoryFinal),
+      influenced: factoryLoaded && hasBehaviorSignature(factoryFinal, behaviorSignature),
       command: factory.command,
       version: factoryVersion.stdout.trim(),
       exitCode: factory.exitCode,

@@ -31,6 +31,37 @@ function isDirectChildPath(root, candidate) {
     candidateParts.every((part) => part !== "." && part !== "..");
 }
 
+/**
+ * Match each required phrase by ordered words while allowing short descriptive
+ * insertions such as "Markdown findings file" for the contract term
+ * "markdown file".
+ *
+ * @param {string} text
+ * @param {string[]} signature
+ */
+export function hasBehaviorSignature(text, signature) {
+  const observed = text.toLowerCase().match(/[\p{L}\p{N}-]+/gu) ?? [];
+  return signature.every((term) => {
+    const required = term.toLowerCase().match(/[\p{L}\p{N}-]+/gu) ?? [];
+    if (required.length === 0) return false;
+    for (let start = 0; start < observed.length; start += 1) {
+      if (observed[start] !== required[0]) continue;
+      let cursor = start;
+      let matched = true;
+      for (const word of required.slice(1)) {
+        const next = observed.slice(cursor + 1, cursor + 6).indexOf(word);
+        if (next < 0) {
+          matched = false;
+          break;
+        }
+        cursor += next + 1;
+      }
+      if (matched) return true;
+    }
+    return false;
+  });
+}
+
 /** @param {string} home @param {string} candidate */
 async function assertSafeManagedParent(home, candidate) {
   const resolvedHome = resolve(home);
@@ -271,7 +302,7 @@ export async function auditSkillCatalog(options) {
           typeof observed.response !== "string" ||
           observed.catalogResponse?.trim() !== logicalSkill.logicalName ||
           signature.length === 0 ||
-          signature.some((term) => !observed.response.toLowerCase().includes(term.toLowerCase()))
+          !hasBehaviorSignature(observed.response, signature)
         ) {
           problems.push(`${variant.id} operational evidence lacks executable, version, exit, or response detail`);
         }

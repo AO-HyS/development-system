@@ -69,13 +69,14 @@ function fixtureHash(benchmarkCase) {
 }
 
 /**
- * @param {{suite: any, runId: string, runtime: (request: any) => Promise<any>, concurrency?: number}} options
+ * @param {{suite: any, runId: string, runtime: (request: any) => Promise<any>, concurrency?: number, candidateIds?: string[]}} options
  */
 export async function runBenchmarkSuite(options) {
   const errors = validateBenchmarkSuite(options.suite);
   if (errors.length > 0) throw new Error(`Invalid benchmark suite:\n${errors.join("\n")}`);
   /** @type {any[]} */
   const records = [];
+  const selectedCandidateIds = options.candidateIds ? new Set(options.candidateIds) : null;
   const jobs = options.suite.cases.flatMap((/** @type {any} */ benchmarkCase, /** @type {number} */ caseIndex) =>
     benchmarkCase.candidates.map((/** @type {any} */ candidate, /** @type {number} */ candidateIndex) => ({
       benchmarkCase,
@@ -83,7 +84,8 @@ export async function runBenchmarkSuite(options) {
       caseIndex,
       candidateIndex,
     }))
-  );
+  ).filter((/** @type {any} */ job) => !selectedCandidateIds || selectedCandidateIds.has(job.candidate.id));
+  if (jobs.length === 0) throw new Error("Benchmark selection did not match any candidates");
   let nextJob = 0;
   const concurrency = Math.max(1, Math.min(options.concurrency ?? 1, jobs.length));
   async function worker() {

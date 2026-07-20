@@ -53,7 +53,7 @@
       "sourcePath": "config/0.6.0/capability-roster.json",
       "destination": ".codex/development-system/capability-roster.json",
       "harness": "codex",
-      "sha256": "4ef916b6339f63f0e2e49742ac79f77367d9eea1c2dca0b41c21fca9fcd3ee4b",
+      "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
       "expectedMirrorOf": null
     },
     {
@@ -62,7 +62,7 @@
       "sourcePath": "config/0.6.0/capability-roster.json",
       "destination": ".factory/development-system/capability-roster.json",
       "harness": "factory",
-      "sha256": "4ef916b6339f63f0e2e49742ac79f77367d9eea1c2dca0b41c21fca9fcd3ee4b",
+      "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
       "expectedMirrorOf": "capability-roster.codex"
     },
     {

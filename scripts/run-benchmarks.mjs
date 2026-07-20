@@ -30,12 +30,22 @@ const runtime = createProcessBenchmarkRuntime({
   factoryPath: process.env.AOHYS_FACTORY_PATH,
   timeoutMs,
 });
-const report = await runBenchmarkSuite({ suite, runId, runtime, concurrency });
+const provisionalOnly = process.argv.includes("--provisional-only");
+const candidateIds = provisionalOnly
+  ? suite.cases.flatMap((/** @type {any} */ benchmarkCase) =>
+      benchmarkCase.candidates
+        .filter((/** @type {any} */ candidate) =>
+          roster.capabilities[benchmarkCase.capability]?.[candidate.harness]?.mappingStatus === "provisional"
+        )
+        .map((/** @type {any} */ candidate) => candidate.id)
+    )
+  : undefined;
+const report = await runBenchmarkSuite({ suite, runId, runtime, concurrency, candidateIds });
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0
   ? resolve(process.argv[outputIndex + 1])
   : resolve(repositoryRoot, "evidence", "benchmarks", `${runId}.json`);
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
-process.stdout.write(`${JSON.stringify({ ok: report.ok, runId, outputPath, summary: report.summary, rankings: report.rankings }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: report.ok, runId, outputPath, provisionalOnly, summary: report.summary, rankings: report.rankings }, null, 2)}\n`);
 if (!report.ok) process.exitCode = 1;

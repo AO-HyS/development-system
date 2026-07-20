@@ -255,3 +255,30 @@ test("nested T3Code accepts explicit no-state evidence without a manual rerun", 
   assert.equal(report.failures.length, 0);
   assert.ok(report.results.every((result) => result.checks.externalState));
 });
+
+test("equivalent read-only evidence phrases keep externalState deterministic across Factory and T3Code", async () => {
+  const phrases = new Map([
+    ["factory", "read-only; no repository search or other tool calls issued, no files edited"],
+    ["t3code", "Read-only observation completed without repository inspection or lifecycle transition."],
+  ]);
+  const report = await validateOperationalScenarios({
+    registry,
+    scenarios: [{ ...scenarios[1], surfaces: ["factory", "t3code"] }],
+    runtime: async (request) => ({
+      executable: request.adapter.executable,
+      version: "fixture-runtime-1",
+      model: "fixture-model",
+      reasoning: "high",
+      role: "orchestrator",
+      evidence: { ...observableEvidence, externalState: phrases.get(request.surface) },
+      catalogProof: true,
+      catalogOverflowProof: true,
+      loadProof: true,
+      behavior: expectedBehavior,
+      diagnostics: [],
+    }),
+  });
+
+  assert.equal(report.ok, true);
+  assert.ok(report.results.every((result) => result.checks.externalState));
+});

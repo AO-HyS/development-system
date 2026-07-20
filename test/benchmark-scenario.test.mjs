@@ -176,3 +176,31 @@ test("benchmark reports validated, timeout, permission-blocked, and provisional 
   );
   assert.ok(report.records.every((record) => typeof record.evidenceStatus === "string"));
 });
+
+test("benchmark can rerun only roster-selected provisional candidates without weakening suite validation", async () => {
+  const candidateIds = ["orchestration-codex", "architecture-factory"];
+  const report = await runBenchmarkSuite({
+    suite,
+    runId: "bench-provisional-only",
+    candidateIds,
+    runtime: async ({ candidate }) => ({
+      completed: true,
+      checksPassed: true,
+      durationMs: 100,
+      correctionMs: 0,
+      tokens: 100,
+      costUsd: null,
+      corrections: 0,
+      findings: 0,
+      output: "verified",
+      command: `${candidate.harness} exec`,
+      exitCode: 0,
+    }),
+  });
+
+  assert.deepEqual(report.records.map((record) => `${record.capability}:${record.harness}`), [
+    "orchestration:codex",
+    "architecture:factory",
+  ]);
+  assert.equal(report.ok, true);
+});
