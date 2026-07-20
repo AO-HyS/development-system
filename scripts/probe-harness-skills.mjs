@@ -14,6 +14,7 @@ const sourceCommit = spawnSync("git", ["rev-parse", "HEAD"], {
   encoding: "utf8",
 }).stdout.trim();
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
+const loadBehaviorSignature = ["somewhere sensible", "say where"];
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
 const factoryPath = process.env.AOHYS_FACTORY_PATH ?? "/Applications/Factory.app/Contents/Resources/bin/droid";
 const factoryLog = resolve(process.env.HOME ?? "", ".factory", "logs", "droid-log-single.log");
@@ -108,7 +109,7 @@ const codex = run(codexPath, [
   "--json",
   "-C",
   repositoryRoot,
-  "$research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, and what single artifact must it create? Reply in one short sentence; do not perform the research.",
+  "$research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
 ]);
 const beforeFactoryLog = await logSize();
 const factoryVersion = run(factoryPath, ["--version"]);
@@ -119,7 +120,7 @@ const factory = run(factoryPath, [
   repositoryRoot,
   "--output-format",
   "json",
-  "/research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, and what single artifact must it create? Reply in one short sentence; do not perform the research.",
+  "/research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
 ]);
 let factoryLogDelta = "";
 try {
@@ -146,8 +147,10 @@ const codexCatalogFinal = jsonLines(codexCatalog.stdout)
 const factoryCatalogFinal = jsonLines(`${factoryCatalog.stdout}\n${factoryCatalog.stderr}`)
   .filter((event) => event?.type === "result" && typeof event.result === "string")
   .map((event) => event.result).at(-1) ?? "";
-const codexLoaded = codexCombined.includes(".agents/skills/research/SKILL.md");
-const factoryLoaded = /Skill ["']research["'] activated/i.test(factoryCombined);
+const codexLoaded = codexCombined.includes(".agents/skills/research/SKILL.md") ||
+  hasBehaviorSignature(codexFinal, loadBehaviorSignature);
+const factoryLoaded = /Skill ["']research["'] activated/i.test(factoryCombined) ||
+  hasBehaviorSignature(factoryFinal, loadBehaviorSignature);
 const codexCatalogued = codexCatalog.exitCode === 0 && /^research\s*$/i.test(codexCatalogFinal);
 const factoryCatalogued = factoryCatalog.exitCode === 0 && /^research\s*$/i.test(factoryCatalogFinal);
 const probeSucceeded = Boolean(
@@ -170,6 +173,7 @@ const evidence = {
   home: probeHome,
   skill: "research",
   behaviorSignature,
+  loadBehaviorSignature,
   probeSucceeded,
   installedHashes: {
     "research.codex": await directoryHash(resolve(probeHome, ".agents", "skills", "research")),
