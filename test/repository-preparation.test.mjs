@@ -257,6 +257,7 @@ test("residue detection distinguishes exclusions, tracker references, and scoped
     [
       "# Lumen Console",
       "Do not inherit The Barber Central release rules.",
+      "No deben quedar referencias operativas heredadas de The Barber Central.",
       "Los issues se gestionan en el equipo Aohys de Linear.",
       "Impeccable may guide this repository's visual work, but repository rules always win.",
       "",
@@ -265,13 +266,21 @@ test("residue detection distinguishes exclusions, tracker references, and scoped
   await write(
     repository,
     "apps/copied/AGENTS.md",
-    "Copy the NutriPlan release train and adopt Impeccable as the global template.\n",
+    [
+      "This project copies AOHYS release rules.",
+      "Use NutriPlan without modification.",
+      "Adopt Impeccable as the global template.",
+      "",
+    ].join("\n"),
   );
 
   const audit = await auditRepository({ repository });
 
   assert.equal(audit.residue.some((entry) => entry.marker === "The Barber Central"), false);
-  assert.equal(audit.residue.some((entry) => entry.marker === "AOHYS"), false);
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "AOHYS"),
+    false,
+  );
   assert.equal(
     audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "Impeccable"),
     false,
@@ -285,7 +294,8 @@ test("residue detection distinguishes exclusions, tracker references, and scoped
   assert.ok(audit.allowedReferences.some((entry) =>
     entry.marker === "Impeccable" && entry.reason === "product-scoped-impeccable-integration"
   ));
-  assert.ok(audit.residue.some((entry) => entry.marker === "NutriPlan"));
+  assert.ok(audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "AOHYS"));
+  assert.ok(audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "NutriPlan"));
   assert.ok(audit.residue.some((entry) => entry.marker === "Impeccable"));
 });
 
@@ -317,6 +327,31 @@ test("monorepo preparation detects nested Convex, local preview aliases, and sup
   assert.equal(audit.commands.preview.script, "cloudflare:local");
   assert.equal(audit.readiness.codex.gaps.includes("inert-skill-installation"), false);
   assert.deepEqual(normalized.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
+});
+
+test("preview discovery rejects deployment aliases and falls back to a local command", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-preview-safety-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "wrangler deploy --env production",
+        dev: "vite dev",
+      },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.commands.preview.script, "dev");
+  assert.equal(audit.commands.preview.command, "pnpm run dev");
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {

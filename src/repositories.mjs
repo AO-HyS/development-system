@@ -289,10 +289,17 @@ function skillLogicalName(path, contents) {
   return declared || basename(dirname(path));
 }
 
-/** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner */
-function selectCommand(scripts, candidates, runner) {
-  const script = candidates.find((candidate) => typeof scripts[candidate] === "string");
+/** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner @param {(command:string) => boolean} [accept] */
+function selectCommand(scripts, candidates, runner, accept = () => true) {
+  const script = candidates.find((candidate) =>
+    typeof scripts[candidate] === "string" && accept(scripts[candidate])
+  );
   return script ? { script, command: `${runner} run ${script}` } : null;
+}
+
+/** @param {string} command */
+function readOnlyPreviewCommand(command) {
+  return !/\b(?:deploy|publish|release|production|promote)\b/i.test(command);
 }
 
 /** @param {any} packageJson @param {string[]} files */
@@ -353,7 +360,12 @@ async function repositoryIdentity(repository, files) {
       review: selectCommand(scripts, ["review", "review:ci", "lint", "check"], runner),
       validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
       qa: selectCommand(scripts, ["qa", "test:e2e", "e2e", "test"], runner),
-      preview: selectCommand(scripts, ["preview", "preview:local", "cloudflare:local", "dev", "start"], runner),
+      preview: selectCommand(
+        scripts,
+        ["preview", "preview:local", "cloudflare:local", "dev", "start"],
+        runner,
+        readOnlyPreviewCommand,
+      ),
     },
     releasePolicyFiles: files.filter(releasePolicyPath),
     designFiles: files.filter(designPath),
@@ -402,10 +414,10 @@ async function detectResidue(repository, entries, identityName) {
 
 /** @param {string} line @param {string} marker */
 function allowedReferenceReason(line, marker) {
-  const explicitExclusion = /\b(?:do not|does not|don't|must not|never|without|no (?:use|uses|usar|usa|debe|deben|heredar|hereda|copiar|copia)|sin (?:usar|heredar|copiar)|prohibid[oa]s?|fuera de alcance)\b/i;
+  const explicitExclusion = /\b(?:(?:do not|does not|don't|must not|never) (?:use|inherit|copy|adopt|apply|import)|without (?:using|inheriting|copying|adopting|applying|importing)|no (?:usar|usa|heredar|hereda|copiar|copia|adoptar|adopta|aplicar|aplica)|no deben? quedar (?:referencias )?(?:operativas )?heredad\w*|sin (?:usar|heredar|copiar|adoptar|aplicar)|prohibid[oa]s?|fuera de alcance)\b/i;
   if (explicitExclusion.test(line)) return "explicit-exclusion-rule";
 
-  const externalCoordination = /\b(?:linear|issue tracker|tracker|team|equipo|workspace|project|proyecto|organization|organizaci[oó]n)\b/i;
+  const externalCoordination = /\b(?:linear|issue tracker|tracker|workspace)\b|\b(?:track|link|coordinate|reference|report|manage|plan|assign|record|gestionar|coordinar|registrar|asignar)\w*\b.*\b(?:team|equipo|project|proyecto|organization|organizaci[oó]n)\b/i;
   if (externalCoordination.test(line)) return "external-coordination-reference";
 
   if (marker !== "Impeccable") return undefined;

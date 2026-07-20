@@ -9,6 +9,11 @@ const managedMutationScope = [
 const harnesses = ["codex", "t3code", "factory"];
 const commandKinds = ["review", "validation", "qa", "preview"];
 const prohibitedOperations = ["merge", "release", "production", "paidActivation", "canonicalHomeSync"];
+const pilotScenarios = new Map([
+  ["nutri-plan", "nutriplan-read-only"],
+  ["the-barber-central", "barber-read-only"],
+  ["aohys.com", "aohys-nested-read-only"],
+]);
 
 /** @param {unknown} value */
 function object(value) {
@@ -25,14 +30,27 @@ function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** @param {unknown} value */
+function artifactReference(value) {
+  const record = /** @type {any} */ (value);
+  return object(record) && nonEmpty(record.path) && /^evidence\//.test(record.path) && hex(record.sha256, 64);
+}
+
+/** @param {any} reference @param {any} observed */
+function artifactBound(reference, observed) {
+  return artifactReference(reference) && object(observed) &&
+    observed.path === reference.path && observed.sha256 === reference.sha256 && object(observed.document);
+}
+
 /**
  * Validate the comparable evidence packet for the three authorized pilots.
  * The validator intentionally fails closed: structural preparation without live
  * harness evidence, a reviewable preview, recovery, or the private recap cannot
  * advance the candidate to the human gate.
  * @param {any} document
+ * @param {any} [verification]
  */
-export function validatePilotRolloutEvidence(document) {
+export function validatePilotRolloutEvidence(document, verification = {}) {
   /** @type {string[]} */
   const errors = [];
   if (!object(document)) return { ok: false, decision: "blocked", errors: ["evidence must be an object"] };
@@ -46,11 +64,24 @@ export function validatePilotRolloutEvidence(document) {
   if (!object(document.candidate)) errors.push("candidate evidence is required");
   else {
     if (!hex(document.candidate.sourceCommit, 40)) errors.push("candidate sourceCommit must be a full Git commit");
+    if (verification.candidateCommitExists !== true) errors.push("candidate commit was not verified");
     if (!/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(document.candidate.pullRequest ?? "")) {
       errors.push("candidate pullRequest must be a GitHub PR URL");
     }
-    for (const key of ["harnessEvidence", "skillEvidence"]) {
-      if (!nonEmpty(document.candidate[key])) errors.push(`candidate ${key} is required`);
+    if (!artifactBound(document.candidate.harnessEvidence, verification.harnessEvidence)) {
+      errors.push("candidate harness evidence is not bound to verified bytes");
+    } else {
+      const harnessDocument = verification.harnessEvidence.document;
+      if (harnessDocument.ok !== true || harnessDocument.contractVersion !== "0.7.0" ||
+        !Array.isArray(harnessDocument.results) || !Array.isArray(harnessDocument.failures) ||
+        harnessDocument.failures.length > 0) {
+        errors.push("candidate harness evidence is not a green 0.7.0 report");
+      }
+    }
+    if (!artifactBound(document.candidate.skillEvidence, verification.skillEvidence)) {
+      errors.push("candidate skill evidence is not bound to verified bytes");
+    } else if (verification.skillEvidence.document.probeSucceeded !== true) {
+      errors.push("candidate skill live probe did not succeed");
     }
   }
 
@@ -67,6 +98,17 @@ export function validatePilotRolloutEvidence(document) {
     if (!expectedPilots.has(name)) errors.push(`${name} is outside the authorized pilot set`);
     if (!hex(pilot?.baseCommit, 40)) errors.push(`${name} baseCommit must be a full Git commit`);
     if (!hex(pilot?.productCommit, 40)) errors.push(`${name} productCommit must be a full Git commit`);
+    const pilotVerification = verification?.pilots?.[name];
+    if (!artifactBound(pilot?.attestation, pilotVerification)) {
+      errors.push(`${name} attestation is not bound to verified bytes`);
+    } else {
+      const { attestation: _attestation, ...pilotClaims } = pilot;
+      if (JSON.stringify(pilotVerification.document) !== JSON.stringify(pilotClaims)) {
+        errors.push(`${name} attestation does not match the rollout packet`);
+      }
+    }
+    if (pilotVerification?.commitExists !== true) errors.push(`${name} product commit was not verified`);
+    if (pilotVerification?.recapExists !== true) errors.push(`${name} private Local Visual Recap path was not verified`);
     if (!hex(pilot?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
     if (JSON.stringify(pilot?.managedMutationScope) !== JSON.stringify(managedMutationScope)) {
       errors.push(`${name} managed mutation scope is not exact`);
@@ -80,6 +122,11 @@ export function validatePilotRolloutEvidence(document) {
     for (const harness of harnesses) {
       if (pilot?.harnesses?.[harness] !== "validated") errors.push(`${name} ${harness} harness is not validated`);
     }
+    const scenario = pilotScenarios.get(name);
+    const liveResults = verification?.harnessEvidence?.document?.results;
+    if (scenario && (!Array.isArray(liveResults) || harnesses.some((surface) => !liveResults.some((result) =>
+      result?.scenario === scenario && result?.surface === surface && result?.status === "passed"
+    )))) errors.push(`${name} does not have live three-surface harness evidence`);
     if (!Array.isArray(pilot?.checks) || pilot.checks.length === 0 || pilot.checks.some((/** @type {any} */ check) =>
       !nonEmpty(check?.id) || !nonEmpty(check?.command) || check?.status !== "passed" || !nonEmpty(check?.evidence)
     )) errors.push(`${name} checks require passed command evidence`);

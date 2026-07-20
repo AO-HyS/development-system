@@ -28,6 +28,7 @@ const selectedScenario = argument("--scenario", undefined);
 const timeoutMs = Number(argument("--timeout-ms", "60000"));
 if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("--timeout-ms must be positive");
 const registry = JSON.parse(await readFile(resolve(repositoryRoot, "config/0.6.0/harness-adapters.json"), "utf8"));
+const candidateContractVersion = "0.7.0";
 const scenarioDocument = JSON.parse(
   await readFile(resolve(repositoryRoot, "config/0.6.0/operational-scenarios.json"), "utf8"),
 );
@@ -85,12 +86,15 @@ const runtime = createProcessHarnessRuntime({
 const scenarioReports = await Promise.all(
   scenarios.map((scenario) => validateOperationalScenarios({ registry, scenarios: [scenario], runtime })),
 );
-const report = mergeOperationalReports({
-  contractVersion: registry.contractVersion,
-  resumeReport,
-  scenarios,
-  scenarioReports,
-});
+const report = {
+  ...mergeOperationalReports({
+    contractVersion: candidateContractVersion,
+    resumeReport,
+    scenarios,
+    scenarioReports,
+  }),
+  adapterContractVersion: registry.contractVersion,
+};
 if (output) {
   const outputPath = resolve(output);
   await mkdir(dirname(outputPath), { recursive: true });

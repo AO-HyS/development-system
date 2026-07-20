@@ -1,7 +1,7 @@
 {
   "ok": true,
   "operation": "validate-harnesses",
-  "contractVersion": "0.6.0",
+  "contractVersion": "0.7.0",
   "coverage": [
     "ao",
     "mature-barber",
@@ -1005,6 +1005,11 @@
     {
       "source": "current-run",
       "ok": true
+    },
+    {
+      "source": "current-run",
+      "ok": true
     }
-  ]
+  ],
+  "adapterContractVersion": "0.6.0"
 }
