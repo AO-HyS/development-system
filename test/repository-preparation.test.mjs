@@ -505,6 +505,32 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   }
 });
 
+test("initialization prefers the selective QA script when both selective and legacy QA scripts exist", async () => {
+  const repository = await mkdtemp(resolve(tmpdir(), "aohys-repository-init-"));
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "aurora-studio",
+      private: true,
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        validate: "node -e \"process.exit(0)\"",
+        "test:e2e": "node -e \"process.exit(0)\"",
+        "test:e2e:changed": "node -e \"process.exit(0)\"",
+        preview: "node -e \"process.exit(0)\"",
+      },
+      dependencies: { react: "19.1.0", convex: "1.25.0" },
+    }),
+  );
+
+  const normalized = await initializeRepository({ repository, confirm: "initialize" });
+  const contract = JSON.parse((await snapshot(repository))[".development-system/repository.json"]);
+
+  assert.equal(normalized.ok, true);
+  assert.equal(contract.commands.qa.script, "test:e2e:changed");
+});
+
 test("normalization replaces only managed drift and remains deterministic", async () => {
   const repository = await seedOperationalRepository("aohys-repository-normalize-", false);
   await write(repository, "RELEASE.md", "Keep the product release policy.\n");

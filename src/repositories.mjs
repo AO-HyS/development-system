@@ -359,7 +359,7 @@ async function repositoryIdentity(repository, files) {
     commands: {
       review: selectCommand(scripts, ["review", "review:ci", "lint", "check"], runner),
       validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
-      qa: selectCommand(scripts, ["qa", "test:e2e", "e2e", "test"], runner),
+      qa: selectCommand(scripts, ["qa", "test:e2e:changed", "test:e2e", "e2e", "test"], runner),
       preview: selectCommand(
         scripts,
         ["preview", "preview:local", "cloudflare:local", "dev", "start"],
