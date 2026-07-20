@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "capability-roster-v1",
+  "cases": [
+    {
+      "id": "orchestration-terminal-slice",
+      "capability": "orchestration",
+      "fixture": "benchmarks/fixtures/orchestration.md",
+      "instructions": "Produce a bounded execution packet that retains integration ownership and the human merge gate.",
+      "checks": ["one writer", "human merge gate", "verification"],
+      "forbiddenTerms": ["auto-merge"],
+      "candidates": [
+        { "id": "orchestration-codex-baseline", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high" },
+        { "id": "orchestration-factory-challenger", "harness": "factory", "model": "gpt-5.6-sol", "reasoning": "high" }
+      ]
+    },
+    {
+      "id": "implementation-contract-fix",
+      "capability": "implementation",
+      "fixture": "benchmarks/fixtures/implementation.md",
+      "instructions": "Return the minimal patch and the exact verification evidence for the described contract bug.",
+      "checks": ["terminalSlice", "denied", "test"],
+      "forbiddenTerms": ["rewrite the lifecycle"],
+      "candidates": [
+        { "id": "implementation-spark-baseline", "harness": "codex", "model": "gpt-5.3-codex-spark", "reasoning": "low" },
+        { "id": "implementation-factory-challenger", "harness": "factory", "model": "gpt-5.6-sol", "reasoning": "medium" }
+      ]
+    },
+    {
+      "id": "review-authorization-defect",
+      "capability": "review",
+      "fixture": "benchmarks/fixtures/review.md",
+      "instructions": "Review adversarially and identify the highest-risk correctness defect.",
+      "checks": ["authorization", "one-shot", "high"],
+      "forbiddenTerms": ["looks good"],
+      "candidates": [
+        { "id": "review-codex-baseline", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium" },
+        { "id": "review-factory-challenger", "harness": "factory", "model": "claude-opus-4-8", "reasoning": "medium" }
+      ]
+    },
+    {
+      "id": "architecture-adapter-seam",
+      "capability": "architecture",
+      "fixture": "benchmarks/fixtures/architecture.md",
+      "instructions": "Choose and justify the deepest stable module boundary without hiding authorization.",
+      "checks": ["adapter", "observable behavior", "authorization"],
+      "forbiddenTerms": ["universal adapter"],
+      "candidates": [
+        { "id": "architecture-codex-baseline", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "xhigh" },
+        { "id": "architecture-factory-challenger", "harness": "factory", "model": "claude-opus-4-8", "reasoning": "xhigh" }
+      ]
+    },
+    {
+      "id": "browser-qa-preview-gate",
+      "capability": "browser-qa",
+      "fixture": "benchmarks/fixtures/browser-qa.md",
+      "instructions": "Return a risk-based browser QA report for the supplied preview states.",
+      "checks": ["preview", "unauthorized", "manual checklist"],
+      "forbiddenTerms": ["production deploy"],
+      "candidates": [
+        { "id": "browser-codex-baseline", "harness": "codex", "model": "gpt-5.6-terra", "reasoning": "max" },
+        { "id": "browser-factory-challenger", "harness": "factory", "model": "claude-sonnet-5", "reasoning": "high" }
+      ]
+    },
+    {
+      "id": "visual-recap-judgment",
+      "capability": "visual-judgment",
+      "fixture": "benchmarks/fixtures/visual-judgment.md",
+      "instructions": "Critique the decision surface for hierarchy, privacy, and fast human judgment.",
+      "checks": ["private", "preview link", "failures and corrections"],
+      "forbiddenTerms": ["publish publicly"],
+      "candidates": [
+        { "id": "visual-codex-baseline", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high" },
+        { "id": "visual-factory-challenger", "harness": "factory", "model": "claude-opus-4-8", "reasoning": "high" }
+      ]
+    }
+  ]
+}

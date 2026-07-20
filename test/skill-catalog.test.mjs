@@ -8,10 +8,28 @@ import test from "node:test";
 
 import {
   auditSkillCatalog,
+  hasBehaviorSignature,
   rollbackSkillSync,
   synchronizeSkillCatalog,
   validateSkillCatalog,
 } from "../src/skills.mjs";
+
+test("behavior signatures tolerate descriptive words between required terms", () => {
+  assert.equal(
+    hasBehaviorSignature(
+      "A background agent must use primary sources and create one source-cited Markdown findings file.",
+      ["background agent", "primary sources", "markdown file"],
+    ),
+    true,
+  );
+  assert.equal(
+    hasBehaviorSignature(
+      "A background agent may use secondary sources and create a Markdown findings file.",
+      ["background agent", "primary sources", "markdown file"],
+    ),
+    false,
+  );
+});
 
 const skillBody = `---
 name: tracer-skill

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.6.0",
+  "generatedAt": "2026-07-20T19:21:19.509Z",
+  "operation": "repository-audit-smoke",
+  "mode": "read-only-compatibility-evidence",
+  "rolloutAuthorized": false,
+  "ok": true,
+  "results": [
+    {
+      "repository": "nutri-plan",
+      "repositoryRoot": "/Users/corrortiz/Documents/AO/nutri-plan",
+      "compatibility": "completed-without-crash",
+      "fingerprint": "cfc0a8755052c39646b39c10b03d03294fa1fb92d467af781d74e60b034a800e",
+      "fingerprintPolicy": "source-v2-distributed-bounded",
+      "excludedPaths": 80,
+      "boundedLargeFiles": 85,
+      "externalSideEffects": [],
+      "gitStatusUnchanged": true,
+      "rolloutReadinessClaim": false
+    },
+    {
+      "repository": "the-barber-central",
+      "repositoryRoot": "/Users/corrortiz/Documents/AO/the-barber-central",
+      "compatibility": "completed-without-crash",
+      "fingerprint": "6dda68156853f0f769d26201ef08c63e455b05790eb47810e77f04d17aa0f7a5",
+      "fingerprintPolicy": "source-v2-distributed-bounded",
+      "excludedPaths": 24,
+      "boundedLargeFiles": 65,
+      "externalSideEffects": [],
+      "gitStatusUnchanged": true,
+      "rolloutReadinessClaim": false
+    },
+    {
+      "repository": "aohys",
+      "repositoryRoot": "/Users/corrortiz/Documents/AO/aohys",
+      "compatibility": "completed-without-crash",
+      "fingerprint": "e4d10207dbdea65971692cfdd6656f042c702e26a5b1d998ddbbb34eb0eaeb78",
+      "fingerprintPolicy": "source-v2-distributed-bounded",
+      "excludedPaths": 14,
+      "boundedLargeFiles": 48,
+      "externalSideEffects": [],
+      "gitStatusUnchanged": true,
+      "rolloutReadinessClaim": false
+    }
+  ]
+}
