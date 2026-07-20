@@ -1,16 +1,29 @@
 {
   "name": "nutri-plan",
   "repository": "AO-HyS/nutri-plan",
-  "baseCommit": "640482e00ec84df9c7eff67aa9ad93098e126c1c",
-  "productCommit": "640482e00ec84df9c7eff67aa9ad93098e126c1c",
-  "auditFingerprint": "ead5b27f53ed6baf6a25b7da9cd5ffbb789a682482c66751f1af2ad0d683ba2b",
+  "baseCommit": "08dd0d7f3cfc14c8113f04f313c7acef8a373198",
+  "productCommit": "55ea75b9a4fab4cda1d18b93948de6230ae5dbe9",
+  "auditFingerprint": "52434df4c135a06be28a4b4a81709b522ea781844b696fb5230c0bdf31f582c1",
   "managedMutationScope": [
     ".development-system/repository.json",
     ".codex/development-system/repository.md",
     ".factory/development-system/repository.md"
   ],
+  "pilotAdditions": [
+    ".codex/skills/nextjs-app-router/SKILL.md",
+    ".factory/skills/nextjs-app-router/SKILL.md",
+    ".understand-anything/fingerprints.json",
+    ".understand-anything/knowledge-graph.json",
+    ".understand-anything/meta.json"
+  ],
+  "operationalSkillEvidence": {
+    "path": "evidence/pilots/nutri-plan-skill-live-2026-07-20.json",
+    "sha256": "ae1b18b5c43ede03472f25e74f139df7d4cd64adfeee37a4f6b9d593858dda61"
+  },
   "preserved": {
-    "releasePolicyFiles": [".github/workflows/release-train.yml"],
+    "releasePolicyFiles": [
+      ".github/workflows/release-train.yml"
+    ],
     "designFiles": [
       "apps/dashboard/src/components/ui/theme-provider.tsx",
       "apps/dashboard/src/lib/exports/pdf-styles.ts",
@@ -32,34 +45,72 @@
   "review": {
     "blocker": 0,
     "high": 0,
-    "medium": 1,
+    "medium": 0,
     "low": 0,
-    "mediumDispositions": ["awaiting the explicit confirmation required by the installed understand skill"],
-    "evidence": "Read-only audit and managed-file diff inspection found no product-code change; the stale graph is the only open gate."
+    "mediumDispositions": [],
+    "evidence": "Independent spec and standards reviews accepted the final process-only diff after product identity, skill mirrors, graph tours, idempotency, and evidence binding were corrected."
   },
   "qaSelection": {
-    "level": "omitted",
-    "reason": "The required knowledge-graph refresh must be confirmed before repository validation and browser QA can run.",
-    "evidence": "pnpm knowledge:validate reported stale nodes for the intentionally removed unsupported legacy skill."
+    "level": "full",
+    "reason": "The pilot changes process and knowledge artifacts, but the repository policy selected the complete changed verification and local browser matrix before the human gate.",
+    "evidence": "pnpm verify:changed passed 3,090 unit tests and all static gates; the full local Playwright CLI covered 55 targets and a focused smoke covered 7 E2E tests."
   },
   "checks": [
     {
       "id": "knowledge-validate",
-      "command": "pnpm knowledge:validate",
-      "status": "blocked",
-      "evidence": "Eight stale nodes remain until the confirmed understand refresh."
+      "command": "pnpm knowledge:validate && pnpm knowledge:validate:strict",
+      "status": "passed",
+      "evidence": "Understand graph validates with 5,555 nodes, 8,272 edges, 8 layers, and 20 preserved tour steps without warnings or stale findings."
+    },
+    {
+      "id": "verify-changed",
+      "command": "BASE_REF=origin/develop LANDING_URL=http://127.0.0.1:3100 pnpm verify:changed",
+      "status": "passed",
+      "evidence": "Lint, architecture, Convex, typecheck, 3,090 unit tests, and the changed-surface policy exited 0."
+    },
+    {
+      "id": "browser-local",
+      "command": "pnpm test:e2e plus Playwright CLI local target matrix",
+      "status": "passed",
+      "evidence": "Seven focused smoke tests and all 55 local browser targets completed successfully."
+    },
+    {
+      "id": "skill-live-probe",
+      "command": "$nextjs-app-router and /nextjs-app-router read-only behavior probes",
+      "status": "passed",
+      "evidence": "Codex and Factory loaded the repository mirrors and reproduced the canonical PostHog SDK, forbidden capture mechanism, and correlation headers; T3Code shares the Codex adapter observation."
+    },
+    {
+      "id": "protected-preview-smoke",
+      "command": "curl protected develop dashboard, admin dashboard, and landing URLs",
+      "status": "passed",
+      "evidence": "All three stable develop runtime targets returned HTTP 200; the pilot has no product-runtime diff."
+    },
+    {
+      "id": "github-release-train",
+      "command": "GitHub Actions Release Train 29783940407",
+      "status": "passed",
+      "evidence": "Plan, lint, typecheck, unit, E2E, quality, and gate jobs passed; product deployment lanes correctly skipped the process-only diff."
     }
   ],
-  "pullRequest": { "url": null, "status": "missing" },
-  "preview": { "status": "pending", "url": null },
-  "residualRisks": ["Explicit confirmation is required before refreshing the existing Understand graph."],
+  "pullRequest": {
+    "url": "https://github.com/AO-HyS/nutri-plan/pull/189",
+    "status": "open"
+  },
+  "preview": {
+    "status": "ready",
+    "url": "https://develop-nutriplan-dashboard.a-ortizcrr.workers.dev"
+  },
+  "residualRisks": [
+    "The feature branch contains only process, skill-adapter, and Understand graph bytes, so policy does not create a branch deployment; human review must inspect those bytes in PR #189 while the protected develop runtime proves unchanged product behavior."
+  ],
   "rollback": {
-    "kind": "no-product-commit",
-    "command": "No pilot commit exists; discard only the three managed files and restore the eight legacy files if the pilot is abandoned."
+    "kind": "revert-product-commit",
+    "command": "git revert 55ea75b9a4fab4cda1d18b93948de6230ae5dbe9 af60264cd5d35cbf6013ac9eb68bd660304a9cbd 1e00e522cff028c7e53bc2c9013cc2f9a3840576 1b0f3eaf9c02fde9447b5a39c78f87db3f1f7157 d7bf0aa8d6a63ef7b275c9eb23783cee8d04d224"
   },
   "localVisualRecap": {
     "status": "written",
     "privatePath": ".development-system/private/AOH-147/nutri-plan.md"
   },
-  "decision": "blocked"
+  "decision": "ready-for-human"
 }

@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "contractVersion": "0.7.0",
   "linearIssue": "AOH-147",
-  "generatedAt": "2026-07-20T21:02:00.000Z",
+  "generatedAt": "2026-07-20T22:24:02.000Z",
   "candidate": {
-    "sourceCommit": "e5982ed8fdd8e52dec045891b346f7893b208ffb",
+    "sourceCommit": "d9549d809c7f077cd3a112d39da15ae16125e219",
     "pullRequest": "https://github.com/AO-HyS/development-system/pull/3",
     "harnessEvidence": {
       "path": "evidence/pilots-harnesses-live-2026-07-20.json",
-      "sha256": "b04b890ff92dfbf7e1ed973e2c0e226f23b5704b675a17075d332dce040de8ae"
+      "sha256": "24e57632c9f894d6f90c51a6d49050b6391f4912c78bbb85c53639ed0d8c1bf0"
     },
     "skillEvidence": {
       "path": "evidence/pilots-skills-live-2026-07-20.json",
-      "sha256": "2a51f413e5e5d112bb40c0bff82849131c93ccef8aa263316c697db425df6bc6"
+      "sha256": "23e9dfc275c6b9b2fcf3e27c6188d43950addd29dae1bca235e60c2a2e1a6bdf"
     }
   },
   "pilots": [
@@ -20,7 +20,7 @@
       "name": "nutri-plan",
       "attestation": {
         "path": "evidence/pilots/nutri-plan.json",
-        "sha256": "0701263dd9d566c2aa6d63f613a991438e2d3367cd914f8d5b2c5880b5f19f0f"
+        "sha256": "6090a2ae72faf5a05a8e8cf1584ecd495893a54f606e04894a854fdd951e8789"
       }
     },
     {
@@ -53,5 +53,5 @@
     "paidActivation": false,
     "canonicalHomeSync": false
   },
-  "decision": "blocked"
+  "decision": "ready-for-human"
 }

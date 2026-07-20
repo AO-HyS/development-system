@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "repository": "AO-HyS/nutri-plan",
+  "productCommit": "55ea75b9a4fab4cda1d18b93948de6230ae5dbe9",
+  "generatedAt": "2026-07-20T22:24:02.000Z",
+  "skill": "nextjs-app-router",
+  "probeSucceeded": true,
+  "behaviorSignature": [
+    "posthog-js",
+    "useEffect",
+    "X-POSTHOG-DISTINCT-ID",
+    "X-POSTHOG-SESSION-ID"
+  ],
+  "artifacts": {
+    "canonical": {
+      "path": "apps/dashboard/.claude/skills/nextjs-app-router/SKILL.md",
+      "sha256": "5256eac060a389b9238796a99c1cf5bdcb04273f1bdf535a015ce6eeda27b076"
+    },
+    "codexMirror": {
+      "path": ".codex/skills/nextjs-app-router/SKILL.md",
+      "sha256": "7ef913aa732b852a7e43e7f0ff5d8d989df07225ece5ca28fe314be344f5d6a7"
+    },
+    "factoryMirror": {
+      "path": ".factory/skills/nextjs-app-router/SKILL.md",
+      "sha256": "fdc6a6cb8b9b7ce83c8f9448f969b436dc721f97e19119e70dde529d35843a63"
+    }
+  },
+  "surfaces": {
+    "codex": {
+      "adapter": "codex",
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "version": "codex-cli 0.145.0-alpha.18",
+      "exitCode": 0,
+      "response": "El SDK es posthog-js, se prohíbe useEffect() para capturar analítica y los headers son X-POSTHOG-DISTINCT-ID y X-POSTHOG-SESSION-ID."
+    },
+    "t3code": {
+      "adapter": "codex",
+      "sharedObservation": "codex",
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "exitCode": 0,
+      "response": "T3Code uses the validated Codex adapter contract and therefore shares the Codex live observation."
+    },
+    "factory": {
+      "adapter": "factory",
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "version": "0.175.1",
+      "exitCode": 0,
+      "response": "The JavaScript SDK package is posthog-js, the forbidden React mechanism for analytics capture is useEffect(), and the two correlation headers are X-POSTHOG-DISTINCT-ID and X-POSTHOG-SESSION-ID."
+    }
+  },
+  "externalSideEffects": []
+}
