@@ -372,6 +372,20 @@ async function repositoryIdentity(repository, files) {
   };
 }
 
+/** @param {string} repository */
+async function managedProductName(repository) {
+  try {
+    const contract = JSON.parse(
+      await readFile(resolve(repository, managedFiles[0]), "utf8"),
+    );
+    const name = contract?.product?.name;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch (error) {
+    if (isMissing(error) || error instanceof SyntaxError) return null;
+    throw error;
+  }
+}
+
 /** @param {string} identityName */
 function ownMarker(identityName) {
   const normalized = identityName.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -560,6 +574,7 @@ export async function auditRepository(options) {
     }
   }
   const identity = await repositoryIdentity(repository, files);
+  const productName = (await managedProductName(repository)) ?? identity.name;
   /** @type {Record<string, Array<any>>} */
   const inventory = { instructions: [], skills: [], agents: [], droids: [], hooks: [] };
   for (const path of files) {
@@ -606,7 +621,11 @@ export async function auditRepository(options) {
     repositoryRoot: repository,
     repositoryFingerprint,
     fingerprint: fingerprint.evidence,
-    product: { name: identity.name, packageManager: identity.packageManager },
+    product: {
+      name: productName,
+      packageName: identity.name,
+      packageManager: identity.packageManager,
+    },
     stack: identity.stack,
     commands: identity.commands,
     preserved: {
@@ -688,7 +707,12 @@ function repositoryContract(audit, mode) {
     schemaVersion: 1,
     contractVersion,
     preparation: { mode, mutationScope: managedFiles },
-    product: { name: audit.product.name, packageManager: audit.product.packageManager, stack: audit.stack },
+    product: {
+      name: audit.product.name,
+      packageName: audit.product.packageName,
+      packageManager: audit.product.packageManager,
+      stack: audit.stack,
+    },
     preserved: audit.preserved,
     commands: audit.commands,
     harnesses: {

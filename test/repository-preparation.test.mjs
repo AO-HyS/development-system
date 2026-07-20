@@ -484,6 +484,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
   assert.equal(contract.product.name, "aurora-studio");
+  assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
   assert.deepEqual(contract.product.stack.sort(), ["convex", "react"]);
   assert.equal(contract.commands.review.script, "review");
@@ -531,6 +532,36 @@ test("normalization replaces only managed drift and remains deterministic", asyn
   const again = await normalizeRepository({ repository, confirm: "normalize" });
   assert.equal(again.status, "unchanged");
   assert.deepEqual(await snapshot(repository), after);
+});
+
+test("normalization preserves an explicit managed product display name", async () => {
+  const repository = await seedOperationalRepository(
+    "aohys-repository-display-name-",
+    false,
+  );
+  await write(
+    repository,
+    ".development-system/repository.json",
+    JSON.stringify({
+      contractVersion: "0.7.0",
+      product: { name: "Lumen Console Digital" },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+  const normalized = await normalizeRepository({
+    repository,
+    confirm: "normalize",
+  });
+  const contract = JSON.parse(
+    await readFile(resolve(repository, ".development-system/repository.json"), "utf8"),
+  );
+
+  assert.equal(audit.product.name, "Lumen Console Digital");
+  assert.equal(audit.product.packageName, "lumen-console");
+  assert.equal(contract.product.name, "Lumen Console Digital");
+  assert.equal(contract.product.packageName, "lumen-console");
+  assert.equal(normalized.ok, true);
 });
 
 test("preparation refuses managed symlink escapes", async () => {
