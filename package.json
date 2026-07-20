@@ -24,7 +24,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
-    "verify": "pnpm run typecheck && pnpm run test && pnpm run validate:repository"
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -79,11 +79,19 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
         harnessDocument.failures.length > 0) {
         errors.push("candidate harness evidence is not a green 0.7.0 report");
       }
+      if (harnessDocument.sourceCommit !== document.candidate.sourceCommit) {
+        errors.push("candidate harness evidence does not match the candidate sourceCommit");
+      }
     }
     if (!artifactBound(document.candidate.skillEvidence, verification.skillEvidence)) {
       errors.push("candidate skill evidence is not bound to verified bytes");
-    } else if (verification.skillEvidence.document.probeSucceeded !== true) {
-      errors.push("candidate skill live probe did not succeed");
+    } else {
+      if (verification.skillEvidence.document.probeSucceeded !== true) {
+        errors.push("candidate skill live probe did not succeed");
+      }
+      if (verification.skillEvidence.document.sourceCommit !== document.candidate.sourceCommit) {
+        errors.push("candidate skill evidence does not match the candidate sourceCommit");
+      }
     }
   }
 
@@ -115,6 +123,24 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
     if (pilotVerification?.commitExists !== true) errors.push(`${name} product commit was not verified`);
     if (pilotVerification?.recapExists !== true) errors.push(`${name} private Local Visual Recap path was not verified`);
     if (!hex(claims?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
+    if (name === "nutri-plan") {
+      const operationalEvidence = pilotVerification?.operationalSkillEvidence;
+      if (!artifactBound(claims?.operationalSkillEvidence, operationalEvidence)) {
+        errors.push("nutri-plan operational skill evidence is not bound to verified bytes");
+      } else {
+        const operationalDocument = operationalEvidence.document;
+        if (operationalDocument.probeSucceeded !== true || operationalDocument.productCommit !== claims.productCommit) {
+          errors.push("nutri-plan operational skill evidence is not green for the product commit");
+        }
+        for (const surface of harnesses) {
+          const observation = operationalDocument?.surfaces?.[surface];
+          if (observation?.catalogued !== true || observation?.loaded !== true ||
+            observation?.influenced !== true || observation?.exitCode !== 0) {
+            errors.push(`nutri-plan ${surface} skill mirror is not operationally proven`);
+          }
+        }
+      }
+    }
     if (JSON.stringify(claims?.managedMutationScope) !== JSON.stringify(managedMutationScope)) {
       errors.push(`${name} managed mutation scope is not exact`);
     }

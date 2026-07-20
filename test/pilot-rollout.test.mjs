@@ -4,7 +4,7 @@ import test from "node:test";
 import { validatePilotRolloutEvidence } from "../src/pilot-rollout.mjs";
 
 function pilot(name) {
-  return {
+  const claims = {
     name,
     repository: `AO-HyS/${name}`,
     baseCommit: "1".repeat(40),
@@ -38,6 +38,13 @@ function pilot(name) {
     attestation: { path: `evidence/pilots/${name}.json`, sha256: "5".repeat(64) },
     decision: "ready-for-human",
   };
+  if (name === "nutri-plan") {
+    claims.operationalSkillEvidence = {
+      path: "evidence/pilots/nutri-plan-skill-live-2026-07-20.json",
+      sha256: "8".repeat(64),
+    };
+  }
+  return claims;
 }
 
 function evidence() {
@@ -81,6 +88,7 @@ function verification(document) {
       document: {
         ok: true,
         contractVersion: "0.7.0",
+        sourceCommit: document.candidate.sourceCommit,
         results: document.pilots.flatMap((pilot) => ["codex", "t3code", "factory"].map((surface) => ({
           scenario: scenarios[pilot.name],
           surface,
@@ -92,7 +100,7 @@ function verification(document) {
     skillEvidence: {
       path: document.candidate.skillEvidence.path,
       sha256: document.candidate.skillEvidence.sha256,
-      document: { probeSucceeded: true },
+      document: { probeSucceeded: true, sourceCommit: document.candidate.sourceCommit },
     },
     pilots: Object.fromEntries(document.pilots.map((pilot) => {
       const { attestation, ...pilotClaims } = pilot;
@@ -102,6 +110,20 @@ function verification(document) {
         path: attestation.path,
         sha256: attestation.sha256,
         document: pilotClaims,
+        operationalSkillEvidence: pilot.name === "nutri-plan" ? {
+          path: pilot.operationalSkillEvidence.path,
+          sha256: pilot.operationalSkillEvidence.sha256,
+          document: {
+            probeSucceeded: true,
+            productCommit: pilot.productCommit,
+            surfaces: Object.fromEntries(["codex", "t3code", "factory"].map((surface) => [surface, {
+              catalogued: true,
+              loaded: true,
+              influenced: true,
+              exitCode: 0,
+            }])),
+          },
+        } : null,
       }];
     })),
   };
@@ -168,4 +190,18 @@ test("a compact packet can source every pilot claim from its hash-bound attestat
 
   const result = validatePilotRolloutEvidence(document, bound);
   assert.equal(result.ok, true);
+});
+
+test("candidate and Nutri operational evidence must be bound to their source commits", () => {
+  const document = evidence();
+  const bound = verification(document);
+  bound.harnessEvidence.document.sourceCommit = "9".repeat(40);
+  bound.skillEvidence.document.sourceCommit = "9".repeat(40);
+  bound.pilots["nutri-plan"].operationalSkillEvidence.document.productCommit = "9".repeat(40);
+
+  const result = validatePilotRolloutEvidence(document, bound);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes("harness evidence does not match")));
+  assert.ok(result.errors.some((error) => error.includes("skill evidence does not match")));
+  assert.ok(result.errors.some((error) => error.includes("not green for the product commit")));
 });

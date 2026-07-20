@@ -72,6 +72,7 @@ if (evidence) {
     const claims = artifact?.document ?? pilot;
     return [pilot.name, {
       ...artifact,
+      operationalSkillEvidence: await loadArtifact(claims.operationalSkillEvidence),
       commitExists: Boolean(repository) && commitExists(repository, claims.productCommit),
       recapExists: typeof claims.localVisualRecap?.privatePath === "string" &&
         await pathExists(resolve(homedir(), claims.localVisualRecap.privatePath)),

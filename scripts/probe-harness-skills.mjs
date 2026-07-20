@@ -9,6 +9,10 @@ import { fileURLToPath } from "node:url";
 import { hasBehaviorSignature } from "../src/skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const sourceCommit = spawnSync("git", ["rev-parse", "HEAD"], {
+  cwd: repositoryRoot,
+  encoding: "utf8",
+}).stdout.trim();
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
 const factoryPath = process.env.AOHYS_FACTORY_PATH ?? "/Applications/Factory.app/Contents/Resources/bin/droid";
@@ -162,6 +166,7 @@ const evidence = {
     claim: "Live influence is proven only for the named skill and harness observations.",
   },
   generatedAt: new Date().toISOString(),
+  sourceCommit,
   home: probeHome,
   skill: "research",
   behaviorSignature,

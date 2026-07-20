@@ -1,6 +1,7 @@
 // @ts-check
 
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,10 @@ import {
 } from "../src/harnesses.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+  cwd: repositoryRoot,
+  encoding: "utf8",
+}).trim();
 
 /** @param {string} name @param {string | undefined} fallback */
 function argument(name, fallback) {
@@ -94,6 +99,7 @@ const report = {
     scenarioReports,
   }),
   adapterContractVersion: registry.contractVersion,
+  sourceCommit,
 };
 if (output) {
   const outputPath = resolve(output);
