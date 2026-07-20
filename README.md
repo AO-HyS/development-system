@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.7.0` is the review candidate produced by the NutriPlan, The Barber Central, and AOHYS pilot rollout. It retains the `0.6.0` hardening guarantees and adds evidence-backed repository readiness across different product stacks and policies. The pinned `0.2.0` skill catalog remains the current skill source.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.7.0` is the review candidate being evaluated through the NutriPlan, The Barber Central, and AOHYS pilot rollout. It retains the `0.6.0` hardening guarantees and adds fail-closed, evidence-bound repository readiness across different product stacks and policies. The pinned `0.2.0` skill catalog remains the current skill source.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -23,7 +23,10 @@ pnpm install --frozen-lockfile
 ./bin/development-system validate
 ./bin/development-system rollback-skills
 ./bin/development-system rollback
+pnpm run rollout:validate
 ```
+
+`rollout:validate` returns either `ready-for-human` or a structured list of remaining pilot gates. It verifies candidate and product commits, SHA-256-bound live evidence and pilot attestations, private recap existence, review/QA disposition, PR/preview readiness, rollback, and the prohibition on merge, release, production, paid activation, canonical HOME synchronization, and Escuela 360 work.
 
 Audit and prepare a product repository with distinct operations:
 

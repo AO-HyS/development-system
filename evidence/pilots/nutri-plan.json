@@ -1,0 +1,65 @@
+{
+  "name": "nutri-plan",
+  "repository": "AO-HyS/nutri-plan",
+  "baseCommit": "640482e00ec84df9c7eff67aa9ad93098e126c1c",
+  "productCommit": "640482e00ec84df9c7eff67aa9ad93098e126c1c",
+  "auditFingerprint": "ead5b27f53ed6baf6a25b7da9cd5ffbb789a682482c66751f1af2ad0d683ba2b",
+  "managedMutationScope": [
+    ".development-system/repository.json",
+    ".codex/development-system/repository.md",
+    ".factory/development-system/repository.md"
+  ],
+  "preserved": {
+    "releasePolicyFiles": [".github/workflows/release-train.yml"],
+    "designFiles": [
+      "apps/dashboard/src/components/ui/theme-provider.tsx",
+      "apps/dashboard/src/lib/exports/pdf-styles.ts",
+      "apps/mobile/lib/material-theme.ts",
+      "apps/mobile/tailwind.config.js"
+    ]
+  },
+  "commands": {
+    "review": "pnpm run lint",
+    "validation": "pnpm run verify:changed",
+    "qa": "pnpm run test:e2e",
+    "preview": "pnpm run dev"
+  },
+  "harnesses": {
+    "codex": "validated",
+    "t3code": "validated",
+    "factory": "validated"
+  },
+  "review": {
+    "blocker": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "mediumDispositions": ["awaiting the explicit confirmation required by the installed understand skill"],
+    "evidence": "Read-only audit and managed-file diff inspection found no product-code change; the stale graph is the only open gate."
+  },
+  "qaSelection": {
+    "level": "omitted",
+    "reason": "The required knowledge-graph refresh must be confirmed before repository validation and browser QA can run.",
+    "evidence": "pnpm knowledge:validate reported stale nodes for the intentionally removed unsupported legacy skill."
+  },
+  "checks": [
+    {
+      "id": "knowledge-validate",
+      "command": "pnpm knowledge:validate",
+      "status": "blocked",
+      "evidence": "Eight stale nodes remain until the confirmed understand refresh."
+    }
+  ],
+  "pullRequest": { "url": null, "status": "missing" },
+  "preview": { "status": "pending", "url": null },
+  "residualRisks": ["Explicit confirmation is required before refreshing the existing Understand graph."],
+  "rollback": {
+    "kind": "no-product-commit",
+    "command": "No pilot commit exists; discard only the three managed files and restore the eight legacy files if the pilot is abandoned."
+  },
+  "localVisualRecap": {
+    "status": "written",
+    "privatePath": ".development-system/private/AOH-147/nutri-plan.md"
+  },
+  "decision": "blocked"
+}
