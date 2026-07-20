@@ -107,6 +107,25 @@ async function validOperationalEvidence(repository, path, harness = "codex") {
   };
 }
 
+async function trustedLiveVerifier({ observation }) {
+  return {
+    ...observation,
+    discovered: true,
+    catalogued: true,
+    loadable: true,
+    loaded: true,
+    influenced: true,
+    readOnly: true,
+    executable: process.execPath,
+    command: [process.execPath, "--version"],
+    version: process.version,
+    exitCode: 0,
+    externalSideEffects: [],
+    response: "VERIFIED_REPOSITORY_SKILL_INFLUENCE",
+    behaviorSignature: ["verified repository skill influence"],
+  };
+}
+
 test("repository audit reports precedence, residue, six-state evidence, and harness readiness without mutation", async () => {
   const repository = await seedOperationalRepository();
   const before = await snapshot(repository);
@@ -114,6 +133,7 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   const audit = await auditRepository({
     repository,
     evidence,
+    verifyObservation: trustedLiveVerifier,
   });
 
   assert.equal(audit.operation, "audit-repository");
@@ -252,6 +272,7 @@ test("audit rejects stale or non-monotonic operational load claims", async () =>
   const audit = await auditRepository({
     repository,
     evidence,
+    verifyObservation: trustedLiveVerifier,
   });
 
   const skill = audit.inventory.skills.find((entry) => entry.path.includes("domain-review"));
@@ -282,7 +303,41 @@ test("audit rejects fabricated operational claims without runtime and file-bound
 
   const skill = audit.inventory.skills.find((entry) => entry.path.includes("domain-review"));
   assert.equal(skill.operationalByHarness.codex.loaded, false);
-  assert.ok(audit.evidence.warnings.some((warning) => /invalid operational observation/i.test(warning)));
+  assert.ok(audit.evidence.warnings.some((warning) => /unattested|live observation verifier/i.test(warning)));
+});
+
+test("live observation verification fails closed on signature, runtime, timeout, or side effects", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-verifier-", false);
+  const evidence = await validOperationalEvidence(repository, ".agents/skills/domain-review/SKILL.md");
+  const invalidVerifiers = [
+    async (context) => ({ ...await trustedLiveVerifier(context), behaviorSignature: ["missing signature"] }),
+    async (context) => ({ ...await trustedLiveVerifier(context), exitCode: 1 }),
+    async (context) => ({ ...await trustedLiveVerifier(context), externalSideEffects: ["wrote state"] }),
+    async () => { throw new Error("probe timeout"); },
+  ];
+
+  for (const verifyObservation of invalidVerifiers) {
+    const audit = await auditRepository({ repository, evidence, verifyObservation });
+    const skill = audit.inventory.skills.find((entry) => entry.path.includes("domain-review"));
+    assert.equal(skill.operationalByHarness.codex.loaded, false);
+    assert.equal(skill.operationalByHarness.codex.influenced, false);
+  }
+
+  const sideEffecting = await auditRepository({
+    repository,
+    evidence,
+    verifyObservation: async (context) => {
+      await write(repository, "probe-side-effect.txt", "unexpected mutation\n");
+      return trustedLiveVerifier(context);
+    },
+  });
+  assert.equal(sideEffecting.inventory.skills.find((entry) => entry.path.includes("domain-review")).states.loaded, false);
+  assert.ok(sideEffecting.evidence.warnings.some((warning) => /changed the repository/i.test(warning)));
+
+  await write(repository, ".agents/skills/domain-review/SKILL.md", "---\nname: domain-review\n---\nchanged\n");
+  const divergent = await auditRepository({ repository, evidence, verifyObservation: trustedLiveVerifier });
+  assert.equal(divergent.inventory.skills.find((entry) => entry.path.includes("domain-review")).states.loaded, false);
+  assert.ok(divergent.evidence.warnings.some((warning) => /fingerprint|current repository/i.test(warning)));
 });
 
 test("initialization is idempotent, stack-aware, and preserves product identity, design, commands, and release policy", async () => {

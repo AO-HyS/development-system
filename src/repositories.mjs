@@ -4,6 +4,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, readdir, readlink, rename, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 
+import { hasBehaviorSignature } from "./skills.mjs";
+
 const contractVersion = "0.6.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
@@ -407,7 +409,7 @@ function readinessGaps(commands, skills, residue, managed) {
 
 /**
  * Audit one product repository without writing to it.
- * @param {{repository:string, evidence?:any}} options
+ * @param {{repository:string, evidence?:any, verifyObservation?:(context:{repository:string, observation:any})=>Promise<any>}} options
  */
 export async function auditRepository(options) {
   const repository = resolve(options.repository);
@@ -434,6 +436,9 @@ export async function auditRepository(options) {
     Math.abs(Date.now() - Date.parse(evidence.generatedAt)) > 24 * 60 * 60 * 1000) {
     warnings.push("Operational evidence is stale or has an invalid timestamp and was ignored.");
     evidence = undefined;
+  } else if (typeof options.verifyObservation !== "function") {
+    warnings.push("External operational evidence is unattested; a live observation verifier is required before loaded or influenced can become true.");
+    evidence = undefined;
   } else {
     /** @type {any[]} */
     const validObservations = [];
@@ -453,19 +458,55 @@ export async function auditRepository(options) {
       } catch (error) {
         if (!isMissing(error)) throw error;
       }
-      const runtimeBound = typeof observation?.executable === "string" && observation.executable.length > 0 &&
-        typeof observation?.version === "string" && observation.version.length > 0 &&
-        typeof observation?.command === "string" && observation.command.length > 0 &&
-        typeof observation?.catalogCommand === "string" && observation.catalogCommand.length > 0 &&
-        observation?.exitCode === 0 && typeof observation?.response === "string" && observation.response.length > 0;
+      let verified = null;
+      try {
+        verified = await options.verifyObservation({
+          repository,
+          observation: {
+            harness: observation?.harness,
+            path: observation?.path,
+            pathSha256: observation?.pathSha256,
+          },
+        });
+      } catch (error) {
+        warnings.push(`Live operational verification failed for ${String(observation?.path ?? "unknown")}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      const verifiedStates = ["discovered", "catalogued", "loadable", "loaded", "influenced"]
+        .map((state) => verified?.[state] === true);
+      const verifiedMonotonic = verifiedStates.every((state, index) =>
+        !state || verifiedStates.slice(0, index).every(Boolean)
+      );
+      const liveBound = verified?.harness === observation?.harness && verified?.path === observation?.path &&
+        verified?.pathSha256 === observation?.pathSha256 && verified?.readOnly === true &&
+        Array.isArray(verified?.command) && verified.command.length > 1 &&
+        typeof verified.command[0] === "string" && verified.command.every((/** @type {unknown} */ part) => typeof part === "string") &&
+        typeof verified?.executable === "string" && verified.executable === verified.command[0] &&
+        typeof verified?.version === "string" && verified.version.length > 0 && verified?.exitCode === 0 &&
+        Array.isArray(verified?.externalSideEffects) && verified.externalSideEffects.length === 0 &&
+        typeof verified?.response === "string" && Array.isArray(verified?.behaviorSignature) &&
+        verified.behaviorSignature.length > 0 && hasBehaviorSignature(verified.response, verified.behaviorSignature) &&
+        verifiedMonotonic;
       if (!observation || !["codex", "t3code", "factory"].includes(observation.harness) ||
-        typeof observation.path !== "string" || !monotonic || !runtimeBound || !pathHashMatches) {
+        typeof observation.path !== "string" || !monotonic || !liveBound || !pathHashMatches) {
         warnings.push(`Invalid operational observation was ignored: ${String(observation?.path ?? "unknown")}`);
         continue;
       }
-      validObservations.push(observation);
+      validObservations.push({
+        ...observation,
+        discovered: verified.discovered === true,
+        catalogued: verified.catalogued === true,
+        loadable: verified.loadable === true,
+        loaded: verified.loaded === true,
+        influenced: verified.influenced === true,
+      });
     }
-    evidence = { ...evidence, observations: validObservations };
+    const postVerificationFingerprint = await inspectRepositoryFingerprint(repository);
+    if (postVerificationFingerprint.value !== repositoryFingerprint) {
+      warnings.push("Live operational verification changed the repository; all operational observations were ignored.");
+      evidence = undefined;
+    } else {
+      evidence = { ...evidence, observations: validObservations };
+    }
   }
   const identity = await repositoryIdentity(repository, files);
   /** @type {Record<string, Array<any>>} */

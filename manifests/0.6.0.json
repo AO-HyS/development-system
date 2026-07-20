@@ -17,7 +17,7 @@
       "sourcePath": "artifacts/0.6.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "f976d8ade992b0ac512d4f71425ac5d9e473e9cc9b71f7dbd0353b29129a45b9",
+      "sha256": "c542ca2c67e4ed852d1a297dfa7a56b9a0fe4aceec9cc7afc7b2fba532ba3837",
       "expectedMirrorOf": null
     },
     {
@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/0.6.0/contract.md",
       "destination": ".factory/development-system/contract.md",
       "harness": "factory",
-      "sha256": "f976d8ade992b0ac512d4f71425ac5d9e473e9cc9b71f7dbd0353b29129a45b9",
+      "sha256": "c542ca2c67e4ed852d1a297dfa7a56b9a0fe4aceec9cc7afc7b2fba532ba3837",
       "expectedMirrorOf": "hardening-contract.codex"
     },
     {
