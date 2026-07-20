@@ -492,12 +492,22 @@ export async function auditRepository(options) {
         continue;
       }
       validObservations.push({
-        ...observation,
+        harness: verified.harness,
+        path: verified.path,
+        pathSha256: verified.pathSha256,
         discovered: verified.discovered === true,
         catalogued: verified.catalogued === true,
         loadable: verified.loadable === true,
         loaded: verified.loaded === true,
         influenced: verified.influenced === true,
+        readOnly: true,
+        executable: verified.executable,
+        command: [...verified.command],
+        version: verified.version,
+        exitCode: verified.exitCode,
+        externalSideEffects: [],
+        response: verified.response,
+        behaviorSignature: [...verified.behaviorSignature],
       });
     }
     const postVerificationFingerprint = await inspectRepositoryFingerprint(repository);
@@ -567,7 +577,7 @@ export async function auditRepository(options) {
     residue,
     allowedReferences: residueResult.allowedReferences,
     readiness,
-    evidence: { accepted: Boolean(evidence), warnings },
+    evidence: { accepted: Boolean(evidence), warnings, observations: evidence?.observations ?? [] },
     architectureDiagnostic: {
       id: "improve-codebase-architecture",
       mode: "manual",

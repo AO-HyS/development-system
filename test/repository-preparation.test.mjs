@@ -164,6 +164,10 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   });
   assert.equal(loadedSkill.operationalByHarness.codex.loaded, true);
   assert.equal(loadedSkill.operationalByHarness.factory.loaded, false);
+  assert.equal(audit.evidence.observations[0].executable, process.execPath);
+  assert.deepEqual(audit.evidence.observations[0].command, [process.execPath, "--version"]);
+  assert.equal(audit.evidence.observations[0].response, "VERIFIED_REPOSITORY_SKILL_INFLUENCE");
+  assert.notEqual(audit.evidence.observations[0].executable, evidence.observations[0].executable);
   const inertSkill = audit.inventory.skills.find((entry) => entry.path.includes("inert"));
   assert.equal(inertSkill.states.discovered, false);
   assert.equal(inertSkill.states.loaded, false);
