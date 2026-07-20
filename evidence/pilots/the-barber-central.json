@@ -2,8 +2,8 @@
   "name": "the-barber-central",
   "repository": "AO-HyS/the-barber-central",
   "baseCommit": "14b82a897fbbc1e94252ee6be8f41351735a01e6",
-  "productCommit": "0113e26d76da96e3736c8bfb2529f97b658d25ec",
-  "auditFingerprint": "45b20c4db88387e89ebaca7aa399fbc793260830a1b52fa701e5645cadcfad7a",
+  "productCommit": "cfb915b229c94ea6342c590665146ace9dfdddc2",
+  "auditFingerprint": "45dfe38f10becb88313712aca88243b660c57d5878dac639a08ca5a93e1706e9",
   "managedMutationScope": [
     ".development-system/repository.json",
     ".codex/development-system/repository.md",
@@ -23,7 +23,7 @@
   "commands": {
     "review": "pnpm run lint",
     "validation": "pnpm run verify:changed",
-    "qa": "pnpm run test:e2e",
+    "qa": "pnpm run test:e2e:changed",
     "preview": "pnpm run dev"
   },
   "harnesses": {
@@ -37,7 +37,7 @@
     "medium": 0,
     "low": 0,
     "mediumDispositions": [],
-    "evidence": "Managed-file and knowledge-boundary diff inspected; repository gates found no unresolved product or release-policy regression."
+    "evidence": "Managed-file and knowledge-boundary diff inspected; three Copilot findings about the overly broad QA command were fixed with the canonical selective command and all review threads were resolved."
   },
   "qaSelection": {
     "level": "full",
@@ -53,9 +53,9 @@
     },
     {
       "id": "release-train",
-      "command": "GitHub Actions Release Train 29778026392",
+      "command": "GitHub Actions Release Train 29785921744",
       "status": "passed",
-      "evidence": "https://github.com/AO-HyS/the-barber-central/actions/runs/29778026392"
+      "evidence": "https://github.com/AO-HyS/the-barber-central/actions/runs/29785921744"
     },
     {
       "id": "browser-local",
@@ -75,7 +75,7 @@
   "residualRisks": ["The protected develop preview represents product runtime because feature-branch process-only diffs are intentionally not deployed."],
   "rollback": {
     "kind": "revert-product-commit",
-    "command": "git revert 0113e26d76da96e3736c8bfb2529f97b658d25ec 7697ad21fd6c77c2f51f415dd42a57a188aaabc6"
+    "command": "git revert 529bd5a8da2108a9771516d97f1d3e03a8fbf312 0113e26d76da96e3736c8bfb2529f97b658d25ec 7697ad21fd6c77c2f51f415dd42a57a188aaabc6"
   },
   "localVisualRecap": {
     "status": "written",

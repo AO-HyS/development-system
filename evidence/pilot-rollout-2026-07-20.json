@@ -2,17 +2,17 @@
   "schemaVersion": 1,
   "contractVersion": "0.7.0",
   "linearIssue": "AOH-147",
-  "generatedAt": "2026-07-20T22:24:02.000Z",
+  "generatedAt": "2026-07-20T23:09:20.000Z",
   "candidate": {
-    "sourceCommit": "d9549d809c7f077cd3a112d39da15ae16125e219",
+    "sourceCommit": "e1d3b1f1458d81edf70173cb07667f7242979a9a",
     "pullRequest": "https://github.com/AO-HyS/development-system/pull/3",
     "harnessEvidence": {
       "path": "evidence/pilots-harnesses-live-2026-07-20.json",
-      "sha256": "24e57632c9f894d6f90c51a6d49050b6391f4912c78bbb85c53639ed0d8c1bf0"
+      "sha256": "25f57373fe16068182c38fdbb833e50b5fca5cedf2f5f724e761be18a2723f72"
     },
     "skillEvidence": {
       "path": "evidence/pilots-skills-live-2026-07-20.json",
-      "sha256": "23e9dfc275c6b9b2fcf3e27c6188d43950addd29dae1bca235e60c2a2e1a6bdf"
+      "sha256": "4ca9df98872eb4a394841a13b0c1d15d44575352565743d2cec68175feeaa8b8"
     }
   },
   "pilots": [
@@ -27,7 +27,7 @@
       "name": "the-barber-central",
       "attestation": {
         "path": "evidence/pilots/the-barber-central.json",
-        "sha256": "e0034507f0ecb2d82b4386ea4af43afa345ae7baf2971ad0142663b82aa67334"
+        "sha256": "384f6cc63e5d1022b23e4370f5b334f67d69c985f78316d939808e442b55db6b"
       }
     },
     {

@@ -10,8 +10,8 @@
     "exhaustive": false,
     "claim": "Live influence is proven only for the named skill and harness observations."
   },
-  "generatedAt": "2026-07-20T22:22:45.615Z",
-  "sourceCommit": "d9549d809c7f077cd3a112d39da15ae16125e219",
+  "generatedAt": "2026-07-20T23:02:48.777Z",
+  "sourceCommit": "e1d3b1f1458d81edf70173cb07667f7242979a9a",
   "home": "/Users/corrortiz",
   "skill": "research",
   "behaviorSignature": [
@@ -36,7 +36,7 @@
       "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/development-system $research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
       "version": "codex-cli 0.145.0-alpha.18",
       "exitCode": 0,
-      "response": "A background agent must use primary sources and create one Markdown file citing each claim; if no repo convention exists, put it “somewhere sensible” and “say where.”",
+      "response": "- Worker: a **background agent**\n- Mandatory sources: **primary sources**\n- Artifact: **one Markdown file** with citations\n- Fallback: If no convention exists, put it **“somewhere sensible”** and **“say where.”**",
       "catalogCommand": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/development-system Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
       "catalogResponse": "research",
       "catalogWarning": true,
@@ -52,7 +52,7 @@
       "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/development-system --output-format json /research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
       "version": "0.175.1",
       "exitCode": 0,
-      "response": "Based only on the research skill instructions:\n\n- **What kind of worker:** A **background agent** (spun up to do the research while you keep working).\n- **Mandatory source class:** **Primary sources** — official docs, source code, specs, first-party APIs — not secondary write-ups of them.\n- **Single artifact it must create:** One **Markdown file** containing the findings, with each claim citing its source.\n- **Exact fallback when no convention exists:** If the repo has no convention for such notes, put it **somewhere sensible** and **say where**.",
+      "response": "Based only on the skill instructions:\n\n- **Worker:** A background agent should do the job (so you keep working while it reads).\n- **Mandatory source class:** Primary sources (official docs, source code, specs, first-party APIs), not secondary write-ups.\n- **Single artifact:** One Markdown file containing the findings, with each claim cited to its source.\n- **Fallback:** If the repo has no convention for such notes, put it **somewhere sensible** and **say where**.",
       "catalogCommand": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/development-system --output-format json Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
       "catalogResponse": "research",
       "catalogOverflow": false,
