@@ -468,7 +468,7 @@ function gitDirectoryHash(sourceRoot, sourceDirectory, commit) {
     return { objectId, path: path.slice(prefix.length) };
   });
   if (records.length === 0) throw new Error(`Canonical skill source is absent from Git ${commit}: ${sourceDirectory}`);
-  records.sort((left, right) => left.path.localeCompare(right.path));
+  records.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   const hash = createHash("sha256");
   for (const record of records) {
     hash.update(record.path);

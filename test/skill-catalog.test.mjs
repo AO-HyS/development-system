@@ -21,8 +21,14 @@ description: Emits the catalog tracer marker.
 Reply with CATALOG_TRACER_ACTIVE.
 `;
 
+function folderHash(files) {
+  const hash = createHash("sha256");
+  for (const path of Object.keys(files).sort()) hash.update(`${path}\0`).update(files[path]).update("\0");
+  return hash.digest("hex");
+}
+
 function skillHash(body = skillBody) {
-  return createHash("sha256").update("SKILL.md\0").update(body).update("\0").digest("hex");
+  return folderHash({ "SKILL.md": body });
 }
 
 test("skill audit separates mirrors and the six operational states", async () => {
@@ -161,6 +167,8 @@ test("skill synchronization cleans explicit residue and rollback restores exact 
   const unrelated = resolve(home, "notes", "keep.txt");
   await mkdir(sourceSkill, { recursive: true });
   await writeFile(resolve(sourceSkill, "SKILL.md"), skillBody, "utf8");
+  await mkdir(resolve(sourceSkill, "agents"));
+  await writeFile(resolve(sourceSkill, "agents", "openai.yaml"), "interface: test\n", "utf8");
   await mkdir(installedSkill, { recursive: true });
   await writeFile(resolve(installedSkill, "SKILL.md"), "old local bytes\n", "utf8");
   await mkdir(resolve(home, ".factory", "skills"), { recursive: true });
@@ -192,7 +200,7 @@ test("skill synchronization cleans explicit residue and rollback restores exact 
             harness: "codex",
             sourceDirectory: "skills/tracer-skill",
             destination: ".agents/skills/tracer-skill",
-            folderSha256: skillHash(),
+            folderSha256: folderHash({ "SKILL.md": skillBody, "agents/openai.yaml": "interface: test\n" }),
             expectedMirrorOf: null,
           },
         ],
