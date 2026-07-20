@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.0.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    { "id": "codex", "adapter": "native" },
+    { "id": "t3code", "adapter": "codex" },
+    { "id": "factory", "adapter": "native" }
+  ],
+  "artifacts": [
+    {
+      "id": "core-contract.codex",
+      "logicalName": "core-contract",
+      "sourcePath": "artifacts/0.0.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "883405f761441d63913bb1bcb84ef4749909d913278cf01914ff345ab14a3d66",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "core-contract.factory",
+      "logicalName": "core-contract",
+      "sourcePath": "artifacts/0.0.0/contract.md",
+      "destination": ".factory/development-system/contract.md",
+      "harness": "factory",
+      "sha256": "883405f761441d63913bb1bcb84ef4749909d913278cf01914ff345ab14a3d66",
+      "expectedMirrorOf": "core-contract.codex"
+    },
+    {
+      "id": "bootstrap-marker.codex",
+      "logicalName": "bootstrap-marker",
+      "sourcePath": "artifacts/0.0.0/bootstrap.md",
+      "destination": ".codex/development-system/bootstrap.md",
+      "harness": "codex",
+      "sha256": "bc165e46d6889760ff1dc991c5706d3b33a4f29b20eb3677f6f56157cf4b0659",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "bootstrap-marker.factory",
+      "logicalName": "bootstrap-marker",
+      "sourcePath": "artifacts/0.0.0/bootstrap.md",
+      "destination": ".factory/development-system/bootstrap.md",
+      "harness": "factory",
+      "sha256": "bc165e46d6889760ff1dc991c5706d3b33a4f29b20eb3677f6f56157cf4b0659",
+      "expectedMirrorOf": "bootstrap-marker.codex"
+    }
+  ]
+}

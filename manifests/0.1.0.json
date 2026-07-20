@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.1.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    { "id": "codex", "adapter": "native" },
+    { "id": "t3code", "adapter": "codex" },
+    { "id": "factory", "adapter": "native" }
+  ],
+  "artifacts": [
+    {
+      "id": "core-contract.codex",
+      "logicalName": "core-contract",
+      "sourcePath": "artifacts/0.1.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "4e221e813c5f96e0d0846752b103bcbe5439cbbf16316ca1e8019a860cbbf1d0",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "core-contract.factory",
+      "logicalName": "core-contract",
+      "sourcePath": "artifacts/0.1.0/contract.md",
+      "destination": ".factory/development-system/contract.md",
+      "harness": "factory",
+      "sha256": "4e221e813c5f96e0d0846752b103bcbe5439cbbf16316ca1e8019a860cbbf1d0",
+      "expectedMirrorOf": "core-contract.codex"
+    }
+  ]
+}

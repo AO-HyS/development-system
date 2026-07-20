@@ -1,0 +1,28 @@
+{
+  "name": "@aohys/development-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Canonical, installable, and reversible AOHYS development contract.",
+  "type": "module",
+  "bin": {
+    "aohys-development-system": "./bin/development-system.mjs"
+  },
+  "scripts": {
+    "audit": "node ./bin/development-system.mjs audit",
+    "install:local": "node ./bin/development-system.mjs install --version 0.1.0",
+    "scenario": "node ./scripts/reproduce-installation.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:acceptance": "node --test test/installation-scenario.test.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "validate:repository": "node ./bin/development-system.mjs validate-repository",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run validate:repository"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}
