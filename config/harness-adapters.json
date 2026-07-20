@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.4.0",
+  "adapters": {
+    "codex": {
+      "kind": "native",
+      "executable": "codex",
+      "tools": "Codex tools and MCP apps",
+      "agents": "personal Codex agents",
+      "hooks": "Codex global and repository instructions",
+      "stateNamespace": "codex",
+      "activationPrefix": "$"
+    },
+    "factory": {
+      "kind": "native",
+      "executable": "droid",
+      "tools": "Factory tools",
+      "agents": "Factory droids",
+      "hooks": "Factory hooks and repository instructions",
+      "stateNamespace": "factory",
+      "activationPrefix": "/"
+    },
+    "t3code": {
+      "kind": "client-surface",
+      "adapter": "codex",
+      "executable": "codex",
+      "stateNamespace": "codex"
+    }
+  }
+}

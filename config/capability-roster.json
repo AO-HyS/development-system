@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "policy": "evidence-based-with-provisional-gaps",
+  "benchmarkRunId": "capability-2026-07-20T07-42-04.912Z",
+  "capabilities": {
+    "orchestration": {
+      "role": "orchestrator",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "challenged-timeout" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "gpt-5.6-sol", "evidenceStatus": "validated-with-correction", "verifiedDeliveryMs": 92810 }
+    },
+    "implementation": {
+      "role": "implementer",
+      "codex": { "model": "gpt-5.3-codex-spark", "reasoning": "low", "evidenceStatus": "validated", "verifiedDeliveryMs": 55424 },
+      "factory": { "model": "inherit", "reasoning": "medium", "resolvedModel": "gpt-5.6-sol", "evidenceStatus": "adapter-permission-blocked" }
+    },
+    "review": {
+      "role": "adversarial-reviewer",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "validated-with-correction", "verifiedDeliveryMs": 36067 },
+      "factory": { "model": "inherit", "reasoning": "medium", "resolvedModel": "claude-opus-4-8", "evidenceStatus": "validated-with-correction", "verifiedDeliveryMs": 53444 }
+    },
+    "architecture": {
+      "role": "architecture-planner",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "xhigh", "evidenceStatus": "challenged-timeout" },
+      "factory": { "model": "inherit", "reasoning": "xhigh", "resolvedModel": "claude-opus-4-8", "evidenceStatus": "challenged-timeout-after-correction" }
+    },
+    "browser-qa": {
+      "role": "browser-qa",
+      "codex": { "model": "gpt-5.6-terra", "reasoning": "max", "evidenceStatus": "challenged-timeout" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "claude-sonnet-5", "evidenceStatus": "validated-with-correction", "verifiedDeliveryMs": 94104 }
+    },
+    "visual-judgment": {
+      "role": "visual-reviewer",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "challenged-timeout" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "claude-opus-4-8", "evidenceStatus": "validated", "verifiedDeliveryMs": 50784 }
+    }
+  }
+}

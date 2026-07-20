@@ -16,6 +16,7 @@ import {
   readLifecycleState,
   runLifecycleRequest,
 } from "./lifecycle.mjs";
+import { createCommandDeliveryRuntime, runImplementPreview } from "./delivery.mjs";
 import { auditSkillCatalog, rollbackSkillSync, synchronizeSkillCatalog } from "./skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,7 +24,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -44,6 +45,7 @@ function parseArguments(argv) {
     else if (token === "--request") options.request = value;
     else if (token === "--terminal-slice") options.terminalSlice = value;
     else if (token === "--operation") options.lifecycleOperation = value;
+    else if (token === "--plan") options.plan = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -75,6 +77,9 @@ function formatHuman(result) {
   if (result.operation === "lifecycle-status") {
     const state = /** @type {{workflowId?: string, stage?: string} | undefined} */ (result.state);
     return `Lifecycle ${state?.workflowId} is ${state?.stage}.`;
+  }
+  if (result.operation === "implement-preview") {
+    return `Implement Preview ${result.status}; human decision required before promotion.`;
   }
   const label = result.operation === "validate-repository" ? "Repository" : "Installation";
   return `${label} ${result.status}.`;
@@ -155,9 +160,22 @@ export async function run(argv) {
       state: await readLifecycleState({ home: options.home, workflowId: options.workflow }),
       externalSideEffects: [],
     };
+  } else if (command === "implement-preview") {
+    if (!options.workflow) throw new Error("implement-preview requires --workflow <id>");
+    if (!options.plan) throw new Error("implement-preview requires --plan <path>");
+    const plan = JSON.parse(await readFile(resolve(options.plan), "utf8"));
+    result = {
+      operation: "implement-preview",
+      ...(await runImplementPreview({
+        home: options.home,
+        workflowId: options.workflow,
+        plan,
+        runtime: createCommandDeliveryRuntime(plan),
+      })),
+    };
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|validate-repository|lifecycle-request|lifecycle-execute|lifecycle-status> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|validate-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview> [options]",
     );
   }
 

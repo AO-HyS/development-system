@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    {
+      "id": "ao-root",
+      "fixture": "ao",
+      "relativeCwd": ".",
+      "surfaces": ["codex"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "simple-repository",
+      "fixture": "simple",
+      "relativeCwd": "development-system",
+      "surfaces": ["factory"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "mature-repository-parity",
+      "fixture": "mature",
+      "relativeCwd": "nutri-plan",
+      "surfaces": ["codex", "factory", "t3code"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    },
+    {
+      "id": "nested-cwd-parity",
+      "fixture": "nested",
+      "relativeCwd": "aohys/apps/dashboard",
+      "surfaces": ["codex", "factory", "t3code"],
+      "action": "Recommend the next stage for a large unclear initiative; do not execute it",
+      "expectedBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      }
+    }
+  ]
+}
