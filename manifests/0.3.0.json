@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.3.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    { "id": "codex", "adapter": "native" },
+    { "id": "t3code", "adapter": "codex" },
+    { "id": "factory", "adapter": "native" }
+  ],
+  "artifacts": [
+    {
+      "id": "lifecycle-contract.codex",
+      "logicalName": "lifecycle-contract",
+      "sourcePath": "artifacts/0.3.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "66e617c290b3a969748c3ad00a64799ee38feac3c2ea2df8a60810c9129a0e76",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "lifecycle-contract.factory",
+      "logicalName": "lifecycle-contract",
+      "sourcePath": "artifacts/0.3.0/contract.md",
+      "destination": ".factory/development-system/contract.md",
+      "harness": "factory",
+      "sha256": "66e617c290b3a969748c3ad00a64799ee38feac3c2ea2df8a60810c9129a0e76",
+      "expectedMirrorOf": "lifecycle-contract.codex"
+    },
+    {
+      "id": "skill-catalog.codex",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.2.0.json",
+      "destination": ".codex/development-system/skills.json",
+      "harness": "codex",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "skill-catalog.factory",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.2.0.json",
+      "destination": ".factory/development-system/skills.json",
+      "harness": "factory",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+      "expectedMirrorOf": "skill-catalog.codex"
+    }
+  ]
+}

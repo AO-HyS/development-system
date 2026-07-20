@@ -11,6 +11,11 @@ import {
   validateInstallation,
   validateRepository,
 } from "./core.mjs";
+import {
+  executeLifecycleOperation,
+  readLifecycleState,
+  runLifecycleRequest,
+} from "./lifecycle.mjs";
 import { auditSkillCatalog, rollbackSkillSync, synchronizeSkillCatalog } from "./skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -18,7 +23,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -34,6 +39,11 @@ function parseArguments(argv) {
     else if (token === "--source-commit") options.sourceCommit = value;
     else if (token === "--source-root") options.sourceRoot = value;
     else if (token === "--evidence") options.evidence = value;
+    else if (token === "--workflow") options.workflow = value;
+    else if (token === "--mode") options.mode = value;
+    else if (token === "--request") options.request = value;
+    else if (token === "--terminal-slice") options.terminalSlice = value;
+    else if (token === "--operation") options.lifecycleOperation = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -54,6 +64,18 @@ function formatHuman(result) {
     return `Synchronized ${result.logicalSkillCount} logical skills with reversible cleanup.`;
   }
   if (result.operation === "audit-skills") return `Skill catalog ${result.status}.`;
+  if (result.operation === "lifecycle-request") {
+    const transition = /** @type {{status?: string, operation?: string} | undefined} */ (result.transition);
+    return `Lifecycle transition ${transition?.status}: ${transition?.operation ?? result.selectedStage ?? "none"}.`;
+  }
+  if (result.operation === "lifecycle-execute") {
+    const execution = /** @type {{status?: string, operation?: string} | undefined} */ (result.execution);
+    return `Lifecycle operation ${execution?.status}: ${execution?.operation}.`;
+  }
+  if (result.operation === "lifecycle-status") {
+    const state = /** @type {{workflowId?: string, stage?: string} | undefined} */ (result.state);
+    return `Lifecycle ${state?.workflowId} is ${state?.stage}.`;
+  }
   const label = result.operation === "validate-repository" ? "Repository" : "Installation";
   return `${label} ${result.status}.`;
 }
@@ -102,9 +124,40 @@ export async function run(argv) {
     result = await rollbackSkillSync({ home: options.home, catalog });
   } else if (command === "validate-repository") {
     result = await validateRepository();
+  } else if (command === "lifecycle-request") {
+    if (!options.workflow) throw new Error("lifecycle-request requires --workflow <id>");
+    if (!options.request) throw new Error("lifecycle-request requires --request <natural language>");
+    if (options.mode !== "recommend" && options.mode !== "transition") {
+      throw new Error("lifecycle-request requires --mode <recommend|transition>");
+    }
+    result = await runLifecycleRequest({
+      home: options.home,
+      workflowId: options.workflow,
+      mode: options.mode,
+      request: options.request,
+      terminalSlice: options.terminalSlice,
+    });
+  } else if (command === "lifecycle-execute") {
+    if (!options.workflow) throw new Error("lifecycle-execute requires --workflow <id>");
+    if (!options.lifecycleOperation) {
+      throw new Error("lifecycle-execute requires --operation <operation>");
+    }
+    result = await executeLifecycleOperation({
+      home: options.home,
+      workflowId: options.workflow,
+      operation: options.lifecycleOperation,
+    });
+  } else if (command === "lifecycle-status") {
+    if (!options.workflow) throw new Error("lifecycle-status requires --workflow <id>");
+    result = {
+      ok: true,
+      operation: "lifecycle-status",
+      state: await readLifecycleState({ home: options.home, workflowId: options.workflow }),
+      externalSideEffects: [],
+    };
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|validate-repository> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|validate-repository|lifecycle-request|lifecycle-execute|lifecycle-status> [options]",
     );
   }
 
