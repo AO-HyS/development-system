@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.2.0",
+  "generatedAt": "2026-07-20T05:56:32.429Z",
+  "home": "/Users/corrortiz",
+  "skill": "research",
+  "behaviorSignature": [
+    "background agent",
+    "primary sources",
+    "markdown file"
+  ],
+  "probeSucceeded": true,
+  "installedHashes": {
+    "research.codex": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+    "research.factory": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659"
+  },
+  "codex": {
+    "research": {
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/development-system $research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, and what single artifact must it create? Reply in one short sentence; do not perform the research.",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "exitCode": 0,
+      "response": "A background agent must use primary sources and create one source-cited Markdown file in the repo.",
+      "catalogCommand": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/development-system Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
+      "catalogResponse": "research",
+      "catalogWarning": true,
+      "catalogOverflow": false,
+      "scannerErrors": []
+    }
+  },
+  "factory": {
+    "research": {
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/development-system --output-format json /research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, and what single artifact must it create? Reply in one short sentence; do not perform the research.",
+      "version": "0.175.0",
+      "exitCode": 0,
+      "response": "A background agent should do the job, using primary sources (official docs, source code, specs, first-party APIs), and it must create a single Markdown file of findings with each claim cited to its source.",
+      "catalogCommand": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/development-system --output-format json Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
+      "catalogResponse": "research",
+      "catalogOverflow": false,
+      "scannerErrors": []
+    }
+  }
+}

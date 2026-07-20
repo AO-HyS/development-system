@@ -1,0 +1,577 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.2.0",
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    },
+    {
+      "id": "factory",
+      "adapter": "native"
+    }
+  ],
+  "supportedRoots": [
+    ".agents/skills",
+    ".codex/skills",
+    ".factory/skills"
+  ],
+  "maxCatalogEntries": 512,
+  "operationalEvidenceSkills": [
+    "research"
+  ],
+  "operationalEvidenceContracts": {
+    "research": {
+      "behaviorSignature": [
+        "background agent",
+        "primary sources",
+        "markdown file"
+      ]
+    }
+  },
+  "cleanup": [
+    ".agents/skills/grill-me-workspace",
+    ".agents/skills/email-best-practices-repo",
+    ".codex/skills/agent-browser",
+    ".codex/skills/convex",
+    ".codex/skills/find-skills",
+    ".codex/skills/vercel-react-best-practices",
+    ".factory/skills/extract",
+    ".factory/skills/email-best-practices-repo",
+    ".factory/skills/frontend-design",
+    ".factory/skills/firecrawl-cli",
+    ".factory/skills/harden",
+    ".factory/skills/normalize",
+    ".factory/skills/onboard",
+    ".factory/skills/teach-impeccable",
+    ".factory/skills/vercel-deploy-claimable"
+  ],
+  "skills": [
+    {
+      "logicalName": "wayfinder",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/wayfinder"
+      },
+      "variants": [
+        {
+          "id": "wayfinder.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/wayfinder",
+          "destination": ".agents/skills/wayfinder",
+          "folderSha256": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "wayfinder.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/wayfinder",
+          "destination": ".factory/skills/wayfinder",
+          "folderSha256": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+          "expectedMirrorOf": "wayfinder.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "grill-with-docs",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/grill-with-docs"
+      },
+      "variants": [
+        {
+          "id": "grill-with-docs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/grill-with-docs",
+          "destination": ".agents/skills/grill-with-docs",
+          "folderSha256": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "grill-with-docs.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/grill-with-docs",
+          "destination": ".factory/skills/grill-with-docs",
+          "folderSha256": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+          "expectedMirrorOf": "grill-with-docs.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "grilling",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/productivity/grilling"
+      },
+      "variants": [
+        {
+          "id": "grilling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/grilling",
+          "destination": ".agents/skills/grilling",
+          "folderSha256": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "grilling.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/grilling",
+          "destination": ".factory/skills/grilling",
+          "folderSha256": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+          "expectedMirrorOf": "grilling.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "domain-modeling",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/domain-modeling"
+      },
+      "variants": [
+        {
+          "id": "domain-modeling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/domain-modeling",
+          "destination": ".agents/skills/domain-modeling",
+          "folderSha256": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "domain-modeling.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/domain-modeling",
+          "destination": ".factory/skills/domain-modeling",
+          "folderSha256": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+          "expectedMirrorOf": "domain-modeling.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "to-spec",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/to-spec"
+      },
+      "variants": [
+        {
+          "id": "to-spec.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/to-spec",
+          "destination": ".agents/skills/to-spec",
+          "folderSha256": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "to-spec.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/to-spec",
+          "destination": ".factory/skills/to-spec",
+          "folderSha256": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+          "expectedMirrorOf": "to-spec.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "to-tickets",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/to-tickets"
+      },
+      "variants": [
+        {
+          "id": "to-tickets.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/to-tickets",
+          "destination": ".agents/skills/to-tickets",
+          "folderSha256": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "to-tickets.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/to-tickets",
+          "destination": ".factory/skills/to-tickets",
+          "folderSha256": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+          "expectedMirrorOf": "to-tickets.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "implement",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/implement"
+      },
+      "variants": [
+        {
+          "id": "implement.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/implement",
+          "destination": ".agents/skills/implement",
+          "folderSha256": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "implement.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/implement",
+          "destination": ".factory/skills/implement",
+          "folderSha256": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+          "expectedMirrorOf": "implement.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "code-review",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/code-review"
+      },
+      "variants": [
+        {
+          "id": "code-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/code-review",
+          "destination": ".agents/skills/code-review",
+          "folderSha256": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "code-review.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/code-review",
+          "destination": ".factory/skills/code-review",
+          "folderSha256": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+          "expectedMirrorOf": "code-review.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "diagnosing-bugs",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/diagnosing-bugs"
+      },
+      "variants": [
+        {
+          "id": "diagnosing-bugs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/diagnosing-bugs",
+          "destination": ".agents/skills/diagnosing-bugs",
+          "folderSha256": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "diagnosing-bugs.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/diagnosing-bugs",
+          "destination": ".factory/skills/diagnosing-bugs",
+          "folderSha256": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+          "expectedMirrorOf": "diagnosing-bugs.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "prototype",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/prototype"
+      },
+      "variants": [
+        {
+          "id": "prototype.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/prototype",
+          "destination": ".agents/skills/prototype",
+          "folderSha256": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "prototype.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/prototype",
+          "destination": ".factory/skills/prototype",
+          "folderSha256": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+          "expectedMirrorOf": "prototype.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "handoff",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/productivity/handoff"
+      },
+      "variants": [
+        {
+          "id": "handoff.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/handoff",
+          "destination": ".agents/skills/handoff",
+          "folderSha256": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "handoff.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/handoff",
+          "destination": ".factory/skills/handoff",
+          "folderSha256": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+          "expectedMirrorOf": "handoff.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "qa",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/deprecated/qa"
+      },
+      "variants": [
+        {
+          "id": "qa.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/qa",
+          "destination": ".agents/skills/qa",
+          "folderSha256": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "qa.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/qa",
+          "destination": ".factory/skills/qa",
+          "folderSha256": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+          "expectedMirrorOf": "qa.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "research",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/research"
+      },
+      "variants": [
+        {
+          "id": "research.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/research",
+          "destination": ".agents/skills/research",
+          "folderSha256": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "research.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/research",
+          "destination": ".factory/skills/research",
+          "folderSha256": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+          "expectedMirrorOf": "research.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-matt-pocock-skills",
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "9603c1cc8118d08bc1b3bf34cf714f62178dea3b",
+        "path": "skills/engineering/setup-matt-pocock-skills"
+      },
+      "variants": [
+        {
+          "id": "setup-matt-pocock-skills.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/setup-matt-pocock-skills",
+          "destination": ".agents/skills/setup-matt-pocock-skills",
+          "folderSha256": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "setup-matt-pocock-skills.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/upstream/setup-matt-pocock-skills",
+          "destination": ".factory/skills/setup-matt-pocock-skills",
+          "folderSha256": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+          "expectedMirrorOf": "setup-matt-pocock-skills.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-code-review",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-code-review"
+      },
+      "variants": [
+        {
+          "id": "flow-code-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-code-review",
+          "destination": ".agents/skills/flow-code-review",
+          "folderSha256": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-code-review.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-code-review",
+          "destination": ".factory/skills/flow-code-review",
+          "folderSha256": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+          "expectedMirrorOf": "flow-code-review.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-implement",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-implement"
+      },
+      "variants": [
+        {
+          "id": "flow-implement.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-implement",
+          "destination": ".agents/skills/flow-implement",
+          "folderSha256": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-implement.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-implement",
+          "destination": ".factory/skills/flow-implement",
+          "folderSha256": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+          "expectedMirrorOf": "flow-implement.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-qa",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-qa"
+      },
+      "variants": [
+        {
+          "id": "flow-qa.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
+          "destination": ".agents/skills/flow-qa",
+          "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-qa.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
+          "destination": ".factory/skills/flow-qa",
+          "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+          "expectedMirrorOf": "flow-qa.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-research",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-research"
+      },
+      "variants": [
+        {
+          "id": "flow-research.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
+          "destination": ".agents/skills/flow-research",
+          "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-research.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
+          "destination": ".factory/skills/flow-research",
+          "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+          "expectedMirrorOf": "flow-research.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "drive-development-flow",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/drive-development-flow"
+      },
+      "variants": [
+        {
+          "id": "drive-development-flow.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/drive-development-flow",
+          "destination": ".codex/skills/drive-development-flow",
+          "folderSha256": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "drive-development-flow.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/drive-development-flow",
+          "destination": ".factory/skills/drive-development-flow",
+          "folderSha256": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+          "expectedMirrorOf": "drive-development-flow.codex"
+        }
+      ]
+    },
+    {
+      "logicalName": "coding-orchestration",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/adapters"
+      },
+      "variants": [
+        {
+          "id": "coding-orchestration.codex-adapter",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/adapters/codex/coding-orchestration",
+          "destination": ".codex/skills/coding-orchestration",
+          "folderSha256": "d57ada57e34982ec35f178d52f530e02622ea3db0eabaa7c430f5a36be49c3a6",
+          "expectedMirrorOf": null,
+          "adapterContract": "bounded-orchestration-parent-integrates-v1"
+        },
+        {
+          "id": "coding-orchestration.factory-adapter",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.2.0/adapters/factory/coding-orchestration",
+          "destination": ".factory/skills/coding-orchestration",
+          "folderSha256": "c725a00e4ec14fcb1739e8b33c1858bd670774c6a3f1991dc93c1a1d77db514e",
+          "expectedMirrorOf": null,
+          "adapterContract": "bounded-orchestration-parent-integrates-v1"
+        }
+      ]
+    }
+  ]
+}
