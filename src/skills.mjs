@@ -120,7 +120,7 @@ async function entryIntegrityHash(root) {
 /**
  * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, expectedMirrorOf: string | null, adapterContract?: string}} SkillVariant
  * @typedef {{logicalName: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
- * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[]}} SkillCatalog
+ * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: string[]}>}} SkillCatalog
  * @typedef {{catalogued?: boolean, loaded?: boolean, influenced?: boolean, catalogWarning?: boolean, catalogOverflow?: boolean, scannerErrors?: string[], command?: string, version?: string}} HarnessEvidence
  */
 
@@ -258,14 +258,20 @@ export async function auditSkillCatalog(options) {
       };
       if (!loadable) problems.push(`${variant.id} is not loadable from its declared root`);
       if ((catalog.operationalEvidenceSkills ?? []).includes(logicalSkill.logicalName)) {
+        const contract = catalog.operationalEvidenceContracts?.[logicalSkill.logicalName];
+        const signature = contract?.behaviorSignature ?? [];
         if (evidence.installedHashes?.[variant.id] !== hash) {
           problems.push(`${variant.id} operational evidence does not match the installed folder hash`);
         }
         if (
           observed.exitCode !== 0 ||
-          typeof observed.command !== "string" ||
-          typeof observed.version !== "string" ||
-          typeof observed.response !== "string"
+          typeof observed.command !== "string" || observed.command.length === 0 ||
+          typeof observed.catalogCommand !== "string" || observed.catalogCommand.length === 0 ||
+          typeof observed.version !== "string" || observed.version.length === 0 ||
+          typeof observed.response !== "string" ||
+          observed.catalogResponse?.trim() !== logicalSkill.logicalName ||
+          signature.length === 0 ||
+          signature.some((term) => !observed.response.toLowerCase().includes(term.toLowerCase()))
         ) {
           problems.push(`${variant.id} operational evidence lacks executable, version, exit, or response detail`);
         }
@@ -646,6 +652,11 @@ async function restoreSkillSnapshot(options) {
       const actual = await entryIntegrityHash(backup);
       if (!entry.integritySha256 || actual !== entry.integritySha256) {
         throw new Error(`Cannot rollback skills: snapshot integrity mismatch for ${entry.path}`);
+      }
+    } else {
+      const destination = resolveInsideHome(options.home, entry.path);
+      if (!(await entryMetadata(destination)).exists || await entryIntegrityHash(destination) !== entry.integritySha256) {
+        throw new Error(`Cannot rollback skills: expected snapshot backup is missing for ${entry.path}`);
       }
     }
   }

@@ -24,6 +24,15 @@
   "operationalEvidenceSkills": [
     "research"
   ],
+  "operationalEvidenceContracts": {
+    "research": {
+      "behaviorSignature": [
+        "background agent",
+        "primary sources",
+        "markdown file"
+      ]
+    }
+  },
   "cleanup": [
     ".agents/skills/grill-me-workspace",
     ".agents/skills/email-best-practices-repo",

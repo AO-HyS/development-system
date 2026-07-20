@@ -35,7 +35,7 @@
       "sourcePath": "catalog/0.2.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "db33ea0cd08d5cffb096aae58431dcdd9994efa9d63f3335c5fd098ebf3aed0d",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
       "expectedMirrorOf": null
     },
     {
@@ -44,7 +44,7 @@
       "sourcePath": "catalog/0.2.0.json",
       "destination": ".factory/development-system/skills.json",
       "harness": "factory",
-      "sha256": "db33ea0cd08d5cffb096aae58431dcdd9994efa9d63f3335c5fd098ebf3aed0d",
+      "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
       "expectedMirrorOf": "skill-catalog.codex"
     }
   ]

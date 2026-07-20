@@ -124,6 +124,7 @@ try {
 }
 
 const codexCombined = `${codex.stdout}\n${codex.stderr}`;
+const codexAll = `${codexCatalog.stdout}\n${codexCatalog.stderr}\n${codexCombined}`;
 const factoryCombined = `${factory.stdout}\n${factory.stderr}`;
 /** @param {string} text */
 const hasBehaviorSignature = (text) => behaviorSignature.every((term) => text.toLowerCase().includes(term));
@@ -173,9 +174,9 @@ const evidence = {
       response: codexFinal,
       catalogCommand: codexCatalog.command,
       catalogResponse: codexCatalogFinal,
-      catalogWarning: /skill descriptions were shortened/i.test(codexCombined),
-      catalogOverflow: /skills? (?:were )?omitted|omitted_skills=[1-9]/i.test(codexCombined),
-      scannerErrors: [...codexCombined.matchAll(/[^\n]*(?:skill scanner|failed to load skill)[^\n]*/gi)].map((match) => match[0]),
+      catalogWarning: /skill descriptions were shortened/i.test(codexAll),
+      catalogOverflow: /skills? (?:were )?omitted|omitted_skills=[1-9]/i.test(codexAll),
+      scannerErrors: [...codexAll.matchAll(/[^\n]*(?:skill scanner|failed to load skill)[^\n]*/gi)].map((match) => match[0]),
     },
   },
   factory: {

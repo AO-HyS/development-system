@@ -167,6 +167,9 @@ const catalog = {
   supportedRoots: [".agents/skills", ".codex/skills", ".factory/skills"],
   maxCatalogEntries: 512,
   operationalEvidenceSkills: ["research"],
+  operationalEvidenceContracts: {
+    research: { behaviorSignature: ["background agent", "primary sources", "markdown file"] },
+  },
   cleanup: [
     ".agents/skills/grill-me-workspace",
     ".agents/skills/email-best-practices-repo",
