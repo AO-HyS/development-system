@@ -287,12 +287,17 @@ export function mergeOperationalReports(options) {
   const replacedFailures = (options.resumeReport?.failures ?? []).filter(
     (/** @type {any} */ failure) => !retainedFailures.includes(failure),
   );
-  const recoveredFailures = replacedFailures.filter((/** @type {any} */ previous) =>
+  const newlyRecoveredFailures = replacedFailures.filter((/** @type {any} */ previous) =>
     !currentFailures.some((/** @type {any} */ current) =>
       current.scenario === previous.scenario &&
       (previous.surface === null || current.surface === previous.surface)
     )
   );
+  const recoveredFailures = [...(options.resumeReport?.recoveredFailures ?? []), ...newlyRecoveredFailures]
+    .filter((failure, index, items) => items.findIndex((candidate) =>
+      candidate.scenario === failure.scenario && candidate.surface === failure.surface &&
+      candidate.source === failure.source && candidate.message === failure.message
+    ) === index);
   const attempts = options.resumeReport
     ? [
         ...(Array.isArray(options.resumeReport.attempts) && options.resumeReport.attempts.length > 0

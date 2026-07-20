@@ -204,3 +204,48 @@ test("benchmark can rerun only roster-selected provisional candidates without we
   ]);
   assert.equal(report.ok, true);
 });
+
+test("benchmark fixture hashes bind the exact fixture contents and forbidden terms", async () => {
+  const runtime = async ({ candidate }) => ({
+    completed: true,
+    checksPassed: true,
+    durationMs: 10,
+    correctionMs: 0,
+    tokens: 10,
+    costUsd: null,
+    corrections: 0,
+    findings: 0,
+    output: "verified",
+    command: `${candidate.harness} exec`,
+    exitCode: 0,
+  });
+  const firstSuite = structuredClone(suite);
+  firstSuite.cases[0].fixtureContents = "authorization stays human";
+  firstSuite.cases[0].forbiddenTerms = ["auto-merge"];
+  const secondSuite = structuredClone(firstSuite);
+  secondSuite.cases[0].fixtureContents = "authorization is delegated";
+  const thirdSuite = structuredClone(firstSuite);
+  thirdSuite.cases[0].forbiddenTerms = ["silent promotion"];
+
+  const first = await runBenchmarkSuite({
+    suite: firstSuite,
+    runId: "fixture-first",
+    candidateIds: ["orchestration-codex"],
+    runtime,
+  });
+  const second = await runBenchmarkSuite({
+    suite: secondSuite,
+    runId: "fixture-second",
+    candidateIds: ["orchestration-codex"],
+    runtime,
+  });
+  const third = await runBenchmarkSuite({
+    suite: thirdSuite,
+    runId: "fixture-third",
+    candidateIds: ["orchestration-codex"],
+    runtime,
+  });
+
+  assert.notEqual(first.records[0].fixtureHash, second.records[0].fixtureHash);
+  assert.notEqual(first.records[0].fixtureHash, third.records[0].fixtureHash);
+});

@@ -18,7 +18,7 @@
     {
       "id": "simple-repository",
       "fixture": "simple",
-      "relativeCwd": "development-system",
+      "temporaryFixture": "simple-repository",
       "surfaces": ["codex", "factory", "t3code"],
       "action": "Recommend the next stage for a large unclear initiative; do not execute it",
       "expectedBehavior": {

@@ -62,8 +62,10 @@ function fixtureHash(benchmarkCase) {
   return createHash("sha256")
     .update(JSON.stringify({
       fixture: benchmarkCase.fixture,
+      fixtureContents: benchmarkCase.fixtureContents,
       instructions: benchmarkCase.instructions,
       checks: benchmarkCase.checks,
+      forbiddenTerms: benchmarkCase.forbiddenTerms ?? [],
     }))
     .digest("hex");
 }

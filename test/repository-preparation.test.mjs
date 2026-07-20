@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, stat, symlink, truncate, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, open, readFile, readdir, stat, symlink, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -81,27 +82,38 @@ async function seedOperationalRepository(prefix = "aohys-repository-audit-", con
   return repository;
 }
 
+async function validOperationalEvidence(repository, path, harness = "codex") {
+  return {
+    schemaVersion: 2,
+    repositoryRoot: repository,
+    repositoryFingerprint: await fingerprintRepository(repository),
+    generatedAt: new Date().toISOString(),
+    observations: [{
+      harness,
+      path,
+      discovered: true,
+      catalogued: true,
+      loadable: true,
+      loaded: true,
+      influenced: true,
+      executable: harness === "factory" ? "droid" : "codex",
+      version: "fixture-runtime-1",
+      command: `${harness} activate ${path}`,
+      catalogCommand: `${harness} list skills`,
+      exitCode: 0,
+      response: "The declared skill was loaded and changed the requested behavior.",
+      pathSha256: createHash("sha256").update(await readFile(resolve(repository, path))).digest("hex"),
+    }],
+  };
+}
+
 test("repository audit reports precedence, residue, six-state evidence, and harness readiness without mutation", async () => {
   const repository = await seedOperationalRepository();
   const before = await snapshot(repository);
-  const repositoryFingerprint = await fingerprintRepository(repository);
+  const evidence = await validOperationalEvidence(repository, ".agents/skills/domain-review/SKILL.md");
   const audit = await auditRepository({
     repository,
-    evidence: {
-      schemaVersion: 1,
-      repositoryFingerprint,
-      observations: [
-        {
-          harness: "codex",
-          path: ".agents/skills/domain-review/SKILL.md",
-          discovered: true,
-          catalogued: true,
-          loadable: true,
-          loaded: true,
-          influenced: true,
-        },
-      ],
-    },
+    evidence,
   });
 
   assert.equal(audit.operation, "audit-repository");
@@ -160,6 +172,23 @@ test("repository audit deterministically excludes caches and never reads a spars
   assert.equal(after.mtimeMs, before.mtimeMs);
   assert.ok(audit.fingerprint.excluded.some((entry) => entry.path === ".turbo"));
   assert.equal(audit.fingerprint.maximumFileBytesRead <= 1024 * 1024, true);
+
+  const governedPath = resolve(repository, "large-source.bin");
+  const governedSize = (2 * 1024 * 1024 * 1024) + 1;
+  await writeFile(governedPath, "");
+  await truncate(governedPath, governedSize);
+  const beforeMiddleChange = await fingerprintRepository(repository);
+  const handle = await open(governedPath, "r+");
+  try {
+    const distributedSampleOffset = Math.floor(((governedSize - (64 * 1024)) * 8) / 15);
+    await handle.write(Buffer.from("changed-middle"), 0, 14, distributedSampleOffset);
+  } finally {
+    await handle.close();
+  }
+  const afterMiddleChange = await fingerprintRepository(repository);
+  assert.notEqual(afterMiddleChange, beforeMiddleChange);
+  const boundedAudit = await auditRepository({ repository });
+  assert.equal(boundedAudit.fingerprint.maximumFileBytesRead <= 1024 * 1024, true);
 });
 
 test("residue detection preserves authorized Impeccable references but still finds inherited product rules", async () => {
@@ -212,26 +241,47 @@ test("audit never upgrades file presence to operational load and CLI normalizati
 
 test("audit rejects stale or non-monotonic operational load claims", async () => {
   const repository = await seedOperationalRepository("aohys-repository-evidence-");
-  const repositoryFingerprint = await fingerprintRepository(repository);
+  const evidence = await validOperationalEvidence(repository, ".agents/skills/domain-review/SKILL.md", "factory");
+  Object.assign(evidence.observations[0], {
+    discovered: false,
+    catalogued: false,
+    loadable: false,
+    loaded: false,
+    influenced: true,
+  });
+  const audit = await auditRepository({
+    repository,
+    evidence,
+  });
+
+  const skill = audit.inventory.skills.find((entry) => entry.path.includes("domain-review"));
+  assert.equal(skill.operationalByHarness.factory.influenced, false);
+  assert.ok(audit.evidence.warnings.some((warning) => /invalid operational observation/i.test(warning)));
+});
+
+test("audit rejects fabricated operational claims without runtime and file-bound evidence", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-fabricated-", false);
   const audit = await auditRepository({
     repository,
     evidence: {
-      schemaVersion: 1,
-      repositoryFingerprint,
+      schemaVersion: 2,
+      repositoryRoot: repository,
+      repositoryFingerprint: await fingerprintRepository(repository),
+      generatedAt: new Date().toISOString(),
       observations: [{
-        harness: "factory",
+        harness: "codex",
         path: ".agents/skills/domain-review/SKILL.md",
-        discovered: false,
-        catalogued: false,
-        loadable: false,
-        loaded: false,
+        discovered: true,
+        catalogued: true,
+        loadable: true,
+        loaded: true,
         influenced: true,
       }],
     },
   });
 
   const skill = audit.inventory.skills.find((entry) => entry.path.includes("domain-review"));
-  assert.equal(skill.operationalByHarness.factory.influenced, false);
+  assert.equal(skill.operationalByHarness.codex.loaded, false);
   assert.ok(audit.evidence.warnings.some((warning) => /invalid operational observation/i.test(warning)));
 });
 

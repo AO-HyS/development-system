@@ -226,6 +226,37 @@ test("resume preserves first-failure evidence while replacing stale scenario res
   assert.equal(merged.attempts.length, 2);
 });
 
+test("repeated resumes accumulate every recovered failure without erasing earlier history", () => {
+  const firstRecovery = mergeOperationalReports({
+    contractVersion: "0.6.0",
+    resumeReport: {
+      coverage: ["simple"],
+      results: [],
+      failures: [{ scenario: "simple", surface: "codex", source: "harness-runtime", message: "A failed" }],
+    },
+    scenarios: [{ id: "simple", fixture: "simple", surfaces: ["codex", "factory"] }],
+    scenarioReports: [{
+      coverage: ["simple"],
+      results: [{ scenario: "simple", surface: "codex", status: "passed" }],
+      failures: [{ scenario: "simple", surface: "factory", source: "harness-runtime", message: "B failed" }],
+    }],
+  });
+  const secondRecovery = mergeOperationalReports({
+    contractVersion: "0.6.0",
+    resumeReport: firstRecovery,
+    scenarios: [{ id: "simple", fixture: "simple", surfaces: ["factory"] }],
+    scenarioReports: [{
+      coverage: ["simple"],
+      results: [{ scenario: "simple", surface: "factory", status: "passed" }],
+      failures: [],
+    }],
+  });
+
+  assert.equal(secondRecovery.ok, true);
+  assert.deepEqual(secondRecovery.recoveredFailures.map((failure) => failure.message), ["A failed", "B failed"]);
+  assert.equal(secondRecovery.attempts.length, 3);
+});
+
 test("nested T3Code accepts explicit no-state evidence without a manual rerun", async () => {
   const nested = scenarios.find((scenario) => scenario.id === "nested-cwd");
   const report = await validateOperationalScenarios({

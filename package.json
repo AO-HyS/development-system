@@ -5,7 +5,7 @@
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
   "bin": {
-    "aohys-development-system": "./bin/development-system.mjs"
+    "aohys-development-system": "./bin/development-system"
   },
   "scripts": {
     "audit": "./bin/development-system audit",

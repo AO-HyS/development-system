@@ -20,9 +20,9 @@ The report includes:
 - readiness and concrete gaps for Codex, T3Code, and Factory;
 - the manual, proposal-only architecture diagnostic.
 
-Fingerprint evidence also reports deterministic exclusions for Git metadata, dependency/build caches, generated outputs, and temporary outputs. Ordinary files are read with a 1 MiB cap; larger source files use a bounded first/last sample plus exact size, so a multi-gigabyte cache cannot cause an unbounded read. Preservation-only Impeccable references are reported under `allowedReferences`; inherited product rules remain under `residue`.
+Fingerprint evidence also reports deterministic exclusions for Git metadata, dependency/build caches, generated outputs, and temporary outputs. Ordinary files are read with a 1 MiB cap; larger source files use sixteen evenly distributed 64 KiB samples plus exact size, so a multi-gigabyte file cannot cause an unbounded read while central changes remain observable. Preservation-only Impeccable references are reported under `allowedReferences`; inherited product rules remain under `residue`.
 
-Without operational evidence, `loaded` and `influenced` remain false. Supply an evidence JSON file with `repositoryFingerprint` and `observations` using `--evidence`; stale evidence is rejected. A not-ready audit still exits successfully because findings are the requested result and no repair was attempted.
+Without operational evidence, `loaded` and `influenced` remain false. Supply schema 2 evidence using `--evidence`. The document must bind `repositoryRoot`, `repositoryFingerprint`, and a fresh `generatedAt`; every observation must include its harness/path, monotonic states, executable, runtime version, activation and catalog commands, exit code, final response, and `pathSha256`. Stale, fabricated, cross-repository, or file-divergent evidence is rejected. A not-ready audit still exits successfully because findings are the requested result and no repair was attempted.
 
 ## Initialize a new repository
 

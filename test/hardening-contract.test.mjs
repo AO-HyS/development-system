@@ -11,7 +11,10 @@ const repositoryRoot = resolve(dirname(new URL(import.meta.url).pathname), "..")
 const preflight = resolve(repositoryRoot, "bin", "development-system");
 const validator = resolve(repositoryRoot, "scripts", "validate-development-system.py");
 
-test("portable preflight selects an explicit Node runtime and diagnoses a missing runtime before execution", () => {
+test("portable preflight selects an explicit Node runtime and diagnoses a missing runtime before execution", async () => {
+  const packageDocument = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+  assert.equal(packageDocument.bin["aohys-development-system"], "./bin/development-system");
+
   const available = spawnSync(preflight, ["validate-repository", "--json"], {
     cwd: repositoryRoot,
     encoding: "utf8",
@@ -69,8 +72,9 @@ test("0.6 operational coverage includes every read-only smoke target and the ros
   );
   assert.deepEqual(
     scenarios.scenarios.map((scenario) => scenario.relativeCwd),
-    [".", "development-system", "nutri-plan", "the-barber-central", "aohys/apps/dashboard"],
+    [".", undefined, "nutri-plan", "the-barber-central", "aohys/apps/dashboard"],
   );
+  assert.equal(scenarios.scenarios[1].temporaryFixture, "simple-repository");
   assert.ok(scenarios.scenarios.every((scenario) =>
     ["codex", "factory", "t3code"].every((surface) => scenario.surfaces.includes(surface))
   ));

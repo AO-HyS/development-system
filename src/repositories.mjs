@@ -27,6 +27,7 @@ const ignoredDirectories = new Map([
 ]);
 const maximumFingerprintFileBytes = 1024 * 1024;
 const fingerprintSampleBytes = 64 * 1024;
+const fingerprintSampleCount = maximumFingerprintFileBytes / fingerprintSampleBytes;
 const maximumGovernedTextBytes = 1024 * 1024;
 const instructionNames = new Set(["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules"]);
 const foreignProductMarkers = ["NutriPlan", "The Barber Central", "AOHYS", "Escuela 360", "Impeccable"];
@@ -107,17 +108,22 @@ async function updateFingerprintWithFile(hash, target, size) {
   }
   const handle = await open(target, "r");
   try {
-    const firstLength = Math.min(fingerprintSampleBytes, size);
-    const lastLength = Math.min(fingerprintSampleBytes, Math.max(0, size - firstLength));
-    const first = Buffer.alloc(firstLength);
-    const last = Buffer.alloc(lastLength);
-    if (firstLength > 0) await handle.read(first, 0, firstLength, 0);
-    if (lastLength > 0) await handle.read(last, 0, lastLength, size - lastLength);
-    hash.update(`bounded:${size}:`);
-    hash.update(first);
-    hash.update("\0");
-    hash.update(last);
-    return firstLength + lastLength;
+    const sampleLength = Math.min(fingerprintSampleBytes, size);
+    const maximumOffset = Math.max(0, size - sampleLength);
+    const positions = [...new Set(Array.from({ length: fingerprintSampleCount }, (_, index) =>
+      Math.floor((maximumOffset * index) / (fingerprintSampleCount - 1))
+    ))];
+    hash.update(`distributed-bounded:${size}:${positions.length}:`);
+    let bytesRead = 0;
+    for (const position of positions) {
+      const sample = Buffer.alloc(sampleLength);
+      const result = await handle.read(sample, 0, sampleLength, position);
+      hash.update(`sample:${position}:${result.bytesRead}:`);
+      hash.update(sample.subarray(0, result.bytesRead));
+      hash.update("\0");
+      bytesRead += result.bytesRead;
+    }
+    return bytesRead;
   } finally {
     await handle.close();
   }
@@ -153,12 +159,13 @@ async function inspectRepositoryFingerprint(repository) {
     value: hash.digest("hex"),
     files,
     evidence: {
-      policy: "source-v1-bounded",
+      policy: "source-v2-distributed-bounded",
       excluded: excluded.sort((left, right) => left.path.localeCompare(right.path)),
       boundedFiles,
       maximumFileBytesRead,
       perFileLimitBytes: maximumFingerprintFileBytes,
       sampleBytes: fingerprintSampleBytes,
+      sampleCount: fingerprintSampleCount,
     },
   };
 }
@@ -414,11 +421,18 @@ export async function auditRepository(options) {
   let evidence = options.evidence;
   if (!evidence) {
     warnings.push("No operational evidence was supplied; loaded and influenced remain false.");
-  } else if (evidence.schemaVersion !== 1 || !Array.isArray(evidence.observations)) {
+  } else if (evidence.schemaVersion !== 2 || !Array.isArray(evidence.observations)) {
     warnings.push("Operational evidence has an unsupported schema and was ignored.");
+    evidence = undefined;
+  } else if (resolve(evidence.repositoryRoot ?? "") !== repository) {
+    warnings.push("Operational evidence targets a different repository and was ignored.");
     evidence = undefined;
   } else if (evidence.repositoryFingerprint !== repositoryFingerprint) {
     warnings.push("Operational evidence does not match the current repository fingerprint and was ignored.");
+    evidence = undefined;
+  } else if (!Number.isFinite(Date.parse(evidence.generatedAt ?? "")) ||
+    Math.abs(Date.now() - Date.parse(evidence.generatedAt)) > 24 * 60 * 60 * 1000) {
+    warnings.push("Operational evidence is stale or has an invalid timestamp and was ignored.");
     evidence = undefined;
   } else {
     /** @type {any[]} */
@@ -427,8 +441,25 @@ export async function auditRepository(options) {
       const states = ["discovered", "catalogued", "loadable", "loaded", "influenced"]
         .map((state) => observation?.[state] === true);
       const monotonic = states.every((state, index) => !state || states.slice(0, index).every(Boolean));
+      const target = typeof observation?.path === "string" ? resolve(repository, observation.path) : repository;
+      const relativeTarget = relative(repository, target);
+      let pathHashMatches = false;
+      try {
+        const targetMetadata = await lstat(target);
+        pathHashMatches = relativeTarget.length > 0 && relativeTarget !== ".." &&
+          !relativeTarget.startsWith(`..${sep}`) && !targetMetadata.isSymbolicLink() &&
+          targetMetadata.isFile() && targetMetadata.size <= maximumGovernedTextBytes &&
+          observation.pathSha256 === sha256(await readFile(target));
+      } catch (error) {
+        if (!isMissing(error)) throw error;
+      }
+      const runtimeBound = typeof observation?.executable === "string" && observation.executable.length > 0 &&
+        typeof observation?.version === "string" && observation.version.length > 0 &&
+        typeof observation?.command === "string" && observation.command.length > 0 &&
+        typeof observation?.catalogCommand === "string" && observation.catalogCommand.length > 0 &&
+        observation?.exitCode === 0 && typeof observation?.response === "string" && observation.response.length > 0;
       if (!observation || !["codex", "t3code", "factory"].includes(observation.harness) ||
-        typeof observation.path !== "string" || !monotonic) {
+        typeof observation.path !== "string" || !monotonic || !runtimeBound || !pathHashMatches) {
         warnings.push(`Invalid operational observation was ignored: ${String(observation?.path ?? "unknown")}`);
         continue;
       }
