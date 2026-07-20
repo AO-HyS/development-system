@@ -666,7 +666,22 @@ function adapterContents(audit, harness) {
   const equivalence = harness === "factory"
     ? "Factory uses this documented equivalent when a native Codex-only capability is unavailable."
     : "Codex uses the native repository adapter; T3Code shares this Codex contract and state namespace.";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Commands\n\nReview\n${commandLine(audit.commands.review)}\n\nValidation\n${commandLine(audit.commands.validation)}\n\nQA\n${commandLine(audit.commands.qa)}\n\nPreview\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+}
+
+/** @param {unknown} contract */
+function repositoryContractContents(contract) {
+  const serialized = JSON.stringify(contract, null, 2);
+  return `${serialized.replace(
+    /\[\n((?:\s+(?:"(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?),?\n)+)\s*\]/g,
+    (match, body, offset, source) => {
+      const values = JSON.parse(`[${body.trim()}]`);
+      const compact = JSON.stringify(values).replaceAll(",", ", ");
+      const lineStart = source.lastIndexOf("\n", offset) + 1;
+      const prefixLength = offset - lineStart;
+      return prefixLength + compact.length <= 80 ? compact : match;
+    },
+  )}\n`;
 }
 
 /** @param {string} repository @param {string} managedPath */
@@ -750,7 +765,9 @@ async function prepareRepository(options, mode) {
   }
   const audit = await auditRepository({ repository });
   const outputs = {
-    [managedFiles[0]]: `${JSON.stringify(repositoryContract(audit, mode), null, 2)}\n`,
+    [managedFiles[0]]: repositoryContractContents(
+      repositoryContract(audit, mode),
+    ),
     [managedFiles[1]]: adapterContents(audit, "codex"),
     [managedFiles[2]]: adapterContents(audit, "factory"),
   };
