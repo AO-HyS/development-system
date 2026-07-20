@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Version `0.6.0` hardens the read-only audit introduced in `0.5.0`; the two explicit preparation transitions remain unchanged in scope.
+Version `0.7.0` applies the hardened audit to the first three product pilots. It adds contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while retaining the two explicit preparation transitions.
 
 ## Audit without mutation
 

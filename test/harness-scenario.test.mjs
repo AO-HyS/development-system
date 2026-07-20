@@ -290,7 +290,7 @@ test("nested T3Code accepts explicit no-state evidence without a manual rerun", 
 test("equivalent read-only evidence phrases keep externalState deterministic across Factory and T3Code", async () => {
   const phrases = new Map([
     ["factory", "read-only; no repository search or other tool calls issued, no files edited"],
-    ["t3code", "Read-only observation completed without repository inspection or lifecycle transition."],
+    ["t3code", "recommendation returned without repository inspection or lifecycle transition"],
   ]);
   const report = await validateOperationalScenarios({
     registry,
@@ -305,7 +305,9 @@ test("equivalent read-only evidence phrases keep externalState deterministic acr
       catalogProof: true,
       catalogOverflowProof: true,
       loadProof: true,
-      behavior: expectedBehavior,
+      behavior: request.surface === "t3code"
+        ? { ...expectedBehavior, authorization: "Discussion/discovery authorization only; implementation or lifecycle advancement not authorized in this request." }
+        : expectedBehavior,
       diagnostics: [],
     }),
   });

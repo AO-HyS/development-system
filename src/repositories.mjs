@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "0.6.0";
+const contractVersion = "0.7.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -276,9 +276,17 @@ function inventoryEntry(path, contents, evidence) {
   );
   return {
     path,
+    ...(skillPath(path) ? { logicalName: skillLogicalName(path, contents) } : {}),
     states,
     operationalByHarness,
   };
+}
+
+/** @param {string} path @param {string} contents */
+function skillLogicalName(path, contents) {
+  const frontmatter = contents.match(/^---\s*([\s\S]*?)---/m)?.[1] ?? "";
+  const declared = frontmatter.match(/^name\s*:\s*["']?([^\n"']+)["']?\s*$/m)?.[1]?.trim();
+  return declared || basename(dirname(path));
 }
 
 /** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner */
@@ -307,7 +315,7 @@ function detectStack(packageJson, files) {
   if ("react" in dependencies || files.some((path) => /(?:^|\/)vite\.config\.|(?:^|\/)next\.config\./.test(path))) {
     stack.push("react");
   }
-  if ("convex" in dependencies || files.some((path) => path.startsWith("convex/"))) stack.push("convex");
+  if ("convex" in dependencies || files.some((path) => /(?:^|\/)convex\//.test(path))) stack.push("convex");
   return stack;
 }
 
@@ -343,9 +351,9 @@ async function repositoryIdentity(repository, files) {
     stack: detectStack(packageJson, files),
     commands: {
       review: selectCommand(scripts, ["review", "review:ci", "lint", "check"], runner),
-      validation: selectCommand(scripts, ["validate", "verify", "check", "test"], runner),
+      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
       qa: selectCommand(scripts, ["qa", "test:e2e", "e2e", "test"], runner),
-      preview: selectCommand(scripts, ["preview", "preview:local", "dev", "start"], runner),
+      preview: selectCommand(scripts, ["preview", "preview:local", "cloudflare:local", "dev", "start"], runner),
     },
     releasePolicyFiles: files.filter(releasePolicyPath),
     designFiles: files.filter(designPath),
@@ -377,14 +385,12 @@ async function detectResidue(repository, entries, identityName) {
         line.toLowerCase().includes(marker.toLowerCase())
       );
       if (matchingLines.length === 0) continue;
-      const allowed = marker === "Impeccable" && matchingLines.every((line) =>
-        /\b(?:preserve(?:d|s|ing)?|keep|retain(?:ed|s|ing)?|left intact|leave intact|do not (?:change|replace|modify)|must not (?:change|replace|modify)|separate visual|existing (?:visual|mobile|configuration))\b/i.test(line)
-      );
-      if (allowed) {
+      const reasons = matchingLines.map((line) => allowedReferenceReason(line, marker));
+      if (reasons.every(Boolean)) {
         allowedReferences.push({
           path: entry.path,
           marker,
-          reason: "explicit-preservation-rule",
+          reason: /** @type {string} */ (reasons.find((reason) => reason !== "explicit-preservation-rule") ?? reasons[0]),
         });
       } else {
         residue.push({ path: entry.path, marker });
@@ -394,7 +400,25 @@ async function detectResidue(repository, entries, identityName) {
   return { residue, allowedReferences };
 }
 
-/** @param {any} commands @param {Array<{states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
+/** @param {string} line @param {string} marker */
+function allowedReferenceReason(line, marker) {
+  const explicitExclusion = /\b(?:do not|does not|don't|must not|never|without|no (?:use|uses|usar|usa|debe|deben|heredar|hereda|copiar|copia)|sin (?:usar|heredar|copiar)|prohibid[oa]s?|fuera de alcance)\b/i;
+  if (explicitExclusion.test(line)) return "explicit-exclusion-rule";
+
+  const externalCoordination = /\b(?:linear|issue tracker|tracker|team|equipo|workspace|project|proyecto|organization|organizaci[oó]n)\b/i;
+  if (externalCoordination.test(line)) return "external-coordination-reference";
+
+  if (marker !== "Impeccable") return undefined;
+
+  const globalTemplate = /\b(?:global template|plantilla global|all (?:products|repositories|repos)|every (?:product|repository|repo)|todos? los (?:productos|repositorios|repos)|copy (?:its|the) rules|copiar (?:sus|las) reglas)\b/i;
+  if (globalTemplate.test(line)) return undefined;
+
+  const preservation = /\b(?:preserve(?:d|s|ing)?|keep|retain(?:ed|s|ing)?|left intact|leave intact|do not (?:change|replace|modify)|must not (?:change|replace|modify)|separate visual|existing (?:visual|mobile|configuration))\b/i;
+  if (preservation.test(line)) return "explicit-preservation-rule";
+  return "product-scoped-impeccable-integration";
+}
+
+/** @param {any} commands @param {Array<{logicalName:string,states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
 function readinessGaps(commands, skills, residue, managed) {
   /** @type {string[]} */
   const gaps = [];
@@ -402,7 +426,12 @@ function readinessGaps(commands, skills, residue, managed) {
     if (!commands[capability]) gaps.push(`missing-${capability}-command`);
   }
   if (residue.length > 0) gaps.push("foreign-product-residue");
-  if (skills.some((skill) => !skill.states.discovered)) gaps.push("inert-skill-installation");
+  const discoveredSkillNames = new Set(
+    skills.filter((skill) => skill.states.discovered).map((skill) => skill.logicalName),
+  );
+  if (skills.some((skill) => !skill.states.discovered && !discoveredSkillNames.has(skill.logicalName))) {
+    gaps.push("inert-skill-installation");
+  }
   if (!managed) gaps.push("development-system-adapter-not-installed");
   return gaps;
 }

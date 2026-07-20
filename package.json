@@ -1,6 +1,6 @@
 {
   "name": "@aohys/development-system",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -10,8 +10,9 @@
   "scripts": {
     "audit": "./bin/development-system audit",
     "benchmark": "node ./scripts/run-benchmarks.mjs",
-    "install:local": "./bin/development-system install --version 0.6.0",
+    "install:local": "./bin/development-system install --version 0.7.0",
     "harnesses:validate": "node ./scripts/validate-harnesses.mjs",
+    "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
     "implement-preview": "./bin/development-system implement-preview",
     "skills:audit": "./bin/development-system audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",

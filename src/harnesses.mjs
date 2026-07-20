@@ -97,12 +97,15 @@ function normalizeBehavior(behavior) {
     terminalState.includes("awaiting-user") ||
     /\b(no|without)\b.*\b(change|transition|mutation|write)/.test(terminalState) ||
     (normalizedTransition === "recommend-only" && externalSideEffects.length === 0);
+  const noExecutionAuthorization = authorization.includes("none") ||
+    authorization.includes("not required") ||
+    authorization.includes("recommend") ||
+    /\b(?:discussion|discovery|classification|advice)\b.*\bonly\b/.test(authorization) ||
+    /\b(?:no|not|without)\b.*\b(?:authori[sz]|execut|implement|transition|advance|change|write|mutat)/.test(authorization);
   return {
     selectedStage: selected.includes("wayfinder") ? "wayfinder" : selected,
     transition: normalizedTransition,
-    authorization: authorization.includes("none") || authorization.includes("not required") || authorization.includes("recommend")
-      ? "none"
-      : authorization,
+    authorization: noExecutionAuthorization ? "none" : authorization,
     externalSideEffects,
     terminalState: unchangedTerminal ? "unchanged" : terminalState,
   };
@@ -114,7 +117,7 @@ function describesUnchangedState(value) {
   return text.includes("unchanged") ||
     text.includes("remained unchanged") ||
     text.includes("untouched") ||
-    /\b(no|not|without)\b.*\b(change|changes|changed|write|writes|written|edited|modified|mutation|mutations|touched|contacted)/.test(text) ||
+    /\b(no|not|without)\b.*\b(change|changes|changed|write|writes|written|edited|modified|mutation|mutations|touched|contacted|transition|transitions)/.test(text) ||
     (/\bread[- ]only\b/.test(text) && /\b(no|without)\b.*\b(lifecycle )?transition\b/.test(text));
 }
 

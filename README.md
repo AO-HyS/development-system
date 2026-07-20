@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.6.0` hardens repository fingerprinting, residue policy, operational validation, physical mirrors, benchmark evidence, skill-evidence claims, and runtime preflight before product rollout. The pinned `0.2.0` skill catalog remains the current skill source.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.7.0` is the review candidate produced by the NutriPlan, The Barber Central, and AOHYS pilot rollout. It retains the `0.6.0` hardening guarantees and adds evidence-backed repository readiness across different product stacks and policies. The pinned `0.2.0` skill catalog remains the current skill source.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,7 +16,7 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 0.6.0
+./bin/development-system install --version 0.7.0
 ./bin/development-system sync-skills --version 0.2.0
 ./bin/development-system audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json
 ./bin/development-system audit
@@ -124,7 +124,7 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.6.0 del sistema de desarrollo” → `install --version 0.6.0` plus `sync-skills --version 0.2.0`
+- “Instala la versión 0.7.0 del sistema de desarrollo” → `install --version 0.7.0` plus `sync-skills --version 0.2.0`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -143,8 +143,8 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.5.0` retain their published contracts; `0.6.0` is the pre-rollout hardening contract. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.6.0` retain their published contracts; `0.7.0` is the first three-pilot review candidate. Published manifests and artifacts are immutable.
 
 ## Current boundary
 
-This slice hardens the Development System before rollout. The three product pilots remain AOH-147: this version audits them read-only, but does not modify, normalize, initialize, or declare any product repository ready.
+This slice is AOH-147. It normalizes and validates NutriPlan, The Barber Central, and AOHYS, preserves their product-owned contracts, records comparable pilot evidence, and stops at PR/preview plus a human gate. Escuela 360 and every other repository remain explicitly unready. Merge, release, canonical HOME installation, and production remain separately authorized operations.

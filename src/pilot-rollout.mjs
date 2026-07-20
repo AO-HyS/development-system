@@ -1,0 +1,118 @@
+// @ts-check
+
+const expectedPilots = new Set(["nutri-plan", "the-barber-central", "aohys.com"]);
+const managedMutationScope = [
+  ".development-system/repository.json",
+  ".codex/development-system/repository.md",
+  ".factory/development-system/repository.md",
+];
+const harnesses = ["codex", "t3code", "factory"];
+const commandKinds = ["review", "validation", "qa", "preview"];
+const prohibitedOperations = ["merge", "release", "production", "paidActivation", "canonicalHomeSync"];
+
+/** @param {unknown} value */
+function object(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+/** @param {unknown} value @param {number} length */
+function hex(value, length) {
+  return typeof value === "string" && new RegExp(`^[a-f0-9]{${length}}$`, "i").test(value);
+}
+
+/** @param {unknown} value */
+function nonEmpty(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+/**
+ * Validate the comparable evidence packet for the three authorized pilots.
+ * The validator intentionally fails closed: structural preparation without live
+ * harness evidence, a reviewable preview, recovery, or the private recap cannot
+ * advance the candidate to the human gate.
+ * @param {any} document
+ */
+export function validatePilotRolloutEvidence(document) {
+  /** @type {string[]} */
+  const errors = [];
+  if (!object(document)) return { ok: false, decision: "blocked", errors: ["evidence must be an object"] };
+  if (document.schemaVersion !== 1) errors.push("schemaVersion must be 1");
+  if (document.contractVersion !== "0.7.0") errors.push("contractVersion must be 0.7.0");
+  if (document.linearIssue !== "AOH-147") errors.push("linearIssue must be AOH-147");
+  if (!nonEmpty(document.generatedAt) || Number.isNaN(Date.parse(document.generatedAt))) {
+    errors.push("generatedAt must be an ISO timestamp");
+  }
+
+  if (!object(document.candidate)) errors.push("candidate evidence is required");
+  else {
+    if (!hex(document.candidate.sourceCommit, 40)) errors.push("candidate sourceCommit must be a full Git commit");
+    if (!/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(document.candidate.pullRequest ?? "")) {
+      errors.push("candidate pullRequest must be a GitHub PR URL");
+    }
+    for (const key of ["harnessEvidence", "skillEvidence"]) {
+      if (!nonEmpty(document.candidate[key])) errors.push(`candidate ${key} is required`);
+    }
+  }
+
+  const pilots = Array.isArray(document.pilots) ? document.pilots : [];
+  const pilotNames = new Set(pilots.map((/** @type {any} */ pilot) => pilot?.name));
+  if (pilots.length !== expectedPilots.size || pilotNames.size !== expectedPilots.size) {
+    errors.push("pilots must contain exactly three unique repositories");
+  }
+  for (const name of expectedPilots) {
+    if (!pilotNames.has(name)) errors.push(`missing authorized pilot ${name}`);
+  }
+  for (const pilot of pilots) {
+    const name = nonEmpty(pilot?.name) ? pilot.name : "unnamed pilot";
+    if (!expectedPilots.has(name)) errors.push(`${name} is outside the authorized pilot set`);
+    if (!hex(pilot?.baseCommit, 40)) errors.push(`${name} baseCommit must be a full Git commit`);
+    if (!hex(pilot?.productCommit, 40)) errors.push(`${name} productCommit must be a full Git commit`);
+    if (!hex(pilot?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
+    if (JSON.stringify(pilot?.managedMutationScope) !== JSON.stringify(managedMutationScope)) {
+      errors.push(`${name} managed mutation scope is not exact`);
+    }
+    if (!object(pilot?.preserved) || !Array.isArray(pilot.preserved.releasePolicyFiles) || !Array.isArray(pilot.preserved.designFiles)) {
+      errors.push(`${name} preserved release and design evidence is required`);
+    }
+    for (const kind of commandKinds) {
+      if (!nonEmpty(pilot?.commands?.[kind])) errors.push(`${name} ${kind} command is required`);
+    }
+    for (const harness of harnesses) {
+      if (pilot?.harnesses?.[harness] !== "validated") errors.push(`${name} ${harness} harness is not validated`);
+    }
+    if (!Array.isArray(pilot?.checks) || pilot.checks.length === 0 || pilot.checks.some((/** @type {any} */ check) =>
+      !nonEmpty(check?.id) || !nonEmpty(check?.command) || check?.status !== "passed" || !nonEmpty(check?.evidence)
+    )) errors.push(`${name} checks require passed command evidence`);
+    if (pilot?.pullRequest?.status !== "open" || !/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(pilot?.pullRequest?.url ?? "")) {
+      errors.push(`${name} pull request is not open and reviewable`);
+    }
+    if (pilot?.preview?.status !== "ready" || !/^https?:\/\//.test(pilot?.preview?.url ?? "")) {
+      errors.push(`${name} preview is not ready`);
+    }
+    if (!Array.isArray(pilot?.residualRisks) || pilot.residualRisks.length === 0) {
+      errors.push(`${name} residual risks must be explicit`);
+    }
+    if (pilot?.rollback?.kind !== "revert-product-commit" || !nonEmpty(pilot?.rollback?.command)) {
+      errors.push(`${name} rollback evidence is incomplete`);
+    }
+    if (pilot?.localVisualRecap?.status !== "written" || !nonEmpty(pilot?.localVisualRecap?.privatePath)) {
+      errors.push(`${name} private Local Visual Recap is missing`);
+    }
+    if (pilot?.decision !== "ready-for-human") errors.push(`${name} has not reached ready-for-human`);
+  }
+
+  const escuela = Array.isArray(document.excludedRepositories)
+    ? document.excludedRepositories.find((/** @type {any} */ entry) => entry?.name === "Escuela 360")
+    : undefined;
+  if (!escuela || escuela.readiness !== "unready" || escuela.inspectedAsReference !== false || escuela.modified !== false) {
+    errors.push("Escuela 360 must remain explicitly unready, uninspected as a reference, and unmodified");
+  }
+  for (const operation of prohibitedOperations) {
+    if (document?.prohibitedOperations?.[operation] !== false) {
+      errors.push(`prohibited operation ${operation} must remain false`);
+    }
+  }
+  if (document.decision !== "ready-for-human") errors.push("candidate decision must be ready-for-human");
+
+  return { ok: errors.length === 0, decision: errors.length === 0 ? "ready-for-human" : "blocked", errors };
+}

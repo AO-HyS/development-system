@@ -56,7 +56,7 @@ async function seedOperationalRepository(prefix = "aohys-repository-audit-", con
       private: true,
       scripts: {
         review: "node -e \"process.exit(0)\"",
-        verify: "node -e \"process.exit(0)\"",
+        "verify:changed": "node -e \"process.exit(0)\"",
         qa: "node -e \"process.exit(0)\"",
         preview: "node -e \"process.exit(0)\"",
       },
@@ -140,6 +140,7 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   assert.equal(audit.externalSideEffects.length, 0);
   assert.deepEqual(await snapshot(repository), before);
   assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
+  assert.equal(audit.commands.validation.script, "verify:changed");
   assert.deepEqual(audit.inventory.instructions.map((instruction) => instruction.path), [
     "AGENTS.md",
     "apps/web/.factory/commands/review.md",
@@ -246,6 +247,76 @@ test("residue detection preserves authorized Impeccable references but still fin
     audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "NutriPlan"),
     true,
   );
+});
+
+test("residue detection distinguishes exclusions, tracker references, and scoped Impeccable integration", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-residue-context-", false);
+  await write(
+    repository,
+    "AGENTS.md",
+    [
+      "# Lumen Console",
+      "Do not inherit The Barber Central release rules.",
+      "Los issues se gestionan en el equipo Aohys de Linear.",
+      "Impeccable may guide this repository's visual work, but repository rules always win.",
+      "",
+    ].join("\n"),
+  );
+  await write(
+    repository,
+    "apps/copied/AGENTS.md",
+    "Copy the NutriPlan release train and adopt Impeccable as the global template.\n",
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.residue.some((entry) => entry.marker === "The Barber Central"), false);
+  assert.equal(audit.residue.some((entry) => entry.marker === "AOHYS"), false);
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "Impeccable"),
+    false,
+  );
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "The Barber Central" && entry.reason === "explicit-exclusion-rule"
+  ));
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "AOHYS" && entry.reason === "external-coordination-reference"
+  ));
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "Impeccable" && entry.reason === "product-scoped-impeccable-integration"
+  ));
+  assert.ok(audit.residue.some((entry) => entry.marker === "NutriPlan"));
+  assert.ok(audit.residue.some((entry) => entry.marker === "Impeccable"));
+});
+
+test("monorepo preparation detects nested Convex, local preview aliases, and supported skill mirrors", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-monorepo-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "node -e \"process.exit(0)\"",
+      },
+      dependencies: { react: "19.1.0" },
+    }),
+  );
+  await write(repository, "apps/backend/convex/schema.ts", "export const schema = {};\n");
+  await write(repository, ".claude/skills/domain-review/SKILL.md", "---\nname: domain-review\n---\n");
+
+  const normalized = await normalizeRepository({ repository, confirm: "normalize" });
+  const audit = await auditRepository({ repository });
+
+  assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
+  assert.equal(audit.commands.preview.script, "cloudflare:local");
+  assert.equal(audit.readiness.codex.gaps.includes("inert-skill-installation"), false);
+  assert.deepEqual(normalized.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {
