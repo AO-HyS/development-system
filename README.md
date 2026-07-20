@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.4.0` adds operational Codex/Factory adapters, verified T3Code-as-Codex parity, capability benchmarks and roster, and the complete Implement Preview delivery loop. The pinned `0.2.0` skill catalog remains the current skill source.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.5.0` adds read-only product-repository audit plus explicit, idempotent initialization and normalization. The operational adapters, benchmark/roster, and Implement Preview loop from `0.4.0` remain in force, and the pinned `0.2.0` skill catalog remains the current skill source.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,7 +16,7 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-node ./bin/development-system.mjs install --version 0.4.0
+node ./bin/development-system.mjs install --version 0.5.0
 node ./bin/development-system.mjs sync-skills --version 0.2.0
 node ./bin/development-system.mjs audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json
 node ./bin/development-system.mjs audit
@@ -24,6 +24,16 @@ node ./bin/development-system.mjs validate
 node ./bin/development-system.mjs rollback-skills
 node ./bin/development-system.mjs rollback
 ```
+
+Audit and prepare a product repository with distinct operations:
+
+```sh
+node ./bin/development-system.mjs audit-repository --repository /absolute/path/to/product --json
+node ./bin/development-system.mjs initialize-repository --repository /absolute/path/to/product --confirm initialize --json
+node ./bin/development-system.mjs normalize-repository --repository /absolute/path/to/product --confirm normalize --json
+```
+
+Audit never writes. Initialization and normalization manage only the Development System namespace, preserve product-owned files, and never activate paid services; see `docs/repository-preparation.md`.
 
 Lifecycle requests use natural language but persist canonical operation names:
 
@@ -106,13 +116,13 @@ The suite compares identical fixtures for orchestration, implementation, review,
 pnpm run scenario
 ```
 
-The scenarios create isolated temporary HOMEs. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `harnesses:validate` is the separate live operational gate.
+The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `harnesses:validate` is the separate live operational gate.
 
 ## Natural-language recovery
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.4.0 del sistema de desarrollo” → `install --version 0.4.0` plus `sync-skills --version 0.2.0`
+- “Instala la versión 0.5.0 del sistema de desarrollo” → `install --version 0.5.0` plus `sync-skills --version 0.2.0`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -131,8 +141,8 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target, `0.1.0` is the first canonical contract, `0.2.0` is the skill-catalog contract, `0.3.0` is the lifecycle-gates contract, and `0.4.0` is the operational adapters, benchmark, and Implement Preview contract. Published manifests and artifacts are immutable. The installed manifest resolves `$INSTALL_COMMIT` to the exact commit used for installation; upstream skills pin the exact authoritative commit directly.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target, `0.1.0` is the first canonical contract, `0.2.0` is the skill-catalog contract, `0.3.0` is the lifecycle-gates contract, `0.4.0` is the operational adapters, benchmark, and Implement Preview contract, and `0.5.0` is the repository audit and explicit preparation contract. Published manifests and artifacts are immutable. The installed manifest resolves `$INSTALL_COMMIT` to the exact commit used for installation; upstream skills pin the exact authoritative commit directly.
 
 ## Current boundary
 
-This slice completes the global adapters, live operational validator, capability benchmark/roster, adversarial delivery-review loop, and private decision surfaces. Repository audit/normalization, initialization, and the three product pilots remain later modules; no product repository is modified or declared ready by this version.
+This slice completes read-only repository audit and explicit repository initialization/normalization on top of the global adapters, validator, benchmark/roster, and delivery loop. The three product pilots remain a later, separately authorized rollout; this version does not modify or declare any real product repository ready.
