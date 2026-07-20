@@ -15,6 +15,7 @@ import {
 } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSkillCatalog } from "./skills.mjs";
 
 /**
  * @typedef {object} Harness
@@ -836,6 +837,30 @@ export async function validateRepository() {
     }
   }
 
+  const catalogDirectory = resolve(repositoryRoot, "catalog");
+  /** @type {string[]} */
+  let catalogFiles = [];
+  try {
+    catalogFiles = (await readdir(catalogDirectory)).filter((name) => name.endsWith(".json")).sort();
+  } catch (error) {
+    if (!isMissingFileError(error)) throw error;
+  }
+  for (const filename of catalogFiles) {
+    const version = filename.slice(0, -".json".length);
+    const catalog = await readJsonOr(resolve(catalogDirectory, filename), /** @type {any} */ (null));
+    if (!catalog) {
+      errors.push(`${filename}: cannot read skill catalog`);
+      continue;
+    }
+    if (catalog.catalogVersion !== version) {
+      errors.push(`${filename}: filename does not match catalogVersion ${catalog.catalogVersion}`);
+    }
+    for (const error of await validateSkillCatalog(catalog, repositoryRoot)) {
+      errors.push(`${filename}: ${error}`);
+    }
+  }
+  if (!catalogFiles.includes("0.2.0.json")) errors.push("0.2.0 skill catalog is missing");
+
   if (manifestFiles.length === 0) errors.push("no version manifests found");
   return {
     ok: errors.length === 0,
@@ -843,6 +868,7 @@ export async function validateRepository() {
     status: errors.length === 0 ? "healthy" : "invalid",
     repositoryRoot,
     versions,
+    catalogs: catalogFiles.map((filename) => filename.slice(0, -".json".length)),
     errors,
   };
 }
