@@ -1,5 +1,7 @@
 // @ts-check
 
+import { isDeepStrictEqual } from "node:util";
+
 const expectedPilots = new Set(["nutri-plan", "the-barber-central", "aohys.com"]);
 const managedMutationScope = [
   ".development-system/repository.json",
@@ -103,7 +105,7 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
       errors.push(`${name} attestation is not bound to verified bytes`);
     } else {
       const { attestation: _attestation, ...pilotClaims } = pilot;
-      if (JSON.stringify(pilotVerification.document) !== JSON.stringify(pilotClaims)) {
+      if (!isDeepStrictEqual(pilotVerification.document, pilotClaims)) {
         errors.push(`${name} attestation does not match the rollout packet`);
       }
     }
@@ -121,6 +123,15 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
     }
     for (const harness of harnesses) {
       if (pilot?.harnesses?.[harness] !== "validated") errors.push(`${name} ${harness} harness is not validated`);
+    }
+    if (!object(pilot?.review) || pilot.review.blocker !== 0 || pilot.review.high !== 0 ||
+      !Number.isInteger(pilot.review.medium) || !Array.isArray(pilot.review.mediumDispositions) ||
+      pilot.review.mediumDispositions.length !== pilot.review.medium || !nonEmpty(pilot.review.evidence)) {
+      errors.push(`${name} review evidence has unresolved blocker, high, or medium findings`);
+    }
+    if (!object(pilot?.qaSelection) || !["full", "lightweight", "omitted"].includes(pilot.qaSelection.level) ||
+      !nonEmpty(pilot.qaSelection.reason) || !nonEmpty(pilot.qaSelection.evidence)) {
+      errors.push(`${name} QA selection requires a level, reason, and evidence`);
     }
     const scenario = pilotScenarios.get(name);
     const liveResults = verification?.harnessEvidence?.document?.results;

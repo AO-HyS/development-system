@@ -27,6 +27,8 @@ function pilot(name) {
       t3code: "validated",
       factory: "validated",
     },
+    review: { blocker: 0, high: 0, medium: 0, low: 0, mediumDispositions: [], evidence: "blind review lanes" },
+    qaSelection: { level: "full", reason: "pilot acceptance", evidence: "repository and preview checks" },
     checks: [{ id: "verify", command: "pnpm run verify", status: "passed", evidence: "exit 0" }],
     pullRequest: { url: "https://github.com/AO-HyS/example/pull/1", status: "open" },
     preview: { status: "ready", url: "https://preview.example.com" },
@@ -136,6 +138,17 @@ test("delivery authority remains stopped before merge, release, and production",
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((error) => error.includes("merge")));
   assert.ok(result.errors.some((error) => error.includes("canonicalHomeSync")));
+});
+
+test("undisposed review risk or missing QA rationale blocks the human gate", () => {
+  const document = evidence();
+  document.pilots[0].review.high = 1;
+  document.pilots[1].qaSelection.evidence = "";
+
+  const result = validatePilotRolloutEvidence(document, verification(document));
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes("nutri-plan review")));
+  assert.ok(result.errors.some((error) => error.includes("the-barber-central QA selection")));
 });
 
 test("self-declared statuses cannot reach readiness without bound runtime evidence", () => {
