@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.8.0",
+  "catalogVersion": "0.2.0",
+  "generatedAt": "2026-07-21T23:50:26.649Z",
+  "sourceCommit": "a80107903f7cf9a8f3ed80d0de92a094fd94f52d",
+  "readOnly": true,
+  "externalSideEffects": [],
+  "harnesses": {
+    "codex": [
+      {
+        "skill": "drive-development-flow",
+        "token": "drive-development-flow|router-only",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "drive-development-flow|router-only",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:51.159253Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.159284Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.159289Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:53.137961Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:57.556241Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "wayfinder",
+        "token": "wayfinder|plan-only",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "wayfinder|plan-only",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:48.869395Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:51.507690Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.507735Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.507745Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:55.985072Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "grill-with-docs",
+        "token": "grill-with-docs|human-gate",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "grill-with-docs|human-gate",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:47.915943Z ERROR codex_core_skills::service: failed to install system skills: io error while remove existing system skills dir: Directory not empty (os error 66)",
+          "2026-07-21T23:49:48.616640Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:50.811622Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.811645Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.811650Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:50:11.172680Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "to-spec",
+        "token": "to-spec|spec-only",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "to-spec|spec-only",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:48.843972Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:50.019873Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.019922Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.019933Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:50:02.921689Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "to-tickets",
+        "token": "to-tickets|human-gate",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "to-tickets|human-gate",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:48.685239Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:51.882280Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.882464Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:51.882470Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:59.214142Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "flow-implement",
+        "token": "flow-implement|bounded-authority",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "flow-implement|bounded-authority",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:47.916717Z ERROR codex_core_skills::service: failed to install system skills: io error while remove existing system skills dir: Directory not empty (os error 66)",
+          "2026-07-21T23:49:48.632136Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:50.405272Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.405318Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:50.405325Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:50:00.221600Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "flow-code-review",
+        "token": "flow-code-review|review-only",
+        "commandPrefix": "$",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "flow-code-review|review-only",
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-21T23:49:48.637331Z  WARN codex_core_plugins::remote::remote_installed_plugin_sync: failed to download remote installed plugin bundle remote_plugin_id=plugin_asdk_app_6a0faef988b48191b843bac5cd170a9e plugin=convex marketplace=openai-curated-remote error=plugin.json name `app-6a0faef988b48191b843bac5cd170a9e` does not match marketplace plugin name `convex`",
+          "2026-07-21T23:49:52.252310Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:52.252354Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:49:52.252363Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-21T23:50:01.312282Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      }
+    ],
+    "factory": [
+      {
+        "skill": "drive-development-flow",
+        "token": "drive-development-flow|router-only",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "drive-development-flow|router-only",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"drive-development-flow\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that it routes or recommends a lifecycle stage without crossing a manual human gate, reply exactly drive-development-flow|router-only. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "wayfinder",
+        "token": "wayfinder|plan-only",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "wayfinder|plan-only",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"wayfinder\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that it plans and resolves decisions by default rather than delivering the destination work, reply exactly wayfinder|plan-only. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "grill-with-docs",
+        "token": "grill-with-docs|human-gate",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "grill-with-docs|human-gate",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"grill-with-docs\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that requirements stop for a human gate, reply exactly grill-with-docs|human-gate. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "to-spec",
+        "token": "to-spec|spec-only",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "to-spec|spec-only",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"to-spec\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that it synthesizes and publishes the current spec but does not create tickets or implement code, reply exactly to-spec|spec-only. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "to-tickets",
+        "token": "to-tickets|human-gate",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "to-tickets|human-gate",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"to-tickets\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that ticket creation stops for a human gate, reply exactly to-tickets|human-gate. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "flow-implement",
+        "token": "flow-implement|bounded-authority",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "flow-implement|bounded-authority",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"flow-implement\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that commit, push, pull request, deploy, and promotion occur only when the user request and repository policy authorize them, reply exactly flow-implement|bounded-authority. Otherwise reply exactly FAIL."
+        ]
+      },
+      {
+        "skill": "flow-code-review",
+        "token": "flow-code-review|review-only",
+        "commandPrefix": "/",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "flow-code-review|review-only",
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"flow-code-review\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that review does not edit product code unless the user asks to address findings, reply exactly flow-code-review|review-only. Otherwise reply exactly FAIL."
+        ]
+      }
+    ]
+  },
+  "passed": true
+}
