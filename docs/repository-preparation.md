@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Version `0.7.0` applies the hardened audit to the first three product pilots. It adds contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while retaining the two explicit preparation transitions.
+Version `0.8.0` extends the hardened repository contract beyond the first three pilots. It preserves contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while adding an explicit lifecycle interface beside automatic routing. Recommendations remain read-only; manual stages and promotion still require exact human triggers.
 
 ## Audit without mutation
 

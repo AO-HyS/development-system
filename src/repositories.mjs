@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "0.7.0";
+const contractVersion = "0.8.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -666,7 +666,8 @@ function adapterContents(audit, harness) {
   const equivalence = harness === "factory"
     ? "Factory uses this documented equivalent when a native Codex-only capability is unavailable."
     : "Codex uses the native repository adapter; T3Code shares this Codex contract and state namespace.";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  const prefix = harness === "factory" ? "/" : "$";
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` may classify or recommend the next stage, but a recommendation never starts a manual stage or grants authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable tickets; stop for human approval.\n- \`${prefix}flow-implement\`: Implement Preview for one named terminal slice; run the autonomous delivery loop and stop at \`ready-for-human\`.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nMerge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
 }
 
 /** @param {unknown} contract */
@@ -734,6 +735,26 @@ function repositoryContract(audit, mode) {
       codex: { adapter: "native", contract: ".codex/development-system/repository.md" },
       t3code: { adapter: "codex", contract: ".codex/development-system/repository.md" },
       factory: { adapter: "documented-equivalent", contract: ".factory/development-system/repository.md" },
+    },
+    lifecycle: {
+      automatic: {
+        router: "drive-development-flow",
+        recommendationEffect: "read-only",
+        manualTransitions: "explicit-human-only",
+      },
+      explicitCommands: {
+        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
+        factory: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
+      },
+      implementPreview: {
+        command: "flow-implement",
+        requiresNamedTerminalSlice: true,
+        terminalState: "ready-for-human",
+      },
+      promotion: {
+        operations: ["merge", "release", "production"],
+        authorization: "separate-exact-human-request",
+      },
     },
     rules: {
       react: audit.stack.includes("react"),

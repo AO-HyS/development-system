@@ -493,7 +493,15 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.commands.preview.script, "preview");
   assert.equal(contract.services.paidActivation, false);
   assert.equal(contract.architectureDiagnostic.effect, "proposal-only");
+  assert.equal(contract.lifecycle.automatic.recommendationEffect, "read-only");
+  assert.equal(contract.lifecycle.automatic.manualTransitions, "explicit-human-only");
+  assert.equal(contract.lifecycle.implementPreview.command, "flow-implement");
+  assert.equal(contract.lifecycle.implementPreview.terminalState, "ready-for-human");
+  assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
   assert.match(initialized[".codex/development-system/repository.md"], /React.*Convex/is);
+  assert.match(initialized[".codex/development-system/repository.md"], /\$grill-with-docs/);
+  assert.match(initialized[".codex/development-system/repository.md"], /\$flow-implement/);
+  assert.match(initialized[".factory/development-system/repository.md"], /\/grill-with-docs/);
   assert.match(initialized[".factory/development-system/repository.md"], /documented equivalent/i);
   assert.deepEqual(first.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
 

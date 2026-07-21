@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.7.0` is the review candidate being evaluated through the NutriPlan, The Barber Central, and AOHYS pilot rollout. It retains the `0.6.0` hardening guarantees and adds fail-closed, evidence-bound repository readiness across different product stacks and policies. The pinned `0.2.0` skill catalog remains the current skill source.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.8.0` adds a dual operator interface across product repositories: automatic lifecycle routing remains available, while explicit phase commands provide direct control without weakening human gates. It retains the `0.7.0` pilot and `0.6.0` hardening guarantees. The pinned `0.2.0` skill catalog remains the current skill source.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,7 +16,7 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 0.7.0
+./bin/development-system install --version 0.8.0
 ./bin/development-system sync-skills --version 0.2.0
 ./bin/development-system audit-skills --version 0.2.0 --evidence evidence/skills-live-2026-07-20.json
 ./bin/development-system audit
@@ -127,7 +127,7 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.7.0 del sistema de desarrollo” → `install --version 0.7.0` plus `sync-skills --version 0.2.0`
+- “Instala la versión 0.8.0 del sistema de desarrollo” → `install --version 0.8.0` plus `sync-skills --version 0.2.0`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -146,7 +146,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.6.0` retain their published contracts; `0.7.0` is the first three-pilot review candidate. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.7.0` retain their published contracts; `0.8.0` adds the dual automatic/explicit operator interface for the gradual all-repository rollout. Published manifests and artifacts are immutable.
 
 ## Current boundary
 
