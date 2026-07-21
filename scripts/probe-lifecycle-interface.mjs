@@ -5,23 +5,25 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { hasBehaviorSignature } from "../src/skills.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
 const factoryPath = process.env.AOHYS_FACTORY_PATH ?? "/Applications/Factory.app/Contents/Resources/bin/droid";
 
 export const lifecycleProbeDefinitions = [
-  { skill: "drive-development-flow", token: "drive-development-flow|router-only", fact: "it routes or recommends a lifecycle stage without crossing a manual human gate" },
-  { skill: "wayfinder", token: "wayfinder|plan-only", fact: "it plans and resolves decisions by default rather than delivering the destination work" },
-  { skill: "grill-with-docs", token: "grill-with-docs|human-gate", fact: "requirements stop for a human gate" },
-  { skill: "to-spec", token: "to-spec|spec-only", fact: "it synthesizes and publishes the current spec but does not create tickets or implement code" },
-  { skill: "to-tickets", token: "to-tickets|human-gate", fact: "ticket creation stops for a human gate" },
-  { skill: "flow-implement", token: "flow-implement|bounded-authority", fact: "commit, push, pull request, deploy, and promotion occur only when the user request and repository policy authorize them" },
-  { skill: "flow-code-review", token: "flow-code-review|review-only", fact: "review does not edit product code unless the user asks to address findings" },
+  { skill: "drive-development-flow", question: "What exact selection principle chooses a stage, and how far may that stage move?", behaviorSignature: ["smallest fitting route", "only as far"] },
+  { skill: "wayfinder", question: "What exact name is given to still-unclear future decisions, and what kind of tickets resolve the known decisions?", behaviorSignature: ["fog of war", "decision tickets"] },
+  { skill: "grill-with-docs", question: "Which two named skills must this skill run together?", behaviorSignature: ["grilling", "domain-modeling"] },
+  { skill: "to-spec", question: "What must be checked with the user before the document is written, and which triage label is applied when it is published?", behaviorSignature: ["seams", "ready-for-agent"] },
+  { skill: "to-tickets", question: "Which two exact terms describe the slice style and the dependency relationships each ticket declares?", behaviorSignature: ["tracer bullet", "blocking edges"] },
+  { skill: "flow-implement", question: "What exact unit of work must be pinned before editing, and which skill is loaded when that unit is complete?", behaviorSignature: ["terminal slice", "flow-code-review"] },
+  { skill: "flow-code-review", question: "What are the exact names of the two blind review axes?", behaviorSignature: ["Standards", "Spec"] },
 ];
 
-/** @param {string} response @param {string} token */
-export function responsePasses(response, token) {
-  return response.trim() === token;
+/** @param {string} response @param {string[]} behaviorSignature */
+export function responsePasses(response, behaviorSignature) {
+  return hasBehaviorSignature(response, behaviorSignature);
 }
 
 /** @param {string} executable @param {string[]} args @param {number} timeoutMs */
@@ -65,7 +67,7 @@ function stderrSummary(stderr) {
 /** @param {"codex" | "factory"} harness @param {(typeof lifecycleProbeDefinitions)[number]} definition @param {number} timeoutMs */
 async function probe(harness, definition, timeoutMs) {
   const prefix = harness === "codex" ? "$" : "/";
-  const prompt = `${prefix}${definition.skill} Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. If and only if the skill itself confirms that ${definition.fact}, reply exactly ${definition.token}. Otherwise reply exactly FAIL.`;
+  const prompt = `${prefix}${definition.skill} Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: ${definition.question}`;
   const args = harness === "codex"
     ? ["-a", "never", "exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--json", "-C", repositoryRoot, prompt]
     : ["exec", "--cwd", repositoryRoot, "--output-format", "json", prompt];
@@ -75,16 +77,31 @@ async function probe(harness, definition, timeoutMs) {
   const response = harness === "codex"
     ? events.filter((event) => event?.type === "item.completed" && event.item?.type === "agent_message").map((event) => event.item.text).at(-1) ?? ""
     : events.filter((event) => event?.type === "result" && typeof event.result === "string").map((event) => event.result).at(-1) ?? "";
+  const activationObserved = harness === "factory"
+    ? new RegExp(`Skill ["']${definition.skill}["'] activated`, "i").test(result.stderr)
+    : null;
+  const influenceObserved = responsePasses(response, definition.behaviorSignature);
   return {
     skill: definition.skill,
-    token: definition.token,
+    behaviorSignature: definition.behaviorSignature,
     commandPrefix: prefix,
+    sandbox: harness === "codex" ? "codex-read-only" : "factory-default-read-only",
     exitCode: result.exitCode,
     timedOut: result.timedOut,
     response,
-    passed: result.exitCode === 0 && !result.timedOut && responsePasses(response, definition.token),
+    activationObserved,
+    influenceObserved,
+    passed: result.exitCode === 0 && !result.timedOut && influenceObserved &&
+      (harness !== "factory" || activationObserved),
     stderrSummary: stderrSummary(result.stderr),
   };
+}
+
+/** @param {"codex" | "factory"} harness @param {number} timeoutMs */
+async function probeHarness(harness, timeoutMs) {
+  const results = [];
+  for (const definition of lifecycleProbeDefinitions) results.push(await probe(harness, definition, timeoutMs));
+  return results;
 }
 
 async function main() {
@@ -92,20 +109,22 @@ async function main() {
   const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
   const timeoutMs = Number(process.env.AOHYS_LIFECYCLE_PROBE_TIMEOUT_MS ?? "120000");
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("AOHYS_LIFECYCLE_PROBE_TIMEOUT_MS must be positive");
+  const repositoryStateBefore = execFileSync("git", ["status", "--porcelain=v1", "-uall"], { cwd: repositoryRoot, encoding: "utf8" });
   const [codex, factory] = await Promise.all([
-    Promise.all(lifecycleProbeDefinitions.map((definition) => probe("codex", definition, timeoutMs))),
-    Promise.all(lifecycleProbeDefinitions.map((definition) => probe("factory", definition, timeoutMs))),
+    probeHarness("codex", timeoutMs),
+    probeHarness("factory", timeoutMs),
   ]);
+  const repositoryStateAfter = execFileSync("git", ["status", "--porcelain=v1", "-uall"], { cwd: repositoryRoot, encoding: "utf8" });
+  const repositoryMutations = repositoryStateAfter === repositoryStateBefore ? [] : ["git-status-changed-during-probe"];
   const evidence = {
     schemaVersion: 1,
     contractVersion: "0.8.0",
     catalogVersion: "0.2.0",
     generatedAt: new Date().toISOString(),
     sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repositoryRoot, encoding: "utf8" }).trim(),
-    readOnly: true,
-    externalSideEffects: [],
+    repositoryMutations,
     harnesses: { codex, factory },
-    passed: [...codex, ...factory].every((result) => result.passed),
+    passed: repositoryMutations.length === 0 && [...codex, ...factory].every((result) => result.passed),
   };
   if (outputPath) {
     await mkdir(dirname(outputPath), { recursive: true });

@@ -19,11 +19,11 @@ test("lifecycle live-probe definitions cover the automatic router and every expl
     "flow-implement",
     "flow-code-review",
   ]);
-  assert.equal(new Set(lifecycleProbeDefinitions.map((definition) => definition.token)).size, 7);
   for (const definition of lifecycleProbeDefinitions) {
-    assert.equal(responsePasses(definition.token, definition.token), true);
-    assert.equal(responsePasses(`${definition.token} extra`, definition.token), false);
-    assert.match(definition.fact, /gate|authority|review|ticket|deliver|implement|policy/i);
+    assert.equal(definition.behaviorSignature.length, 2);
+    assert.equal(responsePasses(definition.behaviorSignature.join(" "), definition.behaviorSignature), true);
+    assert.equal(responsePasses("generic prompt echo", definition.behaviorSignature), false);
+    for (const phrase of definition.behaviorSignature) assert.equal(definition.question.includes(phrase), false);
   }
 });
 
@@ -34,8 +34,7 @@ test("committed live evidence proves every lifecycle command in Codex and Factor
   ));
   assert.equal(evidence.contractVersion, "0.8.0");
   assert.equal(evidence.catalogVersion, "0.2.0");
-  assert.equal(evidence.readOnly, true);
-  assert.deepEqual(evidence.externalSideEffects, []);
+  assert.deepEqual(evidence.repositoryMutations, []);
   assert.equal(evidence.passed, true);
   const sourceCommit = spawnSync("git", ["cat-file", "-e", `${evidence.sourceCommit}^{commit}`], {
     cwd: repositoryRoot,
@@ -45,6 +44,8 @@ test("committed live evidence proves every lifecycle command in Codex and Factor
   for (const [harness, prefix] of [["codex", "$"], ["factory", "/"]]) {
     const results = evidence.harnesses[harness];
     assert.deepEqual(results.map((result) => result.skill), lifecycleProbeDefinitions.map((definition) => definition.skill));
-    assert.ok(results.every((result) => result.commandPrefix === prefix && result.exitCode === 0 && !result.timedOut && result.passed));
+    assert.ok(results.every((result) => result.commandPrefix === prefix && result.exitCode === 0 &&
+      !result.timedOut && result.influenceObserved && result.passed));
+    if (harness === "factory") assert.ok(results.every((result) => result.activationObserved === true));
   }
 });
