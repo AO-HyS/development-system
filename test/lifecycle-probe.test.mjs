@@ -17,6 +17,6 @@ test("lifecycle live-probe definitions cover the automatic router and every expl
   for (const definition of lifecycleProbeDefinitions) {
     assert.equal(responsePasses(definition.token, definition.token), true);
     assert.equal(responsePasses(`${definition.token} extra`, definition.token), false);
-    assert.match(definition.fact, /gate|authority|explicit|review/i);
+    assert.match(definition.fact, /gate|authority|review|ticket|deliver|implement|policy/i);
   }
 });

@@ -11,11 +11,11 @@ const factoryPath = process.env.AOHYS_FACTORY_PATH ?? "/Applications/Factory.app
 
 export const lifecycleProbeDefinitions = [
   { skill: "drive-development-flow", token: "drive-development-flow|router-only", fact: "it routes or recommends a lifecycle stage without crossing a manual human gate" },
-  { skill: "wayfinder", token: "wayfinder|explicit-only", fact: "it runs only when explicitly invoked outside the normal lifecycle" },
+  { skill: "wayfinder", token: "wayfinder|plan-only", fact: "it plans and resolves decisions by default rather than delivering the destination work" },
   { skill: "grill-with-docs", token: "grill-with-docs|human-gate", fact: "requirements stop for a human gate" },
-  { skill: "to-spec", token: "to-spec|human-gate", fact: "the spec and Local Visual Plan stop for a human gate" },
+  { skill: "to-spec", token: "to-spec|spec-only", fact: "it synthesizes and publishes the current spec but does not create tickets or implement code" },
   { skill: "to-tickets", token: "to-tickets|human-gate", fact: "ticket creation stops for a human gate" },
-  { skill: "flow-implement", token: "flow-implement|bounded-authority", fact: "the implementation-review-correction loop stays inside request and repository-policy authority" },
+  { skill: "flow-implement", token: "flow-implement|bounded-authority", fact: "commit, push, pull request, deploy, and promotion occur only when the user request and repository policy authorize them" },
   { skill: "flow-code-review", token: "flow-code-review|review-only", fact: "review does not edit product code unless the user asks to address findings" },
 ];
 
@@ -55,6 +55,13 @@ function jsonLines(text) {
   });
 }
 
+/** @param {string} stderr */
+function stderrSummary(stderr) {
+  return stderr.split("\n")
+    .filter((line) => /Skill .* activated|\b(?:ERROR|failed|invalid_client)\b/i.test(line))
+    .slice(-10);
+}
+
 /** @param {"codex" | "factory"} harness @param {(typeof lifecycleProbeDefinitions)[number]} definition @param {number} timeoutMs */
 async function probe(harness, definition, timeoutMs) {
   const prefix = harness === "codex" ? "$" : "/";
@@ -76,7 +83,7 @@ async function probe(harness, definition, timeoutMs) {
     timedOut: result.timedOut,
     response,
     passed: result.exitCode === 0 && !result.timedOut && responsePasses(response, definition.token),
-    stderr: result.stderr.trim(),
+    stderrSummary: stderrSummary(result.stderr),
   };
 }
 
