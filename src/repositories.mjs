@@ -667,7 +667,7 @@ function adapterContents(audit, harness) {
     ? "Factory uses this documented equivalent when a native Codex-only capability is unavailable."
     : "Codex uses the native repository adapter; T3Code shares this Codex contract and state namespace.";
   const prefix = harness === "factory" ? "/" : "$";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` may classify or recommend the next stage, but a recommendation never starts a manual stage or grants authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable tickets; stop for human approval.\n- \`${prefix}flow-implement\`: Implement Preview for one named terminal slice; run the autonomous delivery loop and stop at \`ready-for-human\`.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nMerge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` may classify or recommend the next stage, but a recommendation never starts a manual stage or grants authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous implementation-review-correction loop only inside the request's existing authority and stop at the pinned human boundary.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`0.2.0\` and verify that the active harness discovers these commands plus \`drive-development-flow\`.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
 }
 
 /** @param {unknown} contract */
@@ -750,11 +750,27 @@ function repositoryContract(audit, mode) {
         command: "flow-implement",
         requiresNamedTerminalSlice: true,
         terminalState: "ready-for-human",
+        autonomousOperations: ["implement", "test", "validate", "review", "correct", "proportional-qa"],
+        deliveryAuthorization: "request-and-repository-policy",
       },
       promotion: {
         operations: ["merge", "release", "production"],
         authorization: "separate-exact-human-request",
       },
+    },
+    operatorPrerequisites: {
+      skillCatalogVersion: "0.2.0",
+      installationScope: "global",
+      readinessScope: "repository-adapter-only",
+      requiredSkills: [
+        "drive-development-flow",
+        "wayfinder",
+        "grill-with-docs",
+        "to-spec",
+        "to-tickets",
+        "flow-implement",
+        "flow-code-review",
+      ],
     },
     rules: {
       react: audit.stack.includes("react"),

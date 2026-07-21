@@ -5,6 +5,7 @@
   "generatedAt": "2026-07-20T23:09:20.000Z",
   "candidate": {
     "sourceCommit": "e1d3b1f1458d81edf70173cb07667f7242979a9a",
+    "evidenceCommit": "1750cc1ddc758cd96a7fc3b3e48718a05cfeb49f",
     "pullRequest": "https://github.com/AO-HyS/development-system/pull/3",
     "harnessEvidence": {
       "path": "evidence/pilots-harnesses-live-2026-07-20.json",

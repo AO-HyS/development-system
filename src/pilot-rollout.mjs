@@ -67,6 +67,11 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
   else {
     if (!hex(document.candidate.sourceCommit, 40)) errors.push("candidate sourceCommit must be a full Git commit");
     if (verification.candidateCommitExists !== true) errors.push("candidate commit was not verified");
+    if (!hex(document.candidate.evidenceCommit, 40)) errors.push("candidate evidenceCommit must be a full Git commit");
+    if (verification.evidenceCommitExists !== true) errors.push("candidate evidence commit was not verified");
+    if (verification.evidenceDescendsFromSource !== true) {
+      errors.push("candidate evidence commit is not descended from the candidate sourceCommit");
+    }
     if (!/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(document.candidate.pullRequest ?? "")) {
       errors.push("candidate pullRequest must be a GitHub PR URL");
     }

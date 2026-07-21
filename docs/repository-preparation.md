@@ -43,6 +43,8 @@ Initialization reads the product's current package scripts and stack, then write
 
 The generated contract selects existing review, validation, QA, and preview commands. It records React and Convex rules when detected, preserves design/release files, and configures Factory documentation as a behavioral equivalent when a Codex-native capability is unavailable. Repeating the same initialization returns `unchanged`.
 
+The returned `prepared` state is deliberately scoped to the repository adapter and declared commands. It is not an operational claim that lifecycle skills are loaded. Before using the explicit interface, synchronize global skill catalog `0.2.0` and verify that the active harness discovers `drive-development-flow` plus all six phase skills. The autonomous part of `flow-implement` is the bounded implementation-review-correction loop; commit, push, PR, preview, deploy, merge, release, and production remain governed by the request and repository policy.
+
 ## Normalize an existing repository
 
 ```sh

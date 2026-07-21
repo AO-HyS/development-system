@@ -55,6 +55,7 @@ function evidence() {
     generatedAt: "2026-07-20T00:00:00.000Z",
     candidate: {
       sourceCommit: "4".repeat(40),
+      evidenceCommit: "9".repeat(40),
       pullRequest: "https://github.com/AO-HyS/development-system/pull/1",
       harnessEvidence: { path: "evidence/pilots-harnesses-live-2026-07-20.json", sha256: "6".repeat(64) },
       skillEvidence: { path: "evidence/pilots-skills-live-2026-07-20.json", sha256: "7".repeat(64) },
@@ -82,6 +83,8 @@ function verification(document) {
   };
   return {
     candidateCommitExists: true,
+    evidenceCommitExists: true,
+    evidenceDescendsFromSource: true,
     harnessEvidence: {
       path: document.candidate.harnessEvidence.path,
       sha256: document.candidate.harnessEvidence.sha256,
@@ -135,6 +138,16 @@ test("three comparable pilots and an untouched Escuela 360 reach the human gate"
   assert.equal(result.ok, true);
   assert.deepEqual(result.errors, []);
   assert.equal(result.decision, "ready-for-human");
+});
+
+test("candidate evidence must come from a verified descendant commit", () => {
+  const document = evidence();
+  const observed = verification(document);
+  observed.evidenceDescendsFromSource = false;
+
+  const result = validatePilotRolloutEvidence(document, observed);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((error) => error.includes("evidence commit is not descended")));
 });
 
 test("the candidate fails closed on missing preview, harness parity, or Escuela 360 contact", () => {

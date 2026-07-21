@@ -17,7 +17,7 @@
       "sourcePath": "artifacts/0.8.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "be390b617078bdf2505e792719b9a153c7e8126e5bc12308c428d5466ecb2003",
+      "sha256": "3a45da897a94a236a64893d8cd343a15582227241fc376067ad9e729684847df",
       "expectedMirrorOf": null
     },
     {
@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/0.8.0/contract.md",
       "destination": ".factory/development-system/contract.md",
       "harness": "factory",
-      "sha256": "be390b617078bdf2505e792719b9a153c7e8126e5bc12308c428d5466ecb2003",
+      "sha256": "3a45da897a94a236a64893d8cd343a15582227241fc376067ad9e729684847df",
       "expectedMirrorOf": "dual-interface-contract.codex"
     },
     {
@@ -35,7 +35,7 @@
       "sourcePath": "artifacts/0.8.0/operator-interface.md",
       "destination": ".codex/development-system/operator-interface.md",
       "harness": "codex",
-      "sha256": "70e626f41d070cdaacfc9d97cd6b3fe9044cd668ad5432757521ba157ba172e9",
+      "sha256": "1d1bb907bef5d393fc498b40e677d1c62448aad5142d8709ac876b5195968f7e",
       "expectedMirrorOf": null
     },
     {
@@ -44,7 +44,7 @@
       "sourcePath": "artifacts/0.8.0/operator-interface.md",
       "destination": ".factory/development-system/operator-interface.md",
       "harness": "factory",
-      "sha256": "70e626f41d070cdaacfc9d97cd6b3fe9044cd668ad5432757521ba157ba172e9",
+      "sha256": "1d1bb907bef5d393fc498b40e677d1c62448aad5142d8709ac876b5195968f7e",
       "expectedMirrorOf": "operator-interface.codex"
     },
     {

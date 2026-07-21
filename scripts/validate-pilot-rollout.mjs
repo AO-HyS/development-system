@@ -28,13 +28,27 @@ function commitExists(cwd, commit) {
   }
 }
 
-/** @param {any} reference */
-async function loadArtifact(reference) {
+/** @param {string} cwd @param {string} ancestor @param {string} descendant */
+function isAncestor(cwd, ancestor, descendant) {
+  try {
+    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], { cwd, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** @param {any} reference @param {string} evidenceCommit */
+async function loadArtifact(reference, evidenceCommit) {
   if (!reference || typeof reference.path !== "string" || !reference.path.startsWith("evidence/")) return null;
   const path = resolve(repositoryRoot, reference.path);
   if (!path.startsWith(resolve(repositoryRoot, "evidence") + "/")) return null;
   try {
-    const bytes = await readFile(path);
+    const bytes = execFileSync("git", ["show", `${evidenceCommit}:${reference.path}`], {
+      cwd: repositoryRoot,
+      encoding: "buffer",
+      maxBuffer: 16 * 1024 * 1024,
+    });
     return {
       path: reference.path,
       sha256: createHash("sha256").update(bytes).digest("hex"),
@@ -66,13 +80,14 @@ try {
 }
 
 if (evidence) {
+  const evidenceCommit = evidence.candidate?.evidenceCommit;
   const pilotPairs = await Promise.all((evidence.pilots ?? []).map(async (/** @type {any} */ pilot) => {
     const repository = /** @type {Record<string, string>} */ (repositoryPaths)[pilot.name];
-    const artifact = await loadArtifact(pilot.attestation);
+    const artifact = await loadArtifact(pilot.attestation, evidenceCommit);
     const claims = artifact?.document ?? pilot;
     return [pilot.name, {
       ...artifact,
-      operationalSkillEvidence: await loadArtifact(claims.operationalSkillEvidence),
+      operationalSkillEvidence: await loadArtifact(claims.operationalSkillEvidence, evidenceCommit),
       commitExists: Boolean(repository) && commitExists(repository, claims.productCommit),
       recapExists: typeof claims.localVisualRecap?.privatePath === "string" &&
         await pathExists(resolve(homedir(), claims.localVisualRecap.privatePath)),
@@ -80,8 +95,10 @@ if (evidence) {
   }));
   const verification = {
     candidateCommitExists: commitExists(repositoryRoot, evidence.candidate?.sourceCommit),
-    harnessEvidence: await loadArtifact(evidence.candidate?.harnessEvidence),
-    skillEvidence: await loadArtifact(evidence.candidate?.skillEvidence),
+    evidenceCommitExists: commitExists(repositoryRoot, evidenceCommit),
+    evidenceDescendsFromSource: isAncestor(repositoryRoot, evidence.candidate?.sourceCommit, evidenceCommit),
+    harnessEvidence: await loadArtifact(evidence.candidate?.harnessEvidence, evidenceCommit),
+    skillEvidence: await loadArtifact(evidence.candidate?.skillEvidence, evidenceCommit),
     pilots: Object.fromEntries(pilotPairs),
   };
   const result = { operation: "validate-pilot-rollout", evidencePath, ...validatePilotRolloutEvidence(evidence, verification) };
