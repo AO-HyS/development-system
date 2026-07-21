@@ -123,6 +123,14 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `harnesses:validate` is the separate live operational gate.
 
+To prove the dual interface through the installed Codex and Factory runtimes without mutating a product repository:
+
+```sh
+pnpm run operator:probe -- --output evidence/lifecycle-interface-live-2026-07-21.json
+```
+
+This live probe activates the automatic router and all six explicit phase skills in read-only sandboxes, verifies their authorization-boundary responses, and records per-harness evidence separately from structural repository readiness.
+
 ## Natural-language recovery
 
 No secret phrase is required. Requests such as these map to the same explicit operations:

@@ -11,6 +11,7 @@
     "audit": "./bin/development-system audit",
     "benchmark": "node ./scripts/run-benchmarks.mjs",
     "install:local": "./bin/development-system install --version 0.8.0",
+    "operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
     "harnesses:validate": "node ./scripts/validate-harnesses.mjs",
     "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
     "implement-preview": "./bin/development-system implement-preview",
