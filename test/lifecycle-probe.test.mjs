@@ -27,6 +27,11 @@ test("lifecycle live-probe definitions cover the automatic router and every expl
   }
 });
 
+test("behavior signatures tolerate command-name and prose hyphenation", () => {
+  assert.equal(responsePasses("tracer-bullet with blocking edges", ["tracer bullet", "blocking edges"]), true);
+  assert.equal(responsePasses("load flow-code-review", ["flow-code-review"]), true);
+});
+
 test("committed live evidence proves every lifecycle command in Codex and Factory", async () => {
   const evidence = JSON.parse(await readFile(
     resolve(repositoryRoot, "evidence/lifecycle-interface-live-2026-07-21.json"),

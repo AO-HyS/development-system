@@ -17,7 +17,7 @@ export const lifecycleProbeDefinitions = [
   { skill: "grill-with-docs", question: "Which two named skills must this skill run together?", behaviorSignature: ["grilling", "domain-modeling"] },
   { skill: "to-spec", question: "What must be checked with the user before the document is written, and which triage label is applied when it is published?", behaviorSignature: ["seams", "ready-for-agent"] },
   { skill: "to-tickets", question: "Which two exact terms describe the slice style and the dependency relationships each ticket declares?", behaviorSignature: ["tracer bullet", "blocking edges"] },
-  { skill: "flow-implement", question: "What exact unit of work must be pinned before editing, and which skill is loaded when that unit is complete?", behaviorSignature: ["terminal slice", "flow-code-review"] },
+  { skill: "flow-implement", question: "What exact unit of work must be pinned before editing, and which skill is loaded when that unit is complete?", behaviorSignature: ["one binary done condition", "flow-code-review"] },
   { skill: "flow-code-review", question: "What are the exact names of the two blind review axes?", behaviorSignature: ["Standards", "Spec"] },
 ];
 
