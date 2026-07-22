@@ -299,11 +299,12 @@ function selectCommand(scripts, candidates, runner, accept = () => true) {
 
 /** @param {string} command */
 function readOnlyPreviewCommand(command) {
-  const withoutReleaseBuilds = command.replace(
-    /\b(?:build|compile|bundle)(?::|-)?release\b/gi,
-    "",
-  );
-  return !/\b(?:deploy|publish|release|production|promote)\b/i.test(withoutReleaseBuilds);
+  const mutatesDelivery = /\b(?:deploy|publish|production|promote)\b/i.test(command);
+  const invokesRelease =
+    /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?release(?:\s|$|&&|\|\|)/i.test(command) ||
+    /(?:^|&&|\|\||;)\s*release(?:\s|$)/i.test(command) ||
+    /\bgh\s+release\b|\b(?:semantic-release|release-it)\b/i.test(command);
+  return !mutatesDelivery && !invokesRelease;
 }
 
 /** @param {any} packageJson @param {string[]} files */

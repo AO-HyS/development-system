@@ -367,7 +367,7 @@ test("preview discovery accepts local servers that compile a release build", asy
         review: "node -e \"process.exit(0)\"",
         verify: "node -e \"process.exit(0)\"",
         qa: "node -e \"process.exit(0)\"",
-        "cloudflare:local": "pnpm run build:release && wrangler pages dev ./dist",
+        "cloudflare:local": "pnpm run build:release && pnpm exec wrangler pages dev dist/release",
       },
     }),
   );
@@ -376,6 +376,30 @@ test("preview discovery accepts local servers that compile a release build", asy
 
   assert.equal(audit.commands.preview.script, "cloudflare:local");
   assert.equal(audit.commands.preview.command, "pnpm run cloudflare:local");
+});
+
+test("preview discovery rejects scripts that invoke a release operation", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-release-preview-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "pnpm run release && wrangler pages dev ./dist",
+        dev: "vite dev",
+      },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.commands.preview.script, "dev");
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {
