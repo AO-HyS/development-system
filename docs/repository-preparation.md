@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Version `0.8.0` extends the hardened repository contract beyond the first three pilots. It preserves contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while adding an explicit lifecycle interface beside automatic routing. Recommendations remain read-only; manual stages and promotion still require exact human triggers.
+Version `0.8.0` extends the hardened repository contract beyond the first three pilots. It preserves contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while adding an explicit lifecycle interface beside automatic routing. Automatic routing still infers and runs the fitting stage as far as the request authorizes; recommendation-only requests remain read-only, and human gates plus promotion cannot be crossed implicitly.
 
 ## Audit without mutation
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -33,8 +34,11 @@ test("behavior signatures tolerate command-name and prose hyphenation", () => {
 });
 
 test("committed live evidence proves every lifecycle command in Codex and Factory", async () => {
-  const evidence = JSON.parse(await readFile(
-    resolve(repositoryRoot, "evidence/lifecycle-interface-live-2026-07-21.json"),
+  const evidencePath = "evidence/lifecycle-interface-live-2026-07-21.json";
+  const evidenceBytes = await readFile(resolve(repositoryRoot, evidencePath));
+  const evidence = JSON.parse(evidenceBytes.toString("utf8"));
+  const provenance = JSON.parse(await readFile(
+    resolve(repositoryRoot, "evidence/lifecycle-interface-live-2026-07-21.provenance.json"),
     "utf8",
   ));
   assert.equal(evidence.contractVersion, "0.8.0");
@@ -46,6 +50,34 @@ test("committed live evidence proves every lifecycle command in Codex and Factor
     encoding: "utf8",
   });
   assert.equal(sourceCommit.status, 0, sourceCommit.stderr);
+  const evidenceCommit = spawnSync("git", ["cat-file", "-e", `${provenance.evidenceCommit}^{commit}`], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  });
+  assert.equal(evidenceCommit.status, 0, evidenceCommit.stderr);
+  const sourceIsAncestor = spawnSync(
+    "git",
+    ["merge-base", "--is-ancestor", evidence.sourceCommit, provenance.evidenceCommit],
+    { cwd: repositoryRoot, encoding: "utf8" },
+  );
+  assert.equal(sourceIsAncestor.status, 0, sourceIsAncestor.stderr);
+  const evidenceIsAncestor = spawnSync(
+    "git",
+    ["merge-base", "--is-ancestor", provenance.evidenceCommit, "HEAD"],
+    { cwd: repositoryRoot, encoding: "utf8" },
+  );
+  assert.equal(evidenceIsAncestor.status, 0, evidenceIsAncestor.stderr);
+  const committedEvidence = spawnSync(
+    "git",
+    ["show", `${provenance.evidenceCommit}:${evidencePath}`],
+    { cwd: repositoryRoot, encoding: null },
+  );
+  assert.equal(committedEvidence.status, 0, committedEvidence.stderr?.toString());
+  assert.deepEqual(committedEvidence.stdout, evidenceBytes);
+  assert.equal(
+    createHash("sha256").update(evidenceBytes).digest("hex"),
+    provenance.sha256,
+  );
   for (const [harness, prefix] of [["codex", "$"], ["factory", "/"]]) {
     const results = evidence.harnesses[harness];
     assert.deepEqual(results.map((result) => result.skill), lifecycleProbeDefinitions.map((definition) => definition.skill));

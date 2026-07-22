@@ -354,6 +354,30 @@ test("preview discovery rejects deployment aliases and falls back to a local com
   assert.equal(audit.commands.preview.command, "pnpm run dev");
 });
 
+test("preview discovery accepts local servers that compile a release build", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-release-build-preview-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "pnpm run build:release && wrangler pages dev ./dist",
+      },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.commands.preview.script, "cloudflare:local");
+  assert.equal(audit.commands.preview.command, "pnpm run cloudflare:local");
+});
+
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {
   const repository = await seedOperationalRepository("aohys-repository-cli-");
   const audit = runCli("audit-repository", "--repository", repository);
@@ -493,13 +517,20 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.commands.preview.script, "preview");
   assert.equal(contract.services.paidActivation, false);
   assert.equal(contract.architectureDiagnostic.effect, "proposal-only");
+  assert.equal(
+    contract.harnesses.t3code.operationalEvidence,
+    "structural-inheritance-not-independently-probed",
+  );
+  assert.equal(contract.lifecycle.automatic.stageSelection, "infer-load-and-run");
+  assert.equal(contract.lifecycle.automatic.progressLimit, "request-authority-and-human-gates");
   assert.equal(contract.lifecycle.automatic.recommendationEffect, "read-only");
-  assert.equal(contract.lifecycle.automatic.manualTransitions, "explicit-human-only");
   assert.equal(contract.lifecycle.implementPreview.command, "flow-implement");
   assert.equal(contract.lifecycle.implementPreview.terminalState, "ready-for-human");
   assert.deepEqual(contract.lifecycle.implementPreview.autonomousOperations, [
     "implement", "test", "validate", "review", "correct", "proportional-qa",
   ]);
+  assert.equal(contract.lifecycle.implementPreview.checksAreDevelopmentSubsteps, true);
+  assert.equal(contract.lifecycle.implementPreview.externalStateAuthorization, "request-and-repository-policy");
   assert.equal(contract.lifecycle.implementPreview.deliveryAuthorization, "request-and-repository-policy");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
   assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.2.0");

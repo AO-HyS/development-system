@@ -17,8 +17,8 @@ Invoke one phase directly:
 5. `flow-implement` for one named Implement Preview terminal slice; its implementation-review-correction loop is autonomous inside the authority already granted, while delivery state changes remain separately bounded.
 6. `flow-code-review` for an independent review of an existing branch or pull request.
 
-Codex and T3Code present these as `$` skill commands. Factory presents them as `/` commands. The observable lifecycle and authorization boundaries are the same.
+Codex presents these as `$` skill commands. Factory presents them as `/` commands. T3Code shares the Codex adapter and state namespace structurally; this release does not claim independent live T3Code command discovery or activation. The authorization boundaries remain the same.
 
-Prepared repository adapters require the global `0.2.0` skill catalog to be synchronized and discovered by the active harness. Adapter readiness alone is not proof that a skill is loaded or has influenced behavior.
+Prepared repository adapters require the global `0.2.0` skill catalog to be synchronized and discovered by the active Codex or Factory harness. Adapter readiness alone is not proof that a skill is loaded or has influenced behavior.
 
 Commit, push, pull request, preview, deploy, merge, release, and production occur only when the request and repository policy authorize the relevant state change. Merge, release, and production always require separate exact commands or requests after the final human review.
