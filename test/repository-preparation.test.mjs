@@ -379,27 +379,34 @@ test("preview discovery accepts local servers that compile a release build", asy
 });
 
 test("preview discovery rejects scripts that invoke a release operation", async () => {
-  const repository = await seedOperationalRepository("aohys-repository-release-preview-", false);
-  await write(
-    repository,
-    "package.json",
-    JSON.stringify({
-      name: "lumen-console",
-      private: true,
-      packageManager: "pnpm@11.7.0",
-      scripts: {
-        review: "node -e \"process.exit(0)\"",
-        verify: "node -e \"process.exit(0)\"",
-        qa: "node -e \"process.exit(0)\"",
-        "cloudflare:local": "pnpm run release && wrangler pages dev ./dist",
-        dev: "vite dev",
-      },
-    }),
-  );
+  for (const releaseCommand of [
+    "pnpm run release",
+    "node scripts/release.mjs",
+    "./scripts/release.sh",
+    "make release",
+  ]) {
+    const repository = await seedOperationalRepository("aohys-repository-release-preview-", false);
+    await write(
+      repository,
+      "package.json",
+      JSON.stringify({
+        name: "lumen-console",
+        private: true,
+        packageManager: "pnpm@11.7.0",
+        scripts: {
+          review: "node -e \"process.exit(0)\"",
+          verify: "node -e \"process.exit(0)\"",
+          qa: "node -e \"process.exit(0)\"",
+          "cloudflare:local": `${releaseCommand} && wrangler pages dev ./dist`,
+          dev: "vite dev",
+        },
+      }),
+    );
 
-  const audit = await auditRepository({ repository });
+    const audit = await auditRepository({ repository });
 
-  assert.equal(audit.commands.preview.script, "dev");
+    assert.equal(audit.commands.preview.script, "dev", releaseCommand);
+  }
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {
