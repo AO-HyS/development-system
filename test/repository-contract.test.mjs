@@ -42,8 +42,33 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0"]);
   assert.deepEqual(validation.json.errors, []);
+});
+
+test("the 0.8 operator interface is backed by the pinned skill catalog and bounded flow implementation", async () => {
+  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.2.0.json"), "utf8"));
+  const required = [
+    "drive-development-flow",
+    "wayfinder",
+    "grill-with-docs",
+    "to-spec",
+    "to-tickets",
+    "flow-implement",
+    "flow-code-review",
+  ];
+  const skills = new Map(catalog.skills.map((skill) => [skill.logicalName, skill]));
+  for (const logicalName of required) {
+    const skill = skills.get(logicalName);
+    assert.ok(skill, `${logicalName} is absent from catalog 0.2.0`);
+    assert.deepEqual(new Set(skill.variants.map((variant) => variant.harness)), new Set(["codex", "factory"]));
+  }
+  const flowImplement = await readFile(
+    resolve(repositoryRoot, skills.get("flow-implement").variants[0].sourceDirectory, "SKILL.md"),
+    "utf8",
+  );
+  assert.match(flowImplement, /load `flow-code-review`/);
+  assert.match(flowImplement, /Commit, push, open or merge a pull request, deploy, or promote only when the user's request and repository policy authorize/i);
 });
 
 test("the first rollback restores pre-install bytes and removes only generated files", async () => {

@@ -40,9 +40,9 @@ function isDirectChildPath(root, candidate) {
  * @param {string[]} signature
  */
 export function hasBehaviorSignature(text, signature) {
-  const observed = text.toLowerCase().match(/[\p{L}\p{N}-]+/gu) ?? [];
+  const observed = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
   return signature.every((term) => {
-    const required = term.toLowerCase().match(/[\p{L}\p{N}-]+/gu) ?? [];
+    const required = term.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
     if (required.length === 0) return false;
     for (let start = 0; start < observed.length; start += 1) {
       if (observed[start] !== required[0]) continue;

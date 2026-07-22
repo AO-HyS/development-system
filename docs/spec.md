@@ -51,9 +51,9 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
  4. As Alejandro, I want installed HOME files generated from a canonical source, so that local configuration cannot silently become the source of truth.
  5. As Alejandro, I want a manifest of installed versions, upstream commits, hashes, mirrors and drift, so that I can tell exactly what contract each harness is running.
  6. As Alejandro, I want lifecycle stages named consistently, so that native harness syntax does not change the mental model.
- 7. As Alejandro, I want the router to recommend manual stages without executing them, so that classification never expands authorization.
+ 7. As Alejandro, I want the router to infer and run the fitting stage as far as my request authorizes, while recommendation-only requests remain read-only and classification never expands authorization.
  8. As Alejandro, I want Wayfinder to require an explicit invocation, so that a large initiative does not automatically create maps or tickets.
- 9. As Alejandro, I want `grill-with-docs` to remain manual, so that product intent and constraints come from me.
+ 9. As Alejandro, I want `grill-with-docs` to remain human-driven and stop for approval whether the router or an explicit command selects it, so that product intent and constraints come from me.
 10. As Alejandro, I want requirements persisted before synthesis, so that the spec does not depend only on chat memory.
 11. As Alejandro, I want `to-spec` to generate a Local Visual Plan atomically, so that I can review the same scope in text and visually.
 12. As Alejandro, I want a manual gate after spec and plan, so that implementation planning does not advance on an unapproved interpretation.

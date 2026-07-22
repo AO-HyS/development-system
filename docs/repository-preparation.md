@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Version `0.6.0` hardens the read-only audit introduced in `0.5.0`; the two explicit preparation transitions remain unchanged in scope.
+Version `0.8.0` extends the hardened repository contract beyond the first three pilots. It preserves contextual residue classification, nested Convex detection, local preview aliases, and supported skill-mirror grouping while adding an explicit lifecycle interface beside automatic routing. Automatic routing still infers and runs the fitting stage as far as the request authorizes; recommendation-only requests remain read-only, and human gates plus promotion cannot be crossed implicitly.
 
 ## Audit without mutation
 
@@ -42,6 +42,8 @@ Initialization reads the product's current package scripts and stack, then write
 ```
 
 The generated contract selects existing review, validation, QA, and preview commands. It records React and Convex rules when detected, preserves design/release files, and configures Factory documentation as a behavioral equivalent when a Codex-native capability is unavailable. Repeating the same initialization returns `unchanged`.
+
+The returned `prepared` state is deliberately scoped to the repository adapter and declared commands. It is not an operational claim that lifecycle skills are loaded. Before using the explicit interface, synchronize global skill catalog `0.2.0` and verify that the active harness discovers `drive-development-flow` plus all six phase skills. The autonomous part of `flow-implement` is the bounded implementation-review-correction loop; commit, push, PR, preview, deploy, merge, release, and production remain governed by the request and repository policy.
 
 ## Normalize an existing repository
 

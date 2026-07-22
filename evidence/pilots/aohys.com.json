@@ -1,0 +1,78 @@
+{
+  "name": "aohys.com",
+  "repository": "AO-HyS/aohys.com",
+  "baseCommit": "1f7b83f065dc6dbff5d250eb58104c58a8539fe0",
+  "productCommit": "aedf2ccad003566ce2807a8469771c6bb7d62329",
+  "auditFingerprint": "0d6513b8d6fae4ec216d8d7712a3e618a6071900fb0117cacf1a94b22b52a590",
+  "managedMutationScope": [
+    ".development-system/repository.json",
+    ".codex/development-system/repository.md",
+    ".factory/development-system/repository.md"
+  ],
+  "preserved": {
+    "releasePolicyFiles": [".github/workflows/release-train.yml"],
+    "designFiles": [
+      ".agents/skills/impeccable/scripts/detector/design-system.mjs",
+      ".claude/skills/impeccable/scripts/detector/design-system.mjs",
+      ".gemini/skills/impeccable/scripts/detector/design-system.mjs",
+      ".opencode/skills/impeccable/scripts/detector/design-system.mjs",
+      "apps/dashboard/src/styles.css"
+    ]
+  },
+  "commands": {
+    "review": "pnpm run lint",
+    "validation": "pnpm run verify:ci",
+    "qa": "pnpm run test",
+    "preview": "pnpm run cloudflare:local"
+  },
+  "harnesses": {
+    "codex": "validated",
+    "t3code": "validated",
+    "factory": "validated"
+  },
+  "review": {
+    "blocker": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "mediumDispositions": [],
+    "evidence": "The three-file managed diff was inspected against the AOHYS product and release contracts; no product code or design behavior changed."
+  },
+  "qaSelection": {
+    "level": "full",
+    "reason": "The AOHYS release train supplies complete workspace verification plus an isolated Cloudflare preview smoke.",
+    "evidence": "pnpm verify, pre-commit gates, GitHub Quality Gates, Verify, Deploy Preview, and Smoke preview all passed."
+  },
+  "checks": [
+    {
+      "id": "verify",
+      "command": "pnpm verify",
+      "status": "passed",
+      "evidence": "Foundation, lint, typecheck, workspace tests, and builds exited 0."
+    },
+    {
+      "id": "preview",
+      "command": "GitHub Actions Release Train 29776899779 target_environment=preview",
+      "status": "passed",
+      "evidence": "https://github.com/AO-HyS/aohys.com/actions/runs/29776899779"
+    }
+  ],
+  "pullRequest": {
+    "url": "https://github.com/AO-HyS/aohys.com/pull/99",
+    "status": "open"
+  },
+  "preview": {
+    "status": "ready",
+    "url": "https://15887fdb.aohys-com.pages.dev"
+  },
+  "residualRisks": ["Human review is pending before any merge or promotion decision."],
+  "rollback": {
+    "kind": "revert-product-commit",
+    "command": "git revert aedf2ccad003566ce2807a8469771c6bb7d62329"
+  },
+  "localVisualRecap": {
+    "status": "written",
+    "privatePath": ".development-system/private/AOH-147/aohys.md"
+  },
+  "decision": "ready-for-human"
+}

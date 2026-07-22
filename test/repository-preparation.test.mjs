@@ -56,7 +56,7 @@ async function seedOperationalRepository(prefix = "aohys-repository-audit-", con
       private: true,
       scripts: {
         review: "node -e \"process.exit(0)\"",
-        verify: "node -e \"process.exit(0)\"",
+        "verify:changed": "node -e \"process.exit(0)\"",
         qa: "node -e \"process.exit(0)\"",
         preview: "node -e \"process.exit(0)\"",
       },
@@ -140,6 +140,7 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   assert.equal(audit.externalSideEffects.length, 0);
   assert.deepEqual(await snapshot(repository), before);
   assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
+  assert.equal(audit.commands.validation.script, "verify:changed");
   assert.deepEqual(audit.inventory.instructions.map((instruction) => instruction.path), [
     "AGENTS.md",
     "apps/web/.factory/commands/review.md",
@@ -246,6 +247,166 @@ test("residue detection preserves authorized Impeccable references but still fin
     audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "NutriPlan"),
     true,
   );
+});
+
+test("residue detection distinguishes exclusions, tracker references, and scoped Impeccable integration", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-residue-context-", false);
+  await write(
+    repository,
+    "AGENTS.md",
+    [
+      "# Lumen Console",
+      "Do not inherit The Barber Central release rules.",
+      "No deben quedar referencias operativas heredadas de The Barber Central.",
+      "Los issues se gestionan en el equipo Aohys de Linear.",
+      "Impeccable may guide this repository's visual work, but repository rules always win.",
+      "",
+    ].join("\n"),
+  );
+  await write(
+    repository,
+    "apps/copied/AGENTS.md",
+    [
+      "This project copies AOHYS release rules.",
+      "Use NutriPlan without modification.",
+      "Adopt Impeccable as the global template.",
+      "",
+    ].join("\n"),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.residue.some((entry) => entry.marker === "The Barber Central"), false);
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "AOHYS"),
+    false,
+  );
+  assert.equal(
+    audit.residue.some((entry) => entry.path === "AGENTS.md" && entry.marker === "Impeccable"),
+    false,
+  );
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "The Barber Central" && entry.reason === "explicit-exclusion-rule"
+  ));
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "AOHYS" && entry.reason === "external-coordination-reference"
+  ));
+  assert.ok(audit.allowedReferences.some((entry) =>
+    entry.marker === "Impeccable" && entry.reason === "product-scoped-impeccable-integration"
+  ));
+  assert.ok(audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "AOHYS"));
+  assert.ok(audit.residue.some((entry) => entry.path === "apps/copied/AGENTS.md" && entry.marker === "NutriPlan"));
+  assert.ok(audit.residue.some((entry) => entry.marker === "Impeccable"));
+});
+
+test("monorepo preparation detects nested Convex, local preview aliases, and supported skill mirrors", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-monorepo-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "node -e \"process.exit(0)\"",
+      },
+      dependencies: { react: "19.1.0" },
+    }),
+  );
+  await write(repository, "apps/backend/convex/schema.ts", "export const schema = {};\n");
+  await write(repository, ".claude/skills/domain-review/SKILL.md", "---\nname: domain-review\n---\n");
+
+  const normalized = await normalizeRepository({ repository, confirm: "normalize" });
+  const audit = await auditRepository({ repository });
+
+  assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
+  assert.equal(audit.commands.preview.script, "cloudflare:local");
+  assert.equal(audit.readiness.codex.gaps.includes("inert-skill-installation"), false);
+  assert.deepEqual(normalized.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
+});
+
+test("preview discovery rejects deployment aliases and falls back to a local command", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-preview-safety-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "wrangler deploy --env production",
+        dev: "vite dev",
+      },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.commands.preview.script, "dev");
+  assert.equal(audit.commands.preview.command, "pnpm run dev");
+});
+
+test("preview discovery accepts local servers that compile a release build", async () => {
+  const repository = await seedOperationalRepository("aohys-repository-release-build-preview-", false);
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "lumen-console",
+      private: true,
+      packageManager: "pnpm@11.7.0",
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        qa: "node -e \"process.exit(0)\"",
+        "cloudflare:local": "pnpm run build:release && pnpm exec wrangler pages dev dist/release",
+      },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+
+  assert.equal(audit.commands.preview.script, "cloudflare:local");
+  assert.equal(audit.commands.preview.command, "pnpm run cloudflare:local");
+});
+
+test("preview discovery rejects scripts that invoke a release operation", async () => {
+  for (const releaseCommand of [
+    "pnpm run release",
+    "node scripts/release.mjs",
+    "./scripts/release.sh",
+    "make release",
+  ]) {
+    const repository = await seedOperationalRepository("aohys-repository-release-preview-", false);
+    await write(
+      repository,
+      "package.json",
+      JSON.stringify({
+        name: "lumen-console",
+        private: true,
+        packageManager: "pnpm@11.7.0",
+        scripts: {
+          review: "node -e \"process.exit(0)\"",
+          verify: "node -e \"process.exit(0)\"",
+          qa: "node -e \"process.exit(0)\"",
+          "cloudflare:local": `${releaseCommand} && wrangler pages dev ./dist`,
+          dev: "vite dev",
+        },
+      }),
+    );
+
+    const audit = await auditRepository({ repository });
+
+    assert.equal(audit.commands.preview.script, "dev", releaseCommand);
+  }
 });
 
 test("audit never upgrades file presence to operational load and CLI normalization requires a separate trigger", async () => {
@@ -378,6 +539,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
   assert.equal(contract.product.name, "aurora-studio");
+  assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
   assert.deepEqual(contract.product.stack.sort(), ["convex", "react"]);
   assert.equal(contract.commands.review.script, "review");
@@ -386,7 +548,41 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.commands.preview.script, "preview");
   assert.equal(contract.services.paidActivation, false);
   assert.equal(contract.architectureDiagnostic.effect, "proposal-only");
+  assert.equal(
+    contract.harnesses.t3code.operationalEvidence,
+    "structural-inheritance-not-independently-probed",
+  );
+  assert.equal(contract.lifecycle.automatic.stageSelection, "infer-load-and-run");
+  assert.equal(contract.lifecycle.automatic.progressLimit, "request-authority-and-human-gates");
+  assert.equal(contract.lifecycle.automatic.recommendationEffect, "read-only");
+  assert.equal(contract.lifecycle.implementPreview.command, "flow-implement");
+  assert.equal(contract.lifecycle.implementPreview.terminalState, "ready-for-human");
+  assert.deepEqual(contract.lifecycle.implementPreview.autonomousOperations, [
+    "implement", "test", "validate", "review", "correct", "proportional-qa",
+  ]);
+  assert.equal(contract.lifecycle.implementPreview.checksAreDevelopmentSubsteps, true);
+  assert.equal(contract.lifecycle.implementPreview.externalStateAuthorization, "request-and-repository-policy");
+  assert.equal(contract.lifecycle.implementPreview.deliveryAuthorization, "request-and-repository-policy");
+  assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.2.0");
+  assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
+  assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
+    "drive-development-flow",
+    "wayfinder",
+    "grill-with-docs",
+    "to-spec",
+    "to-tickets",
+    "flow-implement",
+    "flow-code-review",
+  ]);
   assert.match(initialized[".codex/development-system/repository.md"], /React.*Convex/is);
+  for (const command of ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"]) {
+    assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
+    assert.match(initialized[".factory/development-system/repository.md"], new RegExp(`/${command}`));
+  }
+  assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
+  assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
+  assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
   assert.match(initialized[".factory/development-system/repository.md"], /documented equivalent/i);
   assert.deepEqual(first.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
 
@@ -396,6 +592,32 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     const run = spawnSync(process.execPath, ["-e", "process.exit(0)"], { cwd: repository });
     assert.equal(run.status, 0, capability.script);
   }
+});
+
+test("initialization prefers the selective QA script when both selective and legacy QA scripts exist", async () => {
+  const repository = await mkdtemp(resolve(tmpdir(), "aohys-repository-init-"));
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "aurora-studio",
+      private: true,
+      scripts: {
+        review: "node -e \"process.exit(0)\"",
+        validate: "node -e \"process.exit(0)\"",
+        "test:e2e": "node -e \"process.exit(0)\"",
+        "test:e2e:changed": "node -e \"process.exit(0)\"",
+        preview: "node -e \"process.exit(0)\"",
+      },
+      dependencies: { react: "19.1.0", convex: "1.25.0" },
+    }),
+  );
+
+  const normalized = await initializeRepository({ repository, confirm: "initialize" });
+  const contract = JSON.parse((await snapshot(repository))[".development-system/repository.json"]);
+
+  assert.equal(normalized.ok, true);
+  assert.equal(contract.commands.qa.script, "test:e2e:changed");
 });
 
 test("normalization replaces only managed drift and remains deterministic", async () => {
@@ -425,6 +647,36 @@ test("normalization replaces only managed drift and remains deterministic", asyn
   const again = await normalizeRepository({ repository, confirm: "normalize" });
   assert.equal(again.status, "unchanged");
   assert.deepEqual(await snapshot(repository), after);
+});
+
+test("normalization preserves an explicit managed product display name", async () => {
+  const repository = await seedOperationalRepository(
+    "aohys-repository-display-name-",
+    false,
+  );
+  await write(
+    repository,
+    ".development-system/repository.json",
+    JSON.stringify({
+      contractVersion: "0.7.0",
+      product: { name: "Lumen Console Digital" },
+    }),
+  );
+
+  const audit = await auditRepository({ repository });
+  const normalized = await normalizeRepository({
+    repository,
+    confirm: "normalize",
+  });
+  const contract = JSON.parse(
+    await readFile(resolve(repository, ".development-system/repository.json"), "utf8"),
+  );
+
+  assert.equal(audit.product.name, "Lumen Console Digital");
+  assert.equal(audit.product.packageName, "lumen-console");
+  assert.equal(contract.product.name, "Lumen Console Digital");
+  assert.equal(contract.product.packageName, "lumen-console");
+  assert.equal(normalized.ok, true);
 });
 
 test("preparation refuses managed symlink escapes", async () => {

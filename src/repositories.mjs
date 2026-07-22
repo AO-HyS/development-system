@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "0.6.0";
+const contractVersion = "0.8.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -276,15 +276,38 @@ function inventoryEntry(path, contents, evidence) {
   );
   return {
     path,
+    ...(skillPath(path) ? { logicalName: skillLogicalName(path, contents) } : {}),
     states,
     operationalByHarness,
   };
 }
 
-/** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner */
-function selectCommand(scripts, candidates, runner) {
-  const script = candidates.find((candidate) => typeof scripts[candidate] === "string");
+/** @param {string} path @param {string} contents */
+function skillLogicalName(path, contents) {
+  const frontmatter = contents.match(/^---\s*([\s\S]*?)---/m)?.[1] ?? "";
+  const declared = frontmatter.match(/^name\s*:\s*["']?([^\n"']+)["']?\s*$/m)?.[1]?.trim();
+  return declared || basename(dirname(path));
+}
+
+/** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner @param {(command:string) => boolean} [accept] */
+function selectCommand(scripts, candidates, runner, accept = () => true) {
+  const script = candidates.find((candidate) =>
+    typeof scripts[candidate] === "string" && accept(scripts[candidate])
+  );
   return script ? { script, command: `${runner} run ${script}` } : null;
+}
+
+/** @param {string} command */
+function readOnlyPreviewCommand(command) {
+  const withoutSafeReleaseContexts = command
+    .replace(/\b(?:build|compile|bundle)(?::|-)?release\b/gi, "")
+    .replace(
+      /\bwrangler\s+pages\s+dev\s+(?:\.\/)?dist\/release(?=\s|$)/gi,
+      (value) => value.replace(/release/i, ""),
+    );
+  return !/\b(?:deploy|publish|release|production|promote)\b/i.test(
+    withoutSafeReleaseContexts,
+  );
 }
 
 /** @param {any} packageJson @param {string[]} files */
@@ -307,7 +330,7 @@ function detectStack(packageJson, files) {
   if ("react" in dependencies || files.some((path) => /(?:^|\/)vite\.config\.|(?:^|\/)next\.config\./.test(path))) {
     stack.push("react");
   }
-  if ("convex" in dependencies || files.some((path) => path.startsWith("convex/"))) stack.push("convex");
+  if ("convex" in dependencies || files.some((path) => /(?:^|\/)convex\//.test(path))) stack.push("convex");
   return stack;
 }
 
@@ -343,13 +366,32 @@ async function repositoryIdentity(repository, files) {
     stack: detectStack(packageJson, files),
     commands: {
       review: selectCommand(scripts, ["review", "review:ci", "lint", "check"], runner),
-      validation: selectCommand(scripts, ["validate", "verify", "check", "test"], runner),
-      qa: selectCommand(scripts, ["qa", "test:e2e", "e2e", "test"], runner),
-      preview: selectCommand(scripts, ["preview", "preview:local", "dev", "start"], runner),
+      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
+      qa: selectCommand(scripts, ["qa", "test:e2e:changed", "test:e2e", "e2e", "test"], runner),
+      preview: selectCommand(
+        scripts,
+        ["preview", "preview:local", "cloudflare:local", "dev", "start"],
+        runner,
+        readOnlyPreviewCommand,
+      ),
     },
     releasePolicyFiles: files.filter(releasePolicyPath),
     designFiles: files.filter(designPath),
   };
+}
+
+/** @param {string} repository */
+async function managedProductName(repository) {
+  try {
+    const contract = JSON.parse(
+      await readFile(resolve(repository, managedFiles[0]), "utf8"),
+    );
+    const name = contract?.product?.name;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch (error) {
+    if (isMissing(error) || error instanceof SyntaxError) return null;
+    throw error;
+  }
 }
 
 /** @param {string} identityName */
@@ -377,14 +419,12 @@ async function detectResidue(repository, entries, identityName) {
         line.toLowerCase().includes(marker.toLowerCase())
       );
       if (matchingLines.length === 0) continue;
-      const allowed = marker === "Impeccable" && matchingLines.every((line) =>
-        /\b(?:preserve(?:d|s|ing)?|keep|retain(?:ed|s|ing)?|left intact|leave intact|do not (?:change|replace|modify)|must not (?:change|replace|modify)|separate visual|existing (?:visual|mobile|configuration))\b/i.test(line)
-      );
-      if (allowed) {
+      const reasons = matchingLines.map((line) => allowedReferenceReason(line, marker));
+      if (reasons.every(Boolean)) {
         allowedReferences.push({
           path: entry.path,
           marker,
-          reason: "explicit-preservation-rule",
+          reason: /** @type {string} */ (reasons.find((reason) => reason !== "explicit-preservation-rule") ?? reasons[0]),
         });
       } else {
         residue.push({ path: entry.path, marker });
@@ -394,7 +434,25 @@ async function detectResidue(repository, entries, identityName) {
   return { residue, allowedReferences };
 }
 
-/** @param {any} commands @param {Array<{states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
+/** @param {string} line @param {string} marker */
+function allowedReferenceReason(line, marker) {
+  const explicitExclusion = /\b(?:(?:do not|does not|don't|must not|never) (?:use|inherit|copy|adopt|apply|import)|without (?:using|inheriting|copying|adopting|applying|importing)|no (?:usar|usa|heredar|hereda|copiar|copia|adoptar|adopta|aplicar|aplica)|no deben? quedar (?:referencias )?(?:operativas )?heredad\w*|sin (?:usar|heredar|copiar|adoptar|aplicar)|prohibid[oa]s?|fuera de alcance)\b/i;
+  if (explicitExclusion.test(line)) return "explicit-exclusion-rule";
+
+  const externalCoordination = /\b(?:linear|issue tracker|tracker|workspace)\b|\b(?:track|link|coordinate|reference|report|manage|plan|assign|record|gestionar|coordinar|registrar|asignar)\w*\b.*\b(?:team|equipo|project|proyecto|organization|organizaci[oó]n)\b/i;
+  if (externalCoordination.test(line)) return "external-coordination-reference";
+
+  if (marker !== "Impeccable") return undefined;
+
+  const globalTemplate = /\b(?:global template|plantilla global|all (?:products|repositories|repos)|every (?:product|repository|repo)|todos? los (?:productos|repositorios|repos)|copy (?:its|the) rules|copiar (?:sus|las) reglas)\b/i;
+  if (globalTemplate.test(line)) return undefined;
+
+  const preservation = /\b(?:preserve(?:d|s|ing)?|keep|retain(?:ed|s|ing)?|left intact|leave intact|do not (?:change|replace|modify)|must not (?:change|replace|modify)|separate visual|existing (?:visual|mobile|configuration))\b/i;
+  if (preservation.test(line)) return "explicit-preservation-rule";
+  return "product-scoped-impeccable-integration";
+}
+
+/** @param {any} commands @param {Array<{logicalName:string,states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
 function readinessGaps(commands, skills, residue, managed) {
   /** @type {string[]} */
   const gaps = [];
@@ -402,7 +460,12 @@ function readinessGaps(commands, skills, residue, managed) {
     if (!commands[capability]) gaps.push(`missing-${capability}-command`);
   }
   if (residue.length > 0) gaps.push("foreign-product-residue");
-  if (skills.some((skill) => !skill.states.discovered)) gaps.push("inert-skill-installation");
+  const discoveredSkillNames = new Set(
+    skills.filter((skill) => skill.states.discovered).map((skill) => skill.logicalName),
+  );
+  if (skills.some((skill) => !skill.states.discovered && !discoveredSkillNames.has(skill.logicalName))) {
+    gaps.push("inert-skill-installation");
+  }
   if (!managed) gaps.push("development-system-adapter-not-installed");
   return gaps;
 }
@@ -519,6 +582,7 @@ export async function auditRepository(options) {
     }
   }
   const identity = await repositoryIdentity(repository, files);
+  const productName = (await managedProductName(repository)) ?? identity.name;
   /** @type {Record<string, Array<any>>} */
   const inventory = { instructions: [], skills: [], agents: [], droids: [], hooks: [] };
   for (const path of files) {
@@ -565,7 +629,11 @@ export async function auditRepository(options) {
     repositoryRoot: repository,
     repositoryFingerprint,
     fingerprint: fingerprint.evidence,
-    product: { name: identity.name, packageManager: identity.packageManager },
+    product: {
+      name: productName,
+      packageName: identity.name,
+      packageManager: identity.packageManager,
+    },
     stack: identity.stack,
     commands: identity.commands,
     preserved: {
@@ -606,7 +674,23 @@ function adapterContents(audit, harness) {
   const equivalence = harness === "factory"
     ? "Factory uses this documented equivalent when a native Codex-only capability is unavailable."
     : "Codex uses the native repository adapter; T3Code shares this Codex contract and state namespace.";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Commands\n\nReview\n${commandLine(audit.commands.review)}\n\nValidation\n${commandLine(audit.commands.validation)}\n\nQA\n${commandLine(audit.commands.qa)}\n\nPreview\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  const prefix = harness === "factory" ? "/" : "$";
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` infers, loads, and runs the smallest fitting stage as far as the request authorizes. Recommendation-only requests remain read-only, and the router never approves a human gate or expands authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous development loop only inside the request's existing authority and stop at the pinned human boundary. Tests, validation, review, correction, and proportional QA are development substeps and grant no external-state authority.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`0.2.0\` and verify that the active Codex or Factory harness discovers these commands plus \`drive-development-flow\`. T3Code shares the Codex adapter structurally but has no independent live command proof in this release.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+}
+
+/** @param {unknown} contract */
+function repositoryContractContents(contract) {
+  const serialized = JSON.stringify(contract, null, 2);
+  return `${serialized.replace(
+    /\[\n((?:\s+(?:"(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?),?\n)+)\s*\]/g,
+    (match, body, offset, source) => {
+      const values = JSON.parse(`[${body.trim()}]`);
+      const compact = JSON.stringify(values).replaceAll(",", ", ");
+      const lineStart = source.lastIndexOf("\n", offset) + 1;
+      const prefixLength = offset - lineStart;
+      return prefixLength + compact.length <= 80 ? compact : match;
+    },
+  )}\n`;
 }
 
 /** @param {string} repository @param {string} managedPath */
@@ -647,13 +731,61 @@ function repositoryContract(audit, mode) {
     schemaVersion: 1,
     contractVersion,
     preparation: { mode, mutationScope: managedFiles },
-    product: { name: audit.product.name, packageManager: audit.product.packageManager, stack: audit.stack },
+    product: {
+      name: audit.product.name,
+      packageName: audit.product.packageName,
+      packageManager: audit.product.packageManager,
+      stack: audit.stack,
+    },
     preserved: audit.preserved,
     commands: audit.commands,
     harnesses: {
       codex: { adapter: "native", contract: ".codex/development-system/repository.md" },
-      t3code: { adapter: "codex", contract: ".codex/development-system/repository.md" },
+      t3code: {
+        adapter: "codex",
+        contract: ".codex/development-system/repository.md",
+        operationalEvidence: "structural-inheritance-not-independently-probed",
+      },
       factory: { adapter: "documented-equivalent", contract: ".factory/development-system/repository.md" },
+    },
+    lifecycle: {
+      automatic: {
+        router: "drive-development-flow",
+        stageSelection: "infer-load-and-run",
+        progressLimit: "request-authority-and-human-gates",
+        recommendationEffect: "read-only",
+      },
+      explicitCommands: {
+        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
+        factory: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
+      },
+      implementPreview: {
+        command: "flow-implement",
+        requiresNamedTerminalSlice: true,
+        terminalState: "ready-for-human",
+        autonomousOperations: ["implement", "test", "validate", "review", "correct", "proportional-qa"],
+        checksAreDevelopmentSubsteps: true,
+        externalStateAuthorization: "request-and-repository-policy",
+        deliveryAuthorization: "request-and-repository-policy",
+      },
+      promotion: {
+        operations: ["merge", "release", "production"],
+        authorization: "separate-exact-human-request",
+      },
+    },
+    operatorPrerequisites: {
+      skillCatalogVersion: "0.2.0",
+      installationScope: "global",
+      readinessScope: "repository-adapter-only",
+      requiredSkills: [
+        "drive-development-flow",
+        "wayfinder",
+        "grill-with-docs",
+        "to-spec",
+        "to-tickets",
+        "flow-implement",
+        "flow-code-review",
+      ],
     },
     rules: {
       react: audit.stack.includes("react"),
@@ -685,7 +817,9 @@ async function prepareRepository(options, mode) {
   }
   const audit = await auditRepository({ repository });
   const outputs = {
-    [managedFiles[0]]: `${JSON.stringify(repositoryContract(audit, mode), null, 2)}\n`,
+    [managedFiles[0]]: repositoryContractContents(
+      repositoryContract(audit, mode),
+    ),
     [managedFiles[1]]: adapterContents(audit, "codex"),
     [managedFiles[2]]: adapterContents(audit, "factory"),
   };

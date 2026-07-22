@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.7.0",
+  "linearIssue": "AOH-147",
+  "generatedAt": "2026-07-20T23:09:20.000Z",
+  "candidate": {
+    "sourceCommit": "e1d3b1f1458d81edf70173cb07667f7242979a9a",
+    "evidenceCommit": "1750cc1ddc758cd96a7fc3b3e48718a05cfeb49f",
+    "pullRequest": "https://github.com/AO-HyS/development-system/pull/3",
+    "harnessEvidence": {
+      "path": "evidence/pilots-harnesses-live-2026-07-20.json",
+      "sha256": "25f57373fe16068182c38fdbb833e50b5fca5cedf2f5f724e761be18a2723f72"
+    },
+    "skillEvidence": {
+      "path": "evidence/pilots-skills-live-2026-07-20.json",
+      "sha256": "4ca9df98872eb4a394841a13b0c1d15d44575352565743d2cec68175feeaa8b8"
+    }
+  },
+  "pilots": [
+    {
+      "name": "nutri-plan",
+      "attestation": {
+        "path": "evidence/pilots/nutri-plan.json",
+        "sha256": "6090a2ae72faf5a05a8e8cf1584ecd495893a54f606e04894a854fdd951e8789"
+      }
+    },
+    {
+      "name": "the-barber-central",
+      "attestation": {
+        "path": "evidence/pilots/the-barber-central.json",
+        "sha256": "384f6cc63e5d1022b23e4370f5b334f67d69c985f78316d939808e442b55db6b"
+      }
+    },
+    {
+      "name": "aohys.com",
+      "attestation": {
+        "path": "evidence/pilots/aohys.com.json",
+        "sha256": "ed73920906f1d17d457dcfd769912826edbc3459416b35b4e454d4242da0c2cc"
+      }
+    }
+  ],
+  "excludedRepositories": [
+    {
+      "name": "Escuela 360",
+      "readiness": "unready",
+      "inspectedAsReference": false,
+      "modified": false
+    }
+  ],
+  "prohibitedOperations": {
+    "merge": false,
+    "release": false,
+    "production": false,
+    "paidActivation": false,
+    "canonicalHomeSync": false
+  },
+  "decision": "ready-for-human"
+}

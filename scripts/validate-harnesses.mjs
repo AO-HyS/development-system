@@ -1,6 +1,7 @@
 // @ts-check
 
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +13,10 @@ import {
 } from "../src/harnesses.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+  cwd: repositoryRoot,
+  encoding: "utf8",
+}).trim();
 
 /** @param {string} name @param {string | undefined} fallback */
 function argument(name, fallback) {
@@ -28,6 +33,7 @@ const selectedScenario = argument("--scenario", undefined);
 const timeoutMs = Number(argument("--timeout-ms", "60000"));
 if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("--timeout-ms must be positive");
 const registry = JSON.parse(await readFile(resolve(repositoryRoot, "config/0.6.0/harness-adapters.json"), "utf8"));
+const candidateContractVersion = "0.7.0";
 const scenarioDocument = JSON.parse(
   await readFile(resolve(repositoryRoot, "config/0.6.0/operational-scenarios.json"), "utf8"),
 );
@@ -85,12 +91,16 @@ const runtime = createProcessHarnessRuntime({
 const scenarioReports = await Promise.all(
   scenarios.map((scenario) => validateOperationalScenarios({ registry, scenarios: [scenario], runtime })),
 );
-const report = mergeOperationalReports({
-  contractVersion: registry.contractVersion,
-  resumeReport,
-  scenarios,
-  scenarioReports,
-});
+const report = {
+  ...mergeOperationalReports({
+    contractVersion: candidateContractVersion,
+    resumeReport,
+    scenarios,
+    scenarioReports,
+  }),
+  adapterContractVersion: registry.contractVersion,
+  sourceCommit,
+};
 if (output) {
   const outputPath = resolve(output);
   await mkdir(dirname(outputPath), { recursive: true });

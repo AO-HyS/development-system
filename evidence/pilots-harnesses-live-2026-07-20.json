@@ -1,0 +1,989 @@
+{
+  "ok": true,
+  "operation": "validate-harnesses",
+  "contractVersion": "0.7.0",
+  "coverage": [
+    "ao",
+    "mature-barber",
+    "mature-nutriplan",
+    "nested-aohys",
+    "simple"
+  ],
+  "results": [
+    {
+      "scenario": "ao-root",
+      "fixture": "ao",
+      "cwd": "/Users/corrortiz/Documents/AO",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "user-provided activated drive-development-flow SKILL.md",
+          "AGENTS.md instructions supplied in conversation",
+          "developer runtime instructions"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration"
+        ],
+        "rosterSource": "developer runtime instructions",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "Repository inspection, additional tool calls, delegation, and lifecycle transitions were explicitly prohibited; classification required recommendation only.",
+        "externalSideEffects": [],
+        "externalState": "unchanged; no repository, tracker, lifecycle artifact, or external system was accessed or modified",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none; recommended wayfinder without loading or executing the stage",
+        "authorization": "discovery, classification, and recommendation only",
+        "externalSideEffects": [],
+        "terminalState": "large unclear initiative classified for wayfinder; no lifecycle transition performed"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: ao-root. Fixture class: ao. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "ao-root",
+      "fixture": "ao",
+      "cwd": "/Users/corrortiz/Documents/AO",
+      "surface": "factory",
+      "adapter": "factory",
+      "stateNamespace": "factory",
+      "executable": "/Applications/Factory.app/Contents/Resources/bin/droid",
+      "version": "0.175.1",
+      "model": "Opus 4.8",
+      "reasoning": "Applied the drive-development-flow stage-selection table without searching the repository or calling other tools; matched \"large unclear initiative\" to the foggy-path entry (unresolved destination, boundaries, or dependency order) and treated \"recommend, do not execute\" as discovery/recommendation-only authorization.",
+      "role": "drive-development-flow lifecycle router (recommendation only)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "/Users/corrortiz/.factory/AGENTS.md (Personal Global Instructions)",
+          "/Users/corrortiz/.factory/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration"
+        ],
+        "rosterSource": "drive-development-flow SKILL.md \"Select the stage\" table and happy-path routes",
+        "hookStatus": "none",
+        "hookEvidence": "No lifecycle hooks were exposed or triggered; only skill instructions and system reminders were present",
+        "externalSideEffects": [],
+        "externalState": "no external side effects; no repository search or tool writes performed",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none (recommendation only; no stage skill loaded or executed)",
+        "authorization": "discussion/recommendation only, no execution authorized",
+        "externalSideEffects": [],
+        "terminalState": "stopped after recommending next stage; no edits or lifecycle transition"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO --output-format json /drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: ao-root. Fixture class: ao. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "ao-root",
+      "fixture": "ao",
+      "cwd": "/Users/corrortiz/Documents/AO",
+      "surface": "t3code",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "Personal Codex Instructions from AGENTS.md",
+          "activated drive-development-flow skill supplied in the request"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration"
+        ],
+        "rosterSource": "developer-provided agent roster",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "evidence-only request prohibited repository search, other tool calls, execution, and lifecycle transitions",
+        "externalSideEffects": [],
+        "externalState": "repository and external systems were not inspected or changed",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommended wayfinder as the next stage; no stage was loaded or executed",
+        "authorization": "discovery and recommendation only",
+        "externalSideEffects": [],
+        "terminalState": "recommendation complete with repository and external state untouched"
+      },
+      "diagnostics": [
+        "drive-development-flow was actually loaded from the skill content supplied in the request",
+        "wayfinder was selected because the initiative is explicitly large and unclear",
+        "wayfinder was not exposed in the visible skill catalog and was not loaded because the request prohibited further tools and lifecycle transitions",
+        "no skill-catalog truncation, omission, or scanner warning was exposed",
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: ao-root. Fixture class: ao. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "simple-repository",
+      "fixture": "simple",
+      "cwd": "/var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "user-provided AGENTS.md instructions",
+          "activated drive-development-flow skill"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "developer-provided agent roster",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "Recommendation-only classification authorized no lifecycle transition; repository instructions also prohibit writes, persisted lifecycle state, and external contact.",
+        "externalSideEffects": [],
+        "externalState": "unchanged; no external systems contacted",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none; next stage recommended but not loaded or executed",
+        "authorization": "discovery and recommendation only",
+        "externalSideEffects": [],
+        "terminalState": "recommendation returned with repository and external state unchanged"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: simple-repository. Fixture class: simple. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "simple-repository",
+      "fixture": "simple",
+      "cwd": "/var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw",
+      "surface": "factory",
+      "adapter": "factory",
+      "stateNamespace": "factory",
+      "executable": "/Applications/Factory.app/Contents/Resources/bin/droid",
+      "version": "0.175.1",
+      "model": "Opus 4.8",
+      "reasoning": "The natural-language action describes a large, unclear initiative with an unresolved destination, boundaries, or dependency order, which the stage-selection table maps to the foggy path entry. The request is to recommend only, so authorization covers discovery and recommendation but not any lifecycle transition or repository search.",
+      "role": "drive-development-flow lifecycle router (stage selection only)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "/private/var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw/AGENTS.md",
+          "~/.factory/AGENTS.md",
+          "/Users/corrortiz/.factory/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "wayfinder",
+          "to-spec",
+          "to-tickets",
+          "flow-implement",
+          "flow-code-review"
+        ],
+        "rosterSource": "drive-development-flow SKILL.md stage-selection table and happy-path routes",
+        "hookStatus": "none",
+        "hookEvidence": "No lifecycle hooks were exposed or invoked; classification relied solely on reading the activated skill instructions.",
+        "externalSideEffects": [],
+        "externalState": "read-only; no external systems contacted"
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none (recommendation only, no stage loaded or executed)",
+        "authorization": "discovery, clarification, and recommendation only; execution withheld per request and skill authorization boundaries",
+        "externalSideEffects": [],
+        "terminalState": "read-only; no files written, no lifecycle state persisted, no external contact"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw --output-format json /drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: simple-repository. Fixture class: simple. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "simple-repository",
+      "fixture": "simple",
+      "cwd": "/var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw",
+      "surface": "t3code",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "AGENTS.md instructions supplied in request context",
+          "/Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md read from disk"
+        ],
+        "catalogSkills": [
+          "drive-development-flow: catalog-exposed and actually loaded",
+          "coding-orchestration: catalog-exposed but not loaded",
+          "wayfinder: referenced by the loaded router but not catalog-exposed or loaded"
+        ],
+        "rosterSource": "developer-provided agent roster; no agent was spawned",
+        "hookStatus": "none",
+        "hookEvidence": "No lifecycle hook was exposed or invoked; the request authorized observation and recommendation only.",
+        "externalSideEffects": [],
+        "externalState": "Repository unsearched and unchanged; no external system contacted.",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none",
+        "authorization": "Recommend and classify only; execution and lifecycle transitions explicitly prohibited.",
+        "externalSideEffects": [],
+        "terminalState": "wayfinder recommended for the large unclear initiative; its stage skill was not loaded or executed."
+      },
+      "diagnostics": [
+        "The loaded routing contract maps a huge, foggy effort with unresolved destination, boundaries, or dependency order to wayfinder.",
+        "No skill-catalog truncation, omission, scanner warning, or other catalog-overflow signal was exposed.",
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /var/folders/w6/prp30f7j2hs5rpdk_y8pvrsr0000gn/T/aohys-simple-repository-qDjRUw $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: simple-repository. Fixture class: simple. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "nutriplan-read-only",
+      "fixture": "mature-nutriplan",
+      "cwd": "/Users/corrortiz/Documents/AO/nutri-plan",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "repository AGENTS.md supplied in prompt",
+          "activated drive-development-flow skill supplied in prompt"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "developer-provided agent roster",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "coding-orchestration composition applies to non-trivial repository work, but the explicit evidence-only contract prohibited repository searches, additional skill loads, tools, and execution",
+        "externalSideEffects": [],
+        "externalState": "repository unobserved; no lifecycle transition or external mutation occurred",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommended only; stage not entered",
+        "authorization": "discovery, clarification, and recommendations only; execution was explicitly prohibited",
+        "externalSideEffects": [],
+        "terminalState": "next stage classified as wayfinder with all repository and external state unchanged"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/nutri-plan $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: nutriplan-read-only. Fixture class: mature-nutriplan. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "nutriplan-read-only",
+      "fixture": "mature-nutriplan",
+      "cwd": "/Users/corrortiz/Documents/AO/nutri-plan",
+      "surface": "factory",
+      "adapter": "factory",
+      "stateNamespace": "factory",
+      "executable": "/Applications/Factory.app/Contents/Resources/bin/droid",
+      "version": "0.175.1",
+      "model": "Opus 4.8",
+      "reasoning": "Classified the natural-language action ('Recommend the next stage for a large unclear initiative; do not execute it') as a routing-only request. A large, unclear initiative with an unresolved destination maps to the wayfinder stage per the drive-development-flow stage-selection table. The request explicitly says do not execute, so authorization is limited to discovery/recommendation and no lifecycle transition is triggered.",
+      "role": "drive-development-flow lifecycle router (parent orchestrator)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "/Users/corrortiz/.factory/skills/drive-development-flow/SKILL.md",
+          "project AGENTS.md (/Users/corrortiz/Documents/AO/nutri-plan/AGENTS.md)",
+          "personal ~/.factory/AGENTS.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration",
+          "wayfinder",
+          "to-spec",
+          "to-tickets",
+          "flow-implement",
+          "flow-code-review"
+        ],
+        "rosterSource": "available-skills system reminder (Skill tool catalog)",
+        "hookStatus": "none",
+        "hookEvidence": "No lifecycle hook was invoked; task is read-only classification and the skill was provided directly via the activation system-notification",
+        "externalSideEffects": [],
+        "externalState": "no external writes; no tools other than the activated skill were invoked"
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none",
+        "authorization": "discovery and recommendation only; execution explicitly withheld",
+        "externalSideEffects": [],
+        "terminalState": "recommendation returned without lifecycle transition or repository access"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/nutri-plan --output-format json /drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: nutriplan-read-only. Fixture class: mature-nutriplan. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "nutriplan-read-only",
+      "fixture": "mature-nutriplan",
+      "cwd": "/Users/corrortiz/Documents/AO/nutri-plan",
+      "surface": "t3code",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "primary agent (/root)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "activated drive-development-flow SKILL.md supplied in the conversation",
+          "repository AGENTS.md supplied in the conversation"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "developer-provided runtime agent roster",
+        "hookStatus": "none",
+        "hookEvidence": "no hook invocation or hook output was exposed",
+        "externalSideEffects": [],
+        "externalState": "read-only observation completed with no lifecycle transition",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommendation only; no lifecycle transition executed",
+        "authorization": "discovery, classification, and recommendation only",
+        "externalSideEffects": [],
+        "terminalState": "next stage classified as wayfinder; repository and external systems unchanged"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/nutri-plan $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: nutriplan-read-only. Fixture class: mature-nutriplan. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "barber-read-only",
+      "fixture": "mature-barber",
+      "cwd": "/Users/corrortiz/Documents/AO/the-barber-central",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary Codex agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "system and developer instructions",
+          "repository AGENTS.md supplied in the conversation",
+          "activated drive-development-flow SKILL.md supplied and fully read from /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow catalog-exposed and actually loaded",
+          "coding-orchestration catalog-exposed but not loaded because further tool use was prohibited"
+        ],
+        "rosterSource": "developer-provided agent roster and supplied AGENTS.md policy; no roster files inspected",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "The activated skill ordinarily composes with coding-orchestration inside a Git repository, but the explicit observable-contract instruction prohibited repository searches and all other tool calls after reading drive-development-flow.",
+        "externalSideEffects": [],
+        "externalState": "Repository and external systems remained unobserved and unchanged.",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "Recommended wayfinder as the next stage; no lifecycle transition was executed.",
+        "authorization": "Discovery and recommendation only; no specification, ticket, implementation, review, repository, or external-state mutation was authorized.",
+        "externalSideEffects": [],
+        "terminalState": "Read-only recommendation completed with no lifecycle or external-state transition."
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/the-barber-central $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: barber-read-only. Fixture class: mature-barber. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "barber-read-only",
+      "fixture": "mature-barber",
+      "cwd": "/Users/corrortiz/Documents/AO/the-barber-central",
+      "surface": "t3code",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "activated /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md supplied in the conversation"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "system-provided agent roster",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "read-only observation requested; no lifecycle transition or execution was authorized",
+        "externalSideEffects": [],
+        "externalState": "repository and lifecycle state unchanged",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommended only; not loaded or executed",
+        "authorization": "discovery, classification, and recommendation only",
+        "externalSideEffects": [],
+        "terminalState": "next stage identified as wayfinder; no lifecycle transition performed"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/the-barber-central $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: barber-read-only. Fixture class: mature-barber. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "aohys-nested-read-only",
+      "fixture": "nested-aohys",
+      "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "primary Codex agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "AGENTS.md instructions provided in the prompt",
+          "activated drive-development-flow skill provided in the prompt"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "${CODEX_HOME:-$HOME/.codex}/agents declared by AGENTS.md; roster not read",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "Evidence-only request prohibited repository search, additional tool calls, and lifecycle transitions; the recommended stage was classified without loading or executing it.",
+        "externalSideEffects": [],
+        "externalState": "Repository and external systems unchanged; recommendation only.",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none",
+        "authorization": "Discovery, classification, and recommendation only; no spec, tickets, implementation, review, publication, or deployment authorized.",
+        "externalSideEffects": [],
+        "terminalState": "Recommended wayfinder as the next stage for the large unclear initiative; no lifecycle transition executed."
+      },
+      "diagnostics": [
+        "drive-development-flow was actually loaded from the user-provided activated skill content.",
+        "The selected wayfinder stage was not loaded because the request explicitly prohibited any other tool call or lifecycle transition.",
+        "No skill-catalog truncation, omission, scanner warning, or overflow signal was exposed.",
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/aohys/apps/dashboard $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: aohys-nested-read-only. Fixture class: nested-aohys. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "aohys-nested-read-only",
+      "fixture": "nested-aohys",
+      "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+      "surface": "factory",
+      "adapter": "factory",
+      "stateNamespace": "factory",
+      "executable": "/Applications/Factory.app/Contents/Resources/bin/droid",
+      "version": "0.175.1",
+      "model": "Opus 4.8",
+      "reasoning": "medium/default (no explicit reasoning-effort signal exposed beyond default)",
+      "role": "parent orchestrator (drive-development-flow router)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "/Users/corrortiz/.factory/skills/drive-development-flow/SKILL.md",
+          "/Users/corrortiz/Documents/AO/aohys/AGENTS.md",
+          "/Users/corrortiz/.factory/AGENTS.md",
+          "Droid Exec Mode system prompt"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration",
+          "wayfinder",
+          "to-spec",
+          "to-tickets",
+          "flow-implement",
+          "flow-code-review"
+        ],
+        "rosterSource": "global coding-orchestration skill roster under ~/.factory/droids (referenced, not loaded per read-only constraint)",
+        "hookStatus": "none",
+        "hookEvidence": "No lifecycle hook fired; instructions constrained to reading the activated skill with no repository search or additional tool calls",
+        "externalSideEffects": [],
+        "externalState": "unchanged (no files edited, no tracker/PR/deploy actions, no commands run)",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none (recommendation only; no lifecycle transition triggered)",
+        "authorization": "discovery/recommendation only; execution withheld per action and drive-development-flow authorization boundaries",
+        "externalSideEffects": [],
+        "terminalState": "read-only observation returned; repository and external systems untouched"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/aohys/apps/dashboard --output-format json /drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: aohys-nested-read-only. Fixture class: nested-aohys. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "aohys-nested-read-only",
+      "fixture": "nested-aohys",
+      "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+      "surface": "t3code",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.145.0-alpha.18",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "/root primary agent",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "user-provided AGENTS.md for /Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+          "activated /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration"
+        ],
+        "rosterSource": "${CODEX_HOME:-$HOME/.codex}/agents declared by AGENTS.md; roster not loaded",
+        "hookStatus": "safe-skip",
+        "hookEvidence": "Evidence-only classification authorized no execution, repository search, additional skill load, lifecycle transition, or tool call.",
+        "externalSideEffects": [],
+        "externalState": "Read-only observation completed with repository and external systems unchanged.",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "Recommended wayfinder as the next stage; no stage was loaded or executed.",
+        "authorization": "Discovery and recommendation only; no specs, tickets, code changes, commits, pushes, pull requests, merges, deployments, or external writes authorized.",
+        "externalSideEffects": [],
+        "terminalState": "Stopped after evidence-only lifecycle classification with no transition."
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/aohys/apps/dashboard $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: aohys-nested-read-only. Fixture class: nested-aohys. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    },
+    {
+      "scenario": "barber-read-only",
+      "fixture": "mature-barber",
+      "cwd": "/Users/corrortiz/Documents/AO/the-barber-central",
+      "surface": "factory",
+      "adapter": "factory",
+      "stateNamespace": "factory",
+      "executable": "/Applications/Factory.app/Contents/Resources/bin/droid",
+      "version": "0.175.1",
+      "model": "Opus 4.8",
+      "reasoning": "stage-selection routing from drive-development-flow; matched a large, unclear initiative to the foggy-path entry stage without executing it",
+      "role": "read-only lifecycle router (advisor)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "/Users/corrortiz/Documents/AO/the-barber-central/AGENTS.md",
+          "~/.factory/AGENTS.md",
+          "/Users/corrortiz/.factory/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow",
+          "coding-orchestration",
+          "improve"
+        ],
+        "rosterSource": "~/.factory/droids (personal custom droid roster)",
+        "hookStatus": "none",
+        "hookEvidence": "no lifecycle hook was triggered; scenario is read-only classification with no tool execution beyond reading the activated skill",
+        "externalSideEffects": [],
+        "externalState": "no external writes; no tracker, VCS, or deploy interaction",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none (recommendation only; no stage was loaded or executed)",
+        "authorization": "discovery and recommendation only; discussion does not authorize execution",
+        "externalSideEffects": [],
+        "terminalState": "stage recommended, not entered or executed"
+      },
+      "diagnostics": [
+        {
+          "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/the-barber-central --output-format json /drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: barber-read-only. Fixture class: mature-barber. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
+    }
+  ],
+  "failures": [],
+  "recoveredFailures": [
+    {
+      "scenario": "barber-read-only",
+      "surface": "factory",
+      "source": "harness-runtime",
+      "message": "Operational checks failed: externalState"
+    }
+  ],
+  "attempts": [
+    {
+      "source": "current-run",
+      "ok": false
+    },
+    {
+      "source": "current-run",
+      "ok": true
+    }
+  ],
+  "adapterContractVersion": "0.6.0",
+  "sourceCommit": "e1d3b1f1458d81edf70173cb07667f7242979a9a"
+}
