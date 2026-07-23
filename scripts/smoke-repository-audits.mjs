@@ -40,13 +40,16 @@ function gitHead(repository) {
 const results = [];
 for (const name of targets) {
   const repository = resolve(projectsRoot, name);
+  const headBefore = gitHead(repository);
   const before = gitStatus(repository);
   const audit = await auditRepository({ repository });
   const after = gitStatus(repository);
+  const headAfter = gitHead(repository);
   results.push({
     repository: name,
     repositoryRoot: repository,
-    headCommit: gitHead(repository),
+    headCommit: headBefore,
+    headCommitAfter: headAfter,
     gitStatusHash: createHash("sha256").update(before).digest("hex"),
     compatibility: "completed-without-crash",
     fingerprint: audit.repositoryFingerprint,
@@ -54,6 +57,7 @@ for (const name of targets) {
     excludedPaths: audit.fingerprint.excluded.length,
     boundedLargeFiles: audit.fingerprint.boundedFiles.length,
     externalSideEffects: audit.externalSideEffects,
+    gitHeadUnchanged: headBefore === headAfter,
     gitStatusUnchanged: before === after,
     rolloutReadinessClaim: false,
   });
@@ -67,7 +71,10 @@ const report = {
   mode: "read-only-compatibility-evidence",
   rolloutAuthorized: false,
   ok: results.every((result) =>
-    result.externalSideEffects.length === 0 && result.gitStatusUnchanged && !result.rolloutReadinessClaim
+    result.externalSideEffects.length === 0 &&
+    result.gitHeadUnchanged &&
+    result.gitStatusUnchanged &&
+    !result.rolloutReadinessClaim
   ),
   results,
 };

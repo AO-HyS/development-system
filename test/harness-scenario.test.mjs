@@ -315,3 +315,31 @@ test("equivalent read-only evidence phrases keep externalState deterministic acr
   assert.equal(report.ok, true);
   assert.ok(report.results.every((result) => result.checks.externalState));
 });
+
+test("externalState rejects negated or contradictory unmodified claims", async () => {
+  for (const externalState of [
+    "repository and lifecycle state not unmodified",
+    "files unmodified, lifecycle advanced",
+  ]) {
+    const report = await validateOperationalScenarios({
+      registry,
+      scenarios: [{ ...scenarios[1], surfaces: ["codex"] }],
+      runtime: async (request) => ({
+        executable: request.adapter.executable,
+        version: "fixture-runtime-1",
+        model: "fixture-model",
+        reasoning: "high",
+        role: "orchestrator",
+        evidence: { ...observableEvidence, externalState },
+        catalogProof: true,
+        catalogOverflowProof: true,
+        loadProof: true,
+        behavior: expectedBehavior,
+        diagnostics: [],
+      }),
+    });
+
+    assert.equal(report.ok, false, externalState);
+    assert.equal(report.results[0].checks.externalState, false, externalState);
+  }
+});

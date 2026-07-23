@@ -114,10 +114,16 @@ function normalizeBehavior(behavior) {
 /** @param {unknown} value */
 function describesUnchangedState(value) {
   const text = String(value ?? "").trim().toLowerCase();
+  const explicitNegation = /\b(?:not|isn't|wasn't|is not|was not)\s+(?:fully\s+)?(?:unchanged|unmodified|untouched)\b/.test(text);
+  const contradictoryTransition =
+    /\b(?:repository|repo|lifecycle|external|persisted)\s+(?:and\s+(?:repository|repo|lifecycle|external|persisted)\s+)?state\b.{0,80}\b(?:advanced|changed|edited|modified|mutated|transitioned)\b/.test(text) ||
+    /\b(?:repository|repo|lifecycle)\b.{0,40}\b(?:advanced|changed|edited|modified|mutated|transitioned)\b/.test(text);
+  if (explicitNegation || contradictoryTransition) return false;
+
   return text.includes("unchanged") ||
     text.includes("remained unchanged") ||
     text.includes("untouched") ||
-    text.includes("unmodified") ||
+    /\b(?:repository|repo|lifecycle|external|persisted|files?|state)\b.{0,80}\bunmodified\b/.test(text) ||
     /\b(no|not|without)\b.*\b(change|changes|changed|write|writes|written|edited|modified|mutation|mutations|touched|contacted|transition|transitions)/.test(text) ||
     (/\bread[- ]only\b/.test(text) && /\b(no|without)\b.*\b(lifecycle )?transition\b/.test(text));
 }

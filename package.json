@@ -13,6 +13,7 @@
     "install:local": "./bin/development-system install --version 0.8.0",
     "measure:v2": "node ./scripts/measure-v2.mjs",
     "operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
+    "recertify:isolated": "node ./scripts/recertify-isolated-scenario.mjs",
     "harnesses:validate": "node ./scripts/validate-harnesses.mjs",
     "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
     "implement-preview": "./bin/development-system implement-preview",
