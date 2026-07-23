@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.8.0",
+  "catalogVersion": "0.2.0",
+  "generatedAt": "2026-07-23T22:11:49.042Z",
+  "sourceCommit": "df804b78c2cbdbf31a810b21bece9136070a57ae",
+  "repositoryMutations": [],
+  "harnesses": {
+    "codex": [
+      {
+        "skill": "drive-development-flow",
+        "behaviorSignature": [
+          "smallest fitting route",
+          "only as far"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "“Use the smallest fitting route”\n\n“move only as far as the user's request authorizes”",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:10:36.014948Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 35375: Operation not permitted (os error 1)",
+          "2026-07-23T22:10:36.564590Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:36.564640Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:36.564645Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:41.126146Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:41.126239Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response"
+        ]
+      },
+      {
+        "skill": "wayfinder",
+        "behaviorSignature": [
+          "fog of war",
+          "decision tickets"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "fog of war\n\ndecision tickets",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:10:42.456977Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 35737: Operation not permitted (os error 1)",
+          "2026-07-23T22:10:43.166566Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:43.166661Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:43.166676Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:47.604016Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response",
+          "2026-07-23T22:10:47.604062Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "grill-with-docs",
+        "behaviorSignature": [
+          "grilling",
+          "domain-modeling"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "`/grilling` and `/domain-modeling`",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:10:48.923217Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 36080: Operation not permitted (os error 1)",
+          "2026-07-23T22:10:49.654377Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:49.654447Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:49.654451Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:53.539758Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:53.539827Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response"
+        ]
+      },
+      {
+        "skill": "to-spec",
+        "behaviorSignature": [
+          "seams",
+          "ready-for-agent"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "these seams match their expectations\n\nready-for-agent",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:10:54.766199Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 36438: Operation not permitted (os error 1)",
+          "2026-07-23T22:10:55.508398Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:55.508431Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:10:55.508434Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:02.709558Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response",
+          "2026-07-23T22:11:02.712109Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "to-tickets",
+        "behaviorSignature": [
+          "tracer bullet",
+          "blocking edges"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "tracer bullet\n\nblocking edges",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:11:03.982846Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 36830: Operation not permitted (os error 1)",
+          "2026-07-23T22:11:04.702970Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:04.703035Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:04.703045Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:09.596298Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:09.596335Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response"
+        ]
+      },
+      {
+        "skill": "flow-implement",
+        "behaviorSignature": [
+          "one binary done condition",
+          "flow-code-review"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "one binary done condition; flow-code-review",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:11:11.331299Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 37187: Operation not permitted (os error 1)",
+          "2026-07-23T22:11:13.055361Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:13.055391Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:13.055394Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:17.878448Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response",
+          "2026-07-23T22:11:17.878519Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      },
+      {
+        "skill": "flow-code-review",
+        "behaviorSignature": [
+          "Standards",
+          "Spec"
+        ],
+        "commandPrefix": "$",
+        "sandbox": "codex-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Standards\n\nSpec",
+        "activationObserved": null,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "2026-07-23T22:11:19.152148Z  WARN codex_rmcp_client::stdio_server_launcher: Failed to terminate MCP process group 37559: Operation not permitted (os error 1)",
+          "2026-07-23T22:11:19.862881Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh failed; reauthorization required by RMCP compatibility policy error=OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:19.862940Z ERROR codex_rmcp_client::oauth::refresh_transaction: error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:19.862948Z  WARN codex_rmcp_client::oauth::refresh_transaction: MCP OAuth refresh transaction failed server_name=mercadopago-mcp-server refresh_reason=\"expiry\" error=failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client",
+          "2026-07-23T22:11:23.981467Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: handshaking with MCP server failed: connection closed: initialize response",
+          "2026-07-23T22:11:23.981515Z  WARN codex_mcp::rmcp_client: failed to initialize MCP client during shutdown: MCP startup failed: failed to refresh OAuth tokens for server mercadopago-mcp-server: OAuth token refresh failed: Server returned error response: invalid_client"
+        ]
+      }
+    ],
+    "factory": [
+      {
+        "skill": "drive-development-flow",
+        "behaviorSignature": [
+          "smallest fitting route",
+          "only as far"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Use the smallest fitting route; move only as far as the user's request authorizes.",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"drive-development-flow\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: What exact selection principle chooses a stage, and how far may that stage move?"
+        ]
+      },
+      {
+        "skill": "wayfinder",
+        "behaviorSignature": [
+          "fog of war",
+          "decision tickets"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Fog of war; decision tickets.",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"wayfinder\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: What exact name is given to still-unclear future decisions, and what kind of tickets resolve the known decisions?"
+        ]
+      },
+      {
+        "skill": "grill-with-docs",
+        "behaviorSignature": [
+          "grilling",
+          "domain-modeling"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "`/grilling` and `/domain-modeling`",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"grill-with-docs\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: Which two named skills must this skill run together?"
+        ]
+      },
+      {
+        "skill": "to-spec",
+        "behaviorSignature": [
+          "seams",
+          "ready-for-agent"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Seams match their expectations; `ready-for-agent`.",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"to-spec\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: What must be checked with the user before the document is written, and which triage label is applied when it is published?"
+        ]
+      },
+      {
+        "skill": "to-tickets",
+        "behaviorSignature": [
+          "tracer bullet",
+          "blocking edges"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Tracer bullet; blocking edges",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"to-tickets\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: Which two exact terms describe the slice style and the dependency relationships each ticket declares?"
+        ]
+      },
+      {
+        "skill": "flow-implement",
+        "behaviorSignature": [
+          "one binary done condition",
+          "flow-code-review"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "\"one binary done condition\"\n\n\"flow-code-review\"",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"flow-implement\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: What exact unit of work must be pinned before editing, and which skill is loaded when that unit is complete?"
+        ]
+      },
+      {
+        "skill": "flow-code-review",
+        "behaviorSignature": [
+          "Standards",
+          "Spec"
+        ],
+        "commandPrefix": "/",
+        "sandbox": "factory-default-read-only",
+        "exitCode": 0,
+        "timedOut": false,
+        "response": "Standards, Spec",
+        "activationObserved": true,
+        "influenceObserved": true,
+        "passed": true,
+        "stderrSummary": [
+          "Skill \"flow-code-review\" activated: Read the complete skill instructions but do not execute the workflow, write files, persist state, or contact external services. Answer this question with the two relevant exact short phrases from the skill and no extra explanation: What are the exact names of the two blind review axes?"
+        ]
+      }
+    ]
+  },
+  "passed": true
+}

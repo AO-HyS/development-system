@@ -1,0 +1,300 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.8.0",
+  "generatedAt": "2026-07-23T23:39:33.968Z",
+  "startedAt": "2026-07-23T23:39:24.477Z",
+  "durationMs": 9491,
+  "operation": "isolated-scenario-recertification",
+  "sourceCommit": "8efa6500750eda5191988f35f979cb61810050eb",
+  "realHomeReadOnly": true,
+  "realHomeUnchanged": true,
+  "scenario": {
+    "command": "pnpm run scenario",
+    "exitCode": 0,
+    "signal": null,
+    "error": null,
+    "testSummary": {
+      "tests": 17,
+      "pass": 17,
+      "fail": 0
+    },
+    "markers": {
+      "installation": true,
+      "skills": true,
+      "lifecycle": true,
+      "repositoryPreparation": true,
+      "acceptanceTests": true
+    }
+  },
+  "homeBefore": {
+    "ok": true,
+    "status": "healthy",
+    "contractVersion": "0.8.0",
+    "source": {
+      "repository": "https://github.com/AO-HyS/development-system",
+      "commit": "e04ad18f415372aa9adf2181706fa6eb2f5c4166"
+    },
+    "artifacts": [
+      {
+        "id": "dual-interface-contract.codex",
+        "destination": ".codex/development-system/contract.md",
+        "sha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "status": "ok"
+      },
+      {
+        "id": "dual-interface-contract.factory",
+        "destination": ".factory/development-system/contract.md",
+        "sha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "status": "ok"
+      },
+      {
+        "id": "operator-interface.codex",
+        "destination": ".codex/development-system/operator-interface.md",
+        "sha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "status": "ok"
+      },
+      {
+        "id": "operator-interface.factory",
+        "destination": ".factory/development-system/operator-interface.md",
+        "sha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "status": "ok"
+      },
+      {
+        "id": "harness-adapters.codex",
+        "destination": ".codex/development-system/harness-adapters.json",
+        "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "status": "ok"
+      },
+      {
+        "id": "harness-adapters.factory",
+        "destination": ".factory/development-system/harness-adapters.json",
+        "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "status": "ok"
+      },
+      {
+        "id": "capability-roster.codex",
+        "destination": ".codex/development-system/capability-roster.json",
+        "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "status": "ok"
+      },
+      {
+        "id": "capability-roster.factory",
+        "destination": ".factory/development-system/capability-roster.json",
+        "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "status": "ok"
+      },
+      {
+        "id": "benchmark-suite.codex",
+        "destination": ".codex/development-system/benchmark-suite.json",
+        "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "status": "ok"
+      },
+      {
+        "id": "benchmark-suite.factory",
+        "destination": ".factory/development-system/benchmark-suite.json",
+        "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "status": "ok"
+      },
+      {
+        "id": "skill-catalog.codex",
+        "destination": ".codex/development-system/skills.json",
+        "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "status": "ok"
+      },
+      {
+        "id": "skill-catalog.factory",
+        "destination": ".factory/development-system/skills.json",
+        "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "status": "ok"
+      },
+      {
+        "id": "global-validator.shared",
+        "destination": ".agents/scripts/validate-development-system.py",
+        "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+        "actualSha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+        "status": "ok"
+      }
+    ],
+    "mirrors": [
+      {
+        "artifact": "dual-interface-contract.factory",
+        "expectedMirrorOf": "dual-interface-contract.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "operator-interface.factory",
+        "expectedMirrorOf": "operator-interface.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "harness-adapters.factory",
+        "expectedMirrorOf": "harness-adapters.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "capability-roster.factory",
+        "expectedMirrorOf": "capability-roster.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "benchmark-suite.factory",
+        "expectedMirrorOf": "benchmark-suite.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "skill-catalog.factory",
+        "expectedMirrorOf": "skill-catalog.codex",
+        "status": "ok"
+      }
+    ],
+    "problems": []
+  },
+  "homeAfter": {
+    "ok": true,
+    "status": "healthy",
+    "contractVersion": "0.8.0",
+    "source": {
+      "repository": "https://github.com/AO-HyS/development-system",
+      "commit": "e04ad18f415372aa9adf2181706fa6eb2f5c4166"
+    },
+    "artifacts": [
+      {
+        "id": "dual-interface-contract.codex",
+        "destination": ".codex/development-system/contract.md",
+        "sha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "status": "ok"
+      },
+      {
+        "id": "dual-interface-contract.factory",
+        "destination": ".factory/development-system/contract.md",
+        "sha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+        "status": "ok"
+      },
+      {
+        "id": "operator-interface.codex",
+        "destination": ".codex/development-system/operator-interface.md",
+        "sha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "status": "ok"
+      },
+      {
+        "id": "operator-interface.factory",
+        "destination": ".factory/development-system/operator-interface.md",
+        "sha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+        "status": "ok"
+      },
+      {
+        "id": "harness-adapters.codex",
+        "destination": ".codex/development-system/harness-adapters.json",
+        "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "status": "ok"
+      },
+      {
+        "id": "harness-adapters.factory",
+        "destination": ".factory/development-system/harness-adapters.json",
+        "sha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+        "status": "ok"
+      },
+      {
+        "id": "capability-roster.codex",
+        "destination": ".codex/development-system/capability-roster.json",
+        "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "status": "ok"
+      },
+      {
+        "id": "capability-roster.factory",
+        "destination": ".factory/development-system/capability-roster.json",
+        "sha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+        "status": "ok"
+      },
+      {
+        "id": "benchmark-suite.codex",
+        "destination": ".codex/development-system/benchmark-suite.json",
+        "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "status": "ok"
+      },
+      {
+        "id": "benchmark-suite.factory",
+        "destination": ".factory/development-system/benchmark-suite.json",
+        "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+        "status": "ok"
+      },
+      {
+        "id": "skill-catalog.codex",
+        "destination": ".codex/development-system/skills.json",
+        "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "status": "ok"
+      },
+      {
+        "id": "skill-catalog.factory",
+        "destination": ".factory/development-system/skills.json",
+        "sha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+        "status": "ok"
+      },
+      {
+        "id": "global-validator.shared",
+        "destination": ".agents/scripts/validate-development-system.py",
+        "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+        "actualSha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+        "status": "ok"
+      }
+    ],
+    "mirrors": [
+      {
+        "artifact": "dual-interface-contract.factory",
+        "expectedMirrorOf": "dual-interface-contract.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "operator-interface.factory",
+        "expectedMirrorOf": "operator-interface.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "harness-adapters.factory",
+        "expectedMirrorOf": "harness-adapters.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "capability-roster.factory",
+        "expectedMirrorOf": "capability-roster.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "benchmark-suite.factory",
+        "expectedMirrorOf": "benchmark-suite.codex",
+        "status": "ok"
+      },
+      {
+        "artifact": "skill-catalog.factory",
+        "expectedMirrorOf": "skill-catalog.codex",
+        "status": "ok"
+      }
+    ],
+    "problems": []
+  },
+  "ok": true
+}

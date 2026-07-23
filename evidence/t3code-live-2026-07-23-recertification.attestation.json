@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "operation": "t3code-evidence-attestation",
+  "evaluatedAt": "2026-07-23T23:43:34.904Z",
+  "evaluatorCommit": "bbe6ae8b14df324ff86de6beb7133a363c4122cf",
+  "capturedSourceCommit": "71464794a4ff0a560f9b2611ed15c77f04dfb4f4",
+  "inputSha256": "7c5056017c3542238003de968f357ec483fa1c9130cd42e97f4a5ef9963a3cc5",
+  "inputBytes": 98633,
+  "ok": true
+}

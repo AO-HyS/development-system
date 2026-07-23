@@ -290,7 +290,7 @@ test("nested T3Code accepts explicit no-state evidence without a manual rerun", 
 test("equivalent read-only evidence phrases keep externalState deterministic across Factory and T3Code", async () => {
   const phrases = new Map([
     ["factory", "read-only; no repository search or other tool calls issued, no files edited"],
-    ["t3code", "recommendation returned without repository inspection or lifecycle transition"],
+    ["t3code", "repository and lifecycle state unmodified; no tools called"],
   ]);
   const report = await validateOperationalScenarios({
     registry,
@@ -314,4 +314,32 @@ test("equivalent read-only evidence phrases keep externalState deterministic acr
 
   assert.equal(report.ok, true);
   assert.ok(report.results.every((result) => result.checks.externalState));
+});
+
+test("externalState rejects negated or contradictory unmodified claims", async () => {
+  for (const externalState of [
+    "repository and lifecycle state not unmodified",
+    "files unmodified, lifecycle advanced",
+  ]) {
+    const report = await validateOperationalScenarios({
+      registry,
+      scenarios: [{ ...scenarios[1], surfaces: ["codex"] }],
+      runtime: async (request) => ({
+        executable: request.adapter.executable,
+        version: "fixture-runtime-1",
+        model: "fixture-model",
+        reasoning: "high",
+        role: "orchestrator",
+        evidence: { ...observableEvidence, externalState },
+        catalogProof: true,
+        catalogOverflowProof: true,
+        loadProof: true,
+        behavior: expectedBehavior,
+        diagnostics: [],
+      }),
+    });
+
+    assert.equal(report.ok, false, externalState);
+    assert.equal(report.results[0].checks.externalState, false, externalState);
+  }
 });
