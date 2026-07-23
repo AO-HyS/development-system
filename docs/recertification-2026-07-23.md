@@ -40,9 +40,11 @@ live client surface over the Codex provider, not a third physical skill variant.
   controlled behavior signatures, repository HEAD/status/fingerprint, and all
   13 managed HOME artifacts plus 40 skill variants before and after. The host
   audit ran with structured arguments and T3Code read its hash-bound result from
-  the isolated data directory. Its immutable companion
+  the isolated data directory. Direct file-read approvals are constrained to
+  exact canonical skill/evidence files and bound by SHA-256; arbitrary HOME
+  reads and symlink escapes fail closed. Its immutable companion
   `evidence/t3code-live-2026-07-23-recertification.attestation.json` binds the
-  98,633-byte capture by SHA-256 to evaluator commit `8efa650` and passes. The
+  98,633-byte capture by SHA-256 to evaluator commit `bbe6ae8` and passes. The
   capture's original `ok: false` is retained: the capture-time evaluator
   required an approval event even when the runtime auto-classified every
   observed command as safe, and rejected the equivalent phrase `binary done
