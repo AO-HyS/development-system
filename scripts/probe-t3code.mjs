@@ -106,8 +106,8 @@ function managedHomeState() {
 }
 
 /** @param {any[]} activities */
-function completedToolEvidence(activities) {
-  return activities
+function observedToolEvidence(activities) {
+  const commands = activities
     .filter((activity) => activity.kind === "tool.completed")
     .map((activity) => activity.payload?.data?.item)
     .filter((item) => item?.type === "commandExecution")
@@ -123,6 +123,10 @@ function completedToolEvidence(activities) {
       })),
       policyActions: classifyReadOnlyProbeCommand(item.command) ?? [],
     }));
+  return {
+    completedCommands: commands.filter((entry) => Number.isInteger(entry.exitCode)),
+    blockedCommands: commands.filter((entry) => !Number.isInteger(entry.exitCode)),
+  };
 }
 
 async function reservePort() {
@@ -301,6 +305,9 @@ try {
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
         "For shell inspection use only cat, find without -exec/-delete, head, jq, ls, nl, pwd, rg, sed, sha256sum, " +
         "shasum, stat, tail, test, wc, git diff/rev-parse/status, or the Development System audit commands; " +
+        "send every shell command as a single line. You MUST run " +
+        `./bin/development-system audit-skills --version 0.2.0 --evidence ${skillEvidence} --json ` +
+        "and base skillAuditHealthy on that command's output. " +
         "do not use redirects, command substitution, scripting runtimes, network clients, or mutation commands. " +
         "Do not change files or external state. Return only one compact JSON object with keys harness, routerLoaded, " +
         "lifecycleSkills, influenceSignatures, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
@@ -364,7 +371,7 @@ try {
   const latestContext = [...(thread.activities ?? [])].reverse().find(
     (/** @type {any} */ activity) => activity.kind === "context-window.updated",
   )?.payload;
-  const completedCommands = completedToolEvidence(thread.activities ?? []);
+  const commandEvidence = observedToolEvidence(thread.activities ?? []);
   const finishedAt = new Date();
 
   report = {
@@ -394,8 +401,10 @@ try {
         }
       : null,
     toolEvidence: {
-      completedCommandCount: completedCommands.length,
-      completedCommands,
+      completedCommandCount: commandEvidence.completedCommands.length,
+      blockedCommandCount: commandEvidence.blockedCommands.length,
+      completedCommands: commandEvidence.completedCommands,
+      blockedCommands: commandEvidence.blockedCommands,
     },
     stateInvariants: {
       repository: {

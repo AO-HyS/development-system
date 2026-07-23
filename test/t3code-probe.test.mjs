@@ -24,6 +24,7 @@ function report(skillAuditHealthy = true) {
   };
   const skillPaths = [
     "drive-development-flow",
+    "coding-orchestration",
     ...requiredT3CodeLifecycleSkills,
   ].map((skill) => `/Users/test/.agents/skills/${skill}/SKILL.md`);
   const command =
@@ -32,7 +33,11 @@ function report(skillAuditHealthy = true) {
   return {
     requestedModel: { model: "gpt-5.6-sol" },
     requestedRuntimeMode: "approval-required",
-    approvalEvidence: [],
+    approvalEvidence: [{
+      requestKind: "command",
+      detail: "cat /Users/test/.agents/skills/wayfinder/SKILL.md",
+      decision: "accept",
+    }],
     observedThreadModel: { model: "gpt-5.6-sol" },
     observed: {
       routerLoaded: true,
@@ -109,6 +114,7 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
     true,
   );
   assert.equal(isReadOnlyProbeCommand("rg -n \"wayfinder|to-spec\" docs"), true);
+  assert.equal(isReadOnlyProbeCommand("/bin/zsh -lc pwd"), true);
   assert.equal(
     isReadOnlyProbeCommand(`/bin/zsh -lc "sed -n '1,4p' docs/spec.md && rg -n \\"wayfinder|to-spec\\" docs"`),
     true,
@@ -123,6 +129,24 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
   assert.equal(isReadOnlyProbeCommand("cat docs/spec.md & touch /tmp/side-effect"), false);
   assert.equal(isReadOnlyProbeCommand("rg --pre 'touch /tmp/side-effect' pattern ."), false);
   assert.equal(isReadOnlyProbeCommand("cat docs/spec.md > /tmp/copy"), false);
+});
+
+test("T3Code probe accepts policy-declined unsafe requests only when they never execute", () => {
+  const declined = report();
+  declined.approvalEvidence.push({
+    requestKind: "command",
+    detail: "touch /tmp/side-effect",
+    decision: "decline",
+  });
+  declined.toolEvidence.blockedCommands = [{
+    command: "touch /tmp/side-effect",
+    exitCode: null,
+    policyActions: [],
+  }];
+  assert.equal(evaluateT3CodeProbe(declined), true);
+
+  declined.approvalEvidence[1].decision = "accept";
+  assert.equal(evaluateT3CodeProbe(declined), false);
 });
 
 test("bounded JSON requests abort a stalled T3Code endpoint", async () => {

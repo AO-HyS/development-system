@@ -34,9 +34,13 @@ export function classifyReadOnlyProbeCommand(command) {
   if (unwrapped.startsWith("/bin/zsh -lc ")) {
     unwrapped = unwrapped.slice("/bin/zsh -lc ".length).trim();
     const quote = unwrapped[0];
-    if (!["'", '"'].includes(quote) || unwrapped.at(-1) !== quote) return null;
-    unwrapped = unwrapped.slice(1, -1);
-    if (quote === '"') unwrapped = unwrapped.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    if (["'", '"'].includes(quote)) {
+      if (unwrapped.at(-1) !== quote) return null;
+      unwrapped = unwrapped.slice(1, -1);
+      if (quote === '"') unwrapped = unwrapped.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+    } else if (/\s/.test(unwrapped)) {
+      return null;
+    }
   }
   const segments = splitShellSegments(unwrapped);
   if (!segments || segments.length === 0) return null;
@@ -189,6 +193,7 @@ function hasIndependentLoadEvidence(report) {
   const commands = report?.toolEvidence?.completedCommands ?? [];
   const commandText = commands.map((/** @type {any} */ entry) => entry.command).join("\n");
   const routerRead = commandText.includes("/drive-development-flow/SKILL.md");
+  const orchestrationRead = commandText.includes("/coding-orchestration/SKILL.md");
   const lifecycleReads = requiredT3CodeLifecycleSkills.every((skill) =>
     commandText.includes(`/${skill}/SKILL.md`)
   );
@@ -211,7 +216,8 @@ function hasIndependentLoadEvidence(report) {
     return classification !== null &&
       JSON.stringify(classification) === JSON.stringify(entry.policyActions);
   });
-  return routerRead && lifecycleReads && skillAudit && commandsSucceeded && classifiedActions && commandsAllowed;
+  return routerRead && orchestrationRead && lifecycleReads && skillAudit &&
+    commandsSucceeded && classifiedActions && commandsAllowed;
 }
 
 /** @param {any} report */
@@ -223,6 +229,10 @@ export function evaluateT3CodeProbe(report) {
     observed.skillAuditHealthy?.status === true;
   const routerLoaded =
     observed.routerLoaded === true ||
+    (
+      observed.routerLoaded?.name === "drive-development-flow" &&
+      observed.routerLoaded?.loaded === true
+    ) ||
     (
       Array.isArray(observed.routerLoaded) &&
       observed.routerLoaded.includes("drive-development-flow") &&
@@ -244,9 +254,16 @@ export function evaluateT3CodeProbe(report) {
     observed.model === report?.requestedModel?.model &&
     report?.observedThreadModel?.model === report?.requestedModel?.model &&
     report?.requestedRuntimeMode === "approval-required" &&
-    (report?.approvalEvidence ?? []).every((/** @type {any} */ approval) =>
+    Array.isArray(report?.approvalEvidence) &&
+    report.approvalEvidence.length > 0 &&
+    report.approvalEvidence.every((/** @type {any} */ approval) =>
       ["command", "file-read"].includes(approval.requestKind) &&
-      approval.decision === "accept"
+      ["accept", "decline"].includes(approval.decision) &&
+      (
+        approval.decision === "decline" ||
+        approval.requestKind === "file-read" ||
+        isReadOnlyProbeCommand(approval.detail)
+      )
     ) &&
     report?.stateInvariants?.repository?.gitHeadUnchanged === true &&
     report?.stateInvariants?.repository?.gitStatusUnchanged === true &&
