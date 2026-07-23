@@ -127,7 +127,7 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
   assert.equal(isReadOnlyProbeCommand("sed -n '1,80p' docs/spec.md"), true);
   assert.equal(
     isReadOnlyProbeCommand("./bin/development-system audit-skills --evidence evidence/current.json --json | jq '.ok'"),
-    true,
+    false,
   );
   assert.equal(isReadOnlyProbeCommand("rg -n \"wayfinder|to-spec\" docs"), true);
   assert.equal(isReadOnlyProbeCommand("/bin/zsh -lc pwd"), true);

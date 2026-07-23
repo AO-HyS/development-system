@@ -151,7 +151,7 @@ function classifyReadOnlyArgv(argv) {
     ) return null;
     return "read";
   }
-  if (["cat", "head", "jq", "nl", "sha256sum", "shasum", "stat", "tail", "test", "wc"].includes(executable)) {
+  if (["cat", "head", "nl", "sha256sum", "shasum", "stat", "tail", "test", "wc"].includes(executable)) {
     if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
     return "read";
   }

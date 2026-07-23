@@ -326,7 +326,7 @@ try {
         "Then explicitly invoke and load wayfinder, grill-with-docs, to-spec, to-tickets, flow-implement, and flow-code-review " +
         "only to inspect their operational contracts; do not execute their mutations or create artifacts. " +
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
-        "For shell inspection use only cat, find without -exec/-delete, head, jq, ls, nl, pwd, rg, sed, sha256sum, " +
+        "For shell inspection use only cat, find without -exec/-delete, head, ls, nl, rg, sed, sha256sum, " +
         "shasum, stat, tail, test, wc, git diff/rev-parse/status, or the Development System audit commands; " +
         "send every shell command as a single line. Do not run pwd or git commands; the host measures repository state. " +
         `You MUST read ${hostAuditPath} with cat and base skillAuditHealthy on that host-generated audit output. ` +
