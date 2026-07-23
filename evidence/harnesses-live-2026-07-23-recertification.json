@@ -1,5 +1,5 @@
 {
-  "ok": false,
+  "ok": true,
   "operation": "validate-harnesses",
   "contractVersion": "0.7.0",
   "coverage": [
@@ -791,68 +791,6 @@
       "scenario": "aohys-nested-read-only",
       "fixture": "nested-aohys",
       "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
-      "surface": "codex",
-      "adapter": "codex",
-      "stateNamespace": "codex",
-      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
-      "version": "codex-cli 0.146.0-alpha.3",
-      "model": "GPT-5",
-      "reasoning": "not exposed",
-      "role": "/root primary agent",
-      "checks": {
-        "instructions": true,
-        "catalog": true,
-        "load": true,
-        "hooks": true,
-        "roster": true,
-        "modelRole": true,
-        "sideEffects": true,
-        "externalState": false,
-        "noOverflow": true
-      },
-      "evidence": {
-        "instructionSources": [
-          "user-provided nested AOHYS AGENTS.md instructions",
-          "activated /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md"
-        ],
-        "catalogSkills": [
-          "drive-development-flow"
-        ],
-        "rosterSource": "${CODEX_HOME:-$HOME/.codex}/agents declared as the roster source of truth; not inspected",
-        "hookStatus": "active",
-        "hookEvidence": "The repository instructions require drive-development-flow for software initiatives, and the explicitly activated skill was fully exposed; the requested evidence-only boundary safely prevented loading the selected stage or triggering it.",
-        "externalSideEffects": [],
-        "externalState": "repository and lifecycle state unmodified; no tools called",
-        "catalogOverflow": false
-      },
-      "behavior": {
-        "selectedStage": "wayfinder",
-        "transition": "recommend-only",
-        "authorization": "none",
-        "externalSideEffects": [],
-        "terminalState": "unchanged"
-      },
-      "rawBehavior": {
-        "selectedStage": "wayfinder",
-        "transition": "recommended only; not loaded or executed",
-        "authorization": "discovery, classification, and recommendation only; lifecycle transitions and repository actions explicitly unauthorized",
-        "externalSideEffects": [],
-        "terminalState": "read-only recommendation with the initiative remaining at its current lifecycle state"
-      },
-      "diagnostics": [
-        "Actual load was observed for drive-development-flow only. The selected wayfinder stage was not loaded because the scenario prohibited repository searches and all other tool calls.",
-        {
-          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/aohys/apps/dashboard $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: aohys-nested-read-only. Fixture class: nested-aohys. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
-          "exitCode": 0
-        }
-      ],
-      "externalSideEffects": [],
-      "status": "failed"
-    },
-    {
-      "scenario": "aohys-nested-read-only",
-      "fixture": "nested-aohys",
-      "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
       "surface": "factory",
       "adapter": "factory",
       "stateNamespace": "factory",
@@ -973,9 +911,74 @@
       ],
       "externalSideEffects": [],
       "status": "passed"
+    },
+    {
+      "scenario": "aohys-nested-read-only",
+      "fixture": "nested-aohys",
+      "cwd": "/Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+      "surface": "codex",
+      "adapter": "codex",
+      "stateNamespace": "codex",
+      "executable": "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "version": "codex-cli 0.146.0-alpha.3",
+      "model": "GPT-5",
+      "reasoning": "not exposed",
+      "role": "primary agent (/root)",
+      "checks": {
+        "instructions": true,
+        "catalog": true,
+        "load": true,
+        "hooks": true,
+        "roster": true,
+        "modelRole": true,
+        "sideEffects": true,
+        "externalState": true,
+        "noOverflow": true
+      },
+      "evidence": {
+        "instructionSources": [
+          "injected AGENTS.md instructions for /Users/corrortiz/Documents/AO/aohys/apps/dashboard",
+          "user-activated /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md"
+        ],
+        "catalogSkills": [
+          "drive-development-flow"
+        ],
+        "rosterSource": "not inspected under the no-other-tools constraint",
+        "hookStatus": "none",
+        "hookEvidence": "no hook execution or hook signal was exposed",
+        "externalSideEffects": [],
+        "externalState": "repository unsearched; no files, lifecycle artifacts, trackers, branches, or external systems changed",
+        "catalogOverflow": false
+      },
+      "behavior": {
+        "selectedStage": "wayfinder",
+        "transition": "recommend-only",
+        "authorization": "none",
+        "externalSideEffects": [],
+        "terminalState": "unchanged"
+      },
+      "rawBehavior": {
+        "selectedStage": "wayfinder",
+        "transition": "none; recommendation only",
+        "authorization": "discovery, clarification, and recommendations only",
+        "externalSideEffects": [],
+        "terminalState": "wayfinder recommended for the large unclear initiative; not loaded or executed"
+      },
+      "diagnostics": [
+        "drive-development-flow was actually loaded from the user-provided activated skill content",
+        "wayfinder was selected from the loaded routing table but was not exposed in the supplied skill catalog and was not loaded because repository searches and additional tool calls were prohibited",
+        "no skill-catalog truncation, omission scanner warning, or overflow warning was exposed",
+        {
+          "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/aohys/apps/dashboard $drive-development-flow Observe this repository through the observable development contract. Return evidence only; do not edit files or trigger any lifecycle transition. Read the activated drive-development-flow skill, then do not search the repository or call any other tools. Scenario: aohys-nested-read-only. Fixture class: nested-aohys. Natural-language action to classify: Recommend the next stage for a large unclear initiative; do not execute it. Report instructions, catalog exposure, actual load, hooks, roster, model/role, external side effects, external state, catalog overflow, and the observable lifecycle behavior. For catalogOverflow, inspect only skill-catalog truncation, omission, or scanner warnings. Lazy/deferred tool-schema loading is not skill-catalog overflow. Report false when no skill-catalog warning was exposed, true when one was, and null only when that signal is unavailable. Also report the first three named stages of the ordinary happy path as loadSignature. Reply with one JSON object using this exact shape; report observations, never pass/fail booleans: {\"model\":\"observed model\",\"reasoning\":\"observed reasoning\",\"role\":\"observed role\",\"loadSignature\":[\"stage 1\",\"stage 2\",\"stage 3\"],\"evidence\":{\"instructionSources\":[\"source read\"],\"catalogSkills\":[\"critical skill observed\"],\"rosterSource\":\"source used\",\"hookStatus\":\"active, safe-skip, or none\",\"hookEvidence\":\"observed reason\",\"externalSideEffects\":[\"observed side effect, if any\"],\"externalState\":\"observed terminal state\",\"catalogOverflow\":null},\"behavior\":{\"selectedStage\":\"observed stage\",\"transition\":\"observed transition\",\"authorization\":\"observed authorization\",\"externalSideEffects\":[\"observed side effect, if any\"],\"terminalState\":\"observed state\"},\"diagnostics\":[]}",
+          "exitCode": 0
+        }
+      ],
+      "externalSideEffects": [],
+      "status": "passed"
     }
   ],
-  "failures": [
+  "failures": [],
+  "recoveredFailures": [
     {
       "scenario": "aohys-nested-read-only",
       "surface": "codex",
@@ -983,13 +986,16 @@
       "message": "Operational checks failed: externalState"
     }
   ],
-  "recoveredFailures": [],
   "attempts": [
     {
       "source": "current-run",
       "ok": false
+    },
+    {
+      "source": "current-run",
+      "ok": true
     }
   ],
   "adapterContractVersion": "0.6.0",
-  "sourceCommit": "df804b78c2cbdbf31a810b21bece9136070a57ae"
+  "sourceCommit": "298b79c9959e07b8b6160d32d90e663498a361e5"
 }

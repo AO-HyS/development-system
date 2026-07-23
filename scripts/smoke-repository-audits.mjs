@@ -1,6 +1,7 @@
 // @ts-check
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +15,7 @@ const projectsRoot = resolve(
 );
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
-const targets = ["nutri-plan", "the-barber-central", "aohys"];
+const targets = ["nutri-plan", "the-barber-central", "aohys", "eteria"];
 
 /** @param {string} repository */
 function gitStatus(repository) {
@@ -26,6 +27,16 @@ function gitStatus(repository) {
   return run.stdout;
 }
 
+/** @param {string} repository */
+function gitHead(repository) {
+  const run = spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: repository,
+    encoding: "utf8",
+  });
+  if (run.status !== 0) throw new Error(run.stderr || `git rev-parse failed for ${repository}`);
+  return run.stdout.trim();
+}
+
 const results = [];
 for (const name of targets) {
   const repository = resolve(projectsRoot, name);
@@ -35,6 +46,8 @@ for (const name of targets) {
   results.push({
     repository: name,
     repositoryRoot: repository,
+    headCommit: gitHead(repository),
+    gitStatusHash: createHash("sha256").update(before).digest("hex"),
     compatibility: "completed-without-crash",
     fingerprint: audit.repositoryFingerprint,
     fingerprintPolicy: audit.fingerprint.policy,
