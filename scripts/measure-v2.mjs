@@ -50,8 +50,8 @@ async function main() {
   if (!output) throw new Error(`--output is required\n\n${usage}`);
   const thresholdText = value(args, "--sample-threshold");
   const sampleThreshold = thresholdText === undefined ? 3 : Number(thresholdText);
-  if (!Number.isSafeInteger(sampleThreshold) || sampleThreshold < 1) {
-    throw new Error("--sample-threshold must be a positive integer");
+  if (!Number.isSafeInteger(sampleThreshold) || sampleThreshold < 3) {
+    throw new Error("--sample-threshold must be an integer of at least 3");
   }
   const scorecard = buildMeasurementScorecard(records, {
     baseline: value(args, "--baseline") ?? "baseline",

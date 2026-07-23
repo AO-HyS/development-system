@@ -70,6 +70,8 @@ function record(overrides = {}) {
       final: { passed: true, findings: 0 },
       reviews: 1,
       corrections: 1,
+      correctionMs: 60_000,
+      slop: 0,
       regressions: 0,
       reopens: 0,
       ci: "passed",
@@ -118,6 +120,24 @@ test("operational strings are identifiers or hashes and rollback references are 
   assert.ok(errors.some((error) => /fixtureHash.*SHA-256/i.test(error)));
   assert.ok(errors.some((error) => /selectionReason.*identifier/i.test(error)));
   assert.ok(errors.some((error) => /rollbackRef.*git:|roster:/i.test(error)));
+});
+
+test("resolved models are explicit and routing thresholds cannot fall below three", () => {
+  const unresolved = record({
+    agents: [{
+      ...record().agents[0],
+      harness: "factory",
+      requestedModel: "inherit",
+      resolvedModel: "inherit",
+    }],
+  });
+  assert.ok(validateRunRecord(unresolved).some(
+    (error) => /resolvedModel.*explicit runtime model/i.test(error)
+  ));
+  assert.throws(
+    () => buildMeasurementScorecard([record()], { sampleThreshold: 2 }),
+    /at least 3/i,
+  );
 });
 
 test("prompt, secret, clinical, and private-content fields are rejected recursively", () => {
@@ -225,7 +245,7 @@ test("scorecard aggregates daily and rolling seven-day routes, preserves unknown
   const scorecard = buildMeasurementScorecard(records, {
     baseline: "baseline",
     treatment: "treatment",
-    sampleThreshold: 2,
+    sampleThreshold: 3,
     rollbackRef: ROLLBACK_REF,
     currentRosterHash: ROSTER_HASH,
   });
@@ -261,7 +281,8 @@ test("scorecard aggregates daily and rolling seven-day routes, preserves unknown
   assert.equal(latestOverall.averageTimeToVerifiedMs, null);
   assert.equal(latestOverall.evidence.timeout, 1);
   assert.equal(scorecard.comparisons[0].recommendation.status, "insufficient-evidence");
-  assert.equal(scorecard.comparisons[0].recommendation.sampleThreshold, 2);
+  assert.equal(scorecard.comparisons[0].recommendation.sampleThreshold, 3);
+  assert.equal(scorecard.comparisons[0].baseline.evidence.timeout, 1);
   assert.equal(scorecard.rosterMutation, "none");
 });
 
@@ -365,7 +386,6 @@ test("different logical route slots never mix into one comparison", () => {
       }],
     }),
   ], {
-    sampleThreshold: 1,
     currentRosterHash: ROSTER_HASH,
     rollbackRef: ROLLBACK_REF,
   });
@@ -420,7 +440,39 @@ test("eligibility excludes provisional agent outcomes even when the enclosing ru
     rollbackRef: ROLLBACK_REF,
   });
   assert.equal(scorecard.comparisons[0].treatment.validatedRunCount, 0);
+  assert.equal(scorecard.comparisons[0].treatment.evidence.provisional, 3);
   assert.equal(scorecard.comparisons[0].recommendation.status, "insufficient-evidence");
+});
+
+test("comparison identity comes from validated comparable evidence", () => {
+  const records = [record({
+    runId: "provisional-leading-record",
+    cohort: "other",
+    repository: { ...record().repository, commit: "ffffffffffffffffffffffffffffffffffffffff" },
+    evidenceStatus: "provisional",
+    agents: [{ ...record().agents[0], evidenceStatus: "provisional" }],
+  })];
+  for (let index = 0; index < 3; index += 1) {
+    records.push(record({ runId: `identity-baseline-${index}` }));
+    records.push(record({
+      runId: `identity-treatment-${index}`,
+      cohort: "treatment",
+      rollbackRef: ROLLBACK_REF,
+      agents: [{ ...record().agents[0], durationMs: 300_000 }],
+      quality: {
+        ...record().quality,
+        firstAttempt: { passed: true, findings: 0 },
+        corrections: 0,
+        correctionMs: 0,
+      },
+    }));
+  }
+  const comparison = buildMeasurementScorecard(records, {
+    currentRosterHash: ROSTER_HASH,
+    rollbackRef: ROLLBACK_REF,
+  }).comparisons[0];
+  assert.equal(comparison.recommendation.status, "eligible");
+  assert.equal(comparison.comparisonIdentity.repositoryCommit, record().repository.commit);
 });
 
 test("validated but failed agent outcomes cannot recommend a route", () => {
@@ -720,7 +772,7 @@ test("rollback evidence from a provisional treatment run cannot authorize a vali
   const scorecard = buildMeasurementScorecard(records, {
     currentRosterHash: ROSTER_HASH,
   });
-  assert.equal(scorecard.comparisons[0].recommendation.status, "missing-recovery-reference");
+  assert.equal(scorecard.comparisons[0].recommendation.status, "quality-gate-failed");
   assert.equal(scorecard.comparisons[0].recommendation.rollbackRef, null);
 });
 

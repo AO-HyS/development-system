@@ -101,6 +101,8 @@ are no narrative/payload fields.
     "final": { "passed": true, "findings": 0 },
     "reviews": 1,
     "corrections": 1,
+    "correctionMs": 120000,
+    "slop": 0,
     "regressions": 0,
     "reopens": 0,
     "ci": "passed",
@@ -131,6 +133,11 @@ is known.
 `waitMs`, agent `tokens`, and `costUsd` are nullable when the harness does not
 report them. Zero must not stand in for unavailable telemetry. Any sum or mean
 that contains an unavailable value also reports `null`.
+
+`quality.correctionMs` records verified time spent correcting review or gate
+failures. `quality.slop` is a content-free count of detected low-quality
+artifacts. Both participate in routing safety; narrative findings stay outside
+the record.
 
 `rollbackRef` is nullable or one of two immutable forms:
 
@@ -178,9 +185,10 @@ Within a comparison group, run-level quality, wait, and verification timing are
 deduplicated by `runId`; per-agent result, duration, tokens, cost, model, and
 evidence remain agent outcomes.
 The scorecard reports first/final-pass, CI, QA, preview-readiness and evidence
-rates; mean duration, wait, and time-to-verified; nullable token/cost sums; and
-mean reviews, corrections, regressions, reopens, and escaped defects. Daily,
-rolling-seven-day, comparison JSON, and static HTML retain these signals.
+rates; mean duration, wait, time-to-verified, correction time, and slop;
+nullable token/cost sums; and mean reviews, corrections, regressions, reopens,
+and escaped defects. Daily, rolling-seven-day, comparison JSON, and static HTML
+retain these signals.
 Daily/rolling aggregates include nullable totals; baseline/treatment
 comparisons deliberately omit total tokens and total cost and expose their
 nullable per-agent averages instead.
@@ -191,8 +199,9 @@ The default minimum is **3 validated baseline and 3 validated treatment runs
 per repository/capability/route-slot**. Eligibility includes an agent-run only when
 both its run and agent outcome are `validated`. Multiple agents in one run do
 not inflate the distinct-run eligibility count. Provisional, incomplete,
-timeout, and permission-blocked outcomes remain visible but do not satisfy the
-screening minimum. Below either minimum the result is
+timeout, and permission-blocked outcomes remain visible in comparison evidence
+and metrics but do not satisfy the screening minimum. The CLI and module reject
+thresholds below three. Below either minimum the result is
 `insufficient-evidence` and the only action is to collect more samples.
 
 At or above the threshold, treatment is eligible only when:
@@ -202,8 +211,8 @@ At or above the threshold, treatment is eligible only when:
 2. treatment agent-success, CI-readiness, and QA pass rates are `1`;
 3. preview-readiness is `1`: a required preview passed, while a
    `not-required` gate may have `not-run` or `not-required` evidence;
-4. final-pass is `1`, first/final-pass rates do not regress, and mean
-   corrections do not increase;
+4. final-pass is `1`, first/final-pass rates do not regress, mean corrections
+   and correction time do not increase, and treatment slop is zero;
 5. mean regressions, reopens, and escaped defects are zero and no worse than
    baseline;
 6. treatment mean TTV does not exceed known baseline mean TTV; a known baseline

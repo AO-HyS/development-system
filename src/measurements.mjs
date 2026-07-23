@@ -46,6 +46,8 @@ const qualityFields = new Set([
   "final",
   "reviews",
   "corrections",
+  "correctionMs",
+  "slop",
   "regressions",
   "reopens",
   "ci",
@@ -284,6 +286,9 @@ export function validateRunRecord(value) {
         requireIdentifier(agent, field, path, errors);
       }
       requireIdentifier(agent, "selectionReason", path, errors, codeIdentifierPattern);
+      if (agent.resolvedModel === "inherit") {
+        errors.push(`${path}resolvedModel must identify the explicit runtime model`);
+      }
       requireCount(agent, "durationMs", path, errors);
       requireNullableCount(agent, "tokens", path, errors);
       if (agent.costUsd !== null && (typeof agent.costUsd !== "number" || !Number.isFinite(agent.costUsd) || agent.costUsd < 0)) {
@@ -318,7 +323,15 @@ export function validateRunRecord(value) {
         requireCount(attempt, "findings", path, errors);
       }
     }
-    for (const field of ["reviews", "corrections", "regressions", "reopens", "escapedDefects"]) {
+    for (const field of [
+      "reviews",
+      "corrections",
+      "correctionMs",
+      "slop",
+      "regressions",
+      "reopens",
+      "escapedDefects",
+    ]) {
       requireCount(value.quality, field, "quality.", errors);
     }
     for (const field of ["ci", "qa", "preview"]) {
@@ -499,6 +512,8 @@ function metrics(items) {
     averageCostUsd: nullableAverage(costs),
     averageReviews: runAverage((item) => item.record.quality.reviews),
     averageCorrections: runAverage((item) => item.record.quality.corrections),
+    averageCorrectionMs: runAverage((item) => item.record.quality.correctionMs),
+    averageSlop: runAverage((item) => item.record.quality.slop),
     averageRegressions: runAverage((item) => item.record.quality.regressions),
     averageReopens: runAverage((item) => item.record.quality.reopens),
     averageEscapedDefects: runAverage((item) => item.record.quality.escapedDefects),
@@ -605,6 +620,8 @@ function metricDeltas(left, right) {
     averageTokens: difference("averageTokens"),
     averageCostUsd: difference("averageCostUsd"),
     averageCorrections: difference("averageCorrections"),
+    averageCorrectionMs: difference("averageCorrectionMs"),
+    averageSlop: difference("averageSlop"),
     averageRegressions: difference("averageRegressions"),
     averageReopens: difference("averageReopens"),
     averageEscapedDefects: difference("averageEscapedDefects"),
@@ -657,6 +674,9 @@ function recommendation(
     treatment.finalPassRate >= baseline.finalPassRate &&
     treatment.firstAttemptPassRate >= baseline.firstAttemptPassRate &&
     treatment.averageCorrections <= baseline.averageCorrections &&
+    treatment.averageCorrectionMs <= baseline.averageCorrectionMs &&
+    treatment.averageSlop === 0 &&
+    treatment.averageSlop <= baseline.averageSlop &&
     treatment.averageRegressions === 0 &&
     treatment.averageRegressions <= baseline.averageRegressions &&
     treatment.averageReopens === 0 &&
@@ -685,7 +705,8 @@ function recommendation(
     improved("averageDurationMs") ||
     improved("averageWaitMs") ||
     improved("averageTimeToVerifiedMs") ||
-    improved("averageCorrections");
+    improved("averageCorrections") ||
+    improved("averageCorrectionMs");
   if (!moreEfficient) {
     return {
       status: "retain-baseline",
@@ -737,8 +758,8 @@ export function buildMeasurementScorecard(records, options = {}) {
   const runIds = new Set(records.map((record) => record.runId));
   if (runIds.size !== records.length) throw new Error("runId values must be unique");
   const sampleThreshold = options.sampleThreshold ?? 3;
-  if (!Number.isSafeInteger(sampleThreshold) || sampleThreshold < 1) {
-    throw new Error("sampleThreshold must be a positive integer");
+  if (!Number.isSafeInteger(sampleThreshold) || sampleThreshold < 3) {
+    throw new Error("sampleThreshold must be an integer of at least 3");
   }
   if (
     options.currentRosterHash !== undefined &&
@@ -780,18 +801,16 @@ export function buildMeasurementScorecard(records, options = {}) {
     comparisonGroups.set(key, [...(comparisonGroups.get(key) ?? []), item]);
   }
   const comparisons = [...comparisonGroups.values()].map((group) => {
+    const baselineItems = group.filter((item) => item.record.cohort === baselineName);
+    const treatmentItems = group.filter((item) => item.record.cohort === treatmentName);
     const validatedGroup = group.filter((item) =>
       item.record.evidenceStatus === "validated" &&
-      item.agent.evidenceStatus === "validated"
+      item.agent.evidenceStatus === "validated" &&
+      [baselineName, treatmentName].includes(item.record.cohort)
     );
-    const baselineMetrics = comparisonMetrics(
-      validatedGroup.filter((item) => item.record.cohort === baselineName),
-    );
-    const treatmentMetrics = comparisonMetrics(
-      validatedGroup.filter((item) => item.record.cohort === treatmentName),
-    );
+    const baselineMetrics = comparisonMetrics(baselineItems);
+    const treatmentMetrics = comparisonMetrics(treatmentItems);
     const comparableIdentities = new Set(validatedGroup
-      .filter((item) => [baselineName, treatmentName].includes(item.record.cohort))
       .map((item) => [
         item.record.repository.commit,
         item.record.terminalSliceHash,
@@ -800,6 +819,7 @@ export function buildMeasurementScorecard(records, options = {}) {
         item.record.benchmark.fixtureHash,
       ].join("\u0000")));
     const comparable = comparableIdentities.size === 1;
+    const comparisonSource = validatedGroup[0] ?? null;
     const currentRosterHash = options.currentRosterHash ?? null;
     const rosterAnchored = currentRosterHash !== null && validatedGroup.every(
       (item) => item.record.benchmark.rosterHash === currentRosterHash,
@@ -826,12 +846,12 @@ export function buildMeasurementScorecard(records, options = {}) {
       treatment: { cohort: treatmentName, ...treatmentMetrics },
       comparable,
       rosterAnchored,
-      comparisonIdentity: comparable ? {
-        repositoryCommit: group[0].record.repository.commit,
-        terminalSliceHash: group[0].record.terminalSliceHash,
-        packetId: group[0].record.benchmark.packetId,
-        acceptanceId: group[0].record.benchmark.acceptanceId,
-        fixtureHash: group[0].record.benchmark.fixtureHash,
+      comparisonIdentity: comparable && comparisonSource ? {
+        repositoryCommit: comparisonSource.record.repository.commit,
+        terminalSliceHash: comparisonSource.record.terminalSliceHash,
+        packetId: comparisonSource.record.benchmark.packetId,
+        acceptanceId: comparisonSource.record.benchmark.acceptanceId,
+        fixtureHash: comparisonSource.record.benchmark.fixtureHash,
       } : null,
       deltas: metricDeltas(baselineMetrics, treatmentMetrics),
       recommendation: recommendation(
@@ -920,6 +940,8 @@ export function renderMeasurementScorecardHtml(scorecard) {
       <td>${escapeHtml(percentage(comparison.baseline.finalPassRate))}</td>
       <td>${escapeHtml(percentage(comparison.treatment.finalPassRate))}</td>
       <td>${escapeHtml(milliseconds(comparison.baseline.averageTimeToVerifiedMs))} → ${escapeHtml(milliseconds(comparison.treatment.averageTimeToVerifiedMs))}</td>
+      <td>${escapeHtml(milliseconds(comparison.baseline.averageCorrectionMs))} → ${escapeHtml(milliseconds(comparison.treatment.averageCorrectionMs))}</td>
+      <td>${escapeHtml(comparison.baseline.averageSlop)} → ${escapeHtml(comparison.treatment.averageSlop)}</td>
       <td>${escapeHtml(percentage(comparison.baseline.ciReadyRate))} → ${escapeHtml(percentage(comparison.treatment.ciReadyRate))}</td>
       <td>${escapeHtml(percentage(comparison.baseline.qaPassRate))} → ${escapeHtml(percentage(comparison.treatment.qaPassRate))}</td>
       <td>${escapeHtml(percentage(comparison.baseline.previewReadyRate))} → ${escapeHtml(percentage(comparison.treatment.previewReadyRate))}</td>
@@ -943,6 +965,8 @@ export function renderMeasurementScorecardHtml(scorecard) {
       <td>${escapeHtml(percentage(row.firstAttemptPassRate))}</td>
       <td>${escapeHtml(percentage(row.finalPassRate))}</td>
       <td>${escapeHtml(milliseconds(row.averageTimeToVerifiedMs))}</td>
+      <td>${escapeHtml(milliseconds(row.averageCorrectionMs))}</td>
+      <td>${escapeHtml(row.averageSlop)}</td>
       <td>${escapeHtml(percentage(row.ciReadyRate))}</td>
       <td>${escapeHtml(percentage(row.qaPassRate))}</td>
       <td>${escapeHtml(percentage(row.previewReadyRate))}</td>
@@ -964,6 +988,8 @@ export function renderMeasurementScorecardHtml(scorecard) {
       <td>${escapeHtml(percentage(row.firstAttemptPassRate))}</td>
       <td>${escapeHtml(percentage(row.finalPassRate))}</td>
       <td>${escapeHtml(milliseconds(row.averageTimeToVerifiedMs))}</td>
+      <td>${escapeHtml(milliseconds(row.averageCorrectionMs))}</td>
+      <td>${escapeHtml(row.averageSlop)}</td>
       <td>${escapeHtml(percentage(row.ciReadyRate))}</td>
       <td>${escapeHtml(percentage(row.qaPassRate))}</td>
       <td>${escapeHtml(percentage(row.previewReadyRate))}</td>
@@ -998,9 +1024,9 @@ export function renderMeasurementScorecardHtml(scorecard) {
   <header><div><h1>Measurement scorecard v2</h1><p>As of ${escapeHtml(scorecard.asOf)}</p></div><small>Local static evidence</small></header>
   <div class="notice">Advisory only. Roster mutation: ${escapeHtml(scorecard.rosterMutation)}.</div>
   <section><h2>Evidence status</h2><ul>${evidence}</ul></section>
-  <section class="table"><h2>Baseline vs treatment</h2><table><thead><tr><th>Repository</th><th>Capability</th><th>Route slot</th><th>Baseline route</th><th>Treatment route</th><th>Baseline validated runs</th><th>Treatment validated runs</th><th>First pass</th><th>Baseline final</th><th>Treatment final</th><th>Time to verified</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Recommendation</th><th>Current roster</th><th>Rollback</th></tr></thead><tbody>${comparisons}</tbody></table></section>
-  <section class="table"><h2>Daily routes</h2><table><thead><tr><th>Date</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${daily}</tbody></table></section>
-  <section class="table"><h2>Rolling 7-day routes</h2><table><thead><tr><th>Through</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${rolling7}</tbody></table></section>
+  <section class="table"><h2>Baseline vs treatment</h2><table><thead><tr><th>Repository</th><th>Capability</th><th>Route slot</th><th>Baseline route</th><th>Treatment route</th><th>Baseline validated runs</th><th>Treatment validated runs</th><th>First pass</th><th>Baseline final</th><th>Treatment final</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Recommendation</th><th>Current roster</th><th>Rollback</th></tr></thead><tbody>${comparisons}</tbody></table></section>
+  <section class="table"><h2>Daily routes</h2><table><thead><tr><th>Date</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${daily}</tbody></table></section>
+  <section class="table"><h2>Rolling 7-day routes</h2><table><thead><tr><th>Through</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${rolling7}</tbody></table></section>
 </main>
 </body>
 </html>
