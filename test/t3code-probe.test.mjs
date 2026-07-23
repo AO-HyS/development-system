@@ -59,6 +59,11 @@ function report(skillAuditHealthy = true) {
 test("T3Code probe accepts concise and detailed healthy skill audit evidence", () => {
   assert.equal(evaluateT3CodeProbe(report(true)), true);
   assert.equal(evaluateT3CodeProbe(report({ healthy: true, logicalSkills: 20 })), true);
+  const nativeShape = report({ status: true, logicalSkills: 20 });
+  nativeShape.observed.routerLoaded = ["drive-development-flow", "coding-orchestration"];
+  nativeShape.observed.influenceSignatures["flow-code-review"] =
+    "Inspect through blind Standards and Spec lanes.";
+  assert.equal(evaluateT3CodeProbe(nativeShape), true);
 });
 
 test("T3Code probe fails closed when a lifecycle skill or repository invariant is missing", () => {
@@ -89,6 +94,7 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
     isReadOnlyProbeCommand("./bin/development-system audit-skills --evidence evidence/current.json --json | jq '.ok'"),
     true,
   );
+  assert.equal(isReadOnlyProbeCommand("rg -n \"wayfinder|to-spec\" docs"), true);
   assert.equal(isReadOnlyProbeCommand("git status --short; git push origin main"), false);
   assert.equal(isReadOnlyProbeCommand("node -e \"require('fs').writeFileSync('x','y')\""), false);
   assert.equal(isReadOnlyProbeCommand("find . -delete"), false);

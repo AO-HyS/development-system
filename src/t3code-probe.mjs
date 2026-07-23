@@ -16,7 +16,7 @@ const influencePatterns = {
   "to-spec": [/\bsynthesi[sz]e\b/i, /\bwithout\b.*\binterview/i],
   "to-tickets": [/\btracer[- ]bullet\b/i, /\bblocking\b/i],
   "flow-implement": [/\bterminal slice\b/i, /\b(?:stop|boundar)/i],
-  "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:separate|independent)\b/i],
+  "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:blind|separate|independent)\b/i],
 };
 
 const forbiddenCommand =
@@ -35,11 +35,51 @@ export function isReadOnlyProbeCommand(command) {
   const unwrapped = command
     .replace(/^\/bin\/zsh\s+-lc\s+/, "")
     .replace(/^['"]|['"]$/g, "");
-  const segments = unwrapped
-    .split(/\s*(?:&&|\|\||;|\|)\s*/)
+  const segments = splitShellSegments(unwrapped)
     .map((segment) => segment.trim().replace(/^['"]|['"]$/g, ""))
     .filter(Boolean);
   return segments.length > 0 && segments.every((segment) => readOnlyCommandStart.test(segment));
+}
+
+/** @param {string} command */
+function splitShellSegments(command) {
+  const segments = [];
+  let current = "";
+  let quote = null;
+  let escaped = false;
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index];
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") {
+      current += character;
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      current += character;
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      current += character;
+      continue;
+    }
+    const pair = command.slice(index, index + 2);
+    if (character === ";" || character === "|" || pair === "&&" || pair === "||") {
+      if (current.trim()) segments.push(current);
+      current = "";
+      if (pair === "&&" || pair === "||") index += 1;
+      continue;
+    }
+    current += character;
+  }
+  if (current.trim()) segments.push(current);
+  return segments;
 }
 
 /** @param {string} url @param {RequestInit} [options] @param {number} [timeoutMs] */
@@ -110,9 +150,17 @@ export function evaluateT3CodeProbe(report) {
   const observed = report?.observed ?? {};
   const skillAuditHealthy =
     observed.skillAuditHealthy === true ||
-    observed.skillAuditHealthy?.healthy === true;
+    observed.skillAuditHealthy?.healthy === true ||
+    observed.skillAuditHealthy?.status === true;
+  const routerLoaded =
+    observed.routerLoaded === true ||
+    (
+      Array.isArray(observed.routerLoaded) &&
+      observed.routerLoaded.includes("drive-development-flow") &&
+      observed.routerLoaded.includes("coding-orchestration")
+    );
   return (
-    observed.routerLoaded === true &&
+    routerLoaded &&
     skillAuditHealthy &&
     Array.isArray(observed.lifecycleSkills) &&
     requiredT3CodeLifecycleSkills.every((skill) => observed.lifecycleSkills.includes(skill)) &&
