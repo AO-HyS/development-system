@@ -13,6 +13,7 @@ import { auditRepository } from "../src/repositories.mjs";
 import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
+  isReadOnlyProbeCommand,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
 
@@ -257,6 +258,9 @@ try {
 
   const threadId = `thread-${randomUUID()}`;
   const modelSelection = { instanceId: "codex", model: "gpt-5.6-sol" };
+  const requestedRuntimeMode = "approval-required";
+  const approvalEvidence = [];
+  const handledApprovals = new Set();
   /** @param {Record<string, any>} payload */
   async function dispatch(payload) {
     const { response, body } = await fetchJsonWithTimeout(`${origin}/api/orchestration/dispatch`, {
@@ -275,7 +279,7 @@ try {
     projectId: project.id,
     title: "Development System T3Code live probe",
     modelSelection,
-    runtimeMode: "approval-required",
+    runtimeMode: requestedRuntimeMode,
     interactionMode: "default",
     branch: null,
     worktreePath: null,
@@ -293,6 +297,9 @@ try {
         "Then explicitly invoke and load wayfinder, grill-with-docs, to-spec, to-tickets, flow-implement, and flow-code-review " +
         "only to inspect their operational contracts; do not execute their mutations or create artifacts. " +
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
+        "For shell inspection use only cat, find without -exec/-delete, head, jq, ls, nl, pwd, rg, sed, sha256sum, " +
+        "shasum, stat, tail, test, wc, git diff/rev-parse/status, or the Development System audit commands; " +
+        "do not use redirects, command substitution, scripting runtimes, network clients, or mutation commands. " +
         "Do not change files or external state. Return only one compact JSON object with keys harness, routerLoaded, " +
         "lifecycleSkills, influenceSignatures, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
         "List only skills actually loaded in this turn. influenceSignatures must map every listed lifecycle skill to one " +
@@ -300,7 +307,7 @@ try {
       attachments: [],
     },
     modelSelection,
-    runtimeMode: "approval-required",
+    runtimeMode: requestedRuntimeMode,
     interactionMode: "default",
     createdAt: new Date().toISOString(),
   });
@@ -314,7 +321,31 @@ try {
       5_000,
     );
     snapshot = result.body;
-    const messages = snapshot.thread?.messages ?? [];
+    const currentThread = snapshot.thread ?? snapshot;
+    for (const activity of currentThread.activities ?? []) {
+      if (activity.kind !== "approval.requested" || handledApprovals.has(activity.payload?.requestId)) {
+        continue;
+      }
+      const requestId = activity.payload?.requestId;
+      const requestKind = activity.payload?.requestKind;
+      const detail = String(activity.payload?.detail ?? "");
+      const allowedFileRead =
+        requestKind === "file-read" &&
+        [probeRepository, homedir(), skillEvidence].some((root) => detail.includes(root));
+      const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
+      const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
+      approvalEvidence.push({ requestId, requestKind, detail, decision });
+      handledApprovals.add(requestId);
+      await dispatch({
+        type: "thread.approval.respond",
+        commandId: `cmd-${randomUUID()}`,
+        threadId,
+        requestId,
+        decision,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    const messages = currentThread.messages ?? [];
     if (messages.some((/** @type {any} */ message) =>
       message.role === "assistant" &&
       message.text?.includes('"routerLoaded"') &&
@@ -349,6 +380,8 @@ try {
       providerAdapter: "codex",
     },
     requestedModel: modelSelection,
+    requestedRuntimeMode,
+    approvalEvidence,
     observed: response,
     observedThreadModel: thread.modelSelection ?? null,
     context: latestContext

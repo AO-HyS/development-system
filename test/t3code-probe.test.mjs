@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
+  isReadOnlyProbeCommand,
   requiredT3CodeLifecycleSkills,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
@@ -25,6 +26,8 @@ function report(skillAuditHealthy = true) {
   ].map((skill) => `/Users/test/.agents/skills/${skill}/SKILL.md`);
   return {
     requestedModel: { model: "gpt-5.6-sol" },
+    requestedRuntimeMode: "approval-required",
+    approvalEvidence: [],
     observedThreadModel: { model: "gpt-5.6-sol" },
     observed: {
       routerLoaded: true,
@@ -78,6 +81,17 @@ test("T3Code probe fails closed when a lifecycle skill or repository invariant i
   const mutatingCommand = report();
   mutatingCommand.toolEvidence.completedCommands[0].command += "; git push origin main";
   assert.equal(evaluateT3CodeProbe(mutatingCommand), false);
+});
+
+test("T3Code approval policy permits inspection and rejects mutation or scripting", () => {
+  assert.equal(isReadOnlyProbeCommand("sed -n '1,80p' docs/spec.md"), true);
+  assert.equal(
+    isReadOnlyProbeCommand("./bin/development-system audit-skills --evidence evidence/current.json --json | jq '.ok'"),
+    true,
+  );
+  assert.equal(isReadOnlyProbeCommand("git status --short; git push origin main"), false);
+  assert.equal(isReadOnlyProbeCommand("node -e \"require('fs').writeFileSync('x','y')\""), false);
+  assert.equal(isReadOnlyProbeCommand("find . -delete"), false);
 });
 
 test("bounded JSON requests abort a stalled T3Code endpoint", async () => {

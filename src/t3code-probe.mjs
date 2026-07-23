@@ -20,7 +20,27 @@ const influencePatterns = {
 };
 
 const forbiddenCommand =
-  /(?:^|[;&|]\s*|\s)(?:rm|mv|cp|install|sync-skills|rollback(?:-skills)?|lifecycle-execute|curl|wget|gh|linear|osascript|open|git\s+(?:commit|push|checkout|switch|reset|clean))(?=\s|$)/i;
+  /(?:^|[;&|]\s*|\s)(?:rm|mv|cp|install|sync-skills|rollback(?:-skills)?|lifecycle-execute|curl|wget|gh|linear|osascript|open|node|python\d*|perl|ruby|git\s+(?:commit|push|checkout|switch|reset|clean))(?=\s|$)/i;
+
+const readOnlyCommandStart =
+  /^(?:set\s+-[a-z]+\s*$|(?:\/usr\/bin\/)?(?:cat|find|head|jq|ls|nl|pwd|rg|sed|sha256sum|shasum|stat|tail|test|wc)\b|git\s+(?:diff|rev-parse|status)\b|\.\/bin\/development-system\s+(?:audit|audit-skills)\b)/i;
+
+/** @param {string} command */
+export function isReadOnlyProbeCommand(command) {
+  if (
+    !command ||
+    forbiddenCommand.test(command) ||
+    /(?:^|[^<])>>?|`|\$\(|\bfind\b[^\n]*(?:-delete|-exec)\b/i.test(command)
+  ) return false;
+  const unwrapped = command
+    .replace(/^\/bin\/zsh\s+-lc\s+/, "")
+    .replace(/^['"]|['"]$/g, "");
+  const segments = unwrapped
+    .split(/\s*(?:&&|\|\||;|\|)\s*/)
+    .map((segment) => segment.trim().replace(/^['"]|['"]$/g, ""))
+    .filter(Boolean);
+  return segments.length > 0 && segments.every((segment) => readOnlyCommandStart.test(segment));
+}
 
 /** @param {string} url @param {RequestInit} [options] @param {number} [timeoutMs] */
 export async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 5_000) {
@@ -79,7 +99,9 @@ function hasIndependentLoadEvidence(report) {
       !["create", "delete", "edit", "move", "write"].includes(String(action.type).toLowerCase())
     )
   );
-  const commandsAllowed = commands.every((/** @type {any} */ entry) => !forbiddenCommand.test(entry.command));
+  const commandsAllowed = commands.every((/** @type {any} */ entry) =>
+    isReadOnlyProbeCommand(entry.command)
+  );
   return routerRead && lifecycleReads && skillAudit && commandsSucceeded && noMutationActions && commandsAllowed;
 }
 
@@ -104,6 +126,11 @@ export function evaluateT3CodeProbe(report) {
     hasIndependentLoadEvidence(report) &&
     observed.model === report?.requestedModel?.model &&
     report?.observedThreadModel?.model === report?.requestedModel?.model &&
+    report?.requestedRuntimeMode === "approval-required" &&
+    (report?.approvalEvidence ?? []).every((/** @type {any} */ approval) =>
+      ["command", "file-read"].includes(approval.requestKind) &&
+      approval.decision === "accept"
+    ) &&
     report?.stateInvariants?.repository?.gitHeadUnchanged === true &&
     report?.stateInvariants?.repository?.gitStatusUnchanged === true &&
     report?.stateInvariants?.repository?.fingerprintUnchanged === true &&
