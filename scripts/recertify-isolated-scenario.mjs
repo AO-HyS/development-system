@@ -66,12 +66,15 @@ const homeAfter = stableHomeState(readAudit());
 const finishedAt = new Date();
 const realHomeUnchanged = JSON.stringify(homeBefore) === JSON.stringify(homeAfter);
 const combinedOutput = `${scenario.stdout}\n${scenario.stderr}`;
+const testCount = Number(combinedOutput.match(/(?:^|\n)[^\n]*tests (\d+)/)?.[1] ?? 0);
+const passCount = Number(combinedOutput.match(/(?:^|\n)[^\n]*pass (\d+)/)?.[1] ?? 0);
+const failCount = Number(combinedOutput.match(/(?:^|\n)[^\n]*fail (\d+)/)?.[1] ?? -1);
 const markers = {
   installation: combinedOutput.includes("Scenario complete"),
   skills: combinedOutput.includes("Skill scenario complete"),
   lifecycle: combinedOutput.includes("Lifecycle scenario complete"),
   repositoryPreparation: combinedOutput.includes("Repository preparation scenario complete"),
-  acceptanceTests: /\bpass 16\b/.test(combinedOutput) && /\bfail 0\b/.test(combinedOutput),
+  acceptanceTests: testCount > 0 && passCount === testCount && failCount === 0,
 };
 
 const report = {
@@ -89,6 +92,7 @@ const report = {
     exitCode: scenario.status,
     signal: scenario.signal,
     error: scenario.error,
+    testSummary: { tests: testCount, pass: passCount, fail: failCount },
     markers,
   },
   homeBefore,
