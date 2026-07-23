@@ -14,12 +14,12 @@ export const requiredT3CodeLifecycleSkills = [
 
 /** @type {Record<string, RegExp[]>} */
 const influencePatterns = {
-  wayfinder: [/\bdecisions?\b/i, /\b(?:one ticket|multiple\b.*\btickets)\b/i],
+  wayfinder: [/\bdecisions?\b/i, /\b(?:one\b.*\bticket|multiple\b.*\btickets)\b/i],
   "grill-with-docs": [/\bgrill(?:ing)?\b/i, /\bdomain[- ]model/i],
   "to-spec": [/\bsynthesi[sz]e\b/i, /\bwithout\b.*\binterview/i],
-  "to-tickets": [/\btracer[- ]bullet\b/i, /\bblocking\b/i],
+  "to-tickets": [/\b(?:tracer[- ]bullet|vertical slices?)\b/i, /\bblock(?:er|ing)s?\b/i],
   "flow-implement": [/\bterminal slice\b/i, /\b(?:stop|boundar)/i],
-  "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:blind|separate|independent)\b/i],
+  "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:blind|separate|independent(?:ly)?)\b/i],
 };
 
 /** @param {string} command */

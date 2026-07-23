@@ -74,6 +74,8 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
     "Inspect through blind Standards and Spec lanes.";
   nativeShape.observed.influenceSignatures.wayfinder =
     "Plan decision tickets and do not resolve multiple non-research tickets.";
+  nativeShape.observed.influenceSignatures["to-tickets"] =
+    "Draft vertical slices with explicit blockers.";
   assert.equal(evaluateT3CodeProbe(nativeShape), true);
 });
 
