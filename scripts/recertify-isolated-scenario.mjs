@@ -9,6 +9,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
 
+/** @param {string} command @param {string[]} args @param {{timeout?: number}} [options] */
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: repositoryRoot,
@@ -35,13 +36,14 @@ function readAudit() {
   return JSON.parse(result.stdout);
 }
 
+/** @param {any} audit */
 function stableHomeState(audit) {
   return {
     ok: audit.ok,
     status: audit.status,
     contractVersion: audit.contractVersion,
     source: audit.source,
-    artifacts: audit.artifacts.map((artifact) => ({
+    artifacts: audit.artifacts.map((/** @type {any} */ artifact) => ({
       id: artifact.id,
       destination: artifact.destination,
       sha256: artifact.sha256,
