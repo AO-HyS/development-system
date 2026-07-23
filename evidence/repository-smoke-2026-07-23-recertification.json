@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "contractVersion": "0.8.0",
-  "generatedAt": "2026-07-23T22:20:52.780Z",
+  "generatedAt": "2026-07-23T22:27:29.432Z",
   "operation": "repository-audit-smoke",
   "mode": "read-only-compatibility-evidence",
   "rolloutAuthorized": false,
@@ -11,6 +11,7 @@
       "repository": "nutri-plan",
       "repositoryRoot": "/Users/corrortiz/Documents/AO/nutri-plan",
       "headCommit": "5617b54a61946613800115c478daab444ddf292c",
+      "headCommitAfter": "5617b54a61946613800115c478daab444ddf292c",
       "gitStatusHash": "a01189dda21dcc793a1803a8591b161da8f4da9a244a62499c2d8b4e1e7985fd",
       "compatibility": "completed-without-crash",
       "fingerprint": "ebb57648463472e5820d4259dfe4511442143d238ee78aa53a956499468513f1",
@@ -18,6 +19,7 @@
       "excludedPaths": 77,
       "boundedLargeFiles": 77,
       "externalSideEffects": [],
+      "gitHeadUnchanged": true,
       "gitStatusUnchanged": true,
       "rolloutReadinessClaim": false
     },
@@ -25,6 +27,7 @@
       "repository": "the-barber-central",
       "repositoryRoot": "/Users/corrortiz/Documents/AO/the-barber-central",
       "headCommit": "b27902dc5a4417a3aa23745facc70660b2b1326d",
+      "headCommitAfter": "b27902dc5a4417a3aa23745facc70660b2b1326d",
       "gitStatusHash": "7c3de049bc7910ae57bccc5bb57fc61d505eb3b1c6a4c85dd27cf8682acf9bc7",
       "compatibility": "completed-without-crash",
       "fingerprint": "fa413b0ff4dbe66288f068fc28d8c438f4c4149b2090a531a64530168b3e497f",
@@ -32,6 +35,7 @@
       "excludedPaths": 20,
       "boundedLargeFiles": 43,
       "externalSideEffects": [],
+      "gitHeadUnchanged": true,
       "gitStatusUnchanged": true,
       "rolloutReadinessClaim": false
     },
@@ -39,6 +43,7 @@
       "repository": "aohys",
       "repositoryRoot": "/Users/corrortiz/Documents/AO/aohys",
       "headCommit": "7f1fc282c7c26513188a3eae26c643b8129a7a6b",
+      "headCommitAfter": "7f1fc282c7c26513188a3eae26c643b8129a7a6b",
       "gitStatusHash": "624bac46594abe46547ae9295ad918b397c31f252e795f0d79ef0a80b47c19cc",
       "compatibility": "completed-without-crash",
       "fingerprint": "2ddc080b5b13fa19fa7aee502811c9a747ad8a03c7bab4ff11b6fdb0b0978171",
@@ -46,6 +51,7 @@
       "excludedPaths": 14,
       "boundedLargeFiles": 49,
       "externalSideEffects": [],
+      "gitHeadUnchanged": true,
       "gitStatusUnchanged": true,
       "rolloutReadinessClaim": false
     },
@@ -53,6 +59,7 @@
       "repository": "eteria",
       "repositoryRoot": "/Users/corrortiz/Documents/AO/eteria",
       "headCommit": "05295d548c9f7ad5fab867db3959f331393792d3",
+      "headCommitAfter": "05295d548c9f7ad5fab867db3959f331393792d3",
       "gitStatusHash": "244ac356e4f984c817bfed48a13f5df9b5e317559c60db6e3afed026492015a3",
       "compatibility": "completed-without-crash",
       "fingerprint": "b7acf79a741f7834731d7a5932df6de01abd6b5a335657a9b82e24b9d2e98a2e",
@@ -60,6 +67,7 @@
       "excludedPaths": 15,
       "boundedLargeFiles": 33,
       "externalSideEffects": [],
+      "gitHeadUnchanged": true,
       "gitStatusUnchanged": true,
       "rolloutReadinessClaim": false
     }

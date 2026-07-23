@@ -6,12 +6,17 @@ Mode: read-only against HOME and product repositories
 
 ## Decision
 
-Development System 0.8 remains structurally healthy and its critical lifecycle
-interface is operational in Codex, T3Code, and Factory. The result does not
-claim exhaustive live influence for every installed skill: the catalog audit
-proves all 20 logical skills structurally, the skill probe proves live influence
-for `research`, and the operator probe proves the router plus six explicit
-lifecycle skills.
+Development System 0.8 remains structurally healthy. Codex and Factory passed
+the live catalog and lifecycle probes. The installed T3Code application also
+passed a real headless server turn through its Codex provider adapter: it loaded
+the automatic router and the six explicit lifecycle skills, returned a distinct
+behavior signature for each, and preserved repository HEAD and status.
+
+This result does not claim exhaustive live influence for every installed skill.
+The catalog audit proves all 20 logical skills structurally, the catalog probe
+proves live influence for `research` in Codex and Factory, and the lifecycle
+probes prove only the router and six named workflow skills. T3Code is a distinct
+live client surface over the Codex provider, not a third physical skill variant.
 
 ## Evidence
 
@@ -26,22 +31,33 @@ lifecycle skills.
   routing plus `wayfinder`, `grill-with-docs`, `to-spec`, `to-tickets`,
   `flow-implement`, and `flow-code-review` passed in Codex and Factory with no
   repository mutations.
+- `evidence/t3code-live-2026-07-23-recertification.json`: the installed T3Code
+  `0.0.29-nightly.20260722.878` server launched in an isolated data directory,
+  dispatched a real `gpt-5.6-sol` turn, loaded the router plus all six lifecycle
+  skills, passed the current skill audit, and left HEAD and Git status
+  unchanged. The captured run and its post-capture evaluator commits are both
+  recorded.
 - `evidence/harnesses-live-2026-07-23-recertification.json`: all AO, simple,
   NutriPlan, Barber, and nested AOHYS scenarios passed across Codex, Factory,
-  and the T3Code/Codex adapter. The first AOHYS/Codex failure is retained under
-  `recoveredFailures`; it exposed an evidence normalizer that rejected the
-  equivalent phrase `unmodified`. The focused fix and retry passed.
+  and the structural T3Code/Codex adapter. This matrix exercises the unchanged
+  contract `0.7.0` scenarios and `0.6.0` adapter registry embedded in the 0.8
+  installation; it is not the independent T3Code application proof. The first
+  AOHYS/Codex failure is retained under `recoveredFailures`; it exposed an
+  evidence normalizer that rejected the equivalent phrase `unmodified`. The
+  focused fix and retry passed.
 - `evidence/repository-smoke-2026-07-23-recertification.json`: AOHYS, The Barber
   Central, ETERIA, and NutriPlan were fingerprinted against their current HEAD
-  and status hash. All four completed with zero side effects and unchanged Git
-  status. This evidence makes no rollout-readiness claim.
+  and status hash. All four completed with zero side effects, unchanged HEAD,
+  and unchanged Git status. This evidence makes no rollout-readiness claim.
 
 ## Recovery
 
-The full isolated scenario proves install, drift detection, failed validation,
-reinstall, HOME rollback, skill synchronization, skill rollback, lifecycle
-authorization, and repository preparation. The real HOME was not rolled back
-because its audit and validation were healthy.
+`evidence/isolated-scenario-2026-07-23-recertification.json` durably records the
+full isolated scenario: install, drift detection, failed validation, reinstall,
+HOME rollback, skill synchronization, skill rollback, lifecycle authorization,
+repository preparation, and 17/17 acceptance tests. Stable real-HOME state was
+captured before and after and remained byte-equivalent. The real HOME was not
+rolled back because its audit and validation were healthy.
 
 ## Residual operational findings
 
@@ -50,8 +66,15 @@ because its audit and validation were healthy.
 - Codex startup repeatedly attempts to refresh the `mercadopago-mcp-server`
   OAuth client and receives `invalid_client`. It does not invalidate lifecycle
   results, but it adds repeated startup noise and latency.
+- The exhaustive T3Code turn took 121.8 seconds and reported 472,789 cumulative
+  processed tokens. This is a harness diagnostic rather than a billing claim,
+  but it proves that loading every lifecycle skill in ordinary implementation
+  would be expensive. Daily routing should load only the selected stage; the
+  exhaustive path belongs in periodic recertification.
+- T3Code also reports an unrelated Grok CLI health-check warning during startup.
+  It did not affect the Codex provider turn but should not remain unclassified
+  startup noise.
 - The full harness validator produces no progress events and took more than
   five minutes for 15 live surface checks. Full-repo live validation should
   remain serial at the expensive-analysis level, while the command should emit
   scenario start/end timing so waiting and saturation are observable.
-

@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.8.0",
+  "generatedAt": "2026-07-23T22:55:10.497Z",
+  "startedAt": "2026-07-23T22:53:08.701Z",
+  "durationMs": 121796,
+  "operation": "t3code-live-probe",
+  "sourceCommit": "556a0eb6770af189c870eecdbf99d978ff543d56",
+  "application": {
+    "executable": "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs",
+    "version": "0.0.29-nightly.20260722.878",
+    "environmentCapabilities": {
+      "repositoryIdentity": true,
+      "connectionProbe": true,
+      "threadSettlement": true
+    },
+    "providerAdapter": "codex"
+  },
+  "requestedModel": {
+    "instanceId": "codex",
+    "model": "gpt-5.6-sol"
+  },
+  "observed": {
+    "harness": "T3Code/Codex",
+    "routerLoaded": true,
+    "lifecycleSkills": [
+      "wayfinder",
+      "grill-with-docs",
+      "to-spec",
+      "to-tickets",
+      "flow-implement",
+      "flow-code-review"
+    ],
+    "influenceSignatures": {
+      "wayfinder": "Plan decisions, not deliverables; resolve at most one ticket per session except research tickets.",
+      "grill-with-docs": "Run a grilling session using domain-modeling.",
+      "to-spec": "Synthesize existing context without interviewing the user.",
+      "to-tickets": "Create session-sized tracer-bullet vertical slices with explicit blocking edges.",
+      "flow-implement": "Pin one authorized terminal slice and its stop boundaries before editing.",
+      "flow-code-review": "Inspect a fixed diff through separate Standards and Spec lanes, then validate and rank findings."
+    },
+    "instructionSources": [
+      "AGENTS.md",
+      "docs/spec.md",
+      "docs/adr/0003-operational-skill-evidence.md",
+      "docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
+      "evidence/skills-live-2026-07-23-recertification.json",
+      "~/.codex/skills/drive-development-flow/SKILL.md",
+      "~/.codex/skills/coding-orchestration/SKILL.md",
+      "~/.agents/skills/wayfinder/SKILL.md",
+      "~/.agents/skills/grill-with-docs/SKILL.md",
+      "~/.agents/skills/to-spec/SKILL.md",
+      "~/.agents/skills/to-tickets/SKILL.md",
+      "~/.agents/skills/flow-implement/SKILL.md",
+      "~/.agents/skills/flow-code-review/SKILL.md"
+    ],
+    "skillAuditHealthy": {
+      "healthy": true,
+      "logicalSkills": 20,
+      "physicalVariants": 40,
+      "catalogEntries": "401/512",
+      "problems": [],
+      "liveInfluenceScope": "research only; non-exhaustive"
+    },
+    "model": "gpt-5.6-sol",
+    "reasoning": "medium",
+    "externalState": "unchanged; read-only audit preserved the pre-existing Git status and made no external calls"
+  },
+  "context": {
+    "usedTokens": 60680,
+    "totalProcessedTokens": 472789,
+    "maxTokens": 258400
+  },
+  "toolActivityCount": 22,
+  "externalState": {
+    "headBefore": "556a0eb6770af189c870eecdbf99d978ff543d56",
+    "headAfter": "556a0eb6770af189c870eecdbf99d978ff543d56",
+    "gitHeadUnchanged": true,
+    "gitStatusUnchanged": true
+  },
+  "diagnostics": [
+    "Unrelated Grok CLI health check failed during startup"
+  ],
+  "ok": true,
+  "validation": {
+    "evaluatedAt": "2026-07-23T22:56:09.181Z",
+    "sourceCommit": "8848e69ef179fd835accf9366421a75d507d12fa",
+    "capturedSourceCommit": "556a0eb6770af189c870eecdbf99d978ff543d56"
+  }
+}
