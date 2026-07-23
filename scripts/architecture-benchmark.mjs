@@ -2,6 +2,7 @@
 // @ts-check
 
 import {
+  architectureScoreToMeasurementRecords,
   buildArchitectureReport,
   ingestArchitectureAnswers,
   readArchitectureScore,
@@ -10,6 +11,8 @@ import {
   writeArchitectureReport,
   writeArchitectureScore,
 } from "../src/architecture-benchmarks.mjs";
+import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 
 const usage = `Usage:
   node scripts/architecture-benchmark.mjs validate-suite --suite <suite.json>
@@ -19,6 +22,9 @@ const usage = `Usage:
     [--answers <path> ...] --output <private-directory>
   node scripts/architecture-benchmark.mjs report --scored <architecture-benchmark.json>
     --output <private-directory>
+  node scripts/architecture-benchmark.mjs measurement --scored <architecture-benchmark.json>
+    --output <private-records.json> --roster-hash <sha256> --rollback-ref <roster:sha256>
+    [--baseline-mode M1] [--treatment-mode M3] [--provisional-mode M3]
 `;
 
 /** @param {string[]} args @param {string} name */
@@ -44,7 +50,7 @@ function required(selected, flag) {
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
-  if (!["validate-suite", "score", "report"].includes(command)) throw new Error(usage);
+  if (!["validate-suite", "score", "report", "measurement"].includes(command)) throw new Error(usage);
 
   if (command === "validate-suite") {
     const suite = await readArchitectureSuite(required(value(args, "--suite"), "--suite"));
@@ -54,6 +60,29 @@ async function main() {
       suiteId: suite.suiteId,
       repositories: suite.repositories.length,
       cases: suite.cases.length,
+    }, null, 2)}\n`);
+    return;
+  }
+
+  if (command === "measurement") {
+    const scored = await readArchitectureScore(required(value(args, "--scored"), "--scored"));
+    const outputPath = resolve(required(value(args, "--output"), "--output"));
+    const records = architectureScoreToMeasurementRecords(scored, {
+      baselineMode: value(args, "--baseline-mode") ?? "M1",
+      treatmentMode: value(args, "--treatment-mode") ?? "M3",
+      rosterHash: required(value(args, "--roster-hash"), "--roster-hash"),
+      rollbackRef: required(value(args, "--rollback-ref"), "--rollback-ref"),
+      provisionalModes: values(args, "--provisional-mode"),
+    });
+    await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });
+    await chmod(dirname(outputPath), 0o700);
+    await writeFile(outputPath, `${JSON.stringify(records, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+    await chmod(outputPath, 0o600);
+    process.stdout.write(`${JSON.stringify({
+      ok: true,
+      operation: "architecture-benchmark-measurement",
+      records: records.length,
+      outputPath,
     }, null, 2)}\n`);
     return;
   }

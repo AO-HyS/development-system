@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  architectureScoreToMeasurementRecords,
   buildArchitectureReport,
   hashGroundTruth,
   ingestArchitectureAnswers,
@@ -16,6 +17,7 @@ import {
   validateArchitectureSuite,
   writeArchitectureReport,
 } from "../src/architecture-benchmarks.mjs";
+import { validateRunRecord } from "../src/measurements.mjs";
 
 const HASH_A = "a".repeat(64);
 const HASH_B = "b".repeat(64);
@@ -299,6 +301,34 @@ test("repetitions stay separate while aggregates retain nullable telemetry", () 
   assert.equal(scored.aggregates[0].mean.costUsd, null);
   assert.equal(scored.aggregates[0].mean.waitMs, null);
   assert.equal(scored.runs[0].telemetry.costUsd, null);
+});
+
+test("architecture scores adapt to measurement v2 without auto-routing stale modes", () => {
+  const comparableSuite = suite();
+  comparableSuite.repositories[0].modes.M3 = true;
+  const scored = scoreArchitectureAnswers(comparableSuite, [
+    answer({ runId: "architecture-m1", mode: "M1" }),
+    answer({
+      runId: "architecture-m3",
+      mode: "M3",
+      startedAt: "2026-07-23T10:02:00.000Z",
+      endedAt: "2026-07-23T10:02:30.000Z",
+    }),
+  ]);
+  const records = architectureScoreToMeasurementRecords(scored, {
+    rosterHash: HASH_A,
+    rollbackRef: `roster:${HASH_A}`,
+    provisionalModes: ["M3"],
+  });
+  assert.equal(records.length, 2);
+  assert.equal(records[0].cohort, "baseline");
+  assert.equal(records[0].evidenceStatus, "validated");
+  assert.equal(records[1].cohort, "treatment");
+  assert.equal(records[1].evidenceStatus, "provisional");
+  assert.equal(records[1].verifiedAt, null);
+  assert.equal(records[0].benchmark.packetId, `architecture-${HASH_A}`);
+  assert.equal(records[1].rollbackRef, `roster:${HASH_A}`);
+  records.forEach((record) => assert.deepEqual(validateRunRecord(record), []));
 });
 
 test("duplicate run IDs fail across recursively ingested answer files", async () => {

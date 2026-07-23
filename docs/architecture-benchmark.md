@@ -82,6 +82,31 @@ pnpm run benchmark:architecture report \
   --output /absolute/path/to/private-report
 ```
 
+Convert a scored M1/M3 comparison into measurement-v2 records, then generate
+the shared daily and rolling-seven-day scorecard:
+
+```sh
+pnpm run benchmark:architecture measurement \
+  --scored /absolute/path/to/architecture-benchmark.json \
+  --output /absolute/path/to/private/measurement-records.json \
+  --roster-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --rollback-ref roster:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --baseline-mode M1 \
+  --treatment-mode M3 \
+  --provisional-mode M3
+
+pnpm run measure:v2 scorecard \
+  --input /absolute/path/to/private/measurement-records.json \
+  --output /absolute/path/to/private/scorecard \
+  --current-roster-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  --rollback-ref roster:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
+Use `--provisional-mode` whenever capability freshness or runtime evidence is
+not independently current. Provisional architecture runs remain visible in the
+daily and rolling views but cannot satisfy the three-run routing threshold.
+The adapter never mutates the capability roster.
+
 Before `report --scored` writes anything, it recursively applies the privacy
 filter and validates a closed generated-score schema: run/aggregate identities,
 route metadata, timestamps, nullable telemetry, score ranges, penalty counts,

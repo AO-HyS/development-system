@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { chmod, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
 
+import { validateRunRecord } from "./measurements.mjs";
+
 export const TASK_CLASSES = Object.freeze([
   "C1",
   "C2",
@@ -28,6 +30,121 @@ export const MODE_NAMES = Object.freeze({
   M3: "knowledge-graph",
   M4: "normalized-index",
 });
+
+/**
+ * Convert scored architecture runs into the shared measurement-v2 contract.
+ * Modes outside the selected baseline/treatment pair are intentionally omitted.
+ * @param {any} scored
+ * @param {{
+ *   baselineMode?: string,
+ *   treatmentMode?: string,
+ *   rosterHash: string,
+ *   rollbackRef: string,
+ *   ticket?: string,
+ *   provisionalModes?: string[],
+ * }} options
+ */
+export function architectureScoreToMeasurementRecords(scored, options) {
+  const scoreErrors = validateArchitectureScore(scored);
+  if (scoreErrors.length > 0) {
+    throw new Error(`Invalid architecture benchmark score:\n- ${scoreErrors.join("\n- ")}`);
+  }
+  const baselineMode = options.baselineMode ?? "M1";
+  const treatmentMode = options.treatmentMode ?? "M3";
+  if (!MODES.includes(baselineMode) || !MODES.includes(treatmentMode) || baselineMode === treatmentMode) {
+    throw new Error("baselineMode and treatmentMode must be distinct architecture modes");
+  }
+  if (!sha256Pattern.test(options.rosterHash)) throw new Error("rosterHash must be a SHA-256 hash");
+  if (!/^roster:[a-f0-9]{64}$/.test(options.rollbackRef)) {
+    throw new Error("rollbackRef must be an immutable roster SHA-256 reference");
+  }
+  const provisionalModes = new Set(options.provisionalModes ?? []);
+  for (const mode of provisionalModes) {
+    if (!MODES.includes(mode)) throw new Error(`Unknown provisional architecture mode: ${mode}`);
+  }
+  const records = scored.runs
+    .filter((/** @type {any} */ run) => [baselineMode, treatmentMode].includes(run.mode))
+    .map((/** @type {any} */ run) => {
+      const passed = run.scores.taskPass === 1;
+      const evidenceStatus = provisionalModes.has(run.mode) ? "provisional" : "validated";
+      const cohort = run.mode === baselineMode ? "baseline" : "treatment";
+      const findings =
+        run.penalties.falseClaims +
+        run.penalties.forbiddenClaims +
+        run.penalties.unsupportedClaims +
+        (passed ? 0 : 1);
+      const record = {
+        schemaVersion: 2,
+        runId: `architecture-${run.runId}`,
+        cohort,
+        repository: {
+          id: run.repository.id,
+          commit: run.repository.commit,
+          ticket: options.ticket ?? "AOH-222",
+        },
+        benchmark: {
+          packetId: `architecture-${run.identity.packetHash}`,
+          acceptanceId: `architecture-${run.identity.acceptanceHash}`,
+          fixtureHash: run.identity.fixtureHash,
+          rosterHash: options.rosterHash,
+        },
+        capability: "architecture",
+        stage: run.taskClassName,
+        ciPolicy: "not-required-read-only",
+        terminalSliceHash: run.identity.groundTruthHash,
+        startedAt: run.timestamps.startedAt,
+        endedAt: run.timestamps.endedAt,
+        verifiedAt: evidenceStatus === "validated" ? run.timestamps.endedAt : null,
+        waitMs: run.telemetry.waitMs,
+        result: passed ? "success" : "failure",
+        evidenceStatus,
+        gates: {
+          requirements: "not-required",
+          spec: "not-required",
+          tickets: "not-required",
+          ci: "not-required",
+          preview: "not-required",
+          humanFinal: "pending",
+        },
+        agents: [{
+          role: run.route.role,
+          routeSlot: run.route.routeSlot,
+          harness: run.route.harness,
+          requestedModel: run.route.requestedModel,
+          resolvedModel: run.route.resolvedModel,
+          reasoning: run.route.reasoning,
+          durationMs: run.telemetry.durationMs,
+          tokens: run.telemetry.tokens,
+          costUsd: run.telemetry.costUsd,
+          selectionReason: `architecture-benchmark-${run.mode.toLowerCase()}`,
+          result: passed ? "success" : "failure",
+          evidenceStatus,
+        }],
+        quality: {
+          firstAttempt: { passed, findings },
+          final: { passed, findings },
+          reviews: 1,
+          corrections: 0,
+          correctionMs: 0,
+          slop: run.penalties.falseClaims,
+          regressions: 0,
+          reopens: 0,
+          ci: "not-required",
+          qa: passed ? "passed" : "failed",
+          preview: "not-required",
+          escapedDefects: 0,
+        },
+        rollbackRef: cohort === "treatment" ? options.rollbackRef : null,
+      };
+      const errors = validateRunRecord(record);
+      if (errors.length > 0) {
+        throw new Error(`Architecture run ${run.runId} produced an invalid measurement record:\n- ${errors.join("\n- ")}`);
+      }
+      return record;
+    });
+  if (records.length === 0) throw new Error("No scored runs match the selected baseline/treatment modes");
+  return records;
+}
 
 const suiteFields = new Set(["schemaVersion", "suiteId", "repositories", "cases"]);
 const repositoryFields = new Set(["id", "commit", "exclusions", "modes"]);
