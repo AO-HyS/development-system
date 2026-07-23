@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -9,6 +12,7 @@ import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
   isReadOnlyProbeCommand,
+  resolveAllowedProbeFileRead,
   requiredT3CodeLifecycleSkills,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
@@ -41,6 +45,7 @@ function report(skillAuditHealthy = true) {
       detail: "cat /Users/test/.agents/skills/wayfinder/SKILL.md",
       decision: "accept",
     }],
+    allowedFileReads: [],
     observedThreadModel: { model: "gpt-5.6-sol" },
     observed: {
       routerLoaded: true,
@@ -154,6 +159,22 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
   assert.equal(isReadOnlyProbeCommand("cat docs/spec.md & touch /tmp/side-effect"), false);
   assert.equal(isReadOnlyProbeCommand("rg --pre 'touch /tmp/side-effect' pattern ."), false);
   assert.equal(isReadOnlyProbeCommand("cat docs/spec.md > /tmp/copy"), false);
+});
+
+test("T3Code file reads require an exact canonical allowlisted file", () => {
+  const directory = mkdtempSync(join(tmpdir(), "t3code-file-read-"));
+  const allowed = join(directory, "allowed.md");
+  const secret = join(directory, "secret.txt");
+  const escape = join(directory, "escape");
+  writeFileSync(allowed, "allowed");
+  writeFileSync(secret, "secret");
+  symlinkSync(secret, escape);
+  assert.equal(resolveAllowedProbeFileRead(allowed, [allowed]), realpathSync(allowed));
+  assert.equal(resolveAllowedProbeFileRead(JSON.stringify({ path: allowed }), [allowed]), realpathSync(allowed));
+  assert.equal(resolveAllowedProbeFileRead(`${allowed}.suffix`, [allowed]), null);
+  assert.equal(resolveAllowedProbeFileRead(secret, [allowed]), null);
+  assert.equal(resolveAllowedProbeFileRead(escape, [allowed]), null);
+  rmSync(directory, { recursive: true, force: true });
 });
 
 test("T3Code probe accepts policy-declined unsafe requests only when they never execute", () => {

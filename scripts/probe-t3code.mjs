@@ -15,6 +15,7 @@ import {
   fetchJsonWithTimeout,
   classifyReadOnlyProbeCommand,
   isReadOnlyProbeCommand,
+  resolveAllowedProbeFileRead,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
 
@@ -198,6 +199,39 @@ const hostSkillAuditEvidence = {
   healthy: hostAudit.ok === true,
   result: hostAudit,
 };
+const allowedFileReadPaths = [
+  resolve(probeRepository, "AGENTS.md"),
+  resolve(probeRepository, "README.md"),
+  resolve(probeRepository, "docs/spec.md"),
+  resolve(probeRepository, "docs/recertification-2026-07-23.md"),
+  ...[
+    "0003-operational-skill-evidence.md",
+    "0004-lifecycle-gates-are-persisted-and-operation-specific.md",
+    "0005-parity-is-observable-across-native-harness-adapters.md",
+    "0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
+    "0008-repository-audit-and-preparation-are-separate-transitions.md",
+  ].map((name) => resolve(probeRepository, "docs/adr", name)),
+  resolve(homedir(), ".codex/skills/drive-development-flow/SKILL.md"),
+  resolve(homedir(), ".codex/skills/coding-orchestration/SKILL.md"),
+  ...[
+    "wayfinder",
+    "grill-with-docs",
+    "to-spec",
+    "to-tickets",
+    "flow-implement",
+    "flow-code-review",
+  ].map((skill) => resolve(homedir(), `.agents/skills/${skill}/SKILL.md`)),
+  skillEvidence,
+  hostAuditPath,
+];
+const allowedFileReads = allowedFileReadPaths.map((path) => {
+  const resolvedPath = resolveAllowedProbeFileRead(path, [path]);
+  if (!resolvedPath) throw new Error(`Unable to bind allowed file read: ${path}`);
+  return {
+    path: resolvedPath,
+    sha256: createHash("sha256").update(readFileSync(resolvedPath)).digest("hex"),
+  };
+});
 const port = await reservePort();
 const origin = `http://127.0.0.1:${port}`;
 let server;
@@ -360,12 +394,20 @@ try {
       const requestId = activity.payload?.requestId;
       const requestKind = activity.payload?.requestKind;
       const detail = String(activity.payload?.detail ?? "");
-      const allowedFileRead =
-        requestKind === "file-read" &&
-        [probeRepository, homedir(), skillEvidence, hostAuditPath].some((root) => detail.includes(root));
+      const resolvedFileRead =
+        requestKind === "file-read"
+          ? resolveAllowedProbeFileRead(detail, allowedFileReadPaths)
+          : null;
+      const allowedFileRead = resolvedFileRead !== null;
       const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
       const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
-      approvalEvidence.push({ requestId, requestKind, detail, decision });
+      approvalEvidence.push({
+        requestId,
+        requestKind,
+        detail,
+        decision,
+        resolvedPath: resolvedFileRead,
+      });
       handledApprovals.add(requestId);
       await dispatch({
         type: "thread.approval.respond",
@@ -413,6 +455,7 @@ try {
     requestedModel: modelSelection,
     requestedRuntimeMode,
     approvalEvidence,
+    allowedFileReads,
     observed: response,
     observedThreadModel: thread.modelSelection ?? null,
     context: latestContext

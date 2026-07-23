@@ -1,6 +1,8 @@
 // @ts-check
 
 import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
+import { isAbsolute } from "node:path";
 
 export { stopDetachedProcess } from "./bounded-process.mjs";
 import { stopDetachedProcess } from "./bounded-process.mjs";
@@ -27,6 +29,32 @@ const influencePatterns = {
 /** @param {string} command */
 export function isReadOnlyProbeCommand(command) {
   return classifyReadOnlyProbeCommand(command) !== null;
+}
+
+/**
+ * @param {string} detail
+ * @param {string[]} allowedPaths
+ * @returns {string | null}
+ */
+export function resolveAllowedProbeFileRead(detail, allowedPaths) {
+  let candidate = detail.trim();
+  try {
+    const parsed = JSON.parse(candidate);
+    candidate = typeof parsed?.path === "string" ? parsed.path : "";
+  } catch {
+    if (
+      (candidate.startsWith('"') && candidate.endsWith('"')) ||
+      (candidate.startsWith("'") && candidate.endsWith("'"))
+    ) candidate = candidate.slice(1, -1);
+  }
+  if (!candidate || !isAbsolute(candidate)) return null;
+  try {
+    const resolvedCandidate = realpathSync(candidate);
+    const allowed = new Set(allowedPaths.map((path) => realpathSync(path)));
+    return allowed.has(resolvedCandidate) ? resolvedCandidate : null;
+  } catch {
+    return null;
+  }
 }
 
 /** @param {string} command @returns {Array<{type: "read" | "search" | "list", command: string}> | null} */
@@ -289,7 +317,14 @@ export function evaluateT3CodeProbe(report) {
       ["accept", "decline"].includes(approval.decision) &&
       (
         approval.decision === "decline" ||
-        approval.requestKind === "file-read" ||
+        (
+          approval.requestKind === "file-read" &&
+          typeof approval.resolvedPath === "string" &&
+          report?.allowedFileReads?.some((/** @type {any} */ file) =>
+            file.path === approval.resolvedPath &&
+            /^[a-f0-9]{64}$/.test(file.sha256)
+          )
+        ) ||
         isReadOnlyProbeCommand(approval.detail)
       )
     ) &&
