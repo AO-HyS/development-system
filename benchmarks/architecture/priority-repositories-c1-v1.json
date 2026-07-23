@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "priority-repositories-c1-v1",
+  "repositories": [
+    {
+      "id": "aohys",
+      "commit": "c00ce2b2b24d92ef4ae66373263ee54aa8c69bc1",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": false,
+        "M4": false
+      }
+    },
+    {
+      "id": "the-barber-central",
+      "commit": "6f7934247422286bffbf6b0c647ee0946645142c",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    },
+    {
+      "id": "eteria",
+      "commit": "512057e3796f14e7d5bb7bdd0741a0139d2e0a0f",
+      "exclusions": [
+        "apps/landing"
+      ],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": false,
+        "M4": false
+      }
+    },
+    {
+      "id": "nutri-plan",
+      "commit": "5617b54a61946613800115c478daab444ddf292c",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "aohys-public-content-seam",
+      "repositoryId": "aohys",
+      "taskClass": "C1",
+      "packetHash": "a8bf867d3041058a18121b337b7e757c746708f48b925c078e940d43f5cf3d8d",
+      "acceptanceHash": "f95e39e545ae06a9e0eef622f7acda53fa90bb8cb68df0614566499d63fdf676",
+      "fixtureHash": "b33edf98c3e6170e6e70b0b046abd34b8a6ffeccb6d979c6693ac3303b3a4159",
+      "groundTruthHash": "f79f26c927d2f48b616c5b7e0fa3100be67951274c3e18dff39cb41500e9a664",
+      "expected": {
+        "canonicalPaths": [
+          "packages/content-graph/src/index.ts",
+          "apps/site/src/pages/[...path].astro",
+          "packages/content-graph/test/public-content-graph.test.ts"
+        ],
+        "symbols": [
+          {
+            "path": "packages/content-graph/src/index.ts",
+            "name": "getPublicRouteMap"
+          },
+          {
+            "path": "apps/site/src/pages/[...path].astro",
+            "name": "getStaticPaths"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/site/src/pages/[...path].astro#getStaticPaths",
+            "to": "packages/content-graph/src/index.ts#getPublicRouteMap",
+            "kind": "calls"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "packages/content-graph/src/index.ts#getPublicRouteMap",
+            "to": "apps/site/src/pages/[...path].astro#getStaticPaths",
+            "kind": "calls"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "barber-record-card-seam",
+      "repositoryId": "the-barber-central",
+      "taskClass": "C1",
+      "packetHash": "44b210a37d413619988e73277fecda3ce8ed11df56600047576f786fc83a4ff0",
+      "acceptanceHash": "602c6292ee4a1e3d9601b83d50fc432b31d8f2c96684f28ed371713e19129cde",
+      "fixtureHash": "9fec657d1d0b8346878b051a9c5f91014a37700a5c78bb3c126f06a7c658a50e",
+      "groundTruthHash": "a449c097f5e21d1293722c31a9fe7c37d1ccd391dd6011c4a5df0a8b2a7da74f",
+      "expected": {
+        "canonicalPaths": [
+          "packages/operational-ui/src/record-card-foundation.ts",
+          "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+          "tests/unit/operational-ui/record-card-foundation.test.ts"
+        ],
+        "symbols": [
+          {
+            "path": "packages/operational-ui/src/record-card-foundation.ts",
+            "name": "getRecordCardSurfaceClasses"
+          },
+          {
+            "path": "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "packages/operational-ui/src/record-card-foundation.ts#getRecordCardSurfaceClasses",
+            "kind": "calls"
+          },
+          {
+            "from": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "packages/operational-ui/src/record-card-foundation.ts#getRecordCardSurfaceClasses",
+            "kind": "calls"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [
+          "packages/operational-ui/package.json"
+        ],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "re-exports"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "eteria-public-proposal-seam",
+      "repositoryId": "eteria",
+      "taskClass": "C1",
+      "packetHash": "8a8575ade484b99d30dc3bc0bce789b8f7c42d43d03194e4f76a60253c51fc57",
+      "acceptanceHash": "14377b908247e56aa2bf0436d46cdaab0fb83abed24f98b42cc9ddc27a28d509",
+      "fixtureHash": "c1ee32ac32368f62f0f7dd4223e2fb315699faa70b1aad8c7ac794839f75782a",
+      "groundTruthHash": "d20ca12fa6e560396758147e8de2fa2e9fdf21ef9124fe189b31ccf972c1e2f1",
+      "expected": {
+        "canonicalPaths": [
+          "apps/web/src/public-proposal-route.tsx",
+          "packages/web-ui/src/public-proposal.tsx",
+          "apps/web/src/public-proposal-route.test.tsx"
+        ],
+        "symbols": [
+          {
+            "path": "apps/web/src/public-proposal-route.tsx",
+            "name": "PublicProposalRoute"
+          },
+          {
+            "path": "apps/web/src/public-proposal-route.tsx",
+            "name": "StaticPublicProposalRoute"
+          },
+          {
+            "path": "apps/web/src/public-proposal-route.tsx",
+            "name": "LivePublicProposalRoute"
+          },
+          {
+            "path": "packages/web-ui/src/public-proposal.tsx",
+            "name": "EteriaPublicProposalSurface"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/web/src/public-proposal-route.tsx#StaticPublicProposalRoute",
+            "to": "packages/web-ui/src/public-proposal.tsx#EteriaPublicProposalSurface",
+            "kind": "renders"
+          },
+          {
+            "from": "apps/web/src/public-proposal-route.tsx#LivePublicProposalRoute",
+            "to": "packages/web-ui/src/public-proposal.tsx#EteriaPublicProposalSurface",
+            "kind": "renders"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [
+          "apps/landing"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "packages/web-ui/src/public-proposal.tsx#EteriaPublicProposalSurface",
+            "to": "apps/web/src/public-proposal-route.tsx#PublicProposalRoute",
+            "kind": "renders"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "nutri-record-card-seam",
+      "repositoryId": "nutri-plan",
+      "taskClass": "C1",
+      "packetHash": "ec5951d43757aca3b9f660610f7013935af6ae38840d8ce0a55e9f0ec0431a76",
+      "acceptanceHash": "47335db37e9705dda0dd7467beb3c24afc174ae374342c12a7600b0afbf16ce8",
+      "fixtureHash": "12b524f8099bb2716e0f275126c11f6cecb47386b9e7f14613b3e4660b6f96da",
+      "groundTruthHash": "17d1f0d0df99548cf80ef9d109a574813497f1e5fbf4a07b3cb095feba5b906f",
+      "expected": {
+        "canonicalPaths": [
+          "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/dashboard/tests/components/shared/cards/record-card.test.tsx",
+          "apps/admin-dashboard/src/views/media/media-root.tsx"
+        ],
+        "symbols": [
+          {
+            "path": "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/views/media/media-root.tsx",
+            "name": "MediaRootContent"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/admin-dashboard/src/views/media/media-root.tsx#MediaRootContent",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "renders"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [
+          "packages/ui/package.json",
+          "packages/operational-ui/package.json"
+        ],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "re-exports"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    }
+  ]
+}
