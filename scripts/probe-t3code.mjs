@@ -9,6 +9,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { evaluateT3CodeProbe, requiredT3CodeLifecycleSkills } from "../src/t3code-probe.mjs";
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
@@ -25,14 +27,6 @@ const skillEvidence = resolve(
 const serverCli =
   process.env.T3CODE_SERVER_CLI ??
   "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs";
-const requiredLifecycleSkills = [
-  "wayfinder",
-  "grill-with-docs",
-  "to-spec",
-  "to-tickets",
-  "flow-implement",
-  "flow-code-review",
-];
 
 /** @param {string} command @param {string[]} args @param {string} [cwd] */
 function run(command, args, cwd = probeRepository) {
@@ -313,19 +307,9 @@ try {
     diagnostics: readServerLog().includes("Grok CLI health check failed")
       ? ["Unrelated Grok CLI health check failed during startup"]
       : [],
-    ok:
-      response.routerLoaded === true &&
-      response.skillAuditHealthy === true &&
-      Array.isArray(response.lifecycleSkills) &&
-      requiredLifecycleSkills.every((skill) => response.lifecycleSkills.includes(skill)) &&
-      response.influenceSignatures &&
-      requiredLifecycleSkills.every((skill) =>
-        typeof response.influenceSignatures[skill] === "string" &&
-        response.influenceSignatures[skill].length > 0
-      ) &&
-      response.model === modelSelection.model &&
-      externalStateUnchanged,
+    ok: false,
   };
+  report.ok = evaluateT3CodeProbe(report);
 } finally {
   if (server) await stopProcess(server);
   await rm(baseDir, { recursive: true, force: true });

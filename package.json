@@ -14,6 +14,7 @@
     "measure:v2": "node ./scripts/measure-v2.mjs",
     "operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
     "t3code:probe": "node ./scripts/probe-t3code.mjs",
+    "t3code:revalidate": "node ./scripts/revalidate-t3code-evidence.mjs",
     "recertify:isolated": "node ./scripts/recertify-isolated-scenario.mjs",
     "harnesses:validate": "node ./scripts/validate-harnesses.mjs",
     "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
