@@ -2,6 +2,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { closeSync, openSync, readFileSync } from "node:fs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -24,6 +25,14 @@ const skillEvidence = resolve(
 const serverCli =
   process.env.T3CODE_SERVER_CLI ??
   "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs";
+const requiredLifecycleSkills = [
+  "wayfinder",
+  "grill-with-docs",
+  "to-spec",
+  "to-tickets",
+  "flow-implement",
+  "flow-code-review",
+];
 
 /** @param {string} command @param {string[]} args @param {string} [cwd] */
 function run(command, args, cwd = probeRepository) {
@@ -75,12 +84,24 @@ async function waitForDescriptor(origin, timeoutMs = 30_000) {
 /** @param {import("node:child_process").ChildProcess} child */
 async function stopProcess(child) {
   if (child.exitCode !== null) return;
-  child.kill("SIGTERM");
+  try {
+    if (!child.pid) throw new Error("T3Code server has no process id");
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    child.kill("SIGTERM");
+  }
   await Promise.race([
     new Promise((resolvePromise) => child.once("exit", resolvePromise)),
     new Promise((resolvePromise) => setTimeout(resolvePromise, 3_000)),
   ]);
-  if (child.exitCode === null) child.kill("SIGKILL");
+  if (child.exitCode === null) {
+    try {
+      if (!child.pid) throw new Error("T3Code server has no process id");
+      process.kill(-child.pid, "SIGKILL");
+    } catch {
+      child.kill("SIGKILL");
+    }
+  }
 }
 
 /** @param {any[]} messages */
@@ -102,6 +123,8 @@ let server;
 let report;
 
 try {
+  const logPath = resolve(baseDir, "server.log");
+  const logDescriptor = openSync(logPath, "a", 0o600);
   server = spawn(
     process.execPath,
     [
@@ -121,18 +144,25 @@ try {
     {
       cwd: probeRepository,
       env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
+      detached: true,
+      stdio: ["ignore", logDescriptor, logDescriptor],
     },
   );
-  let serverLog = "";
-  server.stdout?.on("data", (chunk) => {
-    serverLog = `${serverLog}${chunk}`.slice(-20_000);
-  });
-  server.stderr?.on("data", (chunk) => {
-    serverLog = `${serverLog}${chunk}`.slice(-20_000);
-  });
+  closeSync(logDescriptor);
+  const readServerLog = () => {
+    try {
+      return readFileSync(logPath, "utf8").slice(-20_000);
+    } catch {
+      return "";
+    }
+  };
 
-  const descriptor = await waitForDescriptor(origin);
+  let descriptor;
+  try {
+    descriptor = await waitForDescriptor(origin);
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${readServerLog()}`);
+  }
   run(process.execPath, [serverCli, "project", "add", "--base-dir", baseDir, probeRepository]);
   const pairing = JSON.parse(
     run(process.execPath, [
@@ -206,11 +236,14 @@ try {
       messageId: `msg-${randomUUID()}`,
       role: "user",
       text:
-        "Read-only Development System recertification. Load the repository-mandated router and the correct review-stage skill. " +
+        "Read-only Development System recertification. Load the repository-mandated automatic router. " +
+        "Then explicitly invoke and load wayfinder, grill-with-docs, to-spec, to-tickets, flow-implement, and flow-code-review " +
+        "only to inspect their operational contracts; do not execute their mutations or create artifacts. " +
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
         "Do not change files or external state. Return only one compact JSON object with keys harness, routerLoaded, " +
-        "lifecycleSkills, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
-        "List only skills actually loaded in this turn.",
+        "lifecycleSkills, influenceSignatures, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
+        "List only skills actually loaded in this turn. influenceSignatures must map every listed lifecycle skill to one " +
+        "concise operational rule learned from that skill's own instructions.",
       attachments: [],
     },
     modelSelection,
@@ -275,14 +308,19 @@ try {
       gitHeadUnchanged: before.head === after.head,
       gitStatusUnchanged: before.status === after.status,
     },
-    diagnostics: serverLog.includes("Grok CLI health check failed")
+    diagnostics: readServerLog().includes("Grok CLI health check failed")
       ? ["Unrelated Grok CLI health check failed during startup"]
       : [],
     ok:
       response.routerLoaded === true &&
       response.skillAuditHealthy === true &&
       Array.isArray(response.lifecycleSkills) &&
-      response.lifecycleSkills.includes("flow-code-review") &&
+      requiredLifecycleSkills.every((skill) => response.lifecycleSkills.includes(skill)) &&
+      response.influenceSignatures &&
+      requiredLifecycleSkills.every((skill) =>
+        typeof response.influenceSignatures[skill] === "string" &&
+        response.influenceSignatures[skill].length > 0
+      ) &&
       response.model === modelSelection.model &&
       externalStateUnchanged,
   };
