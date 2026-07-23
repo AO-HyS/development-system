@@ -81,6 +81,9 @@ function report(skillAuditHealthy = true) {
 
 test("T3Code probe accepts concise and detailed healthy skill audit evidence", () => {
   assert.equal(evaluateT3CodeProbe(report(true)), true);
+  const noApprovalRequired = report(true);
+  noApprovalRequired.approvalEvidence = [];
+  assert.equal(evaluateT3CodeProbe(noApprovalRequired), true);
   assert.equal(evaluateT3CodeProbe(report({ healthy: true, logicalSkills: 20 })), true);
   const nativeShape = report({ status: true, logicalSkills: 20 });
   nativeShape.observed.routerLoaded = ["drive-development-flow", "coding-orchestration"];
@@ -90,6 +93,8 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
     "Plan decision tickets and do not resolve multiple non-research tickets.";
   nativeShape.observed.influenceSignatures["to-tickets"] =
     "Draft vertical slices with explicit blockers.";
+  nativeShape.observed.influenceSignatures["flow-implement"] =
+    "Pin one binary done condition and preserve stop boundaries.";
   assert.equal(evaluateT3CodeProbe(nativeShape), true);
 });
 
