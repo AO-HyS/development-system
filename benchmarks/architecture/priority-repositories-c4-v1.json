@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "priority-repositories-c4-v1",
+  "repositories": [
+    {
+      "id": "aohys",
+      "commit": "c00ce2b2b24d92ef4ae66373263ee54aa8c69bc1",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": false,
+        "M4": false
+      }
+    },
+    {
+      "id": "the-barber-central",
+      "commit": "6f7934247422286bffbf6b0c647ee0946645142c",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    },
+    {
+      "id": "eteria",
+      "commit": "512057e3796f14e7d5bb7bdd0741a0139d2e0a0f",
+      "exclusions": [
+        "apps/landing"
+      ],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": false,
+        "M4": false
+      }
+    },
+    {
+      "id": "nutri-plan",
+      "commit": "5617b54a61946613800115c478daab444ddf292c",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "aohys-instruction-gate",
+      "repositoryId": "aohys",
+      "taskClass": "C4",
+      "packetHash": "d76357e862507ac83557a8b409c7553c5090685c57775b2b9102bededeb78c9e",
+      "acceptanceHash": "5c946ca3f62a180ce1e8f8966c88670860488011ed01ccc5876f619bfe9572b6",
+      "fixtureHash": "4f3fcf0bdf1e0acc01b82e7fa4edb5521fa78caddcd5d5d60131e9f6b4270074",
+      "groundTruthHash": "9b32e64ffad919af4e77498b42c4c68366c54804ae9e6e197d04da4859bba8a9",
+      "expected": {
+        "canonicalPaths": [
+          "AGENTS.md"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [
+          "orchestration.global-agent-toml",
+          "delegation.one-writer"
+        ],
+        "gateFacts": [
+          "merge.explicit-user-approval"
+        ]
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "barber-instruction-gate",
+      "repositoryId": "the-barber-central",
+      "taskClass": "C4",
+      "packetHash": "9efcc0f576b9897d28919ed1c6487660b3d54342c6b37f8f627e63290e08a8a4",
+      "acceptanceHash": "d5b9a9108b71cb5586638e449f86d90c3651057333dcda51a2719a6f44f568aa",
+      "fixtureHash": "51b9e3fa5725b3cb3b5d8e2209a96748174d6c81328846bba8dccaa1df05b4ae",
+      "groundTruthHash": "8fbad8c9e4418c1fcc00186bebc1ee8b7f6dd537a34d0b596853a9ee773ca30a",
+      "expected": {
+        "canonicalPaths": [
+          "AGENTS.md"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [
+          "knowledge-graph.first-pass-source-verify",
+          "ui.impeccable-surface-language"
+        ],
+        "gateFacts": [
+          "qa.browser-mandatory"
+        ]
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "eteria-instruction-gate",
+      "repositoryId": "eteria",
+      "taskClass": "C4",
+      "packetHash": "60cfa8d7dd1aacfc5abd892575d50394725ea9c709ea8477ef1c79575a3264d6",
+      "acceptanceHash": "a032c50a20824e0c6aa40967914a251280364841b84fab4ed1886bd3e93ab9ec",
+      "fixtureHash": "f5253b4332a23d22ba7f8ed7333df5c8e30dea786dd9bc9e6546385c5979f466",
+      "groundTruthHash": "33696f38dd6442233e699a9e3f29a9ea41eadc0a2ea4a9d02e81fcaca231239b",
+      "expected": {
+        "canonicalPaths": [
+          "AGENTS.md"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [
+          "branch.develop-preview-main-production",
+          "verification.pnpm-verify"
+        ],
+        "gateFacts": [
+          "engineering.issue-gate"
+        ]
+      },
+      "forbiddenClaims": {
+        "paths": [
+          "apps/landing"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "nutri-instruction-gate",
+      "repositoryId": "nutri-plan",
+      "taskClass": "C4",
+      "packetHash": "af19e310c6618036ae4f5bff40fc0cee8fff525e67e2f8ed1f27cd330b6858e5",
+      "acceptanceHash": "9817ff4f983dba01e1554575105a611a31b7d4b4b701526c0655bc8f57d50a42",
+      "fixtureHash": "ee073c37320a14441bbdf8685ed1ca665a6e8e2afb257c0abafb669045aa75db",
+      "groundTruthHash": "a84235f364fd6382f69bb0ad3e4ea9b245710194c842da8cd3a7f847f0d4fc39",
+      "expected": {
+        "canonicalPaths": [
+          "AGENTS.md"
+        ],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [
+          "knowledge-graph.source-wins-refresh-when-stale",
+          "verification.relevant-before-done"
+        ],
+        "gateFacts": [
+          "push.explicit-approval"
+        ]
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    }
+  ]
+}
