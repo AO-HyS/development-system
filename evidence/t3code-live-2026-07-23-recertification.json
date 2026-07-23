@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "contractVersion": "0.8.0",
-  "generatedAt": "2026-07-23T22:55:10.497Z",
-  "startedAt": "2026-07-23T22:53:08.701Z",
-  "durationMs": 121796,
+  "generatedAt": "2026-07-23T23:11:43.584Z",
+  "startedAt": "2026-07-23T23:09:34.663Z",
+  "durationMs": 128921,
   "operation": "t3code-live-probe",
-  "sourceCommit": "556a0eb6770af189c870eecdbf99d978ff543d56",
+  "sourceCommit": "77d74bb99dce882e8043980943d47acba9689ba4",
   "application": {
     "executable": "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs",
     "version": "0.0.29-nightly.20260722.878",
@@ -20,9 +20,36 @@
     "instanceId": "codex",
     "model": "gpt-5.6-sol"
   },
+  "requestedRuntimeMode": "approval-required",
+  "approvalEvidence": [
+    {
+      "requestId": "8b6218a1-e894-4e57-94c0-43c05dd9ac63",
+      "requestKind": "command",
+      "detail": "/bin/zsh -lc \"git status --short && git rev-parse --show-toplevel && ls && ls docs && find docs -maxdepth 3 -type f && jq 'keys' evidence/skills-live-2026-07-23-recertification.json && jq '.' evidence/skills-live-2026-07-23-recertification.json\"",
+      "decision": "accept"
+    },
+    {
+      "requestId": "323c6b94-9262-4dde-a23e-e301f7a99d4a",
+      "requestKind": "command",
+      "detail": "/bin/zsh -lc \"sed -n '70,105p' README.md && ./bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json\"",
+      "decision": "accept"
+    },
+    {
+      "requestId": "8da7f4f8-cb75-4e1f-84da-7ec1dfd98e49",
+      "requestKind": "command",
+      "detail": "/bin/zsh -lc 'git rev-parse HEAD && git status --short && git diff --stat && shasum -a 256 evidence/skills-live-2026-07-23-recertification.json'",
+      "decision": "accept"
+    }
+  ],
   "observed": {
-    "harness": "T3Code/Codex",
-    "routerLoaded": true,
+    "harness": {
+      "active": "T3Code/Codex",
+      "classification": "read-only recertification and operational-contract inspection; no lifecycle transition or mutation authorized"
+    },
+    "routerLoaded": [
+      "drive-development-flow",
+      "coding-orchestration"
+    ],
     "lifecycleSkills": [
       "wayfinder",
       "grill-with-docs",
@@ -32,59 +59,1530 @@
       "flow-code-review"
     ],
     "influenceSignatures": {
-      "wayfinder": "Plan decisions, not deliverables; resolve at most one ticket per session except research tickets.",
-      "grill-with-docs": "Run a grilling session using domain-modeling.",
-      "to-spec": "Synthesize existing context without interviewing the user.",
-      "to-tickets": "Create session-sized tracer-bullet vertical slices with explicit blocking edges.",
-      "flow-implement": "Pin one authorized terminal slice and its stop boundaries before editing.",
-      "flow-code-review": "Inspect a fixed diff through separate Standards and Spec lanes, then validate and rank findings."
+      "wayfinder": "Plan decision tickets; do not deliver the destination or resolve multiple non-research tickets per session.",
+      "grill-with-docs": "Run a human grilling session using domain-modeling.",
+      "to-spec": "Synthesize existing context without interviewing, then publish the prescribed spec.",
+      "to-tickets": "Create user-approved tracer-bullet vertical slices with explicit blocking edges.",
+      "flow-implement": "Pin one authorized terminal slice and preserve every publication or promotion boundary.",
+      "flow-code-review": "Inspect a fixed diff through blind Standards and Spec lanes, then validate and rank findings."
     },
     "instructionSources": [
       "AGENTS.md",
       "docs/spec.md",
+      "docs/adr/0001-canonical-source-and-generated-home.md",
+      "docs/adr/0002-authorization-is-not-transitive.md",
       "docs/adr/0003-operational-skill-evidence.md",
+      "docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md",
+      "docs/adr/0005-parity-is-observable-across-native-harness-adapters.md",
       "docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
-      "evidence/skills-live-2026-07-23-recertification.json",
+      "docs/recertification-2026-07-23.md",
       "~/.codex/skills/drive-development-flow/SKILL.md",
       "~/.codex/skills/coding-orchestration/SKILL.md",
-      "~/.agents/skills/wayfinder/SKILL.md",
-      "~/.agents/skills/grill-with-docs/SKILL.md",
-      "~/.agents/skills/to-spec/SKILL.md",
-      "~/.agents/skills/to-tickets/SKILL.md",
-      "~/.agents/skills/flow-implement/SKILL.md",
-      "~/.agents/skills/flow-code-review/SKILL.md"
+      "~/.agents/skills/{wayfinder,grill-with-docs,to-spec,to-tickets,flow-implement,flow-code-review}/SKILL.md"
     ],
     "skillAuditHealthy": {
-      "healthy": true,
+      "status": true,
+      "evidence": "evidence/skills-live-2026-07-23-recertification.json",
+      "catalogVersion": "0.2.0",
       "logicalSkills": 20,
       "physicalVariants": 40,
       "catalogEntries": "401/512",
-      "problems": [],
-      "liveInfluenceScope": "research only; non-exhaustive"
+      "overflow": false,
+      "brokenSymlinks": 0,
+      "scannerErrors": 0,
+      "orphanedEntries": 0,
+      "unmanifestedDuplicates": 0,
+      "liveInfluenceProvenOnly": [
+        "research.codex",
+        "research.factory"
+      ],
+      "exhaustive": false,
+      "warning": "Codex catalog-description shortening only; no omission or overflow."
     },
     "model": "gpt-5.6-sol",
     "reasoning": "medium",
-    "externalState": "unchanged; read-only audit preserved the pre-existing Git status and made no external calls"
+    "externalState": {
+      "changed": false,
+      "gitHead": "77d74bb99dce882e8043980943d47acba9689ba4",
+      "gitStatus": "clean",
+      "gitDiff": "empty",
+      "evidenceSha256": "06791c1e60e7670cd6c7987b7ee161ef7c48ea32fad23de5bb187075c7e72ce8"
+    }
+  },
+  "observedThreadModel": {
+    "instanceId": "codex",
+    "model": "gpt-5.6-sol"
   },
   "context": {
-    "usedTokens": 60680,
-    "totalProcessedTokens": 472789,
+    "usedTokens": 70348,
+    "totalProcessedTokens": 514279,
     "maxTokens": 258400
   },
-  "toolActivityCount": 22,
-  "externalState": {
-    "headBefore": "556a0eb6770af189c870eecdbf99d978ff543d56",
-    "headAfter": "556a0eb6770af189c870eecdbf99d978ff543d56",
-    "gitHeadUnchanged": true,
-    "gitStatusUnchanged": true
+  "toolEvidence": {
+    "completedCommandCount": 10,
+    "completedCommands": [
+      {
+        "command": "/bin/zsh -lc 'pwd && rg -n \"development-system|wayfinder|grill-with-docs|to-spec|to-tickets|recertification\" /Users/corrortiz/.codex/memories/MEMORY.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"cat /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md && cat /Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md && find /Users/corrortiz/.codex/skills /Users/corrortiz/.agents/skills -path '*/wayfinder/SKILL.md' -o -path '*/grill-with-docs/SKILL.md' -o -path '*/to-spec/SKILL.md' -o -path '*/to-tickets/SKILL.md' -o -path '*/flow-implement/SKILL.md' -o -path '*/flow-code-review/SKILL.md'\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "search",
+            "path": "skills",
+            "query": "*/wayfinder/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/wayfinder/SKILL.md && cat /Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md && cat /Users/corrortiz/.agents/skills/to-spec/SKILL.md && cat /Users/corrortiz/.agents/skills/to-tickets/SKILL.md && cat /Users/corrortiz/.agents/skills/flow-implement/SKILL.md && cat /Users/corrortiz/.agents/skills/flow-code-review/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/wayfinder/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/to-spec/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/to-tickets/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/flow-implement/SKILL.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/flow-code-review/SKILL.md",
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"git status --short && git rev-parse --show-toplevel && ls && ls docs && find docs -maxdepth 3 -type f && jq 'keys' evidence/skills-live-2026-07-23-recertification.json && jq '.' evidence/skills-live-2026-07-23-recertification.json\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat AGENTS.md && cat docs/spec.md && cat docs/adr/0001-canonical-source-and-generated-home.md && cat docs/adr/0002-authorization-is-not-transitive.md && cat docs/adr/0003-operational-skill-evidence.md && cat docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md && cat docs/adr/0005-parity-is-observable-across-native-harness-adapters.md && cat docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md && cat docs/recertification-2026-07-23.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/AGENTS.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0001-canonical-source-and-generated-home.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0002-authorization-is-not-transitive.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0003-operational-skill-evidence.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0005-parity-is-observable-across-native-harness-adapters.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/recertification-2026-07-23.md",
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"wc -l docs/spec.md docs/adr/0001-canonical-source-and-generated-home.md docs/adr/0002-authorization-is-not-transitive.md docs/adr/0003-operational-skill-evidence.md docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md docs/adr/0005-parity-is-observable-across-native-harness-adapters.md docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md docs/recertification-2026-07-23.md && sed -n '1,140p' docs/spec.md && sed -n '141,280p' docs/spec.md\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
+            "query": null
+          },
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"sed -n '281,340p' docs/spec.md && rg -n \\\"audit-skills|skills-live|catalog health|catalogued|probeSucceeded|current evidence|recertification\\\" README.md docs bin package.json src test && ls bin && ls evidence\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
+            "query": null
+          },
+          {
+            "type": "search",
+            "path": "README.md",
+            "query": "audit-skills|skills-live|catalog health|catalogued|probeSucceeded|current evidence|recertification"
+          },
+          {
+            "type": "listFiles",
+            "path": "bin",
+            "query": null
+          },
+          {
+            "type": "listFiles",
+            "path": "evidence",
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"sed -n '70,105p' README.md && ./bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 143,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'git rev-parse HEAD && git status --short && git diff --stat && shasum -a 256 evidence/skills-live-2026-07-23-recertification.json'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc \"nl -ba /Users/corrortiz/.codex/memories/MEMORY.md | sed -n '280,410p'\"",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.codex/memories/MEMORY.md",
+            "query": null
+          }
+        ]
+      }
+    ]
+  },
+  "stateInvariants": {
+    "repository": {
+      "headBefore": "77d74bb99dce882e8043980943d47acba9689ba4",
+      "headAfter": "77d74bb99dce882e8043980943d47acba9689ba4",
+      "gitHeadUnchanged": true,
+      "gitStatusUnchanged": true,
+      "fingerprintBefore": "3240906277425243456895ea17e483eecd2ccc7334cda06eb37f1bbc39ae7eff",
+      "fingerprintAfter": "3240906277425243456895ea17e483eecd2ccc7334cda06eb37f1bbc39ae7eff",
+      "fingerprintUnchanged": true
+    },
+    "managedHome": {
+      "before": {
+        "installation": {
+          "ok": true,
+          "status": "healthy",
+          "contractVersion": "0.8.0",
+          "source": {
+            "repository": "https://github.com/AO-HyS/development-system",
+            "commit": "e04ad18f415372aa9adf2181706fa6eb2f5c4166"
+          },
+          "artifacts": [
+            {
+              "id": "dual-interface-contract.codex",
+              "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+              "status": "ok"
+            },
+            {
+              "id": "dual-interface-contract.factory",
+              "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+              "status": "ok"
+            },
+            {
+              "id": "operator-interface.codex",
+              "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+              "status": "ok"
+            },
+            {
+              "id": "operator-interface.factory",
+              "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+              "status": "ok"
+            },
+            {
+              "id": "harness-adapters.codex",
+              "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+              "status": "ok"
+            },
+            {
+              "id": "harness-adapters.factory",
+              "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+              "status": "ok"
+            },
+            {
+              "id": "capability-roster.codex",
+              "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+              "status": "ok"
+            },
+            {
+              "id": "capability-roster.factory",
+              "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+              "status": "ok"
+            },
+            {
+              "id": "benchmark-suite.codex",
+              "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+              "status": "ok"
+            },
+            {
+              "id": "benchmark-suite.factory",
+              "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+              "status": "ok"
+            },
+            {
+              "id": "skill-catalog.codex",
+              "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+              "status": "ok"
+            },
+            {
+              "id": "skill-catalog.factory",
+              "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+              "status": "ok"
+            },
+            {
+              "id": "global-validator.shared",
+              "actualSha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+              "status": "ok"
+            }
+          ],
+          "mirrors": [
+            {
+              "artifact": "dual-interface-contract.factory",
+              "expectedMirrorOf": "dual-interface-contract.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "operator-interface.factory",
+              "expectedMirrorOf": "operator-interface.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "harness-adapters.factory",
+              "expectedMirrorOf": "harness-adapters.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "capability-roster.factory",
+              "expectedMirrorOf": "capability-roster.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "benchmark-suite.factory",
+              "expectedMirrorOf": "benchmark-suite.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "skill-catalog.factory",
+              "expectedMirrorOf": "skill-catalog.codex",
+              "status": "ok"
+            }
+          ],
+          "problems": []
+        },
+        "skills": {
+          "ok": true,
+          "status": "healthy",
+          "logicalSkillCount": 20,
+          "physicalVariantCount": 40,
+          "evidenceCoverage": {
+            "structuralLogicalSkills": 20,
+            "liveRequiredSkills": [
+              "research"
+            ],
+            "exhaustiveLiveInfluence": false
+          },
+          "variants": [
+            {
+              "id": "wayfinder.codex",
+              "directoryHash": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "wayfinder.factory",
+              "directoryHash": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grill-with-docs.codex",
+              "directoryHash": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grill-with-docs.factory",
+              "directoryHash": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grilling.codex",
+              "directoryHash": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grilling.factory",
+              "directoryHash": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "domain-modeling.codex",
+              "directoryHash": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "domain-modeling.factory",
+              "directoryHash": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-spec.codex",
+              "directoryHash": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-spec.factory",
+              "directoryHash": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-tickets.codex",
+              "directoryHash": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-tickets.factory",
+              "directoryHash": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "implement.codex",
+              "directoryHash": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "implement.factory",
+              "directoryHash": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "code-review.codex",
+              "directoryHash": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "code-review.factory",
+              "directoryHash": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "diagnosing-bugs.codex",
+              "directoryHash": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "diagnosing-bugs.factory",
+              "directoryHash": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "prototype.codex",
+              "directoryHash": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "prototype.factory",
+              "directoryHash": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "handoff.codex",
+              "directoryHash": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "handoff.factory",
+              "directoryHash": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "qa.codex",
+              "directoryHash": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "qa.factory",
+              "directoryHash": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "research.codex",
+              "directoryHash": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": true,
+                "loadable": true,
+                "loaded": true,
+                "influenced": true
+              }
+            },
+            {
+              "id": "research.factory",
+              "directoryHash": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": true,
+                "loadable": true,
+                "loaded": true,
+                "influenced": true
+              }
+            },
+            {
+              "id": "setup-matt-pocock-skills.codex",
+              "directoryHash": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "setup-matt-pocock-skills.factory",
+              "directoryHash": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-code-review.codex",
+              "directoryHash": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-code-review.factory",
+              "directoryHash": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-implement.codex",
+              "directoryHash": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-implement.factory",
+              "directoryHash": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-qa.codex",
+              "directoryHash": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-qa.factory",
+              "directoryHash": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-research.codex",
+              "directoryHash": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-research.factory",
+              "directoryHash": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "drive-development-flow.codex",
+              "directoryHash": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "drive-development-flow.factory",
+              "directoryHash": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "coding-orchestration.codex-adapter",
+              "directoryHash": "d57ada57e34982ec35f178d52f530e02622ea3db0eabaa7c430f5a36be49c3a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "coding-orchestration.factory-adapter",
+              "directoryHash": "c725a00e4ec14fcb1739e8b33c1858bd670774c6a3f1991dc93c1a1d77db514e",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            }
+          ],
+          "problems": []
+        }
+      },
+      "after": {
+        "installation": {
+          "ok": true,
+          "status": "healthy",
+          "contractVersion": "0.8.0",
+          "source": {
+            "repository": "https://github.com/AO-HyS/development-system",
+            "commit": "e04ad18f415372aa9adf2181706fa6eb2f5c4166"
+          },
+          "artifacts": [
+            {
+              "id": "dual-interface-contract.codex",
+              "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+              "status": "ok"
+            },
+            {
+              "id": "dual-interface-contract.factory",
+              "actualSha256": "01ce366b96e79ae22e11808a9c52d2e597ed492e8a9254b916e6131bbc284c2f",
+              "status": "ok"
+            },
+            {
+              "id": "operator-interface.codex",
+              "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+              "status": "ok"
+            },
+            {
+              "id": "operator-interface.factory",
+              "actualSha256": "f0f68c340a4f0b235a905570d0fa6c615e7d9d2b5024525c17aea21902b86a95",
+              "status": "ok"
+            },
+            {
+              "id": "harness-adapters.codex",
+              "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+              "status": "ok"
+            },
+            {
+              "id": "harness-adapters.factory",
+              "actualSha256": "44717a1172a74433e1b7a050011d07caa69147d258774c410bbe172b9fabecd4",
+              "status": "ok"
+            },
+            {
+              "id": "capability-roster.codex",
+              "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+              "status": "ok"
+            },
+            {
+              "id": "capability-roster.factory",
+              "actualSha256": "077f65fac3dba487b7fa541a16c116e76dfe9b09b1bd915078ba0c89e02f93bf",
+              "status": "ok"
+            },
+            {
+              "id": "benchmark-suite.codex",
+              "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+              "status": "ok"
+            },
+            {
+              "id": "benchmark-suite.factory",
+              "actualSha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+              "status": "ok"
+            },
+            {
+              "id": "skill-catalog.codex",
+              "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+              "status": "ok"
+            },
+            {
+              "id": "skill-catalog.factory",
+              "actualSha256": "d32626882d7114b132a717db7ec0537ec9fd06b1309d7090005ebbc1884ae892",
+              "status": "ok"
+            },
+            {
+              "id": "global-validator.shared",
+              "actualSha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+              "status": "ok"
+            }
+          ],
+          "mirrors": [
+            {
+              "artifact": "dual-interface-contract.factory",
+              "expectedMirrorOf": "dual-interface-contract.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "operator-interface.factory",
+              "expectedMirrorOf": "operator-interface.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "harness-adapters.factory",
+              "expectedMirrorOf": "harness-adapters.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "capability-roster.factory",
+              "expectedMirrorOf": "capability-roster.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "benchmark-suite.factory",
+              "expectedMirrorOf": "benchmark-suite.codex",
+              "status": "ok"
+            },
+            {
+              "artifact": "skill-catalog.factory",
+              "expectedMirrorOf": "skill-catalog.codex",
+              "status": "ok"
+            }
+          ],
+          "problems": []
+        },
+        "skills": {
+          "ok": true,
+          "status": "healthy",
+          "logicalSkillCount": 20,
+          "physicalVariantCount": 40,
+          "evidenceCoverage": {
+            "structuralLogicalSkills": 20,
+            "liveRequiredSkills": [
+              "research"
+            ],
+            "exhaustiveLiveInfluence": false
+          },
+          "variants": [
+            {
+              "id": "wayfinder.codex",
+              "directoryHash": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "wayfinder.factory",
+              "directoryHash": "21c81e4a49dac730ada84bf5a23123b549078ad47ce5bb5359f11de489ee9ac8",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grill-with-docs.codex",
+              "directoryHash": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grill-with-docs.factory",
+              "directoryHash": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grilling.codex",
+              "directoryHash": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "grilling.factory",
+              "directoryHash": "35963aa4abbdae92eb75d8c2dc69eaa70126315a642aba1e5371bd4a9305fb2a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "domain-modeling.codex",
+              "directoryHash": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "domain-modeling.factory",
+              "directoryHash": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-spec.codex",
+              "directoryHash": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-spec.factory",
+              "directoryHash": "0e05c1bea97c787e44e79f4e255a9afd6a377c24f29f0a3a014f0231ebe57d8c",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-tickets.codex",
+              "directoryHash": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "to-tickets.factory",
+              "directoryHash": "27f8a34226cc7109cd87895bb31e0163607348a6ef3653b8836b0be30dcf00e5",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "implement.codex",
+              "directoryHash": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "implement.factory",
+              "directoryHash": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "code-review.codex",
+              "directoryHash": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "code-review.factory",
+              "directoryHash": "d45f786768d013c1e387aa5b3d067f7a2540c9350b1ef116d0245d9881a61bde",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "diagnosing-bugs.codex",
+              "directoryHash": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "diagnosing-bugs.factory",
+              "directoryHash": "73be315b6528e88c48c6f797d5fa7faa284fc468e6ab795c4bfe5161d4440e2f",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "prototype.codex",
+              "directoryHash": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "prototype.factory",
+              "directoryHash": "9a52396fe98d9fd40299c304ce45655507715e6237c5bf6621a308a4e351e18b",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "handoff.codex",
+              "directoryHash": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "handoff.factory",
+              "directoryHash": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "qa.codex",
+              "directoryHash": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "qa.factory",
+              "directoryHash": "e2fd26e68530beb342a607be3245d46a39bf43d263763ee4c3e87117414d2ca0",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "research.codex",
+              "directoryHash": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": true,
+                "loadable": true,
+                "loaded": true,
+                "influenced": true
+              }
+            },
+            {
+              "id": "research.factory",
+              "directoryHash": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": true,
+                "loadable": true,
+                "loaded": true,
+                "influenced": true
+              }
+            },
+            {
+              "id": "setup-matt-pocock-skills.codex",
+              "directoryHash": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "setup-matt-pocock-skills.factory",
+              "directoryHash": "63188972753c4b1d382180b2ca1bd4e5a27bfd0fb611ec970f2b1a7aba932707",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-code-review.codex",
+              "directoryHash": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-code-review.factory",
+              "directoryHash": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-implement.codex",
+              "directoryHash": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-implement.factory",
+              "directoryHash": "a92c8e842cab9099acc8c1373668800575451011d3a119c4bced71826f2d1059",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-qa.codex",
+              "directoryHash": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-qa.factory",
+              "directoryHash": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-research.codex",
+              "directoryHash": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "flow-research.factory",
+              "directoryHash": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "drive-development-flow.codex",
+              "directoryHash": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "drive-development-flow.factory",
+              "directoryHash": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "coding-orchestration.codex-adapter",
+              "directoryHash": "d57ada57e34982ec35f178d52f530e02622ea3db0eabaa7c430f5a36be49c3a6",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            },
+            {
+              "id": "coding-orchestration.factory-adapter",
+              "directoryHash": "c725a00e4ec14fcb1739e8b33c1858bd670774c6a3f1991dc93c1a1d77db514e",
+              "states": {
+                "exists": true,
+                "discovered": true,
+                "catalogued": false,
+                "loadable": true,
+                "loaded": false,
+                "influenced": false
+              }
+            }
+          ],
+          "problems": []
+        }
+      },
+      "unchanged": true
+    }
   },
   "diagnostics": [
     "Unrelated Grok CLI health check failed during startup"
   ],
   "ok": true,
   "validation": {
-    "evaluatedAt": "2026-07-23T22:56:09.181Z",
-    "sourceCommit": "8848e69ef179fd835accf9366421a75d507d12fa",
-    "capturedSourceCommit": "556a0eb6770af189c870eecdbf99d978ff543d56"
+    "evaluatedAt": "2026-07-23T23:15:03.572Z",
+    "sourceCommit": "cffdb4e4377ae3d4c732694e5e950cbe795e9824",
+    "capturedSourceCommit": "77d74bb99dce882e8043980943d47acba9689ba4"
   }
 }
