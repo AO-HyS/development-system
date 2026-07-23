@@ -1,35 +1,27 @@
 // @ts-check
 
-import { spawnSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { runBoundedProcess } from "../src/bounded-process.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
 
 /** @param {string} command @param {string[]} args @param {{timeout?: number}} [options] */
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+async function run(command, args, options = {}) {
+  return runBoundedProcess(command, args, {
     cwd: repositoryRoot,
-    encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
-    timeout: options.timeout ?? 10 * 60 * 1000,
+    timeoutMs: options.timeout ?? 10 * 60 * 1000,
     env: process.env,
   });
-  return {
-    command: [command, ...args].join(" "),
-    status: result.status,
-    signal: result.signal,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-    error: result.error?.message ?? null,
-  };
 }
 
-function readAudit() {
-  const result = run("./bin/development-system", ["audit", "--json"]);
+async function readAudit() {
+  const result = await run("./bin/development-system", ["audit", "--json"]);
   if (result.status !== 0) {
     throw new Error(`HOME audit failed: ${result.stderr || result.error || result.stdout}`);
   }
@@ -55,16 +47,16 @@ function stableHomeState(audit) {
   };
 }
 
-function sourceCommit() {
-  const result = run("git", ["rev-parse", "HEAD"]);
+async function sourceCommit() {
+  const result = await run("git", ["rev-parse", "HEAD"]);
   if (result.status !== 0) throw new Error(result.stderr || "Unable to resolve source commit");
   return result.stdout.trim();
 }
 
 const startedAt = new Date();
-const homeBefore = stableHomeState(readAudit());
-const scenario = run("pnpm", ["run", "scenario"]);
-const homeAfter = stableHomeState(readAudit());
+const homeBefore = stableHomeState(await readAudit());
+const scenario = await run("pnpm", ["run", "scenario"]);
+const homeAfter = stableHomeState(await readAudit());
 const finishedAt = new Date();
 const realHomeUnchanged = JSON.stringify(homeBefore) === JSON.stringify(homeAfter);
 const combinedOutput = `${scenario.stdout}\n${scenario.stderr}`;
@@ -86,7 +78,7 @@ const report = {
   startedAt: startedAt.toISOString(),
   durationMs: finishedAt.getTime() - startedAt.getTime(),
   operation: "isolated-scenario-recertification",
-  sourceCommit: sourceCommit(),
+  sourceCommit: await sourceCommit(),
   realHomeReadOnly: true,
   realHomeUnchanged,
   scenario: {

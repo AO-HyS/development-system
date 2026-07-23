@@ -4,12 +4,14 @@ import { createServer } from "node:http";
 import test from "node:test";
 
 import {
+  classifyReadOnlyProbeCommand,
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
   isReadOnlyProbeCommand,
   requiredT3CodeLifecycleSkills,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
+import { runBoundedProcess } from "../src/bounded-process.mjs";
 
 function report(skillAuditHealthy = true) {
   const influenceSignatures = {
@@ -24,6 +26,9 @@ function report(skillAuditHealthy = true) {
     "drive-development-flow",
     ...requiredT3CodeLifecycleSkills,
   ].map((skill) => `/Users/test/.agents/skills/${skill}/SKILL.md`);
+  const command =
+    `sed -n '1,200p' ${skillPaths.join(" ")}; ` +
+    "./bin/development-system audit-skills --evidence evidence/current.json --json";
   return {
     requestedModel: { model: "gpt-5.6-sol" },
     requestedRuntimeMode: "approval-required",
@@ -38,11 +43,10 @@ function report(skillAuditHealthy = true) {
     },
     toolEvidence: {
       completedCommands: [{
-        command:
-          `sed -n '1,200p' ${skillPaths.join(" ")}; ` +
-          "./bin/development-system audit-skills --evidence evidence/current.json --json",
+        command,
         exitCode: 0,
         commandActions: skillPaths.map((path) => ({ type: "read", path })),
+        policyActions: classifyReadOnlyProbeCommand(command),
       }],
     },
     stateInvariants: {
@@ -88,6 +92,14 @@ test("T3Code probe fails closed when a lifecycle skill or repository invariant i
   const mutatingCommand = report();
   mutatingCommand.toolEvidence.completedCommands[0].command += "; git push origin main";
   assert.equal(evaluateT3CodeProbe(mutatingCommand), false);
+
+  const absentActions = report();
+  delete absentActions.toolEvidence.completedCommands[0].policyActions;
+  assert.equal(evaluateT3CodeProbe(absentActions), false);
+
+  const unknownActions = report();
+  unknownActions.toolEvidence.completedCommands[0].policyActions = [{ type: "unknown" }];
+  assert.equal(evaluateT3CodeProbe(unknownActions), false);
 });
 
 test("T3Code approval policy permits inspection and rejects mutation or scripting", () => {
@@ -104,6 +116,13 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
   assert.equal(isReadOnlyProbeCommand("git status --short; git push origin main"), false);
   assert.equal(isReadOnlyProbeCommand("node -e \"require('fs').writeFileSync('x','y')\""), false);
   assert.equal(isReadOnlyProbeCommand("find . -delete"), false);
+  assert.equal(isReadOnlyProbeCommand("sed -i '' 's/a/b/' docs/spec.md"), false);
+  assert.equal(isReadOnlyProbeCommand("sed -i.bak 's/a/b/' docs/spec.md"), false);
+  assert.equal(isReadOnlyProbeCommand("git diff --output=/tmp/leak.patch"), false);
+  assert.equal(isReadOnlyProbeCommand("find . -fprint /tmp/files"), false);
+  assert.equal(isReadOnlyProbeCommand("cat docs/spec.md & touch /tmp/side-effect"), false);
+  assert.equal(isReadOnlyProbeCommand("rg --pre 'touch /tmp/side-effect' pattern ."), false);
+  assert.equal(isReadOnlyProbeCommand("cat docs/spec.md > /tmp/copy"), false);
 });
 
 test("bounded JSON requests abort a stalled T3Code endpoint", async () => {
@@ -133,4 +152,22 @@ test("detached process cleanup waits through forced termination", async () => {
   await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
   await stopDetachedProcess(child, 50);
   assert.ok(child.exitCode !== null || child.signalCode !== null);
+});
+
+test("bounded process timeout kills a resistant descendant process group", async () => {
+  const result = await runBoundedProcess(
+    process.execPath,
+    [
+      "-e",
+      "const {spawn}=require('node:child_process'); spawn(process.execPath,['-e',\"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)\"],{stdio:'ignore'}); process.on('SIGTERM',()=>{}); setInterval(()=>{},1000)",
+    ],
+    {
+      cwd: process.cwd(),
+      timeoutMs: 75,
+      graceMs: 50,
+      maxBuffer: 1024,
+    },
+  );
+  assert.equal(result.timedOut, true);
+  assert.match(result.error ?? "", /Timed out/);
 });

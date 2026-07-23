@@ -1,5 +1,8 @@
 // @ts-check
 
+export { stopDetachedProcess } from "./bounded-process.mjs";
+import { stopDetachedProcess } from "./bounded-process.mjs";
+
 export const requiredT3CodeLifecycleSkills = [
   "wayfinder",
   "grill-with-docs",
@@ -19,31 +22,36 @@ const influencePatterns = {
   "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:blind|separate|independent)\b/i],
 };
 
-const forbiddenCommand =
-  /(?:^|[;&|]\s*|\s)(?:rm|mv|cp|install|sync-skills|rollback(?:-skills)?|lifecycle-execute|curl|wget|gh|linear|osascript|open|node|python\d*|perl|ruby|git\s+(?:commit|push|checkout|switch|reset|clean))(?=\s|$)/i;
-
-const readOnlyCommandStart =
-  /^(?:set\s+-[a-z]+\s*$|(?:\/usr\/bin\/)?(?:cat|find|head|jq|ls|nl|pwd|rg|sed|sha256sum|shasum|stat|tail|test|wc)\b|git\s+(?:diff|rev-parse|status)\b|\.\/bin\/development-system\s+(?:audit|audit-skills)\b)/i;
-
 /** @param {string} command */
 export function isReadOnlyProbeCommand(command) {
-  if (
-    !command ||
-    forbiddenCommand.test(command) ||
-    /(?:^|[^<])>>?|`|\$\(|\bfind\b[^\n]*(?:-delete|-exec)\b/i.test(command)
-  ) return false;
-  const unwrapped = command
-    .replace(/^\/bin\/zsh\s+-lc\s+/, "")
-    .replace(/^['"]|['"]$/g, "")
-    .replace(/\\"/g, '"')
-    .replace(/\\'/g, "'");
-  const segments = splitShellSegments(unwrapped)
-    .map((segment) => segment.trim().replace(/^['"]|['"]$/g, ""))
-    .filter(Boolean);
-  return segments.length > 0 && segments.every((segment) => readOnlyCommandStart.test(segment));
+  return classifyReadOnlyProbeCommand(command) !== null;
 }
 
-/** @param {string} command */
+/** @param {string} command @returns {Array<{type: "read" | "search" | "list", command: string}> | null} */
+export function classifyReadOnlyProbeCommand(command) {
+  if (!command || /[\r\n]|\0|`|\$\(|<\(|>\(|(?:^|[^&])&(?!&)|>>?|\\\n/.test(command)) return null;
+  let unwrapped = command.trim();
+  if (unwrapped.startsWith("/bin/zsh -lc ")) {
+    unwrapped = unwrapped.slice("/bin/zsh -lc ".length).trim();
+    const quote = unwrapped[0];
+    if (!["'", '"'].includes(quote) || unwrapped.at(-1) !== quote) return null;
+    unwrapped = unwrapped.slice(1, -1);
+    if (quote === '"') unwrapped = unwrapped.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+  }
+  const segments = splitShellSegments(unwrapped);
+  if (!segments || segments.length === 0) return null;
+  const actions = [];
+  for (const segment of segments) {
+    const tokens = tokenizeShellWords(segment);
+    if (!tokens || tokens.length === 0) return null;
+    const classification = classifyReadOnlyArgv(tokens);
+    if (!classification) return null;
+    actions.push({ type: classification, command: segment.trim() });
+  }
+  return actions;
+}
+
+/** @param {string} command @returns {string[] | null} */
 function splitShellSegments(command) {
   const segments = [];
   let current = "";
@@ -74,14 +82,96 @@ function splitShellSegments(command) {
     const pair = command.slice(index, index + 2);
     if (character === ";" || character === "|" || pair === "&&" || pair === "||") {
       if (current.trim()) segments.push(current);
+      else return null;
       current = "";
       if (pair === "&&" || pair === "||") index += 1;
       continue;
     }
     current += character;
   }
+  if (quote || escaped) return null;
   if (current.trim()) segments.push(current);
+  else if (segments.length > 0) return null;
   return segments;
+}
+
+/** @param {string} value @returns {string[] | null} */
+function tokenizeShellWords(value) {
+  const tokens = [];
+  let current = "";
+  let quote = null;
+  let escaped = false;
+  let started = false;
+  for (const character of value) {
+    if (escaped) {
+      current += character;
+      escaped = false;
+      started = true;
+    } else if (character === "\\") {
+      escaped = true;
+      started = true;
+    } else if (quote) {
+      if (character === quote) quote = null;
+      else current += character;
+      started = true;
+    } else if (character === "'" || character === '"') {
+      quote = character;
+      started = true;
+    } else if (/\s/.test(character)) {
+      if (started) tokens.push(current);
+      current = "";
+      started = false;
+    } else {
+      current += character;
+      started = true;
+    }
+  }
+  if (quote || escaped) return null;
+  if (started) tokens.push(current);
+  return tokens;
+}
+
+/** @param {string[]} argv @returns {"read" | "search" | "list" | null} */
+function classifyReadOnlyArgv(argv) {
+  const executable = argv[0].replace(/^\/usr\/bin\//, "");
+  const args = argv.slice(1);
+  if (executable === "pwd" && args.length === 0) return "list";
+  if (["cat", "head", "jq", "nl", "sed", "sha256sum", "shasum", "stat", "tail", "test", "wc"].includes(executable)) {
+    if (
+      executable === "sed" &&
+      args.some((arg) =>
+        arg === "--in-place" ||
+        arg.startsWith("--in-place=") ||
+        arg.startsWith("-i") ||
+        /^-[A-Za-z]*i[A-Za-z]*$/.test(arg)
+      )
+    ) return null;
+    if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
+    return "read";
+  }
+  if (executable === "ls") return "list";
+  if (executable === "rg") {
+    if (args.some((arg) => arg === "--pre" || arg.startsWith("--pre="))) return null;
+    return "search";
+  }
+  if (executable === "find") {
+    if (args.some((arg) =>
+      ["-delete", "-exec", "-execdir", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"]
+        .some((flag) => arg === flag || arg.startsWith(`${flag}=`))
+    )) return null;
+    return "search";
+  }
+  if (executable === "git") {
+    if (!["diff", "rev-parse", "status"].includes(args[0])) return null;
+    if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
+    return "read";
+  }
+  if (executable === "./bin/development-system") {
+    if (!["audit", "audit-skills"].includes(args[0])) return null;
+    if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
+    return "read";
+  }
+  return null;
 }
 
 /** @param {string} url @param {RequestInit} [options] @param {number} [timeoutMs] */
@@ -92,33 +182,6 @@ export async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 5_000)
   });
   const body = await response.json();
   return { response, body };
-}
-
-/** @param {import("node:child_process").ChildProcess} child @param {number} [graceMs] */
-export async function stopDetachedProcess(child, graceMs = 3_000) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  /** @param {NodeJS.Signals} signal */
-  const signalGroup = (signal) => {
-    try {
-      if (!child.pid) throw new Error("Child process has no process id");
-      process.kill(-child.pid, signal);
-    } catch {
-      child.kill(signal);
-    }
-  };
-  /** @param {number} timeoutMs */
-  const waitForExit = (timeoutMs) =>
-    Promise.race([
-      new Promise((resolvePromise) => child.once("exit", () => resolvePromise(true))),
-      new Promise((resolvePromise) => setTimeout(() => resolvePromise(false), timeoutMs)),
-    ]);
-
-  signalGroup("SIGTERM");
-  if (await waitForExit(graceMs)) return;
-  signalGroup("SIGKILL");
-  if (!await waitForExit(graceMs)) {
-    throw new Error("Detached T3Code process group did not exit after SIGKILL");
-  }
 }
 
 /** @param {any} report */
@@ -136,15 +199,19 @@ function hasIndependentLoadEvidence(report) {
   );
   const commandsSucceeded = commands.length > 0 &&
     commands.every((/** @type {any} */ entry) => entry.exitCode === 0);
-  const noMutationActions = commands.every((/** @type {any} */ entry) =>
-    (entry.commandActions ?? []).every((/** @type {any} */ action) =>
-      !["create", "delete", "edit", "move", "write"].includes(String(action.type).toLowerCase())
+  const classifiedActions = commands.every((/** @type {any} */ entry) =>
+    Array.isArray(entry.policyActions) &&
+    entry.policyActions.length > 0 &&
+    entry.policyActions.every((/** @type {any} */ action) =>
+      ["read", "search", "list"].includes(String(action.type).toLowerCase())
     )
   );
-  const commandsAllowed = commands.every((/** @type {any} */ entry) =>
-    isReadOnlyProbeCommand(entry.command)
-  );
-  return routerRead && lifecycleReads && skillAudit && commandsSucceeded && noMutationActions && commandsAllowed;
+  const commandsAllowed = commands.every((/** @type {any} */ entry) => {
+    const classification = classifyReadOnlyProbeCommand(entry.command);
+    return classification !== null &&
+      JSON.stringify(classification) === JSON.stringify(entry.policyActions);
+  });
+  return routerRead && lifecycleReads && skillAudit && commandsSucceeded && classifiedActions && commandsAllowed;
 }
 
 /** @param {any} report */

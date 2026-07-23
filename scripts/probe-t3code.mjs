@@ -13,6 +13,7 @@ import { auditRepository } from "../src/repositories.mjs";
 import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
+  classifyReadOnlyProbeCommand,
   isReadOnlyProbeCommand,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
@@ -120,6 +121,7 @@ function completedToolEvidence(activities) {
         path: action.path ?? null,
         query: action.query ?? null,
       })),
+      policyActions: classifyReadOnlyProbeCommand(item.command) ?? [],
     }));
 }
 
