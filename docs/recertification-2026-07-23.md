@@ -1,7 +1,7 @@
 # Development System 0.8 recertification
 
-Linear: AOH-215  
-Date: 2026-07-23  
+Linear: AOH-215
+Date: 2026-07-23
 Mode: read-only against HOME and product repositories
 
 ## Decision
