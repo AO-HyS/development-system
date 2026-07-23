@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "contractVersion": "0.8.0",
-  "generatedAt": "2026-07-23T23:11:43.584Z",
-  "startedAt": "2026-07-23T23:09:34.663Z",
-  "durationMs": 128921,
+  "generatedAt": "2026-07-23T23:28:17.064Z",
+  "startedAt": "2026-07-23T23:26:28.728Z",
+  "durationMs": 108336,
   "operation": "t3code-live-probe",
-  "sourceCommit": "77d74bb99dce882e8043980943d47acba9689ba4",
+  "sourceCommit": "8e813884c02d65473cac7e53cee66284384fc355",
   "application": {
     "executable": "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs",
     "version": "0.0.29-nightly.20260722.878",
@@ -23,33 +23,19 @@
   "requestedRuntimeMode": "approval-required",
   "approvalEvidence": [
     {
-      "requestId": "8b6218a1-e894-4e57-94c0-43c05dd9ac63",
+      "requestId": "a93a1722-d7e9-461b-bb45-20706e6f62df",
       "requestKind": "command",
-      "detail": "/bin/zsh -lc \"git status --short && git rev-parse --show-toplevel && ls && ls docs && find docs -maxdepth 3 -type f && jq 'keys' evidence/skills-live-2026-07-23-recertification.json && jq '.' evidence/skills-live-2026-07-23-recertification.json\"",
-      "decision": "accept"
-    },
-    {
-      "requestId": "323c6b94-9262-4dde-a23e-e301f7a99d4a",
-      "requestKind": "command",
-      "detail": "/bin/zsh -lc \"sed -n '70,105p' README.md && ./bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json\"",
-      "decision": "accept"
-    },
-    {
-      "requestId": "8da7f4f8-cb75-4e1f-84da-7ec1dfd98e49",
-      "requestKind": "command",
-      "detail": "/bin/zsh -lc 'git rev-parse HEAD && git status --short && git diff --stat && shasum -a 256 evidence/skills-live-2026-07-23-recertification.json'",
+      "detail": "/bin/zsh -lc './bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json'",
       "decision": "accept"
     }
   ],
   "observed": {
     "harness": {
-      "active": "T3Code/Codex",
-      "classification": "read-only recertification and operational-contract inspection; no lifecycle transition or mutation authorized"
+      "client": "T3Code",
+      "adapter": "Codex",
+      "classification": "read-only flow-code-review recertification"
     },
-    "routerLoaded": [
-      "drive-development-flow",
-      "coding-orchestration"
-    ],
+    "routerLoaded": true,
     "lifecycleSkills": [
       "wayfinder",
       "grill-with-docs",
@@ -59,54 +45,32 @@
       "flow-code-review"
     ],
     "influenceSignatures": {
-      "wayfinder": "Plan decision tickets; do not deliver the destination or resolve multiple non-research tickets per session.",
-      "grill-with-docs": "Run a human grilling session using domain-modeling.",
-      "to-spec": "Synthesize existing context without interviewing, then publish the prescribed spec.",
-      "to-tickets": "Create user-approved tracer-bullet vertical slices with explicit blocking edges.",
-      "flow-implement": "Pin one authorized terminal slice and preserve every publication or promotion boundary.",
-      "flow-code-review": "Inspect a fixed diff through blind Standards and Spec lanes, then validate and rank findings."
+      "wayfinder": "Plan decision tickets, not delivery; never resolve more than one non-research ticket per session.",
+      "grill-with-docs": "Run grilling with domain-modeling.",
+      "to-spec": "Synthesize existing context without interviewing the user.",
+      "to-tickets": "Draft complete vertical slices with explicit blockers and obtain approval before publishing.",
+      "flow-implement": "Pin the terminal slice and authorization boundaries before editing.",
+      "flow-code-review": "Inspect Standards and Spec independently, then validate and deduplicate findings."
     },
     "instructionSources": [
       "AGENTS.md",
       "docs/spec.md",
-      "docs/adr/0001-canonical-source-and-generated-home.md",
-      "docs/adr/0002-authorization-is-not-transitive.md",
       "docs/adr/0003-operational-skill-evidence.md",
-      "docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md",
       "docs/adr/0005-parity-is-observable-across-native-harness-adapters.md",
       "docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
+      "docs/adr/0008-repository-audit-and-preparation-are-separate-transitions.md",
       "docs/recertification-2026-07-23.md",
       "~/.codex/skills/drive-development-flow/SKILL.md",
       "~/.codex/skills/coding-orchestration/SKILL.md",
       "~/.agents/skills/{wayfinder,grill-with-docs,to-spec,to-tickets,flow-implement,flow-code-review}/SKILL.md"
     ],
-    "skillAuditHealthy": {
-      "status": true,
-      "evidence": "evidence/skills-live-2026-07-23-recertification.json",
-      "catalogVersion": "0.2.0",
-      "logicalSkills": 20,
-      "physicalVariants": 40,
-      "catalogEntries": "401/512",
-      "overflow": false,
-      "brokenSymlinks": 0,
-      "scannerErrors": 0,
-      "orphanedEntries": 0,
-      "unmanifestedDuplicates": 0,
-      "liveInfluenceProvenOnly": [
-        "research.codex",
-        "research.factory"
-      ],
-      "exhaustive": false,
-      "warning": "Codex catalog-description shortening only; no omission or overflow."
-    },
+    "skillAuditHealthy": true,
     "model": "gpt-5.6-sol",
     "reasoning": "medium",
     "externalState": {
       "changed": false,
-      "gitHead": "77d74bb99dce882e8043980943d47acba9689ba4",
-      "gitStatus": "clean",
-      "gitDiff": "empty",
-      "evidenceSha256": "06791c1e60e7670cd6c7987b7ee161ef7c48ea32fad23de5bb187075c7e72ce8"
+      "gitStatusPreserved": true,
+      "preexistingModification": "evidence/t3code-live-2026-07-23-recertification.json"
     }
   },
   "observedThreadModel": {
@@ -114,28 +78,16 @@
     "model": "gpt-5.6-sol"
   },
   "context": {
-    "usedTokens": 70348,
-    "totalProcessedTokens": 514279,
+    "usedTokens": 58859,
+    "totalProcessedTokens": 607766,
     "maxTokens": 258400
   },
   "toolEvidence": {
-    "completedCommandCount": 10,
+    "completedCommandCount": 22,
+    "blockedCommandCount": 0,
     "completedCommands": [
       {
-        "command": "/bin/zsh -lc 'pwd && rg -n \"development-system|wayfinder|grill-with-docs|to-spec|to-tickets|recertification\" /Users/corrortiz/.codex/memories/MEMORY.md'",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "unknown",
-            "path": null,
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc \"cat /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md && cat /Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md && find /Users/corrortiz/.codex/skills /Users/corrortiz/.agents/skills -path '*/wayfinder/SKILL.md' -o -path '*/grill-with-docs/SKILL.md' -o -path '*/to-spec/SKILL.md' -o -path '*/to-tickets/SKILL.md' -o -path '*/flow-implement/SKILL.md' -o -path '*/flow-code-review/SKILL.md'\"",
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md'",
         "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
         "durationMs": 0,
         "exitCode": 0,
@@ -144,197 +96,55 @@
             "type": "read",
             "path": "/Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md",
             "query": null
-          },
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.codex/skills/drive-development-flow/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
           {
             "type": "read",
             "path": "/Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md",
             "query": null
-          },
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.codex/skills/coding-orchestration/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'rg -n \"Development System|recertification|skills-live|skillAuditHealthy|audit-skills|wayfinder|grill-with-docs\" /Users/corrortiz/.codex/memories/MEMORY.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
           {
             "type": "search",
-            "path": "skills",
-            "query": "*/wayfinder/SKILL.md"
+            "path": "MEMORY.md",
+            "query": "Development System|recertification|skills-live|skillAuditHealthy|audit-skills|wayfinder|grill-with-docs"
           }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/wayfinder/SKILL.md && cat /Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md && cat /Users/corrortiz/.agents/skills/to-spec/SKILL.md && cat /Users/corrortiz/.agents/skills/to-tickets/SKILL.md && cat /Users/corrortiz/.agents/skills/flow-implement/SKILL.md && cat /Users/corrortiz/.agents/skills/flow-code-review/SKILL.md'",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/wayfinder/SKILL.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/to-spec/SKILL.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/to-tickets/SKILL.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/flow-implement/SKILL.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/.agents/skills/flow-code-review/SKILL.md",
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc \"git status --short && git rev-parse --show-toplevel && ls && ls docs && find docs -maxdepth 3 -type f && jq 'keys' evidence/skills-live-2026-07-23-recertification.json && jq '.' evidence/skills-live-2026-07-23-recertification.json\"",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "unknown",
-            "path": null,
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc 'cat AGENTS.md && cat docs/spec.md && cat docs/adr/0001-canonical-source-and-generated-home.md && cat docs/adr/0002-authorization-is-not-transitive.md && cat docs/adr/0003-operational-skill-evidence.md && cat docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md && cat docs/adr/0005-parity-is-observable-across-native-harness-adapters.md && cat docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md && cat docs/recertification-2026-07-23.md'",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/AGENTS.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0001-canonical-source-and-generated-home.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0002-authorization-is-not-transitive.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0003-operational-skill-evidence.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0005-parity-is-observable-across-native-harness-adapters.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/recertification-2026-07-23.md",
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc \"wc -l docs/spec.md docs/adr/0001-canonical-source-and-generated-home.md docs/adr/0002-authorization-is-not-transitive.md docs/adr/0003-operational-skill-evidence.md docs/adr/0004-lifecycle-gates-are-persisted-and-operation-specific.md docs/adr/0005-parity-is-observable-across-native-harness-adapters.md docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md docs/recertification-2026-07-23.md && sed -n '1,140p' docs/spec.md && sed -n '141,280p' docs/spec.md\"",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
-            "query": null
-          },
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc \"sed -n '281,340p' docs/spec.md && rg -n \\\"audit-skills|skills-live|catalog health|catalogued|probeSucceeded|current evidence|recertification\\\" README.md docs bin package.json src test && ls bin && ls evidence\"",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "read",
-            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
-            "query": null
-          },
+        ],
+        "policyActions": [
           {
             "type": "search",
-            "path": "README.md",
-            "query": "audit-skills|skills-live|catalog health|catalogued|probeSucceeded|current evidence|recertification"
-          },
-          {
-            "type": "listFiles",
-            "path": "bin",
-            "query": null
-          },
-          {
-            "type": "listFiles",
-            "path": "evidence",
-            "query": null
+            "command": "rg -n \"Development System|recertification|skills-live|skillAuditHealthy|audit-skills|wayfinder|grill-with-docs\" /Users/corrortiz/.codex/memories/MEMORY.md"
           }
         ]
       },
       {
-        "command": "/bin/zsh -lc \"sed -n '70,105p' README.md && ./bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json\"",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 143,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "unknown",
-            "path": null,
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc 'git rev-parse HEAD && git status --short && git diff --stat && shasum -a 256 evidence/skills-live-2026-07-23-recertification.json'",
-        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
-        "durationMs": 0,
-        "exitCode": 0,
-        "commandActions": [
-          {
-            "type": "unknown",
-            "path": null,
-            "query": null
-          }
-        ]
-      },
-      {
-        "command": "/bin/zsh -lc \"nl -ba /Users/corrortiz/.codex/memories/MEMORY.md | sed -n '280,410p'\"",
+        "command": "/bin/zsh -lc \"sed -n '281,370p' /Users/corrortiz/.codex/memories/MEMORY.md\"",
         "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
         "durationMs": 0,
         "exitCode": 0,
@@ -344,18 +154,367 @@
             "path": "/Users/corrortiz/.codex/memories/MEMORY.md",
             "query": null
           }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "sed -n '281,370p' /Users/corrortiz/.codex/memories/MEMORY.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc pwd",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "list",
+            "command": "pwd"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'git status --short --branch'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "git status --short --branch"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'find /Users/corrortiz/.agents/skills -maxdepth 2 -name SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "search",
+            "path": "skills",
+            "query": "SKILL.md"
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "search",
+            "command": "find /Users/corrortiz/.agents/skills -maxdepth 2 -name SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/wayfinder/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/wayfinder/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/wayfinder/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/to-spec/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/to-spec/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/to-spec/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/to-tickets/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/to-tickets/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/to-tickets/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/flow-implement/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/flow-implement/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/flow-implement/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/grill-with-docs/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat /Users/corrortiz/.agents/skills/flow-code-review/SKILL.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/.agents/skills/flow-code-review/SKILL.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat /Users/corrortiz/.agents/skills/flow-code-review/SKILL.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/spec.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/spec.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/spec.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'find docs -maxdepth 3 -type f'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "listFiles",
+            "path": "docs",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "search",
+            "command": "find docs -maxdepth 3 -type f"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/adr/0003-operational-skill-evidence.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0003-operational-skill-evidence.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/adr/0003-operational-skill-evidence.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/adr/0005-parity-is-observable-across-native-harness-adapters.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0005-parity-is-observable-across-native-harness-adapters.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/adr/0005-parity-is-observable-across-native-harness-adapters.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/adr/0006-models-are-mapped-by-capability-and-benchmark-evidence.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/adr/0008-repository-audit-and-preparation-are-separate-transitions.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/adr/0008-repository-audit-and-preparation-are-separate-transitions.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/adr/0008-repository-audit-and-preparation-are-separate-transitions.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'cat docs/recertification-2026-07-23.md'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "read",
+            "path": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/docs/recertification-2026-07-23.md",
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "cat docs/recertification-2026-07-23.md"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc './bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 146,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "./bin/development-system audit-skills --version 0.2.0 --evidence /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215/evidence/skills-live-2026-07-23-recertification.json --json"
+          }
+        ]
+      },
+      {
+        "command": "/bin/zsh -lc 'git status --short --branch'",
+        "cwd": "/Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215",
+        "durationMs": 0,
+        "exitCode": 0,
+        "commandActions": [
+          {
+            "type": "unknown",
+            "path": null,
+            "query": null
+          }
+        ],
+        "policyActions": [
+          {
+            "type": "read",
+            "command": "git status --short --branch"
+          }
         ]
       }
-    ]
+    ],
+    "blockedCommands": []
   },
   "stateInvariants": {
     "repository": {
-      "headBefore": "77d74bb99dce882e8043980943d47acba9689ba4",
-      "headAfter": "77d74bb99dce882e8043980943d47acba9689ba4",
+      "headBefore": "8e813884c02d65473cac7e53cee66284384fc355",
+      "headAfter": "8e813884c02d65473cac7e53cee66284384fc355",
       "gitHeadUnchanged": true,
       "gitStatusUnchanged": true,
-      "fingerprintBefore": "3240906277425243456895ea17e483eecd2ccc7334cda06eb37f1bbc39ae7eff",
-      "fingerprintAfter": "3240906277425243456895ea17e483eecd2ccc7334cda06eb37f1bbc39ae7eff",
+      "fingerprintBefore": "55434f1b9fa540f4665c029a8bb321ce5491520f0348e5a756e597aadbb9b563",
+      "fingerprintAfter": "55434f1b9fa540f4665c029a8bb321ce5491520f0348e5a756e597aadbb9b563",
       "fingerprintUnchanged": true
     },
     "managedHome": {
@@ -1579,10 +1738,5 @@
   "diagnostics": [
     "Unrelated Grok CLI health check failed during startup"
   ],
-  "ok": true,
-  "validation": {
-    "evaluatedAt": "2026-07-23T23:15:03.572Z",
-    "sourceCommit": "cffdb4e4377ae3d4c732694e5e950cbe795e9824",
-    "capturedSourceCommit": "77d74bb99dce882e8043980943d47acba9689ba4"
-  }
+  "ok": false
 }

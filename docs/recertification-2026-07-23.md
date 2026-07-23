@@ -35,10 +35,15 @@ live client surface over the Codex provider, not a third physical skill variant.
   `0.0.29-nightly.20260722.878` server launched in an isolated data directory,
   dispatched a real `gpt-5.6-sol` turn under `approval-required`, loaded the
   router plus all six lifecycle skills, and passed the current skill audit.
-  Independent evidence records each completed read command, three policy-gated
-  approvals, controlled behavior signatures, repository HEAD/status/fingerprint,
-  and all 13 managed HOME artifacts plus 40 skill variants before and after.
-  The captured run and its post-capture evaluator commits are both recorded.
+  Independent evidence records 22 completed read/search/list commands, one
+  policy-gated approval, controlled behavior signatures, repository
+  HEAD/status/fingerprint, and all 13 managed HOME artifacts plus 40 skill
+  variants before and after. Its immutable companion
+  `evidence/t3code-live-2026-07-23-recertification.attestation.json` binds the
+  60,929-byte capture by SHA-256 to evaluator commit `f20ef6a` and passes. The
+  capture's original `ok: false` is retained: the capture-time evaluator
+  rejected the equivalent phrases `vertical slices` and `independently`; the
+  separate evaluator fixed only those controlled vocabulary false negatives.
 - `evidence/harnesses-live-2026-07-23-recertification.json`: all AO, simple,
   NutriPlan, Barber, and nested AOHYS scenarios passed across Codex, Factory,
   and the structural T3Code/Codex adapter. This matrix exercises the unchanged
@@ -68,7 +73,7 @@ rolled back because its audit and validation were healthy.
 - Codex startup repeatedly attempts to refresh the `mercadopago-mcp-server`
   OAuth client and receives `invalid_client`. It does not invalidate lifecycle
   results, but it adds repeated startup noise and latency.
-- The exhaustive T3Code turn took 128.9 seconds and reported 514,279 cumulative
+- The exhaustive T3Code turn took 108.3 seconds and reported 607,766 cumulative
   processed tokens. This is a harness diagnostic rather than a billing claim,
   but it proves that loading every lifecycle skill in ordinary implementation
   would be expensive. Daily routing should load only the selected stage; the
