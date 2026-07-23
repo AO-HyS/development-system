@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.2.0",
+  "evidenceScope": {
+    "kind": "critical-capability-live-probe",
+    "structuralCatalogLogicalSkills": 20,
+    "liveInfluenceSkills": [
+      "research"
+    ],
+    "exhaustive": false,
+    "claim": "Live influence is proven only for the named skill and harness observations."
+  },
+  "generatedAt": "2026-07-23T22:10:25.267Z",
+  "sourceCommit": "df804b78c2cbdbf31a810b21bece9136070a57ae",
+  "home": "/Users/corrortiz",
+  "skill": "research",
+  "behaviorSignature": [
+    "background agent",
+    "primary sources",
+    "markdown file"
+  ],
+  "loadBehaviorSignature": [
+    "somewhere sensible",
+    "say where"
+  ],
+  "probeSucceeded": true,
+  "installedHashes": {
+    "research.codex": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+    "research.factory": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659"
+  },
+  "codex": {
+    "research": {
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "command": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215 $research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
+      "version": "codex-cli 0.146.0-alpha.3",
+      "exitCode": 0,
+      "response": "A background agent must use primary sources and create one Markdown findings file with claim-level citations; absent a repository convention, put it “somewhere sensible” and “say where.”",
+      "catalogCommand": "/Applications/ChatGPT.app/Contents/Resources/codex -a never exec --ephemeral --sandbox read-only --skip-git-repo-check --json -C /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215 Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
+      "catalogResponse": "research",
+      "catalogWarning": true,
+      "catalogOverflow": false,
+      "scannerErrors": []
+    }
+  },
+  "factory": {
+    "research": {
+      "catalogued": true,
+      "loaded": true,
+      "influenced": true,
+      "command": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215 --output-format json /research Read the full skill instructions. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
+      "version": "0.178.0",
+      "exitCode": 0,
+      "response": "Based only on the `research` skill instructions:\n\n- **Worker:** a background agent (so you keep working while it reads).\n- **Mandatory source class:** primary sources (official docs, source code, specs, first-party APIs), not secondary write-ups.\n- **Single artifact:** one Markdown file containing the findings, with each claim cited to its source.\n- **Fallback with no convention:** if the repo has no convention for such notes, put it **somewhere sensible** and **say where**.",
+      "catalogCommand": "/Applications/Factory.app/Contents/Resources/bin/droid exec --cwd /Users/corrortiz/Documents/AO/.benchmark-worktrees/development-system-aoh-215 --output-format json Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
+      "catalogResponse": "research",
+      "catalogOverflow": false,
+      "scannerErrors": []
+    }
+  }
+}

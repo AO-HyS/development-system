@@ -290,7 +290,7 @@ test("nested T3Code accepts explicit no-state evidence without a manual rerun", 
 test("equivalent read-only evidence phrases keep externalState deterministic across Factory and T3Code", async () => {
   const phrases = new Map([
     ["factory", "read-only; no repository search or other tool calls issued, no files edited"],
-    ["t3code", "recommendation returned without repository inspection or lifecycle transition"],
+    ["t3code", "repository and lifecycle state unmodified; no tools called"],
   ]);
   const report = await validateOperationalScenarios({
     registry,

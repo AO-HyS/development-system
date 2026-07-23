@@ -117,6 +117,7 @@ function describesUnchangedState(value) {
   return text.includes("unchanged") ||
     text.includes("remained unchanged") ||
     text.includes("untouched") ||
+    text.includes("unmodified") ||
     /\b(no|not|without)\b.*\b(change|changes|changed|write|writes|written|edited|modified|mutation|mutations|touched|contacted|transition|transitions)/.test(text) ||
     (/\bread[- ]only\b/.test(text) && /\b(no|without)\b.*\b(lifecycle )?transition\b/.test(text));
 }
