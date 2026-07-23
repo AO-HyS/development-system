@@ -73,7 +73,9 @@ async function waitForDescriptor(origin, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${origin}/.well-known/t3/environment`);
+      const response = await fetch(`${origin}/.well-known/t3/environment`, {
+        signal: AbortSignal.timeout(1_000),
+      });
       if (response.ok) return await response.json();
     } catch {}
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
