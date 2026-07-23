@@ -1,5 +1,7 @@
 // @ts-check
 
+import { createHash } from "node:crypto";
+
 export { stopDetachedProcess } from "./bounded-process.mjs";
 import { stopDetachedProcess } from "./bounded-process.mjs";
 
@@ -140,16 +142,16 @@ function classifyReadOnlyArgv(argv) {
   const executable = argv[0].replace(/^\/usr\/bin\//, "");
   const args = argv.slice(1);
   if (executable === "pwd" && args.length === 0) return "list";
-  if (["cat", "head", "jq", "nl", "sed", "sha256sum", "shasum", "stat", "tail", "test", "wc"].includes(executable)) {
+  if (executable === "sed") {
     if (
-      executable === "sed" &&
-      args.some((arg) =>
-        arg === "--in-place" ||
-        arg.startsWith("--in-place=") ||
-        arg.startsWith("-i") ||
-        /^-[A-Za-z]*i[A-Za-z]*$/.test(arg)
-      )
+      args.length < 3 ||
+      args[0] !== "-n" ||
+      !/^\d+(?:,\d+)?p$/.test(args[1]) ||
+      args.slice(2).some((arg) => arg.startsWith("-"))
     ) return null;
+    return "read";
+  }
+  if (["cat", "head", "jq", "nl", "sha256sum", "shasum", "stat", "tail", "test", "wc"].includes(executable)) {
     if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
     return "read";
   }
@@ -167,7 +169,12 @@ function classifyReadOnlyArgv(argv) {
   }
   if (executable === "git") {
     if (!["diff", "rev-parse", "status"].includes(args[0])) return null;
-    if (args.some((arg) => arg === "--output" || arg.startsWith("--output="))) return null;
+    if (args.some((arg) =>
+      arg === "--output" ||
+      arg.startsWith("--output=") ||
+      arg === "--ext-diff" ||
+      arg === "--textconv"
+    )) return null;
     return "read";
   }
   if (executable === "./bin/development-system") {
@@ -197,13 +204,35 @@ function hasIndependentLoadEvidence(report) {
   const lifecycleReads = requiredT3CodeLifecycleSkills.every((skill) =>
     commandText.includes(`/${skill}/SKILL.md`)
   );
-  const skillAudit = commands.some((/** @type {any} */ entry) =>
-    entry.exitCode === 0 &&
-    entry.command.includes("audit-skills") &&
-    entry.command.includes("--evidence")
-  );
+  const hostAudit = report?.hostEvidence?.skillAudit;
+  const skillAudit =
+    hostAudit?.exitCode === 0 &&
+    hostAudit?.healthy === true &&
+    hostAudit?.result?.ok === true &&
+    typeof hostAudit?.outputSha256 === "string" &&
+    /^[a-f0-9]{64}$/.test(hostAudit.outputSha256) &&
+    createHash("sha256")
+      .update(`${JSON.stringify(hostAudit.result)}\n`)
+      .digest("hex") === hostAudit.outputSha256 &&
+    typeof hostAudit?.evidenceSha256 === "string" &&
+    /^[a-f0-9]{64}$/.test(hostAudit.evidenceSha256) &&
+    Array.isArray(hostAudit?.command) &&
+    hostAudit.command[0] === "./bin/development-system" &&
+    hostAudit.command[1] === "audit-skills" &&
+    hostAudit.command.includes("--evidence") &&
+    commands.some((/** @type {any} */ entry) =>
+      entry.exitCode === 0 &&
+      entry.command.includes(hostAudit.outputPath)
+    );
   const commandsSucceeded = commands.length > 0 &&
     commands.every((/** @type {any} */ entry) => entry.exitCode === 0);
+  const observedActions = commands.every((/** @type {any} */ entry) =>
+    Array.isArray(entry.commandActions) &&
+    entry.commandActions.length > 0 &&
+    entry.commandActions.every((/** @type {any} */ action) =>
+      ["read", "search", "list"].includes(String(action.type).toLowerCase())
+    )
+  );
   const classifiedActions = commands.every((/** @type {any} */ entry) =>
     Array.isArray(entry.policyActions) &&
     entry.policyActions.length > 0 &&
@@ -217,7 +246,7 @@ function hasIndependentLoadEvidence(report) {
       JSON.stringify(classification) === JSON.stringify(entry.policyActions);
   });
   return routerRead && orchestrationRead && lifecycleReads && skillAudit &&
-    commandsSucceeded && classifiedActions && commandsAllowed;
+    commandsSucceeded && observedActions && classifiedActions && commandsAllowed;
 }
 
 /** @param {any} report */

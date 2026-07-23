@@ -1,7 +1,7 @@
 // @ts-check
 
 import { spawn, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { closeSync, openSync, readFileSync } from "node:fs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
@@ -116,8 +116,9 @@ function observedToolEvidence(activities) {
       cwd: item.cwd,
       durationMs: item.durationMs,
       exitCode: item.exitCode,
+      rawCommandActions: item.commandActions ?? [],
       commandActions: (item.commandActions ?? []).map((/** @type {any} */ action) => ({
-        type: action.type,
+        type: action.type === "listFiles" ? "list" : action.type,
         path: action.path ?? null,
         query: action.query ?? null,
       })),
@@ -175,6 +176,28 @@ const repositoryBefore = await auditRepository({ repository: probeRepository });
 const homeBefore = managedHomeState();
 const startedAt = new Date();
 const baseDir = await mkdtemp(join(tmpdir(), "aohys-t3code-probe-"));
+const hostAuditPath = resolve(baseDir, "skill-audit.json");
+const hostAuditCommand = [
+  "./bin/development-system",
+  "audit-skills",
+  "--version",
+  "0.2.0",
+  "--evidence",
+  skillEvidence,
+  "--json",
+];
+const hostAudit = JSON.parse(run(hostAuditCommand[0], hostAuditCommand.slice(1), repositoryRoot));
+const hostAuditOutput = `${JSON.stringify(hostAudit)}\n`;
+await writeFile(hostAuditPath, hostAuditOutput, { encoding: "utf8", mode: 0o600 });
+const hostSkillAuditEvidence = {
+  command: hostAuditCommand,
+  exitCode: 0,
+  outputPath: hostAuditPath,
+  outputSha256: createHash("sha256").update(hostAuditOutput).digest("hex"),
+  evidenceSha256: createHash("sha256").update(readFileSync(skillEvidence)).digest("hex"),
+  healthy: hostAudit.ok === true,
+  result: hostAudit,
+};
 const port = await reservePort();
 const origin = `http://127.0.0.1:${port}`;
 let server;
@@ -305,9 +328,8 @@ try {
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
         "For shell inspection use only cat, find without -exec/-delete, head, jq, ls, nl, pwd, rg, sed, sha256sum, " +
         "shasum, stat, tail, test, wc, git diff/rev-parse/status, or the Development System audit commands; " +
-        "send every shell command as a single line. You MUST run " +
-        `./bin/development-system audit-skills --version 0.2.0 --evidence ${skillEvidence} --json ` +
-        "and base skillAuditHealthy on that command's output. " +
+        "send every shell command as a single line. Do not run pwd or git commands; the host measures repository state. " +
+        `You MUST read ${hostAuditPath} with cat and base skillAuditHealthy on that host-generated audit output. ` +
         "do not use redirects, command substitution, scripting runtimes, network clients, or mutation commands. " +
         "Do not change files or external state. Return only one compact JSON object with keys harness, routerLoaded, " +
         "lifecycleSkills, influenceSignatures, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
@@ -340,7 +362,7 @@ try {
       const detail = String(activity.payload?.detail ?? "");
       const allowedFileRead =
         requestKind === "file-read" &&
-        [probeRepository, homedir(), skillEvidence].some((root) => detail.includes(root));
+        [probeRepository, homedir(), skillEvidence, hostAuditPath].some((root) => detail.includes(root));
       const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
       const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
       approvalEvidence.push({ requestId, requestKind, detail, decision });
@@ -400,6 +422,9 @@ try {
           maxTokens: latestContext.maxTokens ?? null,
         }
       : null,
+    hostEvidence: {
+      skillAudit: hostSkillAuditEvidence,
+    },
     toolEvidence: {
       completedCommandCount: commandEvidence.completedCommands.length,
       blockedCommandCount: commandEvidence.blockedCommands.length,
