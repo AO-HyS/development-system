@@ -63,6 +63,8 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   nativeShape.observed.routerLoaded = ["drive-development-flow", "coding-orchestration"];
   nativeShape.observed.influenceSignatures["flow-code-review"] =
     "Inspect through blind Standards and Spec lanes.";
+  nativeShape.observed.influenceSignatures.wayfinder =
+    "Plan decision tickets and do not resolve multiple non-research tickets.";
   assert.equal(evaluateT3CodeProbe(nativeShape), true);
 });
 
@@ -95,6 +97,10 @@ test("T3Code approval policy permits inspection and rejects mutation or scriptin
     true,
   );
   assert.equal(isReadOnlyProbeCommand("rg -n \"wayfinder|to-spec\" docs"), true);
+  assert.equal(
+    isReadOnlyProbeCommand(`/bin/zsh -lc "sed -n '1,4p' docs/spec.md && rg -n \\"wayfinder|to-spec\\" docs"`),
+    true,
+  );
   assert.equal(isReadOnlyProbeCommand("git status --short; git push origin main"), false);
   assert.equal(isReadOnlyProbeCommand("node -e \"require('fs').writeFileSync('x','y')\""), false);
   assert.equal(isReadOnlyProbeCommand("find . -delete"), false);

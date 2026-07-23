@@ -11,7 +11,7 @@ export const requiredT3CodeLifecycleSkills = [
 
 /** @type {Record<string, RegExp[]>} */
 const influencePatterns = {
-  wayfinder: [/\bdecisions?\b/i, /\bone ticket\b/i],
+  wayfinder: [/\bdecisions?\b/i, /\b(?:one ticket|multiple\b.*\btickets)\b/i],
   "grill-with-docs": [/\bgrill(?:ing)?\b/i, /\bdomain[- ]model/i],
   "to-spec": [/\bsynthesi[sz]e\b/i, /\bwithout\b.*\binterview/i],
   "to-tickets": [/\btracer[- ]bullet\b/i, /\bblocking\b/i],
@@ -34,7 +34,9 @@ export function isReadOnlyProbeCommand(command) {
   ) return false;
   const unwrapped = command
     .replace(/^\/bin\/zsh\s+-lc\s+/, "")
-    .replace(/^['"]|['"]$/g, "");
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\"/g, '"')
+    .replace(/\\'/g, "'");
   const segments = splitShellSegments(unwrapped)
     .map((segment) => segment.trim().replace(/^['"]|['"]$/g, ""))
     .filter(Boolean);
