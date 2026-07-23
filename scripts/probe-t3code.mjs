@@ -5,11 +5,16 @@ import { randomUUID } from "node:crypto";
 import { closeSync, openSync, readFileSync } from "node:fs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { evaluateT3CodeProbe, requiredT3CodeLifecycleSkills } from "../src/t3code-probe.mjs";
+import { auditRepository } from "../src/repositories.mjs";
+import {
+  evaluateT3CodeProbe,
+  fetchJsonWithTimeout,
+  stopDetachedProcess,
+} from "../src/t3code-probe.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputIndex = process.argv.indexOf("--output");
@@ -48,6 +53,75 @@ function gitState() {
   };
 }
 
+function managedHomeState() {
+  const installation = JSON.parse(
+    run("./bin/development-system", ["audit", "--home", homedir(), "--json"], repositoryRoot),
+  );
+  const skills = JSON.parse(
+    run(
+      "./bin/development-system",
+      [
+        "audit-skills",
+        "--home",
+        homedir(),
+        "--version",
+        "0.2.0",
+        "--evidence",
+        skillEvidence,
+        "--json",
+      ],
+      repositoryRoot,
+    ),
+  );
+  return {
+    installation: {
+      ok: installation.ok,
+      status: installation.status,
+      contractVersion: installation.contractVersion,
+      source: installation.source,
+      artifacts: installation.artifacts.map((/** @type {any} */ artifact) => ({
+        id: artifact.id,
+        actualSha256: artifact.actualSha256,
+        status: artifact.status,
+      })),
+      mirrors: installation.mirrors,
+      problems: installation.problems,
+    },
+    skills: {
+      ok: skills.ok,
+      status: skills.status,
+      logicalSkillCount: skills.logicalSkillCount,
+      physicalVariantCount: skills.physicalVariantCount,
+      evidenceCoverage: skills.evidenceCoverage,
+      variants: skills.skills.map((/** @type {any} */ skill) => ({
+        id: skill.id,
+        directoryHash: skill.directoryHash,
+        states: skill.states,
+      })),
+      problems: skills.problems,
+    },
+  };
+}
+
+/** @param {any[]} activities */
+function completedToolEvidence(activities) {
+  return activities
+    .filter((activity) => activity.kind === "tool.completed")
+    .map((activity) => activity.payload?.data?.item)
+    .filter((item) => item?.type === "commandExecution")
+    .map((item) => ({
+      command: item.command,
+      cwd: item.cwd,
+      durationMs: item.durationMs,
+      exitCode: item.exitCode,
+      commandActions: (item.commandActions ?? []).map((/** @type {any} */ action) => ({
+        type: action.type,
+        path: action.path ?? null,
+        query: action.query ?? null,
+      })),
+    }));
+}
+
 async function reservePort() {
   const server = createServer();
   await new Promise((resolvePromise, reject) => {
@@ -67,37 +141,16 @@ async function waitForDescriptor(origin, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${origin}/.well-known/t3/environment`, {
-        signal: AbortSignal.timeout(1_000),
-      });
-      if (response.ok) return await response.json();
+      const { response, body } = await fetchJsonWithTimeout(
+        `${origin}/.well-known/t3/environment`,
+        {},
+        1_000,
+      );
+      if (response.ok) return body;
     } catch {}
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
   }
   throw new Error("T3Code server did not become ready");
-}
-
-/** @param {import("node:child_process").ChildProcess} child */
-async function stopProcess(child) {
-  if (child.exitCode !== null) return;
-  try {
-    if (!child.pid) throw new Error("T3Code server has no process id");
-    process.kill(-child.pid, "SIGTERM");
-  } catch {
-    child.kill("SIGTERM");
-  }
-  await Promise.race([
-    new Promise((resolvePromise) => child.once("exit", resolvePromise)),
-    new Promise((resolvePromise) => setTimeout(resolvePromise, 3_000)),
-  ]);
-  if (child.exitCode === null) {
-    try {
-      if (!child.pid) throw new Error("T3Code server has no process id");
-      process.kill(-child.pid, "SIGKILL");
-    } catch {
-      child.kill("SIGKILL");
-    }
-  }
 }
 
 /** @param {any[]} messages */
@@ -111,6 +164,8 @@ function parseFinalJson(messages) {
 }
 
 const before = gitState();
+const repositoryBefore = await auditRepository({ repository: probeRepository });
+const homeBefore = managedHomeState();
 const startedAt = new Date();
 const baseDir = await mkdtemp(join(tmpdir(), "aohys-t3code-probe-"));
 const port = await reservePort();
@@ -180,12 +235,11 @@ try {
     requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
     scope: pairing.scopes.join(" "),
   });
-  const tokenResponse = await fetch(`${origin}/oauth/token`, {
+  const { response: tokenResponse, body: tokenPayload } = await fetchJsonWithTimeout(`${origin}/oauth/token`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: tokenForm,
-  });
-  const tokenPayload = await tokenResponse.json();
+  }, 5_000);
   if (!tokenResponse.ok || !tokenPayload.access_token) {
     throw new Error(`T3Code token exchange failed: ${JSON.stringify(tokenPayload)}`);
   }
@@ -193,7 +247,11 @@ try {
     authorization: `Bearer ${tokenPayload.access_token}`,
     "content-type": "application/json",
   };
-  const shell = await (await fetch(`${origin}/api/orchestration/shell`, { headers })).json();
+  const { body: shell } = await fetchJsonWithTimeout(
+    `${origin}/api/orchestration/shell`,
+    { headers },
+    5_000,
+  );
   const project = shell.projects.find((/** @type {any} */ entry) => entry.workspaceRoot === probeRepository);
   if (!project) throw new Error("T3Code probe project was not registered");
 
@@ -201,12 +259,11 @@ try {
   const modelSelection = { instanceId: "codex", model: "gpt-5.6-sol" };
   /** @param {Record<string, any>} payload */
   async function dispatch(payload) {
-    const response = await fetch(`${origin}/api/orchestration/dispatch`, {
+    const { response, body } = await fetchJsonWithTimeout(`${origin}/api/orchestration/dispatch`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
-    });
-    const body = await response.json();
+    }, 10_000);
     if (!response.ok) throw new Error(`T3Code dispatch failed: ${JSON.stringify(body)}`);
     return body;
   }
@@ -218,7 +275,7 @@ try {
     projectId: project.id,
     title: "Development System T3Code live probe",
     modelSelection,
-    runtimeMode: "full-access",
+    runtimeMode: "approval-required",
     interactionMode: "default",
     branch: null,
     worktreePath: null,
@@ -232,7 +289,7 @@ try {
       messageId: `msg-${randomUUID()}`,
       role: "user",
       text:
-        "Read-only Development System recertification. Load the repository-mandated automatic router. " +
+        "Read-only Development System recertification. Classify this request using the repository rules. " +
         "Then explicitly invoke and load wayfinder, grill-with-docs, to-spec, to-tickets, flow-implement, and flow-code-review " +
         "only to inspect their operational contracts; do not execute their mutations or create artifacts. " +
         `Audit installed skills using the current evidence file ${skillEvidence}. ` +
@@ -243,7 +300,7 @@ try {
       attachments: [],
     },
     modelSelection,
-    runtimeMode: "full-access",
+    runtimeMode: "approval-required",
     interactionMode: "default",
     createdAt: new Date().toISOString(),
   });
@@ -251,8 +308,12 @@ try {
   let snapshot;
   const deadline = Date.now() + 4 * 60 * 1000;
   while (Date.now() < deadline) {
-    const response = await fetch(`${origin}/api/orchestration/threads/${threadId}`, { headers });
-    snapshot = await response.json();
+    const result = await fetchJsonWithTimeout(
+      `${origin}/api/orchestration/threads/${threadId}`,
+      { headers },
+      5_000,
+    );
+    snapshot = result.body;
     const messages = snapshot.thread?.messages ?? [];
     if (messages.some((/** @type {any} */ message) =>
       message.role === "assistant" &&
@@ -265,13 +326,12 @@ try {
   const thread = snapshot.thread ?? snapshot;
   const response = parseFinalJson(thread.messages ?? []);
   const after = gitState();
+  const repositoryAfter = await auditRepository({ repository: probeRepository });
+  const homeAfter = managedHomeState();
   const latestContext = [...(thread.activities ?? [])].reverse().find(
     (/** @type {any} */ activity) => activity.kind === "context-window.updated",
   )?.payload;
-  const externalStateUnchanged = before.head === after.head && before.status === after.status;
-  const toolActivities = (thread.activities ?? []).filter((/** @type {any} */ activity) =>
-    activity.kind === "tool.started" || activity.kind === "tool.completed"
-  );
+  const completedCommands = completedToolEvidence(thread.activities ?? []);
   const finishedAt = new Date();
 
   report = {
@@ -290,6 +350,7 @@ try {
     },
     requestedModel: modelSelection,
     observed: response,
+    observedThreadModel: thread.modelSelection ?? null,
     context: latestContext
       ? {
           usedTokens: latestContext.usedTokens ?? null,
@@ -297,12 +358,26 @@ try {
           maxTokens: latestContext.maxTokens ?? null,
         }
       : null,
-    toolActivityCount: toolActivities.length,
-    externalState: {
-      headBefore: before.head,
-      headAfter: after.head,
-      gitHeadUnchanged: before.head === after.head,
-      gitStatusUnchanged: before.status === after.status,
+    toolEvidence: {
+      completedCommandCount: completedCommands.length,
+      completedCommands,
+    },
+    stateInvariants: {
+      repository: {
+        headBefore: before.head,
+        headAfter: after.head,
+        gitHeadUnchanged: before.head === after.head,
+        gitStatusUnchanged: before.status === after.status,
+        fingerprintBefore: repositoryBefore.repositoryFingerprint,
+        fingerprintAfter: repositoryAfter.repositoryFingerprint,
+        fingerprintUnchanged:
+          repositoryBefore.repositoryFingerprint === repositoryAfter.repositoryFingerprint,
+      },
+      managedHome: {
+        before: homeBefore,
+        after: homeAfter,
+        unchanged: JSON.stringify(homeBefore) === JSON.stringify(homeAfter),
+      },
     },
     diagnostics: readServerLog().includes("Grok CLI health check failed")
       ? ["Unrelated Grok CLI health check failed during startup"]
@@ -311,8 +386,11 @@ try {
   };
   report.ok = evaluateT3CodeProbe(report);
 } finally {
-  if (server) await stopProcess(server);
-  await rm(baseDir, { recursive: true, force: true });
+  try {
+    if (server) await stopDetachedProcess(server);
+  } finally {
+    await rm(baseDir, { recursive: true, force: true });
+  }
 }
 
 if (outputPath) {
