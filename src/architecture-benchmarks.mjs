@@ -32,23 +32,24 @@ export const MODE_NAMES = Object.freeze({
 });
 
 /**
- * Convert scored architecture runs into the shared measurement-v2 contract.
+ * Recompute architecture answers against their SHA-pinned suite, then convert
+ * scored runs into the shared measurement-v2 contract. A generated score is
+ * deliberately not accepted here because it is a derived, editable artifact.
  * Modes outside the selected baseline/treatment pair are intentionally omitted.
- * @param {any} scored
+ * @param {unknown} suite
+ * @param {unknown[]} answers
  * @param {{
  *   baselineMode?: string,
  *   treatmentMode?: string,
  *   rosterHash: string,
  *   rollbackRef: string,
  *   ticket?: string,
+ *   validatedModes?: string[],
  *   provisionalModes?: string[],
  * }} options
  */
-export function architectureScoreToMeasurementRecords(scored, options) {
-  const scoreErrors = validateArchitectureScore(scored);
-  if (scoreErrors.length > 0) {
-    throw new Error(`Invalid architecture benchmark score:\n- ${scoreErrors.join("\n- ")}`);
-  }
+export function architectureAnswersToMeasurementRecords(suite, answers, options) {
+  const scored = scoreArchitectureAnswers(suite, answers);
   const baselineMode = options.baselineMode ?? "M1";
   const treatmentMode = options.treatmentMode ?? "M3";
   if (!MODES.includes(baselineMode) || !MODES.includes(treatmentMode) || baselineMode === treatmentMode) {
@@ -58,15 +59,31 @@ export function architectureScoreToMeasurementRecords(scored, options) {
   if (!/^roster:[a-f0-9]{64}$/.test(options.rollbackRef)) {
     throw new Error("rollbackRef must be an immutable roster SHA-256 reference");
   }
-  const provisionalModes = new Set(options.provisionalModes ?? []);
-  for (const mode of provisionalModes) {
-    if (!MODES.includes(mode)) throw new Error(`Unknown provisional architecture mode: ${mode}`);
+  const modeStatus = new Map();
+  for (const [status, modes] of [
+    ["validated", options.validatedModes ?? []],
+    ["provisional", options.provisionalModes ?? []],
+  ]) {
+    for (const mode of modes) {
+      if (!MODES.includes(mode)) throw new Error(`Unknown ${status} architecture mode: ${mode}`);
+      if (modeStatus.has(mode)) throw new Error(`Architecture mode ${mode} has conflicting evidence statuses`);
+      modeStatus.set(mode, status);
+    }
+  }
+  for (const mode of [baselineMode, treatmentMode]) {
+    if (!modeStatus.has(mode)) {
+      throw new Error(
+        `Architecture mode ${mode} requires an explicit --validated-mode or --provisional-mode status`,
+      );
+    }
   }
   const records = scored.runs
-    .filter((/** @type {any} */ run) => [baselineMode, treatmentMode].includes(run.mode))
+    .filter((/** @type {any} */ run) =>
+      run.status === "scored" && [baselineMode, treatmentMode].includes(run.mode)
+    )
     .map((/** @type {any} */ run) => {
       const passed = run.scores.taskPass === 1;
-      const evidenceStatus = provisionalModes.has(run.mode) ? "provisional" : "validated";
+      const evidenceStatus = modeStatus.get(run.mode);
       const cohort = run.mode === baselineMode ? "baseline" : "treatment";
       const findings =
         run.penalties.falseClaims +
@@ -94,7 +111,7 @@ export function architectureScoreToMeasurementRecords(scored, options) {
         terminalSliceHash: run.identity.groundTruthHash,
         startedAt: run.timestamps.startedAt,
         endedAt: run.timestamps.endedAt,
-        verifiedAt: evidenceStatus === "validated" ? run.timestamps.endedAt : null,
+        verifiedAt: null,
         waitMs: run.telemetry.waitMs,
         result: passed ? "success" : "failure",
         evidenceStatus,
@@ -180,6 +197,8 @@ const answerFields = new Set([
   "schemaVersion",
   "runId",
   "caseId",
+  "repository",
+  "identity",
   "mode",
   "route",
   "startedAt",
@@ -713,6 +732,18 @@ export function validateArchitectureAnswer(value) {
       errors.push(`${field} must be a controlled identifier`);
     }
   }
+  if (!isRecord(value.repository)) {
+    errors.push("repository must be an object");
+  } else {
+    rejectUnknown(value.repository, scoredRepositoryFields, "repository.", errors);
+    if (typeof value.repository.id !== "string" || !identifierPattern.test(value.repository.id)) {
+      errors.push("repository.id must be a controlled identifier");
+    }
+    if (typeof value.repository.commit !== "string" || !commitPattern.test(value.repository.commit)) {
+      errors.push("repository.commit must be an exact lowercase 40-character Git commit");
+    }
+  }
+  validateScoreIdentity(value.identity, "identity.", errors);
   if (!MODES.includes(value.mode)) errors.push(`mode must be one of ${MODES.join(", ")}`);
   if (!isRecord(value.route)) {
     errors.push("route must be an object");
@@ -1026,6 +1057,19 @@ export function scoreArchitectureAnswers(suite, answers, options = {}) {
       fixtureHash: benchmarkCase.fixtureHash,
       groundTruthHash: benchmarkCase.groundTruthHash,
     };
+    if (
+      answer.repository.id !== repository.id ||
+      answer.repository.commit !== repository.commit
+    ) {
+      throw new Error(
+        `run ${answer.runId} repository binding does not match suite case ${answer.caseId}`,
+      );
+    }
+    if (stableSerialize(answer.identity) !== stableSerialize(identity)) {
+      throw new Error(
+        `run ${answer.runId} identity binding does not match suite case ${answer.caseId}`,
+      );
+    }
     const base = {
       runId: answer.runId,
       caseId: answer.caseId,

@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
-  architectureScoreToMeasurementRecords,
+  architectureAnswersToMeasurementRecords,
   buildArchitectureReport,
   hashGroundTruth,
   ingestArchitectureAnswers,
@@ -98,6 +98,16 @@ function answer(overrides = {}) {
     schemaVersion: 1,
     runId: "architecture-run-001",
     caseId: "locate-router",
+    repository: {
+      id: "development-system",
+      commit: COMMIT,
+    },
+    identity: {
+      packetHash: HASH_A,
+      acceptanceHash: HASH_B,
+      fixtureHash: HASH_C,
+      groundTruthHash: suite().cases[0].groundTruthHash,
+    },
     mode: "M2",
     route: {
       routeSlot: "architecture-analysis",
@@ -269,6 +279,11 @@ test("different packet or ground-truth identities never aggregate together", () 
   const second = answer({
     runId: "architecture-run-002",
     caseId: "locate-router-variant",
+    identity: {
+      ...answer().identity,
+      packetHash: "d".repeat(64),
+      groundTruthHash: multiSuite.cases[1].groundTruthHash,
+    },
     claims: {
       ...answer().claims,
       instructionFacts: [
@@ -284,6 +299,28 @@ test("different packet or ground-truth identities never aggregate together", () 
   assert.notEqual(
     scored.aggregates[0].identity.groundTruthHash,
     scored.aggregates[1].identity.groundTruthHash,
+  );
+});
+
+test("answers cannot be relabeled onto a different suite identity", () => {
+  const rebound = suite();
+  rebound.repositories[0].commit = "f".repeat(40);
+  rebound.cases[0].groundTruthHash = hashGroundTruth(groundTruth(), {
+    repositoryId: "development-system",
+    repositoryCommit: "f".repeat(40),
+    caseId: "locate-router",
+  });
+  assert.throws(
+    () => scoreArchitectureAnswers(rebound, [answer()]),
+    /repository binding does not match suite/i,
+  );
+
+  const wrongIdentity = answer({
+    identity: { ...answer().identity, packetHash: "e".repeat(64) },
+  });
+  assert.throws(
+    () => scoreArchitectureAnswers(suite(), [wrongIdentity]),
+    /identity binding does not match suite/i,
   );
 });
 
@@ -306,7 +343,7 @@ test("repetitions stay separate while aggregates retain nullable telemetry", () 
 test("architecture scores adapt to measurement v2 without auto-routing stale modes", () => {
   const comparableSuite = suite();
   comparableSuite.repositories[0].modes.M3 = true;
-  const scored = scoreArchitectureAnswers(comparableSuite, [
+  const answers = [
     answer({ runId: "architecture-m1", mode: "M1" }),
     answer({
       runId: "architecture-m3",
@@ -314,21 +351,50 @@ test("architecture scores adapt to measurement v2 without auto-routing stale mod
       startedAt: "2026-07-23T10:02:00.000Z",
       endedAt: "2026-07-23T10:02:30.000Z",
     }),
-  ]);
-  const records = architectureScoreToMeasurementRecords(scored, {
+  ];
+  const records = architectureAnswersToMeasurementRecords(comparableSuite, answers, {
     rosterHash: HASH_A,
     rollbackRef: `roster:${HASH_A}`,
+    validatedModes: ["M1"],
     provisionalModes: ["M3"],
   });
   assert.equal(records.length, 2);
   assert.equal(records[0].cohort, "baseline");
   assert.equal(records[0].evidenceStatus, "validated");
+  assert.equal(records[0].verifiedAt, null);
   assert.equal(records[1].cohort, "treatment");
   assert.equal(records[1].evidenceStatus, "provisional");
   assert.equal(records[1].verifiedAt, null);
   assert.equal(records[0].benchmark.packetId, `architecture-${HASH_A}`);
   assert.equal(records[1].rollbackRef, `roster:${HASH_A}`);
   records.forEach((record) => assert.deepEqual(validateRunRecord(record), []));
+
+  assert.throws(
+    () => architectureAnswersToMeasurementRecords(comparableSuite, answers, {
+      rosterHash: HASH_A,
+      rollbackRef: `roster:${HASH_A}`,
+      validatedModes: ["M1"],
+    }),
+    /mode M3 requires an explicit/i,
+  );
+});
+
+test("measurement adapter omits unavailable modes without inferring failure or green", () => {
+  const records = architectureAnswersToMeasurementRecords(
+    suite(),
+    [
+      answer({ runId: "architecture-m1", mode: "M1" }),
+      answer({ runId: "architecture-m3-unavailable", mode: "M3" }),
+    ],
+    {
+      rosterHash: HASH_A,
+      rollbackRef: `roster:${HASH_A}`,
+      validatedModes: ["M1"],
+      provisionalModes: ["M3"],
+    },
+  );
+  assert.equal(records.length, 1);
+  assert.equal(records[0].cohort, "baseline");
 });
 
 test("duplicate run IDs fail across recursively ingested answer files", async () => {
@@ -424,6 +490,7 @@ test("CLI validates, scores, and reports existing scored data", async () => {
   const answersPath = resolve(root, "answers.json");
   const scoreOutput = resolve(root, "score-output");
   const reportOutput = resolve(root, "report-output");
+  const measurementOutput = resolve(root, "measurement", "records.json");
   await writeFile(suitePath, JSON.stringify(suite()));
   await writeFile(answersPath, JSON.stringify([answer()]));
 
@@ -464,4 +531,48 @@ test("CLI validates, scores, and reports existing scored data", async () => {
   );
   assert.equal(report.status, 0, report.stderr);
   assert.match(await readFile(resolve(reportOutput, "index.html"), "utf8"), /Architecture benchmark/);
+
+  const measurement = spawnSync(
+    process.execPath,
+    [
+      "scripts/architecture-benchmark.mjs",
+      "measurement",
+      "--suite",
+      suitePath,
+      "--answers",
+      answersPath,
+      "--output",
+      measurementOutput,
+      "--roster-hash",
+      HASH_A,
+      "--rollback-ref",
+      `roster:${HASH_A}`,
+      "--baseline-mode",
+      "M2",
+      "--treatment-mode",
+      "M3",
+      "--validated-mode",
+      "M2",
+      "--provisional-mode",
+      "M3",
+    ],
+    { cwd: resolve(import.meta.dirname, ".."), encoding: "utf8" },
+  );
+  assert.equal(measurement.status, 0, measurement.stderr);
+  assert.equal(JSON.parse(await readFile(measurementOutput, "utf8")).length, 1);
+
+  const derivedMeasurement = spawnSync(
+    process.execPath,
+    [
+      "scripts/architecture-benchmark.mjs",
+      "measurement",
+      "--scored",
+      resolve(scoreOutput, "architecture-benchmark.json"),
+      "--output",
+      measurementOutput,
+    ],
+    { cwd: resolve(import.meta.dirname, ".."), encoding: "utf8" },
+  );
+  assert.notEqual(derivedMeasurement.status, 0);
+  assert.match(derivedMeasurement.stderr, /rejects derived --scored input/i);
 });

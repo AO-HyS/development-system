@@ -2,7 +2,7 @@
 // @ts-check
 
 import {
-  architectureScoreToMeasurementRecords,
+  architectureAnswersToMeasurementRecords,
   buildArchitectureReport,
   ingestArchitectureAnswers,
   readArchitectureScore,
@@ -22,9 +22,11 @@ const usage = `Usage:
     [--answers <path> ...] --output <private-directory>
   node scripts/architecture-benchmark.mjs report --scored <architecture-benchmark.json>
     --output <private-directory>
-  node scripts/architecture-benchmark.mjs measurement --scored <architecture-benchmark.json>
+  node scripts/architecture-benchmark.mjs measurement --suite <suite.json>
+    --answers <file-or-directory> [--answers <path> ...]
     --output <private-records.json> --roster-hash <sha256> --rollback-ref <roster:sha256>
-    [--baseline-mode M1] [--treatment-mode M3] [--provisional-mode M3]
+    [--baseline-mode M1] [--treatment-mode M3]
+    --validated-mode M1 --provisional-mode M3
 `;
 
 /** @param {string[]} args @param {string} name */
@@ -65,13 +67,20 @@ async function main() {
   }
 
   if (command === "measurement") {
-    const scored = await readArchitectureScore(required(value(args, "--scored"), "--scored"));
+    if (value(args, "--scored")) {
+      throw new Error("measurement rejects derived --scored input; provide --suite with raw --answers");
+    }
+    const suite = await readArchitectureSuite(required(value(args, "--suite"), "--suite"));
+    const answerInputs = values(args, "--answers");
+    if (answerInputs.length === 0) throw new Error(`--answers is required\n\n${usage}`);
+    const answers = await ingestArchitectureAnswers(answerInputs);
     const outputPath = resolve(required(value(args, "--output"), "--output"));
-    const records = architectureScoreToMeasurementRecords(scored, {
+    const records = architectureAnswersToMeasurementRecords(suite, answers, {
       baselineMode: value(args, "--baseline-mode") ?? "M1",
       treatmentMode: value(args, "--treatment-mode") ?? "M3",
       rosterHash: required(value(args, "--roster-hash"), "--roster-hash"),
       rollbackRef: required(value(args, "--rollback-ref"), "--rollback-ref"),
+      validatedModes: values(args, "--validated-mode"),
       provisionalModes: values(args, "--provisional-mode"),
     });
     await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });

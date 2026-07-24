@@ -11,7 +11,7 @@ eligible for routing. Shared components help when they encode a narrow,
 tested decision, but broad cross-app canonization is not supported by the
 current evidence.
 
-The production-pinned C1 and C4 suites now target:
+The current production references inspected read-only are:
 
 | Repository | Commit |
 | --- | --- |
@@ -21,9 +21,21 @@ The production-pinned C1 and C4 suites now target:
 | NutriPlan | `94a46a4e08f502ec50ad4407bb58d9801162edff` |
 
 Historical model results remain bound to their original commits and hashes;
-they are not relabeled as current evidence. The relevant C1 seam files are
-byte-unchanged between the historical and production pins, which makes them a
-useful baseline but does not make them fresh routing samples.
+they are not relabeled as current evidence. The durable C1/C4 suites therefore
+retain the exact historical commits used to generate those answers:
+
+| Repository | Benchmark commit |
+| --- | --- |
+| AOHYS | `c00ce2b2b24d92ef4ae66373263ee54aa8c69bc1` |
+| The Barber Central | `6f7934247422286bffbf6b0c647ee0946645142c` |
+| ETERIA | `512057e3796f14e7d5bb7bdd0741a0139d2e0a0f` |
+| NutriPlan | `5617b54a61946613800115c478daab444ddf292c` |
+
+The relevant C1 seam files are byte-unchanged between the historical and
+production pins, which makes them a useful baseline but does not make them
+fresh routing samples. New answers capture repository commit plus packet,
+acceptance, fixture, and ground-truth hashes; the scorer rejects any mismatch
+instead of attributing an old answer to a newer suite.
 
 ## Model results: C1 locate-seam
 

@@ -82,17 +82,20 @@ pnpm run benchmark:architecture report \
   --output /absolute/path/to/private-report
 ```
 
-Convert a scored M1/M3 comparison into measurement-v2 records, then generate
-the shared daily and rolling-seven-day scorecard:
+Recompute raw answers against their SHA-pinned suite and convert the M1/M3
+comparison into measurement-v2 records, then generate the shared daily and
+rolling-seven-day scorecard:
 
 ```sh
 pnpm run benchmark:architecture measurement \
-  --scored /absolute/path/to/architecture-benchmark.json \
+  --suite /absolute/path/to/suite.json \
+  --answers /absolute/path/to/answers \
   --output /absolute/path/to/private/measurement-records.json \
   --roster-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --rollback-ref roster:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --baseline-mode M1 \
   --treatment-mode M3 \
+  --validated-mode M1 \
   --provisional-mode M3
 
 pnpm run measure:v2 scorecard \
@@ -102,10 +105,15 @@ pnpm run measure:v2 scorecard \
   --rollback-ref roster:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ```
 
-Use `--provisional-mode` whenever capability freshness or runtime evidence is
-not independently current. Provisional architecture runs remain visible in the
-daily and rolling views but cannot satisfy the three-run routing threshold.
-The adapter never mutates the capability roster.
+Every selected mode requires an explicit `--validated-mode` or
+`--provisional-mode` classification. Use `--provisional-mode` whenever
+capability freshness or runtime evidence is not independently current.
+Provisional architecture runs remain visible in the daily and rolling views
+but cannot satisfy the three-run routing threshold. The command rejects
+derived `--scored` JSON and deterministically recomputes scores from the suite
+and raw structured answers. Architecture records leave `verifiedAt` null
+because answer completion is not independent verification telemetry. The
+adapter never mutates the capability roster.
 
 Before `report --scored` writes anything, it recursively applies the privacy
 filter and validates a closed generated-score schema: run/aggregate identities,
@@ -175,6 +183,16 @@ An answer contains only:
   "schemaVersion": 1,
   "runId": "architecture-run-003",
   "caseId": "case-c4-gates",
+  "repository": {
+    "id": "example-repository",
+    "commit": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "identity": {
+    "packetHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "acceptanceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "fixtureHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "groundTruthHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
   "mode": "M2",
   "route": {
     "routeSlot": "architecture-analysis",
@@ -198,6 +216,11 @@ An answer contains only:
   }
 }
 ```
+
+The repository and all four experiment hashes are captured when the answer is
+created. Scoring fails when any captured value differs from the selected suite;
+an answer from an older commit or packet cannot be relabeled as fresh evidence
+by keeping the same `caseId`.
 
 Each claim is structured and contains only its identity plus `evidenceRefs`:
 
