@@ -457,7 +457,7 @@ export function hashGroundTruth(truth, identity) {
       repositoryCommit: identity.repositoryCommit,
       repositoryExclusions: identity.repositoryExclusions
         .map(normalizeArchitecturePath)
-        .sort((left, right) => left.localeCompare(right)),
+        .sort((left, right) => left < right ? -1 : left > right ? 1 : 0),
       caseId: normalizeIdentifier(identity.caseId),
       taskClass: identity.taskClass,
     },

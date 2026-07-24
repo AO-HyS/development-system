@@ -344,6 +344,13 @@ test("answers cannot be relabeled onto a different suite identity", () => {
     hashGroundTruth(groundTruth(), baseIdentity),
     hashGroundTruth(groundTruth(), { ...baseIdentity, taskClass: "C4" }),
   );
+  assert.equal(
+    hashGroundTruth(groundTruth(), {
+      ...baseIdentity,
+      repositoryExclusions: ["z", "ä"],
+    }),
+    "cc2b013228bc62561b7707da6fede2d2eebc13675801cb65d88f9897d00bbcaf",
+  );
 });
 
 test("repetitions stay separate while aggregates retain nullable telemetry", () => {
