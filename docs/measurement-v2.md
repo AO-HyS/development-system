@@ -72,6 +72,7 @@ are no narrative/payload fields.
   "waitMs": null,
   "result": "success",
   "evidenceStatus": "validated",
+  "integrityStatus": "clean",
   "gates": {
     "requirements": "passed",
     "spec": "passed",
@@ -93,7 +94,8 @@ are no narrative/payload fields.
       "costUsd": null,
       "selectionReason": "bounded-contract-risk",
       "result": "success",
-      "evidenceStatus": "validated"
+      "evidenceStatus": "validated",
+      "integrityStatus": "clean"
     }
   ],
   "quality": {
@@ -120,6 +122,14 @@ Allowed outcomes are `success`, `failure`, `incomplete`, `timeout`, and
 the corresponding result, both for the run and each agent. A completed but not
 independently validated outcome is `provisional`. Routing metrics use the
 agent's outcome, never a copy of the enclosing run outcome.
+
+`integrityStatus` is optional for legacy records and defaults to `clean`.
+Allowed values are `clean`, `capability-contaminated`,
+`missing-source-verification`, and `invalidated`; the run and its agents must
+match. Integrity-invalid attempts remain in sample size, duration, token, cost,
+and reliability evidence, but do not count as validated runs or model-quality
+outcomes. The scorecard reports integrity separately so environment or
+capability contamination cannot be mislabeled as model failure.
 
 Gate values are `passed`, `pending`, `blocked`, or `not-required`. CI, QA, and
 preview values are `passed`, `failed`, `not-run`, `not-required`, or `blocked`.

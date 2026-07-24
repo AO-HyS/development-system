@@ -10,15 +10,14 @@ Suites, candidate-answer capture, and reports are separate concerns:
 
 - a suite is authored against an exact 40-character repository commit and
   SHA-256-pinned benchmark identities;
-- an external harness runs the controlled experiment and writes a structured
-  candidate answer;
+- an external harness runs the controlled experiment and writes either a
+  structured candidate answer or a privacy-safe attempt manifest;
 - this module validates and scores that answer with exact normalized matches;
 - JSON and HTML reports are private generated outputs and must not be committed.
 
 The report retains `packetHash`, `acceptanceHash`, `fixtureHash`, and
-`groundTruthHash`. A future measurement-v2 adapter can join those identities to
-route measurements without copying raw answers into measurement-v2 or changing
-either schema.
+`groundTruthHash`. The measurement-v2 adapter joins those identities without
+copying raw answers, stderr, prompts, transcripts, or model output.
 
 ## Task classes and modes
 
@@ -65,6 +64,23 @@ pnpm run benchmark:architecture score \
   --output /absolute/path/to/private-score
 ```
 
+Include attempts that did not produce a scoreable answer:
+
+```sh
+pnpm run benchmark:architecture score \
+  --suite /absolute/path/to/suite.json \
+  --answers /absolute/path/to/answers \
+  --attempts /absolute/path/to/privacy-safe-attempts.json \
+  --output /absolute/path/to/private-score
+```
+
+The closed attempt schema binds the same suite case, repository commit,
+identity hashes, mode, route, timestamps, and nullable telemetry as an answer.
+Its `outcome` is `timeout`, `capability-contaminated`,
+`missing-source-verification`, or `invalidated`. Unknown fields are rejected.
+Never copy a harness `failure.json` directly: sanitize it into this schema and
+omit stderr, prompts, transcripts, and raw model output.
+
 Score and render JSON plus standalone HTML:
 
 ```sh
@@ -90,6 +106,7 @@ rolling-seven-day scorecard:
 pnpm run benchmark:architecture measurement \
   --suite /absolute/path/to/suite.json \
   --answers /absolute/path/to/answers \
+  --attempts /absolute/path/to/privacy-safe-attempts.json \
   --output /absolute/path/to/private/measurement-records.json \
   --ticket AOH-222 \
   --roster-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
@@ -115,6 +132,25 @@ derived `--scored` JSON and deterministically recomputes scores from the suite
 and raw structured answers. Architecture records leave `verifiedAt` null
 because answer completion is not independent verification telemetry. The
 adapter never mutates the capability roster.
+
+### Benchmark-scoped Codex runtime
+
+Run measured Codex workloads through the canonical process-scoped launcher:
+
+```sh
+pnpm run benchmark:codex -- \
+  --json --reasoning low --sandbox read-only --cd /absolute/path/to/repository \
+  "the controlled benchmark prompt"
+```
+
+It adds `exec --ignore-user-config --ephemeral` while preserving the canonical
+`CODEX_HOME`. This removes unrelated global MCP/plugin startup from the
+measurement without deleting or changing operational integrations. Attribute
+the measured difference to `environment-overhead`, never to the model. The
+launcher rejects profiles, arbitrary config overrides, feature toggles, and
+approval/rules bypasses. Sandbox mode is limited to `read-only` or
+`workspace-write`, and extra writable directories/output files are rejected.
+Use the controlled `--reasoning` option instead of a config override.
 
 ### Task-contract eligibility gate
 

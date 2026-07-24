@@ -23,6 +23,12 @@ export const TASK_CLASS_NAMES = Object.freeze({
   C6: "graph-reconcile",
 });
 export const MODES = Object.freeze(["M0", "M1", "M2", "M3", "M4"]);
+export const ATTEMPT_OUTCOMES = Object.freeze([
+  "timeout",
+  "capability-contaminated",
+  "missing-source-verification",
+  "invalidated",
+]);
 export const MODE_NAMES = Object.freeze({
   M0: "prompt-only",
   M1: "instructions",
@@ -46,10 +52,13 @@ export const MODE_NAMES = Object.freeze({
  *   ticket: string,
  *   validatedModes?: string[],
  *   provisionalModes?: string[],
+ *   attempts?: unknown[],
  * }} options
  */
 export function architectureAnswersToMeasurementRecords(suite, answers, options) {
-  const scored = scoreArchitectureAnswers(suite, answers);
+  const scored = scoreArchitectureAnswers(suite, answers, {
+    attempts: options.attempts ?? [],
+  });
   const baselineMode = options.baselineMode ?? "M1";
   const treatmentMode = options.treatmentMode ?? "M3";
   if (!MODES.includes(baselineMode) || !MODES.includes(treatmentMode) || baselineMode === treatmentMode) {
@@ -82,17 +91,30 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
   }
   const records = scored.runs
     .filter((/** @type {any} */ run) =>
-      run.status === "scored" && [baselineMode, treatmentMode].includes(run.mode)
+      run.status !== "unavailable" && [baselineMode, treatmentMode].includes(run.mode)
     )
     .map((/** @type {any} */ run) => {
-      const passed = run.scores.taskPass === 1;
-      const evidenceStatus = modeStatus.get(run.mode);
+      const scoredRun = run.status === "scored";
+      const passed = scoredRun && run.scores.taskPass === 1;
+      const result = scoredRun
+        ? passed ? "success" : "failure"
+        : run.status === "timeout" ? "timeout" : "incomplete";
+      const evidenceStatus = scoredRun
+        ? modeStatus.get(run.mode)
+        : run.status === "timeout" ? "timeout" : "incomplete";
+      const integrityStatus = run.status === "capability-contaminated"
+        ? "capability-contaminated"
+        : run.status === "missing-source-verification"
+          ? "missing-source-verification"
+          : run.status === "invalidated" ? "invalidated" : "clean";
       const cohort = run.mode === baselineMode ? "baseline" : "treatment";
-      const findings =
+      const findings = scoredRun
+        ?
         run.penalties.falseClaims +
         run.penalties.forbiddenClaims +
         run.penalties.unsupportedClaims +
-        (passed ? 0 : 1);
+        (passed ? 0 : 1)
+        : 0;
       const record = {
         schemaVersion: 2,
         runId: `architecture-${run.runId}`,
@@ -116,8 +138,9 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
         endedAt: run.timestamps.endedAt,
         verifiedAt: null,
         waitMs: run.telemetry.waitMs,
-        result: passed ? "success" : "failure",
+        result,
         evidenceStatus,
+        integrityStatus,
         gates: {
           requirements: "not-required",
           spec: "not-required",
@@ -136,21 +159,24 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
           durationMs: run.telemetry.durationMs,
           tokens: run.telemetry.tokens,
           costUsd: run.telemetry.costUsd,
-          selectionReason: `architecture-benchmark-${run.mode.toLowerCase()}`,
-          result: passed ? "success" : "failure",
+          selectionReason: scoredRun
+            ? `architecture-benchmark-${run.mode.toLowerCase()}`
+            : `architecture-benchmark-${run.status}`,
+          result,
           evidenceStatus,
+          integrityStatus,
         }],
         quality: {
           firstAttempt: { passed, findings },
           final: { passed, findings },
-          reviews: 1,
+          reviews: scoredRun ? 1 : 0,
           corrections: 0,
           correctionMs: 0,
-          slop: run.penalties.falseClaims,
+          slop: scoredRun ? run.penalties.falseClaims : 0,
           regressions: 0,
           reopens: 0,
           ci: "not-required",
-          qa: passed ? "passed" : "failed",
+          qa: scoredRun ? passed ? "passed" : "failed" : "not-run",
           preview: "not-required",
           escapedDefects: 0,
         },
@@ -162,7 +188,7 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
       }
       return record;
     });
-  if (records.length === 0) throw new Error("No scored runs match the selected baseline/treatment modes");
+  if (records.length === 0) throw new Error("No architecture attempts match the selected baseline/treatment modes");
   return records;
 }
 
@@ -211,6 +237,21 @@ const answerFields = new Set([
   "waitMs",
   "claims",
 ]);
+const attemptFields = new Set([
+  "schemaVersion",
+  "runId",
+  "caseId",
+  "repository",
+  "identity",
+  "mode",
+  "route",
+  "startedAt",
+  "endedAt",
+  "tokens",
+  "costUsd",
+  "waitMs",
+  "outcome",
+]);
 const routeFields = new Set([
   "routeSlot",
   "role",
@@ -233,7 +274,15 @@ const generatedOutputFields = new Set([
   "runs",
   "aggregates",
 ]);
-const availabilityFields = new Set(["scored", "unavailable"]);
+const legacyAvailabilityFields = new Set(["scored", "unavailable"]);
+const availabilityFields = new Set([
+  "scored",
+  "unavailable",
+  "timeout",
+  "capabilityContaminated",
+  "missingSourceVerification",
+  "invalidated",
+]);
 const scoredRunFields = new Set([
   "runId",
   "caseId",
@@ -801,6 +850,71 @@ export function validateArchitectureAnswer(value) {
   return errors;
 }
 
+/**
+ * Validate one privacy-safe attempt that did not produce a scoreable answer.
+ * Raw stderr, prompts, transcripts, and model output are intentionally absent.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+export function validateArchitectureAttempt(value) {
+  /** @type {string[]} */
+  const errors = [];
+  rejectPrivacyFields(value, "", errors);
+  if (!isRecord(value)) return [...errors, "attempt must be an object"];
+  rejectUnknown(value, attemptFields, "", errors);
+  if (value.schemaVersion !== 1) errors.push("schemaVersion must equal 1");
+  for (const field of ["runId", "caseId"]) {
+    if (typeof value[field] !== "string" || !identifierPattern.test(value[field])) {
+      errors.push(`${field} must be a controlled identifier`);
+    }
+  }
+  if (!isRecord(value.repository)) {
+    errors.push("repository must be an object");
+  } else {
+    rejectUnknown(value.repository, scoredRepositoryFields, "repository.", errors);
+    if (typeof value.repository.id !== "string" || !identifierPattern.test(value.repository.id)) {
+      errors.push("repository.id must be a controlled identifier");
+    }
+    if (typeof value.repository.commit !== "string" || !commitPattern.test(value.repository.commit)) {
+      errors.push("repository.commit must be an exact lowercase 40-character Git commit");
+    }
+  }
+  validateScoreIdentity(value.identity, "identity.", errors);
+  if (!MODES.includes(value.mode)) errors.push(`mode must be one of ${MODES.join(", ")}`);
+  if (!isRecord(value.route)) {
+    errors.push("route must be an object");
+  } else {
+    rejectUnknown(value.route, routeFields, "route.", errors);
+    for (const field of routeFields) {
+      if (typeof value.route[field] !== "string" || !identifierPattern.test(value.route[field])) {
+        errors.push(`route.${field} must be a controlled identifier`);
+      }
+    }
+  }
+  for (const field of ["startedAt", "endedAt"]) {
+    if (!isUtcTimestamp(value[field])) errors.push(`${field} must be an ISO-8601 UTC timestamp`);
+  }
+  if (
+    isUtcTimestamp(value.startedAt) &&
+    isUtcTimestamp(value.endedAt) &&
+    Date.parse(value.endedAt) < Date.parse(value.startedAt)
+  ) {
+    errors.push("endedAt must not be before startedAt");
+  }
+  for (const field of ["tokens", "waitMs"]) {
+    if (!isNonNegativeIntegerOrNull(value[field])) {
+      errors.push(`${field} must be a non-negative integer or null`);
+    }
+  }
+  if (!isNonNegativeNumberOrNull(value.costUsd)) {
+    errors.push("costUsd must be a non-negative number or null");
+  }
+  if (!ATTEMPT_OUTCOMES.includes(value.outcome)) {
+    errors.push(`outcome must be one of ${ATTEMPT_OUTCOMES.join(", ")}`);
+  }
+  return errors;
+}
+
 /** @param {string} inputPath */
 async function answerFiles(inputPath) {
   const absolute = resolve(inputPath);
@@ -871,6 +985,34 @@ export async function ingestArchitectureAnswers(inputs) {
     seen.add(entry.runId);
   }
   return answers;
+}
+
+/**
+ * Recursively load failed/incomplete attempt manifests and reject duplicates.
+ * @param {string|string[]} inputs
+ */
+export async function ingestArchitectureAttempts(inputs) {
+  const paths = Array.isArray(inputs) ? inputs : [inputs];
+  /** @type {any[]} */
+  const attempts = [];
+  for (const input of paths) {
+    for (const path of await answerFiles(input)) {
+      const values = await readAnswerFile(path);
+      for (const value of values) {
+        const errors = validateArchitectureAttempt(value);
+        if (errors.length > 0) {
+          throw new Error(`${path} has an invalid architecture attempt:\n- ${errors.join("\n- ")}`);
+        }
+        attempts.push(value);
+      }
+    }
+  }
+  const seen = new Set();
+  for (const entry of attempts) {
+    if (seen.has(entry.runId)) throw new Error(`duplicate runId: ${entry.runId}`);
+    seen.add(entry.runId);
+  }
+  return attempts;
 }
 
 /** @param {any} item */
@@ -1046,7 +1188,7 @@ function aggregateRuns(runs) {
  * Score structured answers against one validated suite.
  * @param {unknown} suite
  * @param {unknown[]} answers
- * @param {{validateAnswers?: boolean}} [options]
+ * @param {{validateAnswers?: boolean, attempts?: unknown[]}} [options]
  */
 export function scoreArchitectureAnswers(suite, answers, options = {}) {
   const suiteErrors = validateArchitectureSuite(suite);
@@ -1109,13 +1251,77 @@ export function scoreArchitectureAnswers(suite, answers, options = {}) {
     }
     runs.push({ ...base, status: "scored", ...scoreAnswer(answer, benchmarkCase, repository) });
   }
+  for (const rawAttempt of options.attempts ?? []) {
+    const errors = validateArchitectureAttempt(rawAttempt);
+    if (errors.length > 0) throw new Error(`Invalid architecture attempt:\n- ${errors.join("\n- ")}`);
+    const attempt = /** @type {any} */ (rawAttempt);
+    if (seen.has(attempt.runId)) throw new Error(`duplicate runId: ${attempt.runId}`);
+    seen.add(attempt.runId);
+    const benchmarkCase = typedSuite.cases.find((/** @type {any} */ entry) => entry.id === attempt.caseId);
+    if (!benchmarkCase) throw new Error(`run ${attempt.runId} references unknown caseId ${attempt.caseId}`);
+    const repository = typedSuite.repositories.find(
+      (/** @type {any} */ entry) => entry.id === benchmarkCase.repositoryId,
+    );
+    const identity = {
+      packetHash: benchmarkCase.packetHash,
+      acceptanceHash: benchmarkCase.acceptanceHash,
+      fixtureHash: benchmarkCase.fixtureHash,
+      groundTruthHash: benchmarkCase.groundTruthHash,
+    };
+    if (
+      attempt.repository.id !== repository.id ||
+      attempt.repository.commit !== repository.commit
+    ) {
+      throw new Error(
+        `run ${attempt.runId} repository binding does not match suite case ${attempt.caseId}`,
+      );
+    }
+    if (stableSerialize(attempt.identity) !== stableSerialize(identity)) {
+      throw new Error(
+        `run ${attempt.runId} identity binding does not match suite case ${attempt.caseId}`,
+      );
+    }
+    const base = {
+      runId: attempt.runId,
+      caseId: attempt.caseId,
+      repository: { id: repository.id, commit: repository.commit },
+      taskClass: benchmarkCase.taskClass,
+      taskClassName: TASK_CLASS_NAMES[/** @type {keyof typeof TASK_CLASS_NAMES} */ (benchmarkCase.taskClass)],
+      mode: attempt.mode,
+      modeName: MODE_NAMES[/** @type {keyof typeof MODE_NAMES} */ (attempt.mode)],
+      route: attempt.route,
+      identity,
+      timestamps: { startedAt: attempt.startedAt, endedAt: attempt.endedAt },
+      telemetry: {
+        durationMs: Date.parse(attempt.endedAt) - Date.parse(attempt.startedAt),
+        tokens: attempt.tokens,
+        costUsd: attempt.costUsd,
+        waitMs: attempt.waitMs,
+      },
+      scores: null,
+      penalties: null,
+    };
+    runs.push({
+      ...base,
+      status: repository.modes[attempt.mode] ? attempt.outcome : "unavailable",
+    });
+  }
   const scored = runs.filter((entry) => entry.status === "scored").length;
+  const count = (/** @type {string} */ status) =>
+    runs.filter((entry) => entry.status === status).length;
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     operation: "architecture-benchmark-score",
     suiteId: typedSuite.suiteId,
     generatedAt: new Date().toISOString(),
-    availability: { scored, unavailable: runs.length - scored },
+    availability: {
+      scored,
+      unavailable: count("unavailable"),
+      timeout: count("timeout"),
+      capabilityContaminated: count("capability-contaminated"),
+      missingSourceVerification: count("missing-source-verification"),
+      invalidated: count("invalidated"),
+    },
     runs,
     aggregates: aggregateRuns(runs),
   };
@@ -1163,7 +1369,7 @@ export function validateArchitectureScore(value) {
   rejectPrivacyFields(value, "", errors);
   if (!isRecord(value)) return [...errors, "architecture benchmark score must be an object"];
   rejectUnknown(value, generatedOutputFields, "", errors);
-  if (value.schemaVersion !== 1) errors.push("schemaVersion must equal 1");
+  if (![1, 2].includes(value.schemaVersion)) errors.push("schemaVersion must equal 1 or 2");
   if (!["architecture-benchmark-score", "architecture-benchmark-report"].includes(value.operation)) {
     errors.push("operation must be architecture-benchmark-score or architecture-benchmark-report");
   }
@@ -1177,8 +1383,11 @@ export function validateArchitectureScore(value) {
   if (!isRecord(value.availability)) {
     errors.push("availability must be an object");
   } else {
-    rejectUnknown(value.availability, availabilityFields, "availability.", errors);
-    for (const field of availabilityFields) {
+    const expectedAvailabilityFields = value.schemaVersion === 1
+      ? legacyAvailabilityFields
+      : availabilityFields;
+    rejectUnknown(value.availability, expectedAvailabilityFields, "availability.", errors);
+    for (const field of expectedAvailabilityFields) {
       if (!Number.isSafeInteger(value.availability[field]) || value.availability[field] < 0) {
         errors.push(`availability.${field} must be a non-negative integer`);
       }
@@ -1270,8 +1479,11 @@ export function validateArchitectureScore(value) {
           errors.push(`${path}telemetry.costUsd must be a non-negative number or null`);
         }
       }
-      if (!["scored", "unavailable"].includes(run.status)) {
-        errors.push(`${path}status must be scored or unavailable`);
+      const runStatuses = value.schemaVersion === 1
+        ? ["scored", "unavailable"]
+        : ["scored", "unavailable", ...ATTEMPT_OUTCOMES];
+      if (!runStatuses.includes(run.status)) {
+        errors.push(`${path}status must be one of ${runStatuses.join(", ")}`);
       }
       if (run.status === "scored") {
         if (!isRecord(run.scores)) {
@@ -1379,6 +1591,19 @@ export function validateArchitectureScore(value) {
     if (value.availability.unavailable !== unavailable) {
       errors.push(`availability.unavailable must equal unavailable runs (${unavailable})`);
     }
+    if (value.schemaVersion === 2) {
+      for (const [field, status] of [
+        ["timeout", "timeout"],
+        ["capabilityContaminated", "capability-contaminated"],
+        ["missingSourceVerification", "missing-source-verification"],
+        ["invalidated", "invalidated"],
+      ]) {
+        const count = value.runs.filter((run) => isRecord(run) && run.status === status).length;
+        if (value.availability[field] !== count) {
+          errors.push(`availability.${field} must equal ${status} runs (${count})`);
+        }
+      }
+    }
   }
   if (errors.length === 0 && stableSerialize(value.aggregates) !== stableSerialize(aggregateRuns(value.runs))) {
     errors.push("aggregates must exactly match deterministic aggregation of scored runs");
@@ -1390,7 +1615,7 @@ export function validateArchitectureScore(value) {
 export function buildArchitectureReport(scored) {
   if (
     !isRecord(scored) ||
-    scored.schemaVersion !== 1 ||
+    ![1, 2].includes(scored.schemaVersion) ||
     !["architecture-benchmark-score", "architecture-benchmark-report"].includes(scored.operation) ||
     !Array.isArray(scored.runs) ||
     !Array.isArray(scored.aggregates)
@@ -1428,10 +1653,13 @@ function renderArchitectureHtml(report) {
 <td>${escapeHtml(row.mean.falseClaimRate.toFixed(3))}</td>
 <td>${escapeHtml(row.mean.validEvidenceRatio.toFixed(3))}</td>
 </tr>`).join("\n");
-  const unavailableRows = report.runs
-    .filter((/** @type {any} */ run) => run.status === "unavailable")
-    .map((/** @type {any} */ run) => `<li>${escapeHtml(`${run.repository.id} / ${run.caseId} / ${run.mode} ${run.modeName}`)}</li>`)
+  const incompleteRows = report.runs
+    .filter((/** @type {any} */ run) => run.status !== "scored")
+    .map((/** @type {any} */ run) => `<li>${escapeHtml(`${run.status}: ${run.repository.id} / ${run.caseId} / ${run.mode} ${run.modeName}`)}</li>`)
     .join("\n");
+  const availability = Object.entries(report.availability)
+    .map(([status, count]) => `${status} ${count}`)
+    .join("; ");
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1447,12 +1675,12 @@ th{background:#f0f0f0}code{font-family:ui-monospace,monospace}
 </head>
 <body>
 <h1>Architecture benchmark</h1>
-<p>Suite <code>${escapeHtml(report.suiteId)}</code>. Scored ${escapeHtml(report.availability.scored)}; unavailable ${escapeHtml(report.availability.unavailable)}.</p>
+<p>Suite <code>${escapeHtml(report.suiteId)}</code>. ${escapeHtml(availability)}.</p>
 <table>
 <thead><tr><th>Repository</th><th>Class</th><th>Mode</th><th>Role</th><th>Model</th><th>Harness</th><th>N</th><th>Pass rate</th><th>False claims</th><th>Valid evidence</th></tr></thead>
 <tbody>${rows}</tbody>
 </table>
-${unavailableRows ? `<h2>Unavailable modes</h2><ul>${unavailableRows}</ul>` : ""}
+${incompleteRows ? `<h2>Unscored attempts</h2><ul>${incompleteRows}</ul>` : ""}
 </body>
 </html>
 `;

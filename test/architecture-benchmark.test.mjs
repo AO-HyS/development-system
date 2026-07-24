@@ -10,9 +10,11 @@ import {
   buildArchitectureReport,
   hashGroundTruth,
   ingestArchitectureAnswers,
+  ingestArchitectureAttempts,
   readArchitectureScore,
   scoreArchitectureAnswers,
   validateArchitectureAnswer,
+  validateArchitectureAttempt,
   validateArchitectureScore,
   validateArchitectureSuite,
   writeArchitectureReport,
@@ -152,6 +154,15 @@ function answer(overrides = {}) {
   };
 }
 
+function attempt(overrides = {}) {
+  const { claims: _claims, ...base } = answer(overrides);
+  return {
+    ...base,
+    outcome: "timeout",
+    ...overrides,
+  };
+}
+
 test("suite and answer schemas are closed, privacy-safe, and SHA-pin ground truth", () => {
   const validSuite = suite();
   assert.deepEqual(validateArchitectureSuite(validSuite), []);
@@ -251,7 +262,14 @@ test("unavailable M3 is distinct from failure and excluded from scored aggregate
   assert.equal(scored.runs[0].status, "unavailable");
   assert.equal(scored.runs[0].scores, null);
   assert.equal(scored.aggregates.length, 0);
-  assert.deepEqual(scored.availability, { scored: 0, unavailable: 1 });
+  assert.deepEqual(scored.availability, {
+    scored: 0,
+    unavailable: 1,
+    timeout: 0,
+    capabilityContaminated: 0,
+    missingSourceVerification: 0,
+    invalidated: 0,
+  });
 });
 
 test("different packet or ground-truth identities never aggregate together", () => {
@@ -437,6 +455,67 @@ test("measurement adapter omits unavailable modes without inferring failure or g
   );
   assert.equal(records.length, 1);
   assert.equal(records[0].cohort, "baseline");
+});
+
+test("failed attempts remain visible without becoming scored model failures", () => {
+  const comparableSuite = suite();
+  comparableSuite.repositories[0].modes.M3 = true;
+  const attempts = [
+    attempt({ runId: "architecture-timeout", mode: "M1" }),
+    attempt({
+      runId: "architecture-contaminated",
+      mode: "M3",
+      outcome: "capability-contaminated",
+    }),
+  ];
+  attempts.forEach((value) => assert.deepEqual(validateArchitectureAttempt(value), []));
+
+  const scored = scoreArchitectureAnswers(comparableSuite, [], { attempts });
+  assert.equal(scored.schemaVersion, 2);
+  assert.deepEqual(scored.availability, {
+    scored: 0,
+    unavailable: 0,
+    timeout: 1,
+    capabilityContaminated: 1,
+    missingSourceVerification: 0,
+    invalidated: 0,
+  });
+  assert.deepEqual(validateArchitectureScore(scored), []);
+
+  const records = architectureAnswersToMeasurementRecords(comparableSuite, [], {
+    ticket: "AOH-241",
+    rosterHash: HASH_A,
+    rollbackRef: `roster:${HASH_A}`,
+    validatedModes: ["M1"],
+    provisionalModes: ["M3"],
+    attempts,
+  });
+  assert.equal(records.length, 2);
+  assert.equal(records[0].result, "timeout");
+  assert.equal(records[0].evidenceStatus, "timeout");
+  assert.equal(records[0].integrityStatus, "clean");
+  assert.equal(records[1].result, "incomplete");
+  assert.equal(records[1].evidenceStatus, "incomplete");
+  assert.equal(records[1].integrityStatus, "capability-contaminated");
+  assert.match(records[1].agents[0].selectionReason, /capability-contaminated/);
+  records.forEach((record) => assert.deepEqual(validateRunRecord(record), []));
+});
+
+test("attempt ingestion is closed, privacy-safe, and duplicate-aware", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "architecture-attempts-"));
+  await writeFile(resolve(root, "one.json"), JSON.stringify(attempt()));
+  assert.equal((await ingestArchitectureAttempts(root)).length, 1);
+
+  await writeFile(resolve(root, "two.json"), JSON.stringify(attempt()));
+  await assert.rejects(ingestArchitectureAttempts(root), /duplicate runId/i);
+  assert.match(
+    validateArchitectureAttempt({ ...attempt(), stderr: "private runtime detail" }).join("\n"),
+    /stderr is not allowed/i,
+  );
+  assert.match(
+    validateArchitectureAttempt({ ...attempt(), modelOutput: "raw output" }).join("\n"),
+    /forbidden by the privacy-safe schema/i,
+  );
 });
 
 test("duplicate run IDs fail across recursively ingested answer files", async () => {

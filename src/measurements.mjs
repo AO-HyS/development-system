@@ -19,6 +19,7 @@ const runFields = new Set([
   "waitMs",
   "result",
   "evidenceStatus",
+  "integrityStatus",
   "gates",
   "agents",
   "quality",
@@ -40,6 +41,7 @@ const agentFields = new Set([
   "selectionReason",
   "result",
   "evidenceStatus",
+  "integrityStatus",
 ]);
 const qualityFields = new Set([
   "firstAttempt",
@@ -58,6 +60,12 @@ const qualityFields = new Set([
 const attemptFields = new Set(["passed", "findings"]);
 const resultValues = new Set(["success", "failure", "incomplete", "timeout", "permission-blocked"]);
 const evidenceValues = new Set(["validated", "provisional", "incomplete", "timeout", "permission-blocked"]);
+const integrityValues = new Set([
+  "clean",
+  "capability-contaminated",
+  "missing-source-verification",
+  "invalidated",
+]);
 const gateValues = new Set(["passed", "pending", "blocked", "not-required"]);
 const checkValues = new Set(["passed", "failed", "not-run", "not-required", "blocked"]);
 const ciPolicyValues = new Set(["required", "not-required-read-only"]);
@@ -237,6 +245,9 @@ export function validateRunRecord(value) {
   if (!evidenceValues.has(value.evidenceStatus)) {
     errors.push(`evidenceStatus must be one of: ${[...evidenceValues].join(", ")}`);
   }
+  if (value.integrityStatus !== undefined && !integrityValues.has(value.integrityStatus)) {
+    errors.push(`integrityStatus must be one of: ${[...integrityValues].join(", ")}`);
+  }
   for (const status of ["timeout", "permission-blocked", "incomplete"]) {
     if ((value.result === status) !== (value.evidenceStatus === status)) {
       errors.push(`${status} evidenceStatus must match result`);
@@ -299,6 +310,12 @@ export function validateRunRecord(value) {
       }
       if (!evidenceValues.has(agent.evidenceStatus)) {
         errors.push(`${path}evidenceStatus must be one of: ${[...evidenceValues].join(", ")}`);
+      }
+      if (agent.integrityStatus !== undefined && !integrityValues.has(agent.integrityStatus)) {
+        errors.push(`${path}integrityStatus must be one of: ${[...integrityValues].join(", ")}`);
+      }
+      if ((agent.integrityStatus ?? "clean") !== (value.integrityStatus ?? "clean")) {
+        errors.push(`${path}integrityStatus must match the run integrityStatus`);
       }
       for (const status of ["timeout", "permission-blocked", "incomplete"]) {
         if ((agent.result === status) !== (agent.evidenceStatus === status)) {
@@ -445,10 +462,17 @@ function metrics(items) {
   const sampleSize = items.length;
   const runItems = [...new Map(items.map((item) => [item.record.runId, item])).values()];
   const runCount = runItems.length;
+  const cleanItems = items.filter((item) =>
+    (item.record.integrityStatus ?? "clean") === "clean" &&
+    (item.agent.integrityStatus ?? "clean") === "clean"
+  );
+  const cleanRunItems = [...new Map(cleanItems.map((item) => [item.record.runId, item])).values()];
   const validatedRunCount = new Set(items
     .filter((item) =>
       item.record.evidenceStatus === "validated" &&
-      item.agent.evidenceStatus === "validated"
+      item.agent.evidenceStatus === "validated" &&
+      (item.record.integrityStatus ?? "clean") === "clean" &&
+      (item.agent.integrityStatus ?? "clean") === "clean"
     )
     .map((item) => item.record.runId)).size;
   const costs = items.map((item) => item.agent.costUsd);
@@ -461,10 +485,10 @@ function metrics(items) {
     items.reduce((total, item) => total + selector(item), 0);
   const average = (/** @type {(item: any) => number} */ selector) =>
     sampleSize === 0 ? null : rounded(sum(selector) / sampleSize);
-  const runSum = (/** @type {(item: any) => number} */ selector) =>
-    runItems.reduce((total, item) => total + selector(item), 0);
-  const runAverage = (/** @type {(item: any) => number} */ selector) =>
-    runCount === 0 ? null : rounded(runSum(selector) / runCount);
+  const cleanRunAverage = (/** @type {(item: any) => number} */ selector) =>
+    cleanRunItems.length === 0
+      ? null
+      : rounded(cleanRunItems.reduce((total, item) => total + selector(item), 0) / cleanRunItems.length);
   const nullableSum = (/** @type {(number | null)[]} */ values) =>
     values.some((value) => value === null)
       ? null
@@ -475,8 +499,12 @@ function metrics(items) {
   };
   const rate = (/** @type {(item: any) => boolean} */ selector) =>
     sampleSize === 0 ? null : rounded(items.filter(selector).length / sampleSize);
-  const runRate = (/** @type {(item: any) => boolean} */ selector) =>
-    runCount === 0 ? null : rounded(runItems.filter(selector).length / runCount);
+  const cleanRate = (/** @type {(item: any) => boolean} */ selector) =>
+    cleanItems.length === 0 ? null : rounded(cleanItems.filter(selector).length / cleanItems.length);
+  const cleanRunRate = (/** @type {(item: any) => boolean} */ selector) =>
+    cleanRunItems.length === 0
+      ? null
+      : rounded(cleanRunItems.filter(selector).length / cleanRunItems.length);
   const previewReady = (/** @type {any} */ item) =>
     item.record.gates.preview === "passed"
       ? item.record.quality.preview === "passed"
@@ -491,16 +519,17 @@ function metrics(items) {
   return {
     sampleSize,
     runCount,
+    integrityCleanRunCount: cleanRunItems.length,
     validatedRunCount,
-    successRate: rate((item) => item.agent.result === "success"),
+    successRate: cleanRate((item) => item.agent.result === "success"),
     validatedRate: rate((item) => item.agent.evidenceStatus === "validated"),
-    firstAttemptPassRate: runRate((item) => item.record.quality.firstAttempt.passed),
-    finalPassRate: runRate((item) => item.record.quality.final.passed),
-    ciPassRate: runRate((item) => item.record.quality.ci === "passed"),
-    ciReadyRate: runRate(ciReady),
-    qaPassRate: runRate((item) => item.record.quality.qa === "passed"),
-    previewPassRate: runRate((item) => item.record.quality.preview === "passed"),
-    previewReadyRate: runRate(previewReady),
+    firstAttemptPassRate: cleanRunRate((item) => item.record.quality.firstAttempt.passed),
+    finalPassRate: cleanRunRate((item) => item.record.quality.final.passed),
+    ciPassRate: cleanRunRate((item) => item.record.quality.ci === "passed"),
+    ciReadyRate: cleanRunRate(ciReady),
+    qaPassRate: cleanRunRate((item) => item.record.quality.qa === "passed"),
+    previewPassRate: cleanRunRate((item) => item.record.quality.preview === "passed"),
+    previewReadyRate: cleanRunRate(previewReady),
     averageDurationMs: average((item) => item.agent.durationMs),
     averageWaitMs: nullableAverage(waits),
     averageTimeToVerifiedMs: nullableAverage(verificationTimes),
@@ -510,16 +539,20 @@ function metrics(items) {
       ? null
       : rounded(/** @type {number[]} */ (costs).reduce((total, cost) => total + cost, 0)),
     averageCostUsd: nullableAverage(costs),
-    averageReviews: runAverage((item) => item.record.quality.reviews),
-    averageCorrections: runAverage((item) => item.record.quality.corrections),
-    averageCorrectionMs: runAverage((item) => item.record.quality.correctionMs),
-    averageSlop: runAverage((item) => item.record.quality.slop),
-    averageRegressions: runAverage((item) => item.record.quality.regressions),
-    averageReopens: runAverage((item) => item.record.quality.reopens),
-    averageEscapedDefects: runAverage((item) => item.record.quality.escapedDefects),
+    averageReviews: cleanRunAverage((item) => item.record.quality.reviews),
+    averageCorrections: cleanRunAverage((item) => item.record.quality.corrections),
+    averageCorrectionMs: cleanRunAverage((item) => item.record.quality.correctionMs),
+    averageSlop: cleanRunAverage((item) => item.record.quality.slop),
+    averageRegressions: cleanRunAverage((item) => item.record.quality.regressions),
+    averageReopens: cleanRunAverage((item) => item.record.quality.reopens),
+    averageEscapedDefects: cleanRunAverage((item) => item.record.quality.escapedDefects),
     evidence: Object.fromEntries([...evidenceValues].map((status) => [
       status,
       items.filter((item) => item.agent.evidenceStatus === status).length,
+    ])),
+    integrity: Object.fromEntries([...integrityValues].map((status) => [
+      status,
+      items.filter((item) => (item.agent.integrityStatus ?? "clean") === status).length,
     ])),
   };
 }
@@ -806,6 +839,8 @@ export function buildMeasurementScorecard(records, options = {}) {
     const validatedGroup = group.filter((item) =>
       item.record.evidenceStatus === "validated" &&
       item.agent.evidenceStatus === "validated" &&
+      (item.record.integrityStatus ?? "clean") === "clean" &&
+      (item.agent.integrityStatus ?? "clean") === "clean" &&
       [baselineName, treatmentName].includes(item.record.cohort)
     );
     const baselineMetrics = comparisonMetrics(baselineItems);
@@ -882,6 +917,7 @@ export function buildMeasurementScorecard(records, options = {}) {
       lastDate: dates.at(-1),
       costUsd: metrics(items).costUsd,
       evidence: metrics(items).evidence,
+      integrity: metrics(items).integrity,
     },
     daily,
     rolling7,
@@ -925,6 +961,9 @@ function routesLabel(routes) {
 /** @param {any} scorecard */
 export function renderMeasurementScorecardHtml(scorecard) {
   const evidence = Object.entries(scorecard.summary.evidence)
+    .map(([status, count]) => `<li><strong>${escapeHtml(count)}</strong> ${escapeHtml(status)}</li>`)
+    .join("");
+  const integrity = Object.entries(scorecard.summary.integrity)
     .map(([status, count]) => `<li><strong>${escapeHtml(count)}</strong> ${escapeHtml(status)}</li>`)
     .join("");
   const comparisons = scorecard.comparisons.map((/** @type {any} */ comparison) => `
@@ -1024,6 +1063,7 @@ export function renderMeasurementScorecardHtml(scorecard) {
   <header><div><h1>Measurement scorecard v2</h1><p>As of ${escapeHtml(scorecard.asOf)}</p></div><small>Local static evidence</small></header>
   <div class="notice">Advisory only. Roster mutation: ${escapeHtml(scorecard.rosterMutation)}.</div>
   <section><h2>Evidence status</h2><ul>${evidence}</ul></section>
+  <section><h2>Attempt integrity</h2><ul>${integrity}</ul></section>
   <section class="table"><h2>Baseline vs treatment</h2><table><thead><tr><th>Repository</th><th>Capability</th><th>Route slot</th><th>Baseline route</th><th>Treatment route</th><th>Baseline validated runs</th><th>Treatment validated runs</th><th>First pass</th><th>Baseline final</th><th>Treatment final</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Recommendation</th><th>Current roster</th><th>Rollback</th></tr></thead><tbody>${comparisons}</tbody></table></section>
   <section class="table"><h2>Daily routes</h2><table><thead><tr><th>Date</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${daily}</tbody></table></section>
   <section class="table"><h2>Rolling 7-day routes</h2><table><thead><tr><th>Through</th><th>Repository</th><th>Capability</th><th>Route slot</th><th>Role</th><th>Model</th><th>Harness</th><th>n</th><th>First pass</th><th>Final pass</th><th>Time to verified</th><th>Correction time</th><th>Slop</th><th>CI ready</th><th>QA</th><th>Preview</th><th>Evidence</th><th>Cost USD</th></tr></thead><tbody>${rolling7}</tbody></table></section>

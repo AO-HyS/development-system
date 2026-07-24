@@ -31,9 +31,11 @@ Relative to M1, M3 changed the medians by:
 
 The promotion rule required either higher reliability with less than a 15%
 token penalty, or at least a 10% reduction in time or tokens. Neither
-repository qualifies. The generated measurement-v2 scorecard independently
-returns `retain-baseline` and `do-not-change-routing` for both comparisons.
-Dollar cost was unavailable, so no cost claim is made.
+repository qualifies. The original completed-answer-only scorecard returned
+`retain-baseline`; the attempt-aware scorecard correctly returns
+`quality-gate-failed` because it includes the four runtime timeouts. Both
+results mean `do-not-change-routing`. Dollar cost was unavailable, so no cost
+claim is made.
 
 ## Freshness evidence
 
@@ -72,7 +74,9 @@ Four 360-second timeouts were also preserved: two of five Barber M3 attempts,
 one of four NutriPlan M3 attempts, and one of four NutriPlan M1 attempts. Their
 stderr shared Codex state-database and MCP/OAuth initialization warnings. This
 shows a harness-level reliability issue in addition to the M1/M3 result; the
-completed-answer score alone would have hidden it.
+completed-answer score alone hid it. The attempt-aware scorecard now reports
+19 total attempts: 12 validated answers, 4 timeouts, and 3
+capability-contaminated attempts.
 
 The permanent task-contract eligibility gate is documented in
 `docs/architecture-benchmark.md`.
@@ -90,8 +94,11 @@ The permanent task-contract eligibility gate is documented in
   `ed55cff7f4ef9cba90217c1ac86b8473eee026c5afe77ed58b70847256fceed9`.
 - Re-evaluate M3 only with a new task class or a graph query path that is
   demonstrably cheaper; do not rerun this same ablation indefinitely.
-- Repair the Codex state/MCP initialization path before treating full-repo
-  timeout rates as a model-quality signal.
+- Use the process-scoped Codex benchmark runtime before treating full-repo
+  timeout rates as a model-quality signal. Its three-run AOH-229 control cut
+  median cold-start latency from 6,358 ms to 3,693 ms (-41.9%) and input tokens
+  from 22,328 to 18,004 (-19.4%), with OAuth and MCP shutdown warnings reduced
+  to zero.
 
 ## Private generated evidence
 
