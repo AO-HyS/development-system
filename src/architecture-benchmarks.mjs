@@ -43,7 +43,7 @@ export const MODE_NAMES = Object.freeze({
  *   treatmentMode?: string,
  *   rosterHash: string,
  *   rollbackRef: string,
- *   ticket?: string,
+ *   ticket: string,
  *   validatedModes?: string[],
  *   provisionalModes?: string[],
  * }} options
@@ -56,6 +56,9 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
     throw new Error("baselineMode and treatmentMode must be distinct architecture modes");
   }
   if (!sha256Pattern.test(options.rosterHash)) throw new Error("rosterHash must be a SHA-256 hash");
+  if (typeof options.ticket !== "string" || !/^[A-Z][A-Z0-9]+-\d+$/.test(options.ticket)) {
+    throw new Error("ticket must be an explicit tracker identifier");
+  }
   if (!/^roster:[a-f0-9]{64}$/.test(options.rollbackRef)) {
     throw new Error("rollbackRef must be an immutable roster SHA-256 reference");
   }
@@ -97,7 +100,7 @@ export function architectureAnswersToMeasurementRecords(suite, answers, options)
         repository: {
           id: run.repository.id,
           commit: run.repository.commit,
-          ticket: options.ticket ?? "AOH-222",
+          ticket: options.ticket,
         },
         benchmark: {
           packetId: `architecture-${run.identity.packetHash}`,

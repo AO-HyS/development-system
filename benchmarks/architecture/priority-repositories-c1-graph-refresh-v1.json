@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "priority-repositories-c1-graph-refresh-v1",
+  "repositories": [
+    {
+      "id": "the-barber-central",
+      "commit": "57845e4bec67ee957297f7e1d150454607093131",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    },
+    {
+      "id": "nutri-plan",
+      "commit": "11f69d083a11e057fca705136c4428a6b3ef0216",
+      "exclusions": [],
+      "modes": {
+        "M0": true,
+        "M1": true,
+        "M2": true,
+        "M3": true,
+        "M4": false
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "barber-record-card-seam",
+      "repositoryId": "the-barber-central",
+      "taskClass": "C1",
+      "packetHash": "452505535fb80a05f388603e6f868234d1625225c726fecc6496314639e6bb5d",
+      "acceptanceHash": "602c6292ee4a1e3d9601b83d50fc432b31d8f2c96684f28ed371713e19129cde",
+      "fixtureHash": "4f4ca9b72c196fc333d129006605499cc87a42965f748c667bceb9a142522c75",
+      "groundTruthHash": "212f96597e73b45b955c489e6fbaa04f88719eb369d9d40ceab4a50c983057fb",
+      "expected": {
+        "canonicalPaths": [
+          "packages/operational-ui/src/record-card-foundation.ts",
+          "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+          "tests/unit/operational-ui/record-card-foundation.test.ts"
+        ],
+        "symbols": [
+          {
+            "path": "packages/operational-ui/src/record-card-foundation.ts",
+            "name": "getRecordCardSurfaceClasses"
+          },
+          {
+            "path": "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "packages/operational-ui/src/record-card-foundation.ts#getRecordCardSurfaceClasses",
+            "kind": "calls"
+          },
+          {
+            "from": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "packages/operational-ui/src/record-card-foundation.ts#getRecordCardSurfaceClasses",
+            "kind": "calls"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [
+          "packages/operational-ui/package.json"
+        ],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "re-exports"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    },
+    {
+      "id": "nutri-record-card-seam",
+      "repositoryId": "nutri-plan",
+      "taskClass": "C1",
+      "packetHash": "fc5967812c41ef6565fc780c2a11d314bc8e98b1e268df3fc0aa1f04979627b3",
+      "acceptanceHash": "47335db37e9705dda0dd7467beb3c24afc174ae374342c12a7600b0afbf16ce8",
+      "fixtureHash": "3c0572b8767d7c610fefdfa82f0219d55788de9e2d4cb0f3cc423f7f2acf073c",
+      "groundTruthHash": "91de1217954d3968a329aaa5a9450bb788f3b3dcc9b7998c8f69cb6d567b4d19",
+      "expected": {
+        "canonicalPaths": [
+          "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+          "apps/dashboard/tests/components/shared/cards/record-card.test.tsx",
+          "apps/admin-dashboard/src/views/media/media-root.tsx"
+        ],
+        "symbols": [
+          {
+            "path": "apps/dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx",
+            "name": "RecordCard"
+          },
+          {
+            "path": "apps/admin-dashboard/src/views/media/media-root.tsx",
+            "name": "MediaRootContent"
+          }
+        ],
+        "edges": [
+          {
+            "from": "apps/admin-dashboard/src/views/media/media-root.tsx#MediaRootContent",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "renders"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "forbiddenClaims": {
+        "paths": [],
+        "symbols": [],
+        "edges": [],
+        "instructionFacts": [],
+        "gateFacts": []
+      },
+      "unsupportedClaims": {
+        "paths": [
+          "packages/ui/package.json",
+          "packages/operational-ui/package.json"
+        ],
+        "symbols": [],
+        "edges": [
+          {
+            "from": "apps/dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "to": "apps/admin-dashboard/src/components/shared/cards/RecordCard.tsx#RecordCard",
+            "kind": "re-exports"
+          }
+        ],
+        "instructionFacts": [],
+        "gateFacts": []
+      }
+    }
+  ]
+}

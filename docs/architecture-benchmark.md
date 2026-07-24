@@ -91,6 +91,7 @@ pnpm run benchmark:architecture measurement \
   --suite /absolute/path/to/suite.json \
   --answers /absolute/path/to/answers \
   --output /absolute/path/to/private/measurement-records.json \
+  --ticket AOH-222 \
   --roster-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --rollback-ref roster:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --baseline-mode M1 \
@@ -114,6 +115,30 @@ derived `--scored` JSON and deterministically recomputes scores from the suite
 and raw structured answers. Architecture records leave `verifiedAt` null
 because answer completion is not independent verification telemetry. The
 adapter never mutates the capability roster.
+
+### Task-contract eligibility gate
+
+Before the first measured run, a reviewer must confirm all of the following:
+
+1. every requested conclusion can be represented by the output schema;
+2. response limits leave enough capacity for every required claim;
+3. the expected set scores the task that the packet actually asks;
+4. baseline and treatment prompts differ only in the capability under test;
+5. packet, acceptance, fixture, ground-truth, repository, and commit identities
+   are frozen before execution;
+6. the runner recomputes the packet SHA before starting the model;
+7. the tool trace proves the treatment manipulation and current-source reads;
+8. the tracker ticket is explicit when exporting measurement records.
+
+If any item fails, the packet is ineligible. Preserve its output as invalidated
+diagnostic evidence, issue a new packet hash, and rerun every affected
+treatment. Never reinterpret or rescore the old answers under the corrected
+identity. This gate caught an AOH-226 packet that asked for an alias/publication
+conclusion even though the response schema had no field for it and its path cap
+was already exhausted by the four required seam files. It also caught M1 runs
+that invoked graph tooling despite a prompt prohibition. A capability that repo
+instructions require must be made physically unavailable for the baseline;
+prompt wording alone is not an isolation boundary.
 
 Before `report --scored` writes anything, it recursively applies the privacy
 filter and validates a closed generated-score schema: run/aggregate identities,
