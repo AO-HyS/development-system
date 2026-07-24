@@ -63,7 +63,9 @@ function suite(overrides = {}) {
   const identity = {
     repositoryId: "development-system",
     repositoryCommit: COMMIT,
+    repositoryExclusions: ["evidence/private"],
     caseId: "locate-router",
+    taskClass: "C1",
   };
   const value = {
     schemaVersion: 1,
@@ -270,7 +272,9 @@ test("different packet or ground-truth identities never aggregate together", () 
         groundTruthHash: hashGroundTruth(secondTruth, {
           repositoryId: "development-system",
           repositoryCommit: COMMIT,
+          repositoryExclusions: ["evidence/private"],
           caseId: "locate-router-variant",
+          taskClass: "C1",
         }),
         ...secondTruth,
       },
@@ -308,7 +312,9 @@ test("answers cannot be relabeled onto a different suite identity", () => {
   rebound.cases[0].groundTruthHash = hashGroundTruth(groundTruth(), {
     repositoryId: "development-system",
     repositoryCommit: "f".repeat(40),
+    repositoryExclusions: ["evidence/private"],
     caseId: "locate-router",
+    taskClass: "C1",
   });
   assert.throws(
     () => scoreArchitectureAnswers(rebound, [answer()]),
@@ -321,6 +327,22 @@ test("answers cannot be relabeled onto a different suite identity", () => {
   assert.throws(
     () => scoreArchitectureAnswers(suite(), [wrongIdentity]),
     /identity binding does not match suite/i,
+  );
+
+  const baseIdentity = {
+    repositoryId: "development-system",
+    repositoryCommit: COMMIT,
+    repositoryExclusions: ["evidence/private"],
+    caseId: "locate-router",
+    taskClass: "C1",
+  };
+  assert.notEqual(
+    hashGroundTruth(groundTruth(), baseIdentity),
+    hashGroundTruth(groundTruth(), { ...baseIdentity, repositoryExclusions: [] }),
+  );
+  assert.notEqual(
+    hashGroundTruth(groundTruth(), baseIdentity),
+    hashGroundTruth(groundTruth(), { ...baseIdentity, taskClass: "C4" }),
   );
 });
 

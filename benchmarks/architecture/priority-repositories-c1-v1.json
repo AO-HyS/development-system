@@ -61,7 +61,7 @@
       "packetHash": "a8bf867d3041058a18121b337b7e757c746708f48b925c078e940d43f5cf3d8d",
       "acceptanceHash": "f95e39e545ae06a9e0eef622f7acda53fa90bb8cb68df0614566499d63fdf676",
       "fixtureHash": "b33edf98c3e6170e6e70b0b046abd34b8a6ffeccb6d979c6693ac3303b3a4159",
-      "groundTruthHash": "f79f26c927d2f48b616c5b7e0fa3100be67951274c3e18dff39cb41500e9a664",
+      "groundTruthHash": "60a8dcf76f3ec0d234ee1d40fb954d23bb02bf523c3794dd9e82b231a52d6760",
       "expected": {
         "canonicalPaths": [
           "packages/content-graph/src/index.ts",
@@ -116,7 +116,7 @@
       "packetHash": "44b210a37d413619988e73277fecda3ce8ed11df56600047576f786fc83a4ff0",
       "acceptanceHash": "602c6292ee4a1e3d9601b83d50fc432b31d8f2c96684f28ed371713e19129cde",
       "fixtureHash": "9fec657d1d0b8346878b051a9c5f91014a37700a5c78bb3c126f06a7c658a50e",
-      "groundTruthHash": "a449c097f5e21d1293722c31a9fe7c37d1ccd391dd6011c4a5df0a8b2a7da74f",
+      "groundTruthHash": "faf4b619333b6387a1af2ea92068d535abcfae445f9d4dd10bb5f54217cec538",
       "expected": {
         "canonicalPaths": [
           "packages/operational-ui/src/record-card-foundation.ts",
@@ -183,7 +183,7 @@
       "packetHash": "8a8575ade484b99d30dc3bc0bce789b8f7c42d43d03194e4f76a60253c51fc57",
       "acceptanceHash": "14377b908247e56aa2bf0436d46cdaab0fb83abed24f98b42cc9ddc27a28d509",
       "fixtureHash": "c1ee32ac32368f62f0f7dd4223e2fb315699faa70b1aad8c7ac794839f75782a",
-      "groundTruthHash": "d20ca12fa6e560396758147e8de2fa2e9fdf21ef9124fe189b31ccf972c1e2f1",
+      "groundTruthHash": "7733f7ad714f011830d53c6664b18c3fa5a00102c6caf6795190a7893a454b53",
       "expected": {
         "canonicalPaths": [
           "apps/web/src/public-proposal-route.tsx",
@@ -253,7 +253,7 @@
       "packetHash": "ec5951d43757aca3b9f660610f7013935af6ae38840d8ce0a55e9f0ec0431a76",
       "acceptanceHash": "47335db37e9705dda0dd7467beb3c24afc174ae374342c12a7600b0afbf16ce8",
       "fixtureHash": "12b524f8099bb2716e0f275126c11f6cecb47386b9e7f14613b3e4660b6f96da",
-      "groundTruthHash": "17d1f0d0df99548cf80ef9d109a574813497f1e5fbf4a07b3cb095feba5b906f",
+      "groundTruthHash": "65cd1bc475ac8f2d04afe5768e0e93c1fe304d148c9865f9df25a6e5c0cf0fb9",
       "expected": {
         "canonicalPaths": [
           "apps/dashboard/src/components/shared/cards/RecordCard.tsx",

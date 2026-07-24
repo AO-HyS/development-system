@@ -442,14 +442,24 @@ function normalizedClaimSet(claims) {
 /**
  * Hash only canonical ground-truth fields. Array order remains meaningful.
  * @param {{expected: any, forbiddenClaims: any, unsupportedClaims: any}} truth
- * @param {{repositoryId: string, repositoryCommit: string, caseId: string}} identity
+ * @param {{
+ *   repositoryId: string,
+ *   repositoryCommit: string,
+ *   repositoryExclusions: string[],
+ *   caseId: string,
+ *   taskClass: string,
+ * }} identity
  */
 export function hashGroundTruth(truth, identity) {
   const canonical = {
     identity: {
       repositoryId: normalizeIdentifier(identity.repositoryId),
       repositoryCommit: identity.repositoryCommit,
+      repositoryExclusions: identity.repositoryExclusions
+        .map(normalizeArchitecturePath)
+        .sort((left, right) => left.localeCompare(right)),
       caseId: normalizeIdentifier(identity.caseId),
+      taskClass: identity.taskClass,
     },
     expected: normalizedExpected(truth.expected),
     forbiddenClaims: normalizedClaimSet(truth.forbiddenClaims),
@@ -641,7 +651,9 @@ export function validateArchitectureSuite(value) {
         const computed = hashGroundTruth(/** @type {any} */ (benchmarkCase), {
           repositoryId: benchmarkCase.repositoryId,
           repositoryCommit: repository?.commit,
+          repositoryExclusions: repository?.exclusions,
           caseId: benchmarkCase.id,
+          taskClass: benchmarkCase.taskClass,
         });
         if (benchmarkCase.groundTruthHash !== computed) {
           errors.push(`${path}groundTruthHash does not match canonical ground truth (${computed})`);

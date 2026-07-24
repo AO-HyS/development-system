@@ -164,11 +164,11 @@ using `paths` instead of `canonicalPaths`.
 
 `groundTruthHash` is not a label. Validation recomputes SHA-256 over a
 stable-key serialization of the repository ID, exact repository commit, case
-ID, normalized `expected`, `forbiddenClaims`, and `unsupportedClaims`. Changing
-the commit, relabeling the repository/case, or editing ground truth therefore
-invalidates the hash. Packet, acceptance, and fixture content stays outside the
-durable suite, so those identities must be produced by the controlled
-experiment packager.
+ID, task class, normalized repository exclusions, normalized `expected`,
+`forbiddenClaims`, and `unsupportedClaims`. Changing the commit, exclusions,
+task class, repository/case label, or ground truth therefore invalidates the
+hash. Packet, acceptance, and fixture content stays outside the durable suite,
+so those identities must be produced by the controlled experiment packager.
 
 Suites must not contain prompts, secrets, source snippets, narrative model
 output, or product data. Repository exclusions identify paths that cannot

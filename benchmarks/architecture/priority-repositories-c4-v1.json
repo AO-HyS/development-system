@@ -61,7 +61,7 @@
       "packetHash": "d76357e862507ac83557a8b409c7553c5090685c57775b2b9102bededeb78c9e",
       "acceptanceHash": "5c946ca3f62a180ce1e8f8966c88670860488011ed01ccc5876f619bfe9572b6",
       "fixtureHash": "4f3fcf0bdf1e0acc01b82e7fa4edb5521fa78caddcd5d5d60131e9f6b4270074",
-      "groundTruthHash": "9b32e64ffad919af4e77498b42c4c68366c54804ae9e6e197d04da4859bba8a9",
+      "groundTruthHash": "894b6ea12183687f9f4f6778c1a2aa122cf6612c1748cb2cb1bf14ef50f027b8",
       "expected": {
         "canonicalPaths": [
           "AGENTS.md"
@@ -98,7 +98,7 @@
       "packetHash": "9efcc0f576b9897d28919ed1c6487660b3d54342c6b37f8f627e63290e08a8a4",
       "acceptanceHash": "d5b9a9108b71cb5586638e449f86d90c3651057333dcda51a2719a6f44f568aa",
       "fixtureHash": "51b9e3fa5725b3cb3b5d8e2209a96748174d6c81328846bba8dccaa1df05b4ae",
-      "groundTruthHash": "8fbad8c9e4418c1fcc00186bebc1ee8b7f6dd537a34d0b596853a9ee773ca30a",
+      "groundTruthHash": "eda24b3153aae9c2924025515fd9f1b7068cf4b558533ab287c735a9b788e62a",
       "expected": {
         "canonicalPaths": [
           "AGENTS.md"
@@ -135,7 +135,7 @@
       "packetHash": "60cfa8d7dd1aacfc5abd892575d50394725ea9c709ea8477ef1c79575a3264d6",
       "acceptanceHash": "a032c50a20824e0c6aa40967914a251280364841b84fab4ed1886bd3e93ab9ec",
       "fixtureHash": "f5253b4332a23d22ba7f8ed7333df5c8e30dea786dd9bc9e6546385c5979f466",
-      "groundTruthHash": "33696f38dd6442233e699a9e3f29a9ea41eadc0a2ea4a9d02e81fcaca231239b",
+      "groundTruthHash": "841c1946f59f87b145e70e64b0dc807f6aebd3d120d954209ad276409482370b",
       "expected": {
         "canonicalPaths": [
           "AGENTS.md"
@@ -174,7 +174,7 @@
       "packetHash": "af19e310c6618036ae4f5bff40fc0cee8fff525e67e2f8ed1f27cd330b6858e5",
       "acceptanceHash": "9817ff4f983dba01e1554575105a611a31b7d4b4b701526c0655bc8f57d50a42",
       "fixtureHash": "ee073c37320a14441bbdf8685ed1ca665a6e8e2afb257c0abafb669045aa75db",
-      "groundTruthHash": "a84235f364fd6382f69bb0ad3e4ea9b245710194c842da8cd3a7f847f0d4fc39",
+      "groundTruthHash": "37a6b6d2ec909d58b1126ce16d7511ae18489eae0437b2fd27fcbf20d1df7b8d",
       "expected": {
         "canonicalPaths": [
           "AGENTS.md"
