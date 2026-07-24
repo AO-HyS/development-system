@@ -115,6 +115,24 @@ and raw structured answers. Architecture records leave `verifiedAt` null
 because answer completion is not independent verification telemetry. The
 adapter never mutates the capability roster.
 
+### Task-contract eligibility gate
+
+Before the first measured run, a reviewer must confirm all of the following:
+
+1. every requested conclusion can be represented by the output schema;
+2. response limits leave enough capacity for every required claim;
+3. the expected set scores the task that the packet actually asks;
+4. baseline and treatment prompts differ only in the capability under test;
+5. packet, acceptance, fixture, ground-truth, repository, and commit identities
+   are frozen before execution.
+
+If any item fails, the packet is ineligible. Preserve its output as invalidated
+diagnostic evidence, issue a new packet hash, and rerun every affected
+treatment. Never reinterpret or rescore the old answers under the corrected
+identity. This gate caught an AOH-226 packet that asked for an alias/publication
+conclusion even though the response schema had no field for it and its path cap
+was already exhausted by the four required seam files.
+
 Before `report --scored` writes anything, it recursively applies the privacy
 filter and validates a closed generated-score schema: run/aggregate identities,
 route metadata, timestamps, nullable telemetry, score ranges, penalty counts,
