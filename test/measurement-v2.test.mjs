@@ -103,6 +103,40 @@ test("strict run-record validation captures the full privacy-safe measurement co
   assert.ok(errors.some((error) => /final.*passed.*result/i.test(error)));
 });
 
+test("scorecard counts contaminated attempts without treating them as validated model evidence", () => {
+  const contaminated = record({
+    runId: "run-contaminated-1",
+    result: "incomplete",
+    evidenceStatus: "incomplete",
+    integrityStatus: "capability-contaminated",
+    verifiedAt: null,
+    agents: [{
+      ...record().agents[0],
+      result: "incomplete",
+      evidenceStatus: "incomplete",
+      integrityStatus: "capability-contaminated",
+    }],
+    quality: {
+      ...record().quality,
+      firstAttempt: { passed: false, findings: 0 },
+      final: { passed: false, findings: 0 },
+      qa: "not-run",
+    },
+  });
+  assert.deepEqual(validateRunRecord(contaminated), []);
+  const scorecard = buildMeasurementScorecard([record(), contaminated], {
+    sampleThreshold: 3,
+  });
+  assert.equal(scorecard.summary.records, 2);
+  assert.equal(scorecard.summary.evidence.incomplete, 1);
+  assert.equal(scorecard.summary.integrity["capability-contaminated"], 1);
+  assert.equal(scorecard.summary.integrity.clean, 1);
+  assert.equal(scorecard.comparisons[0].baseline.validatedRunCount, 1);
+  assert.equal(scorecard.comparisons[0].baseline.integrityCleanRunCount, 1);
+  assert.equal(scorecard.comparisons[0].baseline.successRate, 1);
+  assert.equal(scorecard.comparisons[0].baseline.finalPassRate, 1);
+});
+
 test("operational strings are identifiers or hashes and rollback references are immutable", () => {
   const invalid = record({
     terminalSlice: "free-form slice prose",

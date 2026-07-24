@@ -5,6 +5,7 @@ import {
   architectureAnswersToMeasurementRecords,
   buildArchitectureReport,
   ingestArchitectureAnswers,
+  ingestArchitectureAttempts,
   readArchitectureScore,
   readArchitectureSuite,
   scoreArchitectureAnswers,
@@ -16,14 +17,16 @@ import { dirname, resolve } from "node:path";
 
 const usage = `Usage:
   node scripts/architecture-benchmark.mjs validate-suite --suite <suite.json>
-  node scripts/architecture-benchmark.mjs score --suite <suite.json> --answers <file-or-directory>
-    [--answers <path> ...] --output <private-directory>
-  node scripts/architecture-benchmark.mjs report --suite <suite.json> --answers <file-or-directory>
-    [--answers <path> ...] --output <private-directory>
+  node scripts/architecture-benchmark.mjs score --suite <suite.json>
+    [--answers <file-or-directory> ...] [--attempts <file-or-directory> ...]
+    --output <private-directory>
+  node scripts/architecture-benchmark.mjs report --suite <suite.json>
+    [--answers <file-or-directory> ...] [--attempts <file-or-directory> ...]
+    --output <private-directory>
   node scripts/architecture-benchmark.mjs report --scored <architecture-benchmark.json>
     --output <private-directory>
   node scripts/architecture-benchmark.mjs measurement --suite <suite.json>
-    --answers <file-or-directory> [--answers <path> ...]
+    [--answers <file-or-directory> ...] [--attempts <file-or-directory> ...]
     --output <private-records.json> --ticket <tracker-id>
     --roster-hash <sha256> --rollback-ref <roster:sha256>
     [--baseline-mode M1] [--treatment-mode M3]
@@ -73,8 +76,12 @@ async function main() {
     }
     const suite = await readArchitectureSuite(required(value(args, "--suite"), "--suite"));
     const answerInputs = values(args, "--answers");
-    if (answerInputs.length === 0) throw new Error(`--answers is required\n\n${usage}`);
+    const attemptInputs = values(args, "--attempts");
+    if (answerInputs.length === 0 && attemptInputs.length === 0) {
+      throw new Error(`--answers or --attempts is required\n\n${usage}`);
+    }
     const answers = await ingestArchitectureAnswers(answerInputs);
+    const attempts = await ingestArchitectureAttempts(attemptInputs);
     const outputPath = resolve(required(value(args, "--output"), "--output"));
     const records = architectureAnswersToMeasurementRecords(suite, answers, {
       baselineMode: value(args, "--baseline-mode") ?? "M1",
@@ -84,6 +91,7 @@ async function main() {
       rollbackRef: required(value(args, "--rollback-ref"), "--rollback-ref"),
       validatedModes: values(args, "--validated-mode"),
       provisionalModes: values(args, "--provisional-mode"),
+      attempts,
     });
     await mkdir(dirname(outputPath), { recursive: true, mode: 0o700 });
     await chmod(dirname(outputPath), 0o700);
@@ -102,9 +110,13 @@ async function main() {
   if (command === "score") {
     const suite = await readArchitectureSuite(required(value(args, "--suite"), "--suite"));
     const answerInputs = values(args, "--answers");
-    if (answerInputs.length === 0) throw new Error(`--answers is required\n\n${usage}`);
+    const attemptInputs = values(args, "--attempts");
+    if (answerInputs.length === 0 && attemptInputs.length === 0) {
+      throw new Error(`--answers or --attempts is required\n\n${usage}`);
+    }
     const answers = await ingestArchitectureAnswers(answerInputs);
-    const scored = scoreArchitectureAnswers(suite, answers);
+    const attempts = await ingestArchitectureAttempts(attemptInputs);
+    const scored = scoreArchitectureAnswers(suite, answers, { attempts });
     const paths = await writeArchitectureScore(scored, output);
     process.stdout.write(`${JSON.stringify({
       ok: true,
@@ -120,17 +132,21 @@ async function main() {
   const scoredPath = value(args, "--scored");
   const suitePath = value(args, "--suite");
   const answerInputs = values(args, "--answers");
-  if (scoredPath && (suitePath || answerInputs.length > 0)) {
-    throw new Error("report accepts either --scored or --suite with --answers, not both");
+  const attemptInputs = values(args, "--attempts");
+  if (scoredPath && (suitePath || answerInputs.length > 0 || attemptInputs.length > 0)) {
+    throw new Error("report accepts either --scored or raw --suite/--answers/--attempts, not both");
   }
   let report;
   if (scoredPath) {
     report = await readArchitectureScore(scoredPath);
   } else {
     const suite = await readArchitectureSuite(required(suitePath, "--suite"));
-    if (answerInputs.length === 0) throw new Error(`--answers is required\n\n${usage}`);
+    if (answerInputs.length === 0 && attemptInputs.length === 0) {
+      throw new Error(`--answers or --attempts is required\n\n${usage}`);
+    }
     const answers = await ingestArchitectureAnswers(answerInputs);
-    report = buildArchitectureReport(scoreArchitectureAnswers(suite, answers));
+    const attempts = await ingestArchitectureAttempts(attemptInputs);
+    report = buildArchitectureReport(scoreArchitectureAnswers(suite, answers, { attempts }));
   }
   const paths = await writeArchitectureReport(report, output);
   process.stdout.write(`${JSON.stringify({

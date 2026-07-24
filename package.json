@@ -11,6 +11,7 @@
     "audit": "./bin/development-system audit",
     "benchmark": "node ./scripts/run-benchmarks.mjs",
     "benchmark:architecture": "node ./scripts/architecture-benchmark.mjs",
+    "benchmark:codex": "node ./scripts/codex-benchmark-runtime.mjs",
     "install:local": "./bin/development-system install --version 0.8.0",
     "measure:v2": "node ./scripts/measure-v2.mjs",
     "operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
