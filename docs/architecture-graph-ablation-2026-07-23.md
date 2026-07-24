@@ -11,21 +11,23 @@ architecture route. A fresh Understand Anything graph (`M3`) remains an
 optional diagnostic tool; it is not a mandatory routing dependency and must
 not be added to AOHYS or ETERIA on the strength of this experiment.
 
-All 12 eligible Sol `xhigh` runs completed, passed the closed architecture
-score, and were exported as validated measurement-v2 records. M3 did not
-improve reliability in either repository and was slower in both.
+All 12 eligible Sol `xhigh` answers passed the closed architecture score and
+were exported as validated AOH-226 measurement-v2 records. Eligibility was
+verified from the tool trace: M1 ran in a worktree where the graph capability
+was physically unavailable, while M3 had to run the exact graph helper and
+both modes had to read every ground-truth source path.
 
-| Repository | Mode | Pass | Median time | p95 time | Median tokens | p95 tokens |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| The Barber Central | M1 instructions/source | 3/3 | 61.7 s | 77.7 s | 148,750 | 154,022 |
-| The Barber Central | M3 fresh graph/source | 3/3 | 92.7 s | 129.0 s | 295,425 | 504,846 |
-| NutriPlan | M1 instructions/source | 3/3 | 84.3 s | 86.9 s | 354,530 | 381,342 |
-| NutriPlan | M3 fresh graph/source | 3/3 | 123.8 s | 132.9 s | 372,420 | 457,333 |
+| Repository | Mode | Score pass | Completed attempts | Median time | p95 time | Median tokens | p95 tokens |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| The Barber Central | M1 isolated graph/source | 3/3 | 3/3 | 46.0 s | 47.2 s | 110,023 | 142,398 |
+| The Barber Central | M3 fresh graph/source | 3/3 | 3/5 | 82.7 s | 93.9 s | 204,582 | 232,902 |
+| NutriPlan | M1 isolated graph/source | 3/3 | 3/4 | 72.3 s | 102.2 s | 173,587 | 439,379 |
+| NutriPlan | M3 fresh graph/source | 3/3 | 3/4 | 78.2 s | 111.9 s | 236,975 | 282,825 |
 
 Relative to M1, M3 changed the medians by:
 
-- The Barber Central: time `+50.1%`, tokens `+98.6%`;
-- NutriPlan: time `+46.9%`, tokens `+5.0%`.
+- The Barber Central: time `+79.9%`, tokens `+85.9%`;
+- NutriPlan: time `+8.2%`, tokens `+36.5%`.
 
 The promotion rule required either higher reliability with less than a 15%
 token penalty, or at least a 10% reduction in time or tokens. Neither
@@ -44,7 +46,7 @@ Every M3 answer was verified against current source; source remained
 authoritative. The suite binds each answer to the repository commit plus
 packet, acceptance, fixture, and ground-truth hashes.
 
-## Invalidated diagnostic packet
+## Eligibility failures preserved
 
 The first Barber packet asked the model to identify whether the seam was a
 publishable package or a source alias, while the answer schema had no field for
@@ -52,10 +54,25 @@ that conclusion and the four-path cap was already consumed by the four seam
 files. One M1 answer correctly spent two path slots on app `tsconfig` evidence,
 then failed the closed expected-path score.
 
-That packet is not eligible evidence. It was not relabeled or rescored. A new
-packet hash removed the unrepresentable clause, and all six Barber treatments
-were rerun. The correction itself materially improved the M1 medians, showing
-that a precise task contract is a first-order speed control.
+That packet is not eligible evidence. It was not relabeled or rescored.
+
+A second diagnostic attempt used paired packets but tried to disable M3 using
+prompt text alone. Despite the prohibition, the repo instructions caused one
+of four Barber M1 attempts and two of four NutriPlan M1 attempts to invoke
+graph surfaces. Those three answers were preserved as
+`capability-contamination` and excluded.
+
+The final M1 treatment used detached worktrees at the exact pinned commits and
+quarantined only the graph artifacts, helper scripts, graph skills, and graph
+context documents. A private manifest binds the removed paths and bytes. The
+source files used by the task were unchanged. This produced a reproducible M1
+capability boundary.
+
+Four 360-second timeouts were also preserved: two of five Barber M3 attempts,
+one of four NutriPlan M3 attempts, and one of four NutriPlan M1 attempts. Their
+stderr shared Codex state-database and MCP/OAuth initialization warnings. This
+shows a harness-level reliability issue in addition to the M1/M3 result; the
+completed-answer score alone would have hidden it.
 
 The permanent task-contract eligibility gate is documented in
 `docs/architecture-benchmark.md`.
@@ -73,6 +90,8 @@ The permanent task-contract eligibility gate is documented in
   `ed55cff7f4ef9cba90217c1ac86b8473eee026c5afe77ed58b70847256fceed9`.
 - Re-evaluate M3 only with a new task class or a graph query path that is
   demonstrably cheaper; do not rerun this same ablation indefinitely.
+- Repair the Codex state/MCP initialization path before treating full-repo
+  timeout rates as a model-quality signal.
 
 ## Private generated evidence
 

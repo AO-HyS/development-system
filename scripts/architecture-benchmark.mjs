@@ -24,7 +24,8 @@ const usage = `Usage:
     --output <private-directory>
   node scripts/architecture-benchmark.mjs measurement --suite <suite.json>
     --answers <file-or-directory> [--answers <path> ...]
-    --output <private-records.json> --roster-hash <sha256> --rollback-ref <roster:sha256>
+    --output <private-records.json> --ticket <tracker-id>
+    --roster-hash <sha256> --rollback-ref <roster:sha256>
     [--baseline-mode M1] [--treatment-mode M3]
     --validated-mode M1 --provisional-mode M3
 `;
@@ -78,6 +79,7 @@ async function main() {
     const records = architectureAnswersToMeasurementRecords(suite, answers, {
       baselineMode: value(args, "--baseline-mode") ?? "M1",
       treatmentMode: value(args, "--treatment-mode") ?? "M3",
+      ticket: required(value(args, "--ticket"), "--ticket"),
       rosterHash: required(value(args, "--roster-hash"), "--roster-hash"),
       rollbackRef: required(value(args, "--rollback-ref"), "--rollback-ref"),
       validatedModes: values(args, "--validated-mode"),

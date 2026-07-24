@@ -382,6 +382,7 @@ test("architecture scores adapt to measurement v2 without auto-routing stale mod
     }),
   ];
   const records = architectureAnswersToMeasurementRecords(comparableSuite, answers, {
+    ticket: "AOH-222",
     rosterHash: HASH_A,
     rollbackRef: `roster:${HASH_A}`,
     validatedModes: ["M1"],
@@ -389,6 +390,7 @@ test("architecture scores adapt to measurement v2 without auto-routing stale mod
   });
   assert.equal(records.length, 2);
   assert.equal(records[0].cohort, "baseline");
+  assert.equal(records[0].repository.ticket, "AOH-222");
   assert.equal(records[0].evidenceStatus, "validated");
   assert.equal(records[0].verifiedAt, null);
   assert.equal(records[1].cohort, "treatment");
@@ -400,11 +402,21 @@ test("architecture scores adapt to measurement v2 without auto-routing stale mod
 
   assert.throws(
     () => architectureAnswersToMeasurementRecords(comparableSuite, answers, {
+      ticket: "AOH-222",
       rosterHash: HASH_A,
       rollbackRef: `roster:${HASH_A}`,
       validatedModes: ["M1"],
     }),
     /mode M3 requires an explicit/i,
+  );
+  assert.throws(
+    () => architectureAnswersToMeasurementRecords(comparableSuite, answers, {
+      rosterHash: HASH_A,
+      rollbackRef: `roster:${HASH_A}`,
+      validatedModes: ["M1"],
+      provisionalModes: ["M3"],
+    }),
+    /ticket must be an explicit tracker identifier/i,
   );
 });
 
@@ -416,6 +428,7 @@ test("measurement adapter omits unavailable modes without inferring failure or g
       answer({ runId: "architecture-m3-unavailable", mode: "M3" }),
     ],
     {
+      ticket: "AOH-222",
       rosterHash: HASH_A,
       rollbackRef: `roster:${HASH_A}`,
       validatedModes: ["M1"],
@@ -572,6 +585,8 @@ test("CLI validates, scores, and reports existing scored data", async () => {
       answersPath,
       "--output",
       measurementOutput,
+      "--ticket",
+      "AOH-222",
       "--roster-hash",
       HASH_A,
       "--rollback-ref",
