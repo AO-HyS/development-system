@@ -27,6 +27,19 @@ function createSourceCommit() {
   return commit.stdout.trim();
 }
 
+async function createCleanSourceCheckout(commit) {
+  const sourceRoot = await mkdtemp(resolve(tmpdir(), "aohys-development-system-source-"));
+  for (const [command, args] of [
+    ["git", ["init", "--quiet"]],
+    ["git", ["fetch", "--quiet", repositoryRoot, commit]],
+    ["git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"]],
+  ]) {
+    const result = spawnSync(command, args, { cwd: sourceRoot, encoding: "utf8" });
+    assert.equal(result.status, 0, result.stderr);
+  }
+  return sourceRoot;
+}
+
 function runCli(...args) {
   const result = spawnSync(process.execPath, [cliPath, ...args, "--json"], {
     cwd: repositoryRoot,
@@ -42,16 +55,16 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1"]);
   assert.deepEqual(validation.json.errors, []);
 });
 
-test("the 0.9 contract publishes fast evidence, explicit multiple-ticket adapters, and resolved agent routes", async () => {
+test("the 0.9.1 contract publishes Luna routing and fail-closed worktree ownership", async () => {
   const manifest = JSON.parse(
-    await readFile(resolve(repositoryRoot, "manifests/0.9.0.json"), "utf8"),
+    await readFile(resolve(repositoryRoot, "manifests/0.9.1.json"), "utf8"),
   );
   const catalog = JSON.parse(
-    await readFile(resolve(repositoryRoot, "catalog/0.3.0.json"), "utf8"),
+    await readFile(resolve(repositoryRoot, "catalog/0.3.1.json"), "utf8"),
   );
   const orchestration = catalog.skills.find(
     (skill) => skill.logicalName === "coding-orchestration",
@@ -68,15 +81,15 @@ test("the 0.9 contract publishes fast evidence, explicit multiple-ticket adapter
   assert.equal(catalog.skills.length, 21);
   assert.equal(catalog.skills.flatMap((skill) => skill.variants).length, 42);
   assert.ok(orchestration.variants.every(
-    (variant) => variant.adapterContract === "fast-explicit-multiple-routing-v2",
+    (variant) => variant.adapterContract === "fast-explicit-multiple-routing-v3",
   ));
   assert.ok(multiple.variants.every(
     (variant) => variant.sourceDirectory ===
-      "artifacts/0.9.0/skills/internal/work-multiple",
+      "artifacts/0.9.1/skills/internal/work-multiple",
   ));
   assert.ok(developmentFlow.variants.every(
     (variant) => variant.sourceDirectory ===
-      "artifacts/0.9.0/skills/internal/drive-development-flow",
+      "artifacts/0.9.1/skills/internal/drive-development-flow",
   ));
   assert.equal(
     manifest.artifacts.filter((artifact) => artifact.id.startsWith("factory-droid.")).length,
@@ -99,7 +112,7 @@ test("the 0.9 contract publishes fast evidence, explicit multiple-ticket adapter
     assert.match(contents, /^model\s*=\s*"[^"]+"$/m);
   }
   const contract = await readFile(
-    resolve(repositoryRoot, "artifacts/0.9.0/contract.md"),
+    resolve(repositoryRoot, "artifacts/0.9.1/contract.md"),
     "utf8",
   );
   assert.match(contract, /within five minutes/i);
@@ -107,9 +120,11 @@ test("the 0.9 contract publishes fast evidence, explicit multiple-ticket adapter
   assert.match(contract, /one\s+pull request/i);
   assert.match(contract, /label, copy, icon/i);
   assert.match(contract, /met`, `missed`, or `unproven`/i);
+  assert.match(contract, /bounded implementation and focused tests to Luna/i);
+  assert.match(contract, /reject patch targets outside/i);
 });
 
-test("0.9 installs into an isolated HOME with explicit Codex and Factory routing", async () => {
+test("0.9.1 installs into an isolated HOME with Luna fast implementation", async () => {
   const sourceCommit = createSourceCommit();
   const home = await mkdtemp(resolve(tmpdir(), "aohys-development-system-0.9-"));
   const install = runCli(
@@ -117,12 +132,25 @@ test("0.9 installs into an isolated HOME with explicit Codex and Factory routing
     "--home",
     home,
     "--version",
-    "0.9.0",
+    "0.9.1",
     "--source-commit",
     sourceCommit,
   );
   assert.equal(install.status, 0, install.stderr);
-  assert.equal(install.json.version, "0.9.0");
+  assert.equal(install.json.version, "0.9.1");
+  const sourceRoot = await createCleanSourceCheckout(sourceCommit);
+  const sync = runCli(
+    "sync-skills",
+    "--home",
+    home,
+    "--version",
+    "0.3.1",
+    "--source-root",
+    sourceRoot,
+    "--source-commit",
+    sourceCommit,
+  );
+  assert.equal(sync.status, 0, sync.stderr);
   const fastImplementer = await readFile(
     resolve(home, ".factory", "droids", "fast-implementer.md"),
     "utf8",
@@ -133,13 +161,22 @@ test("0.9 installs into an isolated HOME with explicit Codex and Factory routing
     resolve(home, ".codex", "agents", "fast-implementer.toml"),
     "utf8",
   );
-  assert.match(codexFastImplementer, /^model\s*=\s*"gpt-5\.3-codex-spark"$/m);
+  assert.match(codexFastImplementer, /^model\s*=\s*"gpt-5\.6-luna"$/m);
+  assert.match(codexFastImplementer, /^model_reasoning_effort\s*=\s*"high"$/m);
+  assert.match(codexFastImplementer, /expected absolute worktree path and branch/i);
+  const factoryMultiple = await readFile(
+    resolve(home, ".factory", "skills", "work-multiple", "SKILL.md"),
+    "utf8",
+  );
+  assert.match(factoryMultiple, /active harness roster's explicit `fast_implementer` route/i);
+  assert.match(factoryMultiple, /Factory uses\s+its separately versioned explicit droid mapping/i);
+  assert.doesNotMatch(factoryMultiple, /Use `fast_implementer` on Luna/i);
   const codexRoster = spawnSync(
     "python3",
     [
       resolve(
         repositoryRoot,
-        "artifacts/0.9.0/adapters/codex/coding-orchestration/scripts/validate_agents.py",
+        "artifacts/0.9.1/adapters/codex/coding-orchestration/scripts/validate_agents.py",
       ),
     ],
     {
@@ -153,7 +190,7 @@ test("0.9 installs into an isolated HOME with explicit Codex and Factory routing
     [
       resolve(
         repositoryRoot,
-        "artifacts/0.9.0/adapters/factory/coding-orchestration/scripts/validate_agents.py",
+        "artifacts/0.9.1/adapters/factory/coding-orchestration/scripts/validate_agents.py",
       ),
     ],
     {

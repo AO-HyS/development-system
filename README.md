@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.9.0` adds a five-minute tiny-change fast path, explicit-only special flows and full suites, opt-in `work-multiple`, value-selected UI QA, and observable capability/model routing. Normal implementation stays automatic; the operator triggers every additional lifecycle flow. Prior authorization guarantees remain intact.
+The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.9.1` keeps the five-minute fast path and explicit-only special flows, replaces Spark with Luna High for bounded Codex implementation, and makes writer worktree ownership fail closed. Normal implementation stays automatic; the operator triggers every additional lifecycle flow. Prior authorization guarantees remain intact.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,9 +16,9 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 0.9.0
-./bin/development-system sync-skills --version 0.3.0
-./bin/development-system audit-skills --version 0.3.0 --evidence evidence/skills-live-2026-07-20.json
+./bin/development-system install --version 0.9.1
+./bin/development-system sync-skills --version 0.3.1
+./bin/development-system audit-skills --version 0.3.1 --evidence evidence/skills-live-2026-07-20.json
 ./bin/development-system audit
 ./bin/development-system validate
 ./bin/development-system rollback-skills
@@ -83,7 +83,7 @@ HOME/
 
 The installed manifests record contract/catalog version, source repository, exact source commit, file/folder SHA-256 hashes, logical name, harness, destination, expected mirror, and explicit adapter contract. Direct edits under HOME are drift, not a new source of truth.
 
-`sync-skills` manages 21 logical workflow skills across 42 physical Codex/Factory variants. Twenty Factory copies are declared mirrors and do not count as separate logical skills. `coding-orchestration` is the sole divergent pair: two harness adapters with the same fast-evidence behavior contract. `work-multiple` is explicit-only and owns parallel ticket lanes instead of hiding them inside ordinary orchestration. Cleanup is limited to the stale workspace and broken links named in `catalog/0.3.0.json`; every replaced entry is snapshotted for `rollback-skills`.
+`sync-skills` manages 21 logical workflow skills across 42 physical Codex/Factory variants. Twenty Factory copies are declared mirrors and do not count as separate logical skills. `coding-orchestration` is the sole divergent pair: two harness adapters with the same fast-evidence behavior contract. `work-multiple` is explicit-only and owns parallel ticket lanes instead of hiding them inside ordinary orchestration. Cleanup is limited to the stale workspace and broken links named in `catalog/0.3.1.json`; every replaced entry is snapshotted for `rollback-skills`.
 
 ## Operational skill evidence
 
@@ -141,7 +141,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.9.0 del sistema de desarrollo” → `install --version 0.9.0` plus `sync-skills --version 0.3.0`
+- “Instala la versión 0.9.1 del sistema de desarrollo” → `install --version 0.9.1` plus `sync-skills --version 0.3.1`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -160,7 +160,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.8.0` retain their published contracts; `0.9.0` adds the fast evidence, explicit multiple-ticket, and observable routing contract. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` replaces the unstable Spark implementation route with Luna High and adds fail-closed worktree ownership. Published manifests and artifacts are immutable.
 
 ## Current boundary
 

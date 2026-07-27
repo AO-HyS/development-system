@@ -31,9 +31,8 @@ reviews, and one pull request when publication is separately authorized.
 The plan records its selected route. Every delegated result records role, agent
 or droid, harness, actual resolved model, reasoning, and runtime source.
 Copying the selected model into a receipt is not execution evidence; `inherit`
-is unresolved evidence. Codex uses
-Spark for exact bounded implementation, Luna for mapping/planning/focused test
-execution, Terra for browser QA, and Sol only where its judgment is warranted.
+is unresolved evidence. Codex model routing in this ADR is superseded by ADR
+0012. The lifecycle and evidence decisions remain active.
 Factory uses explicit models exposed by the installed `droid 0.111.0` runtime;
 new mappings remain provisional until same-packet benchmarks establish their
 speed, quality, and cost.

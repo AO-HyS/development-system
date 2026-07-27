@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-const skillRoot = resolve("artifacts/0.9.0/skills/internal/work-multiple");
+const skillRoot = resolve("artifacts/0.9.1/skills/internal/work-multiple");
 
 async function runJsonScript(script, input) {
   const directory = await mkdtemp(resolve(tmpdir(), "development-goal-"));
@@ -90,6 +90,12 @@ test("the skill is explicit and preserves the constant goal", async () => {
   assert.match(skill, /never infer activation/i);
   assert.match(skill, /Deliver correct functionality to the authorized state/i);
   assert.match(metadata, /allow_implicit_invocation:\s*false/);
+  assert.match(skill, /active harness roster's explicit `fast_implementer` route/i);
+  assert.match(skill, /Codex resolves that route to Luna High/i);
+  assert.match(skill, /Factory uses\s+its separately versioned explicit droid mapping/i);
+  assert.doesNotMatch(skill, /Use `fast_implementer` on Spark/i);
+  assert.match(skill, /expected absolute path and branch/i);
+  assert.match(skill, /reject every patch target\s+outside that Git root/i);
 });
 
 test("UI QA is not applicable, skipped, or required by observable risk", async () => {
