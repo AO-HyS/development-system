@@ -42,8 +42,129 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0"]);
   assert.deepEqual(validation.json.errors, []);
+});
+
+test("the 0.9 contract publishes fast evidence, explicit multiple-ticket adapters, and resolved agent routes", async () => {
+  const manifest = JSON.parse(
+    await readFile(resolve(repositoryRoot, "manifests/0.9.0.json"), "utf8"),
+  );
+  const catalog = JSON.parse(
+    await readFile(resolve(repositoryRoot, "catalog/0.3.0.json"), "utf8"),
+  );
+  const orchestration = catalog.skills.find(
+    (skill) => skill.logicalName === "coding-orchestration",
+  );
+  const multiple = catalog.skills.find(
+    (skill) => skill.logicalName === "work-multiple",
+  );
+  const developmentFlow = catalog.skills.find(
+    (skill) => skill.logicalName === "drive-development-flow",
+  );
+  assert.ok(orchestration);
+  assert.ok(multiple);
+  assert.ok(developmentFlow);
+  assert.equal(catalog.skills.length, 21);
+  assert.equal(catalog.skills.flatMap((skill) => skill.variants).length, 42);
+  assert.ok(orchestration.variants.every(
+    (variant) => variant.adapterContract === "fast-explicit-multiple-routing-v2",
+  ));
+  assert.ok(multiple.variants.every(
+    (variant) => variant.sourceDirectory ===
+      "artifacts/0.9.0/skills/internal/work-multiple",
+  ));
+  assert.ok(developmentFlow.variants.every(
+    (variant) => variant.sourceDirectory ===
+      "artifacts/0.9.0/skills/internal/drive-development-flow",
+  ));
+  assert.equal(
+    manifest.artifacts.filter((artifact) => artifact.id.startsWith("factory-droid.")).length,
+    16,
+  );
+  assert.equal(
+    manifest.artifacts.filter((artifact) => artifact.id.startsWith("codex-agent.")).length,
+    16,
+  );
+  for (const artifact of manifest.artifacts.filter(
+    (item) => item.id.startsWith("factory-droid."),
+  )) {
+    const contents = await readFile(resolve(repositoryRoot, artifact.sourcePath), "utf8");
+    assert.doesNotMatch(contents, /^model:\s*inherit$/m);
+  }
+  for (const artifact of manifest.artifacts.filter(
+    (item) => item.id.startsWith("codex-agent."),
+  )) {
+    const contents = await readFile(resolve(repositoryRoot, artifact.sourcePath), "utf8");
+    assert.match(contents, /^model\s*=\s*"[^"]+"$/m);
+  }
+  const contract = await readFile(
+    resolve(repositoryRoot, "artifacts/0.9.0/contract.md"),
+    "utf8",
+  );
+  assert.match(contract, /within five minutes/i);
+  assert.match(contract, /full repository suite is\s+forbidden by default/i);
+  assert.match(contract, /one\s+pull request/i);
+  assert.match(contract, /label, copy, icon/i);
+  assert.match(contract, /met`, `missed`, or `unproven`/i);
+});
+
+test("0.9 installs into an isolated HOME with explicit Codex and Factory routing", async () => {
+  const sourceCommit = createSourceCommit();
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-development-system-0.9-"));
+  const install = runCli(
+    "install",
+    "--home",
+    home,
+    "--version",
+    "0.9.0",
+    "--source-commit",
+    sourceCommit,
+  );
+  assert.equal(install.status, 0, install.stderr);
+  assert.equal(install.json.version, "0.9.0");
+  const fastImplementer = await readFile(
+    resolve(home, ".factory", "droids", "fast-implementer.md"),
+    "utf8",
+  );
+  assert.match(fastImplementer, /^model:\s*gpt-5\.3-codex-fast$/m);
+  assert.doesNotMatch(fastImplementer, /^model:\s*inherit$/m);
+  const codexFastImplementer = await readFile(
+    resolve(home, ".codex", "agents", "fast-implementer.toml"),
+    "utf8",
+  );
+  assert.match(codexFastImplementer, /^model\s*=\s*"gpt-5\.3-codex-spark"$/m);
+  const codexRoster = spawnSync(
+    "python3",
+    [
+      resolve(
+        repositoryRoot,
+        "artifacts/0.9.0/adapters/codex/coding-orchestration/scripts/validate_agents.py",
+      ),
+    ],
+    {
+      encoding: "utf8",
+      env: { ...process.env, CODEX_HOME: resolve(home, ".codex") },
+    },
+  );
+  assert.equal(codexRoster.status, 0, codexRoster.stderr);
+  const factoryRoster = spawnSync(
+    "python3",
+    [
+      resolve(
+        repositoryRoot,
+        "artifacts/0.9.0/adapters/factory/coding-orchestration/scripts/validate_agents.py",
+      ),
+    ],
+    {
+      encoding: "utf8",
+      env: { ...process.env, HOME: home },
+    },
+  );
+  assert.equal(factoryRoster.status, 0, factoryRoster.stderr);
+  const audit = runCli("audit", "--home", home);
+  assert.equal(audit.status, 0, audit.stderr);
+  assert.equal(audit.json.status, "healthy");
 });
 
 test("the 0.8 operator interface is backed by the pinned skill catalog and bounded flow implementation", async () => {

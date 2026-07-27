@@ -1,8 +1,8 @@
 # Implement Preview execution plan
 
-`implement-preview` consumes one already-approved terminal slice and a private local JSON plan. It can run implementation, tests, validation, independent intent and standards reviews, corrections, proportional QA, commit, push, pull-request creation, and preview publication. It cannot run merge, release, or production.
+`implement-preview` consumes one already-approved terminal slice and a private local JSON plan. It can run implementation, focused checks, validation, risk-appropriate review, corrections, proportional QA, commit, push, pull-request creation, and preview publication. It cannot run merge, release, or production. A full repository suite is never implied; the user must authorize it explicitly for the current run.
 
-The plan has one writer by default, two clean-context review lanes, explicit TDD/QA selection evidence, a Local Visual Plan summary, and structured command arrays. Commands execute directly without a shell. Each review lane is a separate process and receives a fresh `AOHYS_CLEAN_CONTEXT_ID`.
+The ordinary plan has one writer. Tiny changes target functional evidence in five minutes and stop for a process audit above the ten-minute exceptional ceiling. Multiple-ticket worktrees require an explicit `$work-multiple` request: overlapping/dependent tickets share a sequential lane, disjoint lanes may run in parallel, and all lanes integrate into one candidate.
 
 ```json
 {
@@ -34,6 +34,10 @@ The plan has one writer by default, two clean-context review lanes, explicit TDD
   }
 }
 ```
+
+`work-multiple` requires at least two tickets with acceptance criteria,
+surfaces, and blockers. It owns lane/worktree grouping, focused verification,
+two isolated integrated reviews, measurement, and the authorization stop.
 
 Commands that return structured evidence should print a final JSON object. Review commands return `{"ok":true,"findings":[...]}` with `blocker`, `high`, `medium`, or `low` severity. Pull-request and preview commands return `{"ok":true,"url":"..."}`. Repeated blocker/high fingerprints pause the loop as non-convergent; they never become success.
 
