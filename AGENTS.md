@@ -11,14 +11,11 @@ Read `docs/spec.md` and the ADRs relevant to the surface being changed.
 
 ## Verification
 
-Run focused CLI tests while editing. Before handoff, run:
-
-```sh
-pnpm run verify
-pnpm run scenario
-```
-
-The scenario must demonstrate installation, drift detection, failed validation, reinstall, rollback, and preservation of unrelated files.
+Run focused CLI tests while editing. Do not run `pnpm run verify`,
+`pnpm run scenario`, or another full repository suite unless the user
+explicitly requests that broad gate for the current run. When explicitly
+requested, the scenario must demonstrate installation, drift detection, failed
+validation, reinstall, rollback, and preservation of unrelated files.
 
 ## Authorization boundary
 

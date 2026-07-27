@@ -51,7 +51,7 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
  4. As Alejandro, I want installed HOME files generated from a canonical source, so that local configuration cannot silently become the source of truth.
  5. As Alejandro, I want a manifest of installed versions, upstream commits, hashes, mirrors and drift, so that I can tell exactly what contract each harness is running.
  6. As Alejandro, I want lifecycle stages named consistently, so that native harness syntax does not change the mental model.
- 7. As Alejandro, I want the router to infer and run the fitting stage as far as my request authorizes, while recommendation-only requests remain read-only and classification never expands authorization.
+ 7. As Alejandro, I want normal implementation to follow one fixed flow while I explicitly trigger every special lifecycle stage, so that the system does not guess or fill context with unrequested process.
  8. As Alejandro, I want Wayfinder to require an explicit invocation, so that a large initiative does not automatically create maps or tickets.
  9. As Alejandro, I want `grill-with-docs` to remain human-driven and stop for approval whether the router or an explicit command selects it, so that product intent and constraints come from me.
 10. As Alejandro, I want requirements persisted before synthesis, so that the spec does not depend only on chat memory.
@@ -84,7 +84,7 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 37. As Alejandro, I want the orchestrator to adjudicate technical disagreements, so that ordinary execution does not repeatedly return decisions to me.
 38. As Alejandro, I want TDD selected by value, so that contracts and regressions receive strong tests without making every copy change expensive.
 39. As Alejandro, I want every change to have appropriate evidence, so that omitting TDD never means omitting verification.
-40. As Alejandro, I want browser QA proportional to user-visible impact, so that critical flows receive real interaction evidence and tiny changes do not pay a full suite unnecessarily.
+40. As Alejandro, I want browser QA only when UI changed and observable risk justifies interaction, so that labels and other mechanical UI edits do not pay browser ceremony.
 41. As Alejandro, I want the selected QA level explained, so that I can judge whether the evidence matches the risk.
 42. As Alejandro, I want every prepared repository to support previews, so that user-visible work can be inspected before merge.
 43. As Alejandro, I want previews usable locally and shareable when needed, so that review works on computer and phone.
@@ -135,6 +135,19 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 88. As Alejandro, I want the complete program tracked in Linear when requested, so that phases and dependencies are visible without making Linear the source of truth.
 89. As Alejandro, I want natural-language recovery of the system, so that I do not need to memorize a secret command.
 90. As Alejandro, I want recovery to use versioned artifacts and current installed state, so that memory does not depend on a conversation transcript.
+91. As Alejandro, I want a tiny change to produce functional evidence in five minutes, with ten minutes only as a documented exception, so that process ceremony cannot dominate implementation.
+92. As Alejandro, I want full repository suites to run only when I explicitly request them, so that rare broad certification is never an automatic tax.
+93. As Alejandro, I want multiple-ticket worktrees to require explicit opt-in, so that normal delivery remains simple.
+94. As Alejandro, I want tickets sharing product surfaces or dependencies serialized in one lane while disjoint lanes run in parallel, so that concurrency is useful and conflict-aware.
+95. As Alejandro, I want all ticket lanes integrated into one pull request by default, so that I review one coherent candidate.
+96. As Alejandro, I want every delegated lane to report its actual role and resolved model, so that model routing is observable rather than inferred from an agent name.
+97. As Alejandro, I want the constant goal to be correct functionality at the authorized state, as fast as possible, with useful quality, lowest measured cost and least complexity, so that every workflow decision serves the same outcome.
+98. As Alejandro, I want Wayfinder, grilling, specs, tickets, prototypes and multiple work to require my explicit trigger, so that I control when extra context is worthwhile.
+99. As Alejandro, I want label, copy, icon and obvious style-only UI changes without behavioral risk to skip manual UI QA, so that common sense is deterministic and cheap.
+100. As Alejandro, I want interaction, navigation, mutation, responsive behavior, meaningful regressions and critical flows to receive one direct manual acceptance flow, so that UI QA proves behavior instead of producing route counts.
+101. As Alejandro, I want `work-multiple` to be a separate explicit skill, so that several tickets alone never create worktrees or agents.
+102. As Alejandro, I want two context-isolated reviews for integrated multiple work, so that independent reviewers cannot anchor one another.
+103. As Alejandro, I want correctness, quality, speed, cost and simplicity reported separately as met, missed or unproven, so that a composite score cannot hide a failed goal.
 
 ## Implementation Decisions
 
@@ -153,10 +166,11 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 
 ### Lifecycle state machine
 
-* Represent lifecycle stage and gate state explicitly. A stage recommendation cannot itself transition the state.
-* Keep Wayfinder outside the automatic router and outside the normal lifecycle. Only Alejandro's explicit invocation may enter it.
+* Represent lifecycle stage and gate state explicitly. No inferred stage may transition the state.
+* Keep every special flow outside automatic routing. Only Alejandro's explicit invocation may enter Wayfinder, grilling, specification, ticket generation, prototypes or `work-multiple`.
+* Route an ordinary authorized code change through the fixed implementation flow without adding lifecycle stages.
 * Manual transitions are requirements approval, spec/plan approval, tickets approval, `Implement Preview`, and every merge/release/production action.
-* Automatic transitions inside an authorized delivery run may implement, validate, review, correct, perform proportional QA, publish preview, update PR and generate recap.
+* Automatic transitions inside an authorized implementation run may implement, run focused checks, review, correct, perform value-selected QA and continue only to the authorized terminal state.
 * Side-effecting manual skills cannot be reached by direct filesystem reads from an automatic router. Adapters must preserve the same authorization invariant even when their native skill metadata differs.
 * Natural-language requests can map to transitions; no secret phrase is required. The transition record must still show the exact operation authorized.
 
@@ -175,6 +189,10 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 * Keep the execution orchestrator responsible for decomposition, role/model selection, integration, conflicts, findings and the terminal state.
 * Reuse a worker for follow-up within the same ownership. Avoid active polling and duplicate searches.
 * Define roles by capability, then map each Adapter to available agents, droids and models. Existing rosters are inputs to benchmark, not immutable decisions.
+* Treat tiny changes as a direct fast path: target functional evidence in five minutes; permit up to ten only with a written exception; stop and audit above ten.
+* Never run a full repository suite without explicit user authorization for that execution.
+* Activate multi-ticket worktrees only from explicit user intent. Group shared surfaces and blockers into sequential lanes, run only disjoint lanes in parallel, and integrate one candidate and one pull request.
+* Record role, worker, harness, resolved model, reasoning, and roster source for every delegated lane. An inherited or missing model is unresolved evidence.
 
 ### Review
 
@@ -191,6 +209,7 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 * Add narrower tests only when they isolate an Adapter or benchmark responsibility that the acceptance Interface cannot diagnose efficiently.
 * Require browser/computer-use evidence for materially user-visible flows. Permit lightweight snapshots/previews for small visible changes and reasoned omission for internal work.
 * Make preview capability a readiness requirement. Do not auto-activate paid infrastructure to satisfy it.
+* Treat the acceptance criterion as primary evidence. Test counts and route/surface totals are supporting telemetry only and must be mapped to the behavior they prove.
 
 ### Repository preparation
 
@@ -244,7 +263,8 @@ This Seam tests callers and adapters through the same Interface. It should cover
 * Review: inject known defects and prove adversarial reviewers surface them, severity is consistent and the loop does not exit with blocker/high findings.
 * Non-convergence: simulate repeated findings and prove the circuit breaker pauses without converting failure to success.
 * TDD selection: verify the decision and evidence for representative logic, regression, visual and mechanical changes.
-* QA selection: verify full, lightweight and omitted browser evidence decisions against change risk.
+* QA selection: verify no-UI, mechanical-UI and behavioral-UI decisions against the deterministic value rule.
+* Goal evaluation: prove five-minute tiny success, exceptional-but-missed timing, multiple-work baseline comparison, and explicit unproven cost.
 * Preview readiness: prove prepared repos expose the required local/shared review capability without unapproved paid activation.
 * Visual artifacts: validate required plan/recap fields, privacy defaults, responsive readability and separation from PR content.
 * Repository audit: seed duplicated, inert and foreign-project instructions and prove the report identifies them without mutation.

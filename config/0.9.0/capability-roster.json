@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 2,
+  "policy": "explicit-role-routing-with-provisional-gaps",
+  "benchmarkRunId": "capability-2026-07-20T07-42-04.912Z",
+  "supplementalBenchmarkRunIds": [
+    "capability-2026-07-20T18-53-12.440Z"
+  ],
+  "executionRoles": {
+    "codex": {
+      "orchestrator": { "role": "orchestrator", "agent": "parent", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-confirmed" },
+      "discovery": { "role": "code_mapper", "agent": "code_mapper", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "xhigh", "evidenceStatus": "installed-roster-confirmed" },
+      "implementation": { "role": "fast_implementer", "agent": "fast_implementer", "harness": "codex", "model": "gpt-5.3-codex-spark", "reasoning": "low", "evidenceStatus": "validated" },
+      "verification": { "role": "test_runner", "agent": "test_runner", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "high", "evidenceStatus": "installed-roster-confirmed" },
+      "browserQa": { "role": "browser_qa", "agent": "browser_qa", "harness": "codex", "model": "gpt-5.6-terra", "reasoning": "max", "evidenceStatus": "installed-roster-confirmed" },
+      "review": { "role": "reviewer", "agent": "reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "installed-roster-confirmed" }
+    },
+    "factory": {
+      "orchestrator": { "role": "orchestrator", "agent": "parent", "harness": "factory", "model": "claude-opus-4-7", "reasoning": "high", "evidenceStatus": "runtime-default-confirmed" },
+      "discovery": { "role": "code-mapper", "agent": "code-mapper", "harness": "factory", "model": "gpt-5.4-mini", "reasoning": "high", "evidenceStatus": "runtime-available-unbenchmarked" },
+      "implementation": { "role": "fast-implementer", "agent": "fast-implementer", "harness": "factory", "model": "gpt-5.3-codex-fast", "reasoning": "low", "evidenceStatus": "runtime-available-unbenchmarked" },
+      "verification": { "role": "test-runner", "agent": "test-runner", "harness": "factory", "model": "gpt-5.4-mini", "reasoning": "high", "evidenceStatus": "runtime-available-unbenchmarked" },
+      "browserQa": { "role": "browser-qa", "agent": "browser-qa", "harness": "factory", "model": "claude-sonnet-4-6", "reasoning": "high", "evidenceStatus": "runtime-available-unbenchmarked" },
+      "review": { "role": "reviewer", "agent": "reviewer", "harness": "factory", "model": "claude-opus-4-7", "reasoning": "medium", "evidenceStatus": "runtime-available-unbenchmarked" }
+    }
+  },
+  "capabilities": {
+    "orchestration": {
+      "role": "orchestrator",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "high", "mappingStatus": "provisional", "evidenceStatus": "timeout", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "gpt-5.6-sol", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 92810 }
+    },
+    "implementation": {
+      "role": "implementer",
+      "codex": { "model": "gpt-5.3-codex-spark", "reasoning": "low", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 55424 },
+      "factory": { "model": "inherit", "reasoning": "medium", "resolvedModel": "gpt-5.6-sol", "mappingStatus": "provisional", "evidenceStatus": "permission-blocked", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z" }
+    },
+    "review": {
+      "role": "adversarial-reviewer",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "medium", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 36067 },
+      "factory": { "model": "inherit", "reasoning": "medium", "resolvedModel": "claude-opus-4-8", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 53444 }
+    },
+    "architecture": {
+      "role": "architecture-planner",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "xhigh", "mappingStatus": "provisional", "evidenceStatus": "timeout", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z" },
+      "factory": { "model": "inherit", "reasoning": "xhigh", "resolvedModel": "claude-opus-4-8", "mappingStatus": "provisional", "evidenceStatus": "validated", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z", "verifiedDeliveryMs": 115970.534417, "provisionalReason": "single validated rerun after an earlier timeout; repeatability is not established" }
+    },
+    "browser-qa": {
+      "role": "browser-qa",
+      "codex": { "model": "gpt-5.6-terra", "reasoning": "max", "mappingStatus": "provisional", "evidenceStatus": "timeout", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "claude-sonnet-5", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 94104 }
+    },
+    "visual-judgment": {
+      "role": "visual-reviewer",
+      "codex": { "model": "gpt-5.6-sol", "reasoning": "high", "mappingStatus": "provisional", "evidenceStatus": "timeout", "evidenceRunId": "capability-2026-07-20T18-53-12.440Z" },
+      "factory": { "model": "inherit", "reasoning": "high", "resolvedModel": "claude-opus-4-8", "mappingStatus": "validated", "evidenceStatus": "validated", "verifiedDeliveryMs": 50784 }
+    }
+  }
+}
