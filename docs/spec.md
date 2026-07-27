@@ -119,7 +119,7 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 72. As Alejandro, I want validation to detect catalog overflow, so that implicit skill discovery cannot degrade silently.
 73. As Alejandro, I want a capability-based orchestrator role, so that today's model can be replaced without changing the lifecycle.
 74. As Alejandro, I want GPT-5.6 Sol High treated as a provisional baseline, so that Extra High is not paid by default without evidence.
-75. As Alejandro, I want Spark modes and reasoning levels tested, so that the fast implementer mapping is not based on assumptions.
+75. As Alejandro, I want fast implementation models and reasoning levels tested, so that the fast implementer mapping is not based on assumptions or model branding.
 76. As Alejandro, I want Factory `inherit` resolved to reproducible mappings, so that droid behavior does not depend on an invisible session choice.
 77. As Alejandro, I want benchmarks to compare identical tasks and checks, so that model rankings are causally meaningful.
 78. As Alejandro, I want benchmarks to measure correction cost and slop, so that fastest first diff is not mistaken for fastest delivery.
@@ -310,7 +310,7 @@ This Seam tests callers and adapters through the same Interface. It should cover
 
 * The complete program remains in scope, but the first terminal slice is the central system plus readiness of NutriPlan, The Barber Central and AOHYS. Escuela 360 and the remaining repositories are explicit later rollout work, not hidden debt.
 * “Complete today” is an execution target, not permission to skip human gates or claim unverified completion.
-* GPT-5.6 Sol High is a provisional orchestrator baseline. Extra High is not the normal default. Spark modes, Factory alternatives, visual models and reviewer mappings require benchmarks.
+* GPT-5.6 Sol High is a provisional orchestrator baseline. Extra High is not the normal default. Luna/Terra implementation candidates, Factory alternatives, visual models and reviewer mappings require benchmarks.
 * The label “Foul” names the adversarial capability; the implementation may reuse or compose existing roles if evidence shows a new agent is unnecessary.
 * The current spec was bootstrapped before the central repository exists. Once implementation is authorized, the repository becomes the versioned source and this bootstrap copy is migrated with history.
 * The Local Visual Plan is a separate private review surface generated with this spec.

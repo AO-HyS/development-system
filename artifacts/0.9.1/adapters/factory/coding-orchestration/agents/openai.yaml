@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Orchestration"
+  short_description: "Route coding work across efficient subagents"
+  default_prompt: "Use $coding-orchestration to divide and execute this coding task efficiently."

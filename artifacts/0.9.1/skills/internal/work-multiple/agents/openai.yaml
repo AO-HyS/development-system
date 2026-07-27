@@ -1,0 +1,6 @@
+interface:
+  display_name: "Work Multiple"
+  short_description: "Run explicit parallel ticket lanes safely"
+  default_prompt: "Use $work-multiple to execute these authorized tickets in parallel lanes."
+policy:
+  allow_implicit_invocation: false

@@ -26,9 +26,9 @@ the work.
 
 `work-multiple` is a separate explicit skill. It groups overlapping tickets
 into sequential lanes and runs only disjoint lanes in parallel worktrees,
-integrating them into one candidate. It starts bounded implementation with the
-fastest validated route, currently Spark in Codex. A named model remains a
-candidate, not proof; same-packet measurements determine replacements.
+integrating them into one candidate. Its current Codex implementation route is
+defined by ADR 0012. A named model remains a candidate, not proof; same-packet
+measurements determine replacements.
 
 Manual UI QA follows a deterministic value rule:
 
