@@ -56,6 +56,14 @@ for (const name of targets) {
     fingerprintPolicy: audit.fingerprint.policy,
     excludedPaths: audit.fingerprint.excluded.length,
     boundedLargeFiles: audit.fingerprint.boundedFiles.length,
+    commands: audit.commands,
+    deliveryPolicyReady: Boolean(
+      audit.commands.changedValidation &&
+      audit.commands.certification &&
+      audit.commands.providerReadiness &&
+      audit.commands.qa &&
+      audit.commands.preview
+    ),
     externalSideEffects: audit.externalSideEffects,
     gitHeadUnchanged: headBefore === headAfter,
     gitStatusUnchanged: before === after,
@@ -65,7 +73,7 @@ for (const name of targets) {
 
 const report = {
   schemaVersion: 1,
-  contractVersion: "0.8.0",
+  contractVersion: "0.9.1",
   generatedAt: new Date().toISOString(),
   operation: "repository-audit-smoke",
   mode: "read-only-compatibility-evidence",
@@ -74,6 +82,7 @@ const report = {
     result.externalSideEffects.length === 0 &&
     result.gitHeadUnchanged &&
     result.gitStatusUnchanged &&
+    result.deliveryPolicyReady &&
     !result.rolloutReadinessClaim
   ),
   results,

@@ -129,6 +129,10 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `harnesses:validate` is the separate live operational gate.
 
+The latest controlled ordinary-gate measurements and their reproduction
+contract are recorded in
+[`docs/changed-validation-benchmark-2026-07-28.md`](docs/changed-validation-benchmark-2026-07-28.md).
+
 To prove the dual interface through the installed Codex and Factory runtimes without mutating a product repository:
 
 ```sh
@@ -151,6 +155,16 @@ Before executing, the caller should identify the target HOME and requested opera
 Installing or recovering this contract does **not** authorize merge, release, production, destructive operations, paid activation, or extraordinary paid usage. Those operations require separate, explicit authorization each time.
 
 ## Repository validation
+
+Every prepared repository exposes two distinct quality interfaces:
+
+- changed validation for ordinary implementation and pre-push feedback;
+- full certification once for the integrated candidate.
+
+Repository adapters also record risk-selected QA, one shared preview per exact
+candidate SHA, and provider readiness before preview when auth, data,
+migrations, seeds, roles, or environment contracts changed. Product
+repositories still own the concrete commands and provider implementation.
 
 ```sh
 pnpm run verify
