@@ -32,7 +32,7 @@ async function authorizedWorkflow(home, workflowId) {
 
 function deliveryPlan(targetRepository) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     targetRepository,
     terminalSlice: "Deliver AOH-145 without merge",
     writer: { surface: "codex", role: "implementer" },
@@ -42,6 +42,11 @@ function deliveryPlan(targetRepository) {
     ],
     tdd: { selection: "required", reason: "contract and regression logic", evidence: "public scenario seam" },
     qa: { level: "omitted", reason: "internal CLI only", alternativeEvidence: "CLI acceptance scenario" },
+    providerReadiness: {
+      required: true,
+      reason: "preview environment contract changed",
+      surfaces: ["environment"],
+    },
     visualPlan: {
       title: "AOH-145 Implement Preview",
       sections: ["Scope", "Review lanes", "Preview decision"],
@@ -60,6 +65,7 @@ test("Implement Preview reaches a private decision surface without promotion aut
   await writeFile(resolve(privateRoot, "plan.html"), "stale", { mode: 0o644 });
   const calls = [];
   let reviewRound = 0;
+  const candidateSha = "a".repeat(40);
   const runtime = {
     async run(step, context) {
       calls.push({ step, context });
@@ -76,8 +82,12 @@ test("Implement Preview reaches a private decision surface without promotion aut
         }
         return { ok: true, findings: [] };
       }
-      if (step === "open_pr") return { ok: true, url: "https://example.test/pr/145" };
-      if (step === "publish_preview") return { ok: true, url: "https://preview.example.test/aoh-145" };
+      if (step === "commit") return { ok: true, sha: candidateSha };
+      if (step === "certify_candidate") return { ok: true, certified: true, sha: candidateSha };
+      if (step === "provider_readiness") return { ok: true, ready: true, sha: candidateSha };
+      if (step === "push") return { ok: true, sha: candidateSha };
+      if (step === "open_pr") return { ok: true, sha: candidateSha, url: "https://example.test/pr/145" };
+      if (step === "publish_preview") return { ok: true, sha: candidateSha, url: "https://preview.example.test/aoh-145" };
       return { ok: true, evidence: `${step} verified` };
     },
   };
@@ -98,6 +108,14 @@ test("Implement Preview reaches a private decision surface without promotion aut
   assert.ok(result.failuresAndCorrections.some((finding) => finding.fingerprint === "unclear-copy"));
   assert.ok(calls.filter((call) => call.step === "review").every((call) => call.context.cleanContextId));
   assert.ok(!calls.some((call) => ["merge", "release", "production"].includes(call.step)));
+  assert.equal(calls.filter((call) => call.step === "certify_candidate").length, 1);
+  assert.equal(calls.filter((call) => call.step === "provider_readiness").length, 1);
+  assert.equal(calls.filter((call) => call.step === "publish_preview").length, 1);
+  assert.ok(calls.findIndex((call) => call.step === "commit") < calls.findIndex((call) => call.step === "certify_candidate"));
+  assert.ok(calls.findIndex((call) => call.step === "certify_candidate") < calls.findIndex((call) => call.step === "push"));
+  assert.ok(calls.findIndex((call) => call.step === "provider_readiness") < calls.findIndex((call) => call.step === "publish_preview"));
+  assert.ok(!calls.some((call) => call.step === "validate"));
+  assert.ok(calls.some((call) => call.step === "changed_validation"));
 
   const recap = await readFile(result.recapPath, "utf8");
   assert.match(recap, /Failures and corrections/i);
@@ -123,6 +141,10 @@ test("structured command runtime passes correction findings without a shell and 
         command: process.execPath,
         args: ["-e", "process.stdout.write(JSON.stringify({ok:true, findings:JSON.parse(process.env.AOHYS_REVIEW_FINDINGS_JSON)}))"],
       },
+      certify_candidate: {
+        command: process.execPath,
+        args: ["-e", "process.stdout.write(JSON.stringify({ok:true, certified:true, sha:process.env.DEVELOPMENT_SYSTEM_CANDIDATE_SHA}))"],
+      },
     },
   };
   const runtime = createCommandDeliveryRuntime(plan);
@@ -135,6 +157,22 @@ test("structured command runtime passes correction findings without a shell and 
 
   assert.equal(corrected.ok, true);
   assert.deepEqual(corrected.findings, findings);
+  const candidateSha = "d".repeat(40);
+  assert.deepEqual(
+    await runtime.run("certify_candidate", {
+      workflowId: "AOH-145-COMMAND",
+      terminalSlice: base.terminalSlice,
+      candidateSha,
+    }),
+    {
+      ok: true,
+      certified: true,
+      sha: candidateSha,
+      command: `${process.execPath} -e process.stdout.write(JSON.stringify({ok:true, certified:true, sha:process.env.DEVELOPMENT_SYSTEM_CANDIDATE_SHA}))`,
+      exitCode: 0,
+      stderr: "",
+    },
+  );
   assert.throws(
     () => createCommandDeliveryRuntime({
       ...plan,
@@ -193,4 +231,41 @@ test("delivery planning enforces one writer and evidence for proportional TDD an
     runImplementPreview({ home, workflowId, plan: { ...base, qa: { level: "omitted", reason: "internal" } }, runtime }),
     /QA.*alternative/i,
   );
+  await assert.rejects(
+    runImplementPreview({
+      home,
+      workflowId,
+      plan: { ...base, providerReadiness: { required: true, reason: "provider changed", surfaces: [] } },
+      runtime,
+    }),
+    /provider readiness.*surfaces/i,
+  );
+});
+
+test("candidate publication fails closed when certification is not bound to the committed SHA", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-delivery-sha-"));
+  const repository = await mkdtemp(resolve(tmpdir(), "aohys-delivery-sha-repo-"));
+  const workflowId = "AOH-145-SHA";
+  await authorizedWorkflow(home, workflowId);
+  const candidateSha = "b".repeat(40);
+
+  const result = await runImplementPreview({
+    home,
+    workflowId,
+    plan: deliveryPlan(repository),
+    runtime: {
+      async run(step) {
+        if (step === "review") return { ok: true, findings: [] };
+        if (step === "commit") return { ok: true, sha: candidateSha };
+        if (step === "certify_candidate") {
+          return { ok: true, certified: true, sha: "c".repeat(40) };
+        }
+        return { ok: true, sha: candidateSha };
+      },
+    },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.step, "certify_candidate");
+  assert.match(result.reason, /committed SHA/i);
 });

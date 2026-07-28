@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "0.8.0";
+const contractVersion = "0.9.1";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -366,6 +366,21 @@ async function repositoryIdentity(repository, files) {
     stack: detectStack(packageJson, files),
     commands: {
       review: selectCommand(scripts, ["review", "review:ci", "lint", "check"], runner),
+      changedValidation: selectCommand(
+        scripts,
+        ["quality:changed", "verify:changed", "validate"],
+        runner,
+      ),
+      certification: selectCommand(
+        scripts,
+        ["quality:certify", "verify:ci", "verify", "validate"],
+        runner,
+      ),
+      providerReadiness: selectCommand(
+        scripts,
+        ["quality:provider-readiness", "release:env:preview"],
+        runner,
+      ),
       validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
       qa: selectCommand(scripts, ["qa", "test:e2e:changed", "test:e2e", "e2e", "test"], runner),
       preview: selectCommand(
@@ -456,7 +471,7 @@ function allowedReferenceReason(line, marker) {
 function readinessGaps(commands, skills, residue, managed) {
   /** @type {string[]} */
   const gaps = [];
-  for (const capability of ["review", "validation", "qa", "preview"]) {
+  for (const capability of ["review", "changedValidation", "certification", "providerReadiness", "qa", "preview"]) {
     if (!commands[capability]) gaps.push(`missing-${capability}-command`);
   }
   if (residue.length > 0) gaps.push("foreign-product-residue");
@@ -675,7 +690,15 @@ function adapterContents(audit, harness) {
     ? "Factory uses this documented equivalent when a native Codex-only capability is unavailable."
     : "Codex uses the native repository adapter; T3Code shares this Codex contract and state namespace.";
   const prefix = harness === "factory" ? "/" : "$";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` infers, loads, and runs the smallest fitting stage as far as the request authorizes. Recommendation-only requests remain read-only, and the router never approves a human gate or expands authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous development loop only inside the request's existing authority and stop at the pinned human boundary. Tests, validation, review, correction, and proportional QA are development substeps and grant no external-state authority.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`0.2.0\` and verify that the active Codex or Factory harness discovers these commands plus \`drive-development-flow\`. T3Code shares the Codex adapter structurally but has no independent live command proof in this release.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nValidation\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. \`drive-development-flow\` infers, loads, and runs the smallest fitting stage as far as the request authorizes. Recommendation-only requests remain read-only, and the router never approves a human gate or expands authority.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous development loop only inside the request's existing authority and stop at the pinned human boundary. Tests, validation, review, correction, and proportional QA are development substeps and grant no external-state authority.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Delivery policy\n\n- Ordinary implementation and pre-push feedback use the changed-validation command. A full repository suite is never implicit.\n- Full certification runs once for the integrated candidate when explicitly requested or required by the repository release policy.\n- QA is selected by observable risk. Documentation, labels, copy, icons, and internal-only changes do not inherit browser or E2E work without a mapped surface.\n- Parallel or sequential implementation lanes converge into one candidate before \`develop\`; certify that candidate once, merge it once, and produce one shared preview for the exact SHA.\n- Provider readiness for auth, data migrations, seeds, roles, and environment contracts is proven before the shared preview merge when those surfaces changed.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`0.2.0\` and verify that the active Codex or Factory harness discovers these commands plus \`drive-development-flow\`. T3Code shares the Codex adapter structurally but has no independent live command proof in this release.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nChanged validation\n\n${commandLine(audit.commands.changedValidation)}\n\nCandidate certification\n\n${commandLine(audit.commands.certification)}\n\nLegacy validation alias\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+}
+
+/** @param {any} audit @param {"codex" | "factory"} harness */
+function adapterContentsWithProviderReadiness(audit, harness) {
+  return adapterContents(audit, harness).replace(
+    "\n\nLegacy validation alias",
+    `\n\nProvider readiness\n\n${commandLine(audit.commands.providerReadiness)}\n\nLegacy validation alias`,
+  );
 }
 
 /** @param {unknown} contract */
@@ -773,6 +796,13 @@ function repositoryContract(audit, mode) {
         authorization: "separate-exact-human-request",
       },
     },
+    deliveryPolicy: {
+      ordinaryPush: "changed-validation",
+      fullCertification: "once-per-candidate",
+      qaSelection: "observable-risk",
+      sharedPreview: "once-per-candidate",
+      providerReadiness: "before-shared-preview-when-affected",
+    },
     operatorPrerequisites: {
       skillCatalogVersion: "0.2.0",
       installationScope: "global",
@@ -820,8 +850,8 @@ async function prepareRepository(options, mode) {
     [managedFiles[0]]: repositoryContractContents(
       repositoryContract(audit, mode),
     ),
-    [managedFiles[1]]: adapterContents(audit, "codex"),
-    [managedFiles[2]]: adapterContents(audit, "factory"),
+    [managedFiles[1]]: adapterContentsWithProviderReadiness(audit, "codex"),
+    [managedFiles[2]]: adapterContentsWithProviderReadiness(audit, "factory"),
   };
   /** @type {string[]} */
   const changedFiles = [];

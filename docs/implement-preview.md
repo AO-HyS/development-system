@@ -6,7 +6,7 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "targetRepository": "/absolute/path/to/repository",
   "terminalSlice": "The exact slice approved by Implement Preview",
   "writer": { "surface": "codex", "role": "implementer" },
@@ -16,21 +16,28 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
   ],
   "tdd": { "selection": "required", "reason": "contract logic", "evidence": "acceptance seam" },
   "qa": { "level": "omitted", "reason": "internal CLI", "alternativeEvidence": "CLI scenario" },
+  "providerReadiness": {
+    "required": true,
+    "reason": "preview environment contract changed",
+    "surfaces": ["environment"]
+  },
   "visualPlan": { "title": "Decision surface", "sections": ["Scope", "Evidence", "Preview"] },
   "manualChecklist": ["Inspect PR", "Open preview", "Authorize merge separately"],
   "execution": {
     "implement": { "command": "codex", "args": ["exec", "..."] },
     "test": { "command": "pnpm", "args": ["test"] },
-    "validate": { "command": "pnpm", "args": ["verify"] },
+    "changed_validation": { "command": "pnpm", "args": ["quality:changed"] },
     "review": {
       "intent": { "command": "droid", "args": ["exec", "..."] },
       "standards": { "command": "codex", "args": ["exec", "review", "..."] }
     },
     "correct": { "command": "codex", "args": ["exec", "..."] },
-    "commit": { "command": "git", "args": ["commit", "..."] },
-    "push": { "command": "git", "args": ["push", "..."] },
-    "open_pr": { "command": "gh", "args": ["pr", "create", "..."] },
-    "publish_preview": { "command": "pnpm", "args": ["deploy:preview"] }
+    "commit": { "command": "candidate-commit-wrapper", "args": [] },
+    "certify_candidate": { "command": "candidate-certification-wrapper", "args": [] },
+    "provider_readiness": { "command": "provider-readiness-wrapper", "args": [] },
+    "push": { "command": "candidate-push-wrapper", "args": [] },
+    "open_pr": { "command": "candidate-pr-wrapper", "args": [] },
+    "publish_preview": { "command": "candidate-preview-wrapper", "args": [] }
   }
 }
 ```
@@ -39,7 +46,9 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
 surfaces, and blockers. It owns lane/worktree grouping, focused verification,
 two isolated integrated reviews, measurement, and the authorization stop.
 
-Commands that return structured evidence should print a final JSON object. Review commands return `{"ok":true,"findings":[...]}` with `blocker`, `high`, `medium`, or `low` severity. Pull-request and preview commands return `{"ok":true,"url":"..."}`. Repeated blocker/high fingerprints pause the loop as non-convergent; they never become success.
+Commands that return structured evidence should print a final JSON object. Review commands return `{"ok":true,"findings":[...]}` with `blocker`, `high`, `medium`, or `low` severity. The commit wrapper returns the exact candidate as `{"ok":true,"sha":"<40-char SHA>"}`. Certification and provider readiness return that same SHA plus `certified:true` or `ready:true`. Push, pull-request, and preview wrappers also return the same SHA; PR and preview add `url`. Any missing or mismatched SHA fails closed before the next publication step. Repeated blocker/high fingerprints pause the loop as non-convergent; they never become success.
+
+Schema version 1 remains readable for existing private plans. New plans use version 2: ordinary implementation and every correction run `changed_validation`; full candidate certification runs exactly once after commit; provider readiness runs before push only when the plan maps an affected auth, data, migration, seed, role, or environment surface; and the preview is published once for that certified SHA.
 
 Run only after the lifecycle state has reached `delivery_authorized`:
 

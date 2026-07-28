@@ -19,7 +19,7 @@ function escapeHtml(value) {
 
 /** @param {any} plan */
 function validatePlan(plan) {
-  if (!plan || typeof plan !== "object" || plan.schemaVersion !== 1) {
+  if (!plan || typeof plan !== "object" || ![1, 2].includes(plan.schemaVersion)) {
     throw new Error("Delivery plan schema is invalid");
   }
   const writerCount = Array.isArray(plan.writers) ? plan.writers.length : plan.writer ? 1 : 0;
@@ -56,11 +56,57 @@ function validatePlan(plan) {
   ) {
     throw new Error("Implement Preview requires a non-empty manual checklist");
   }
+  if (plan.schemaVersion === 2) {
+    const readiness = plan.providerReadiness;
+    if (
+      !readiness ||
+      typeof readiness.required !== "boolean" ||
+      typeof readiness.reason !== "string" ||
+      !Array.isArray(readiness.surfaces)
+    ) {
+      throw new Error("Provider readiness requires a decision, reason, and surfaces");
+    }
+    if (
+      readiness.required &&
+      (
+        readiness.surfaces.length === 0 ||
+        !readiness.surfaces.every(
+          (/** @type {unknown} */ surface) => typeof surface === "string" && surface.length > 0,
+        )
+      )
+    ) {
+      throw new Error("Provider readiness requires non-empty affected surfaces");
+    }
+    if (!readiness.required && typeof readiness.alternativeEvidence !== "string") {
+      throw new Error("Provider readiness omission requires alternative evidence");
+    }
+  }
   for (const forbidden of ["merge", "release", "production"]) {
     if (plan.steps?.[forbidden] || plan.execution?.[forbidden]) {
       throw new Error(`${forbidden} is outside Implement Preview authorization`);
     }
   }
+}
+
+/** @param {unknown} value */
+function isFullSha(value) {
+  return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
+}
+
+/**
+ * @param {string} step
+ * @param {any} result
+ * @param {string} candidateSha
+ * @param {{flag?: "certified" | "ready"}} [options]
+ */
+function candidateEvidenceFailure(step, result, candidateSha, options = {}) {
+  if (!isFullSha(result?.sha) || result.sha !== candidateSha) {
+    return `${step} evidence must be bound to the exact committed SHA`;
+  }
+  if (options.flag && result?.[options.flag] !== true) {
+    return `${step} must report ${options.flag}=true for the committed SHA`;
+  }
+  return "";
 }
 
 /** @param {string} root @param {string} name @param {string} contents */
@@ -214,8 +260,9 @@ export async function runImplementPreview(options) {
   const failuresAndCorrections = [];
   /** @type {any[]} */
   const evidence = [];
+  const validationStep = options.plan.schemaVersion === 2 ? "changed_validation" : "validate";
 
-  for (const step of ["implement", "test", "validate"]) {
+  for (const step of ["implement", "test", validationStep]) {
     const result = await options.runtime.run(step, {
       workflowId: options.workflowId,
       targetRepository: options.plan.targetRepository,
@@ -270,7 +317,7 @@ export async function runImplementPreview(options) {
     if (correction.ok !== true) return { ok: false, status: "failed", step: "correct", correction, visualPlanPath };
     evidence.push({ step: "correct", result: correction });
     await executeLifecycleOperation({ home: options.home, workflowId: options.workflowId, operation: "correct" });
-    for (const step of ["test", "validate"]) {
+    for (const step of ["test", validationStep]) {
       const rerun = await options.runtime.run(step, {
         workflowId: options.workflowId,
         targetRepository: options.plan.targetRepository,
@@ -299,18 +346,70 @@ export async function runImplementPreview(options) {
 
   let pullRequestUrl = "";
   let previewUrl = "";
-  for (const step of ["commit", "push", "open_pr", "publish_preview"]) {
+  let candidateSha = "";
+  const publicationSteps = options.plan.schemaVersion === 2
+    ? [
+        "commit",
+        "certify_candidate",
+        ...(options.plan.providerReadiness.required ? ["provider_readiness"] : []),
+        "push",
+        "open_pr",
+        "publish_preview",
+      ]
+    : ["commit", "push", "open_pr", "publish_preview"];
+  for (const step of publicationSteps) {
     const result = await options.runtime.run(step, {
       workflowId: options.workflowId,
       targetRepository: options.plan.targetRepository,
       terminalSlice: options.plan.terminalSlice,
       writer,
+      candidateSha,
+      providerReadiness: options.plan.providerReadiness,
     });
     if (result.ok !== true) return { ok: false, status: "failed", step, result, visualPlanPath };
+    if (options.plan.schemaVersion === 2) {
+      if (step === "commit") {
+        if (!isFullSha(result.sha)) {
+          return {
+            ok: false,
+            status: "failed",
+            step,
+            reason: "commit must return the exact 40-character candidate SHA",
+            result,
+            visualPlanPath,
+          };
+        }
+        candidateSha = result.sha;
+      } else {
+        const reason = candidateEvidenceFailure(step, result, candidateSha, {
+          flag: step === "certify_candidate"
+            ? "certified"
+            : step === "provider_readiness"
+              ? "ready"
+              : undefined,
+        });
+        if (reason) {
+          return { ok: false, status: "failed", step, reason, result, visualPlanPath };
+        }
+      }
+    }
     if (step === "open_pr") pullRequestUrl = result.url ?? "";
     if (step === "publish_preview") previewUrl = result.url ?? "";
     evidence.push({ step, result });
     await executeLifecycleOperation({ home: options.home, workflowId: options.workflowId, operation: step });
+    if (
+      options.plan.schemaVersion === 2 &&
+      step === "certify_candidate" &&
+      !options.plan.providerReadiness.required
+    ) {
+      evidence.push({
+        step: "provider_readiness",
+        omitted: true,
+        reason: options.plan.providerReadiness.reason,
+        alternativeEvidence: options.plan.providerReadiness.alternativeEvidence,
+        sha: candidateSha,
+      });
+    }
   }
   if (!isReviewUrl(pullRequestUrl) || !isReviewUrl(previewUrl)) {
     return { ok: false, status: "failed", step: "decision-surface", reason: "Valid HTTP(S) PR and preview URLs are required", visualPlanPath };
@@ -318,7 +417,7 @@ export async function runImplementPreview(options) {
   const recapPath = await writePrivateSurface(
     privateRoot,
     "recap.html",
-    recapHtml({ plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl }),
+    recapHtml({ plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl, candidateSha }),
   );
   const preRelease = await executeLifecycleOperation({
     home: options.home,
@@ -333,6 +432,7 @@ export async function runImplementPreview(options) {
     status: "ready-for-human",
     pullRequestUrl,
     previewUrl,
+    candidateSha,
     visualPlanPath,
     recapPath,
     failuresAndCorrections,
@@ -389,6 +489,10 @@ export function createCommandDeliveryRuntime(plan) {
           AOHYS_REVIEW_LANE: context.lane ?? "",
           AOHYS_CLEAN_CONTEXT_ID: context.cleanContextId ?? "",
           AOHYS_REVIEW_FINDINGS_JSON: JSON.stringify(context.findings ?? []),
+          DEVELOPMENT_SYSTEM_CANDIDATE_SHA: context.candidateSha ?? "",
+          DEVELOPMENT_SYSTEM_PROVIDER_READINESS_JSON: JSON.stringify(
+            context.providerReadiness ?? null,
+          ),
         },
       });
       const parsed = parseCommandOutput(result.stdout ?? "");

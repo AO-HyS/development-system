@@ -582,10 +582,13 @@ const deliveryOperations = new Set([
   "edit",
   "test",
   "validate",
+  "changed_validation",
   "review",
   "correct",
   "qa",
   "commit",
+  "certify_candidate",
+  "provider_readiness",
   "push",
   "open_pr",
   "publish_preview",
@@ -595,7 +598,6 @@ const deliveryOperations = new Set([
 const requiredPreReleaseEvidence = new Set([
   "implement",
   "test",
-  "validate",
   "review",
   "qa",
   "commit",
@@ -674,6 +676,9 @@ async function executeLifecycleOperationUnlocked(options) {
     const missing = [...requiredPreReleaseEvidence].filter(
       (operation) => !completedOperations.has(operation),
     );
+    if (!completedOperations.has("validate") && !completedOperations.has("changed_validation")) {
+      missing.push("validate|changed_validation");
+    }
     if (missing.length > 0) {
       return deniedExecution(
         state,

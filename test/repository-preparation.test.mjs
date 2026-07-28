@@ -57,6 +57,8 @@ async function seedOperationalRepository(prefix = "aohys-repository-audit-", con
       scripts: {
         review: "node -e \"process.exit(0)\"",
         "verify:changed": "node -e \"process.exit(0)\"",
+        "quality:certify": "node -e \"process.exit(0)\"",
+        "quality:provider-readiness": "node -e \"process.exit(0)\"",
         qa: "node -e \"process.exit(0)\"",
         preview: "node -e \"process.exit(0)\"",
       },
@@ -140,6 +142,9 @@ test("repository audit reports precedence, residue, six-state evidence, and harn
   assert.equal(audit.externalSideEffects.length, 0);
   assert.deepEqual(await snapshot(repository), before);
   assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
+  assert.equal(audit.commands.changedValidation.script, "verify:changed");
+  assert.equal(audit.commands.certification.script, "quality:certify");
+  assert.equal(audit.commands.providerReadiness.script, "quality:provider-readiness");
   assert.equal(audit.commands.validation.script, "verify:changed");
   assert.deepEqual(audit.inventory.instructions.map((instruction) => instruction.path), [
     "AGENTS.md",
@@ -310,6 +315,9 @@ test("monorepo preparation detects nested Convex, local preview aliases, and sup
       packageManager: "pnpm@11.7.0",
       scripts: {
         review: "node -e \"process.exit(0)\"",
+        "quality:changed": "node -e \"process.exit(0)\"",
+        "quality:certify": "node -e \"process.exit(0)\"",
+        "quality:provider-readiness": "node -e \"process.exit(0)\"",
         verify: "node -e \"process.exit(0)\"",
         qa: "node -e \"process.exit(0)\"",
         "cloudflare:local": "node -e \"process.exit(0)\"",
@@ -516,6 +524,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
       scripts: {
         review: "node -e \"process.exit(0)\"",
         validate: "node -e \"process.exit(0)\"",
+        "quality:provider-readiness": "node -e \"process.exit(0)\"",
         "test:e2e": "node -e \"process.exit(0)\"",
         preview: "node -e \"process.exit(0)\"",
       },
@@ -543,6 +552,8 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.product.packageManager, "npm");
   assert.deepEqual(contract.product.stack.sort(), ["convex", "react"]);
   assert.equal(contract.commands.review.script, "review");
+  assert.equal(contract.commands.changedValidation.script, "validate");
+  assert.equal(contract.commands.certification.script, "validate");
   assert.equal(contract.commands.validation.script, "validate");
   assert.equal(contract.commands.qa.script, "test:e2e");
   assert.equal(contract.commands.preview.script, "preview");
@@ -563,6 +574,10 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.lifecycle.implementPreview.checksAreDevelopmentSubsteps, true);
   assert.equal(contract.lifecycle.implementPreview.externalStateAuthorization, "request-and-repository-policy");
   assert.equal(contract.lifecycle.implementPreview.deliveryAuthorization, "request-and-repository-policy");
+  assert.equal(contract.deliveryPolicy.ordinaryPush, "changed-validation");
+  assert.equal(contract.deliveryPolicy.fullCertification, "once-per-candidate");
+  assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
+  assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
   assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.2.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
@@ -605,6 +620,7 @@ test("initialization prefers the selective QA script when both selective and leg
       scripts: {
         review: "node -e \"process.exit(0)\"",
         validate: "node -e \"process.exit(0)\"",
+        "quality:provider-readiness": "node -e \"process.exit(0)\"",
         "test:e2e": "node -e \"process.exit(0)\"",
         "test:e2e:changed": "node -e \"process.exit(0)\"",
         preview: "node -e \"process.exit(0)\"",
