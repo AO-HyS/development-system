@@ -17,6 +17,16 @@ const allowedTopLevel = new Set([
 const forbiddenKeys = new Set([
   "useAutoprompt", "includeUrls", "excludeUrls", "numSentences", "highlightsPerUrl", "tokensNum", "livecrawl",
 ]);
+const sensitivePatterns = [
+  { label: "credential or secret assignment", regex: /\b(?:api[_ -]?key|access[_ -]?token|authorization|bearer|password|passwd|secret)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{8,}/iu },
+  { label: "credential token", regex: /\b(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|AKIA[A-Z0-9]{16}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})\b/u },
+  { label: "email address", regex: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/iu },
+  { label: "phone number", regex: /(?:^|\D)(?:\+?\d[\s().-]*){10,15}(?:\D|$)/u },
+  { label: "CURP", regex: /\b[A-Z][AEIOUX][A-Z]{2}\d{6}[HM][A-Z]{5}[A-Z0-9]\d\b/iu },
+  { label: "RFC", regex: /\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b/iu },
+  { label: "US Social Security number", regex: /\b\d{3}-\d{2}-\d{4}\b/u },
+  { label: "clinical or personal record identifier", regex: /\b(?:patient|paciente|medical record|historia cl[ií]nica|expediente|mrn|date of birth|fecha de nacimiento)\s*(?:id|number|n[uú]mero|no\.?|:|=|-)\s*[^\s,;]{2,}/iu },
+];
 
 function fail(message) {
   throw new Error(message);
@@ -64,6 +74,20 @@ function walkForbidden(value, path = "$", seen = new Set()) {
     walkForbidden(child, `${path}.${key}`, seen);
   }
   seen.delete(value);
+}
+
+function assertPublicPayload(payload) {
+  const outboundPrompt = JSON.stringify({
+    query: payload.query,
+    systemPrompt: payload.systemPrompt,
+    additionalQueries: payload.additionalQueries,
+    contents: payload.contents,
+  });
+  for (const pattern of sensitivePatterns) {
+    if (pattern.regex.test(outboundPrompt)) {
+      fail(`Potential non-public data detected (${pattern.label}); redact or replace it with public/synthetic context before using Exa`);
+    }
+  }
 }
 
 function countSchema(schema, depth = 0) {
@@ -142,6 +166,7 @@ function validatePayload(payload) {
     if (payload.contents.maxAgeHours !== -1) fail("HIPAA compliance requires cache-only retrieval with contents.maxAgeHours set to -1");
   }
   if (payload.outputSchema !== undefined && countSchema(payload.outputSchema) > 10) fail("outputSchema exceeds 10 total properties");
+  assertPublicPayload(payload);
   return payload;
 }
 

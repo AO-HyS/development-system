@@ -21,6 +21,7 @@ Use Exa as a paid retrieval option, not as an automatic replacement for reposito
 
 - Never send secrets, credentials, private source, customer data, personal health information, or other non-public repository context in a query or prompt.
 - Convert the research need into a public, context-minimized query before calling Exa.
+- The wrapper rejects common credential, contact, government-ID, and clinical-record patterns before network use. Treat this as defense in depth, not proof that arbitrary text is anonymous.
 - `compliance: "hipaa"` constrains Exa transport but never authorizes sending PHI. Use it only where a separately approved data policy permits the data; NutriPlan remains public/synthetic-only.
 - Start with highlights. Request full text only when excerpts are insufficient and always cap `maxCharacters`.
 - Omit `maxAgeHours` unless freshness matters. `0` forces live crawling and adds latency.

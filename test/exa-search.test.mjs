@@ -87,6 +87,22 @@ test("Exa validates current category names and HIPAA transport restrictions loca
   assert.equal(valid.status, 0, valid.stderr);
 });
 
+test("Exa rejects obvious secrets and personal or clinical identifiers before network use", async () => {
+  const cwd = await mkdtemp(resolve(tmpdir(), "aohys-exa-sensitive-"));
+  const request = resolve(cwd, "request.json");
+  for (const query of [
+    "compare api_key=sk-abcdefghijklmnopqrstuvwxyz123456",
+    "look up nutrition history for patient id NP-1042",
+    "research account person@example.com",
+    "find records for +52 229 123 4567",
+  ]) {
+    await writeFile(request, JSON.stringify({ query, contents: { highlights: true } }));
+    const result = run(cwd, "request", "--input", request, "--dry-run", "--home", cwd);
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(JSON.parse(result.stderr).error, /Potential non-public data detected/);
+  }
+});
+
 test("Exa and guard scripts are committed as executable contract surfaces", async () => {
   assert.notEqual((await stat(script)).mode & 0o111, 0);
   const guard = resolve(repositoryRoot, "artifacts/1.1.0/skills/internal/global-agent-guardrails/scripts/command-guard.mjs");

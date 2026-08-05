@@ -10,17 +10,29 @@ const policy = JSON.parse(await readFile(resolve(root, "references", "policy.jso
 const rules = policy.rules.map((rule) => ({ ...rule, regex: new RegExp(rule.pattern, "iu") }));
 
 function readOnlyLiteral(command) {
-  if (!/^\s*(?:echo|printf|rg|grep)\b/u.test(command)) return false;
-  return !/[;&|\n]|\$\(|`/u.test(command);
+  const match = /^\s*(echo|printf|rg|grep)\b/u.exec(command);
+  if (!match || /[;&|\n]|\$\(|`/u.test(command)) return false;
+  if (match[1] === "rg" && /(?:^|\s)--pre(?:=|\s|$)|(?:^|\s)--pre-glob(?:=|\s|$)/u.test(command)) return false;
+  return true;
+}
+
+function normalizeShellSpelling(command) {
+  return command
+    .replace(/\\([^\n])/gu, "$1")
+    .replace(/["']/gu, "");
 }
 
 export function evaluateCommand(command) {
   if (typeof command !== "string" || command.trim().length === 0) {
     return { allowed: false, ruleId: "missing-command", reason: "Shell hook input did not contain a command; blocked closed." };
   }
+  if (/^\s*rg\b[^;&|\n]*(?:^|\s)--pre(?:=|\s|$)/u.test(command)) {
+    return { allowed: false, ruleId: "read-command-execution", reason: "rg --pre executes an arbitrary command and is blocked." };
+  }
   if (readOnlyLiteral(command)) return { allowed: true, ruleId: null, reason: null };
+  const normalized = normalizeShellSpelling(command);
   for (const rule of rules) {
-    if (rule.regex.test(command)) return { allowed: false, ruleId: rule.id, reason: rule.reason };
+    if (rule.regex.test(normalized)) return { allowed: false, ruleId: rule.id, reason: rule.reason };
   }
   return { allowed: true, ruleId: null, reason: null };
 }

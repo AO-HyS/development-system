@@ -722,7 +722,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/exa-search",
           "destination": ".agents/skills/exa-search",
-          "folderSha256": "58823ea10c7212409bfcd3303b1365024ed36900af38e06c319b4a2ad74422a0",
+          "folderSha256": "cb104f1b0a4f666feb341b99760e366577626b37e533e170aafd6640e62ec45a",
           "executableFiles": [
             "scripts/exa-search.mjs"
           ],
@@ -733,7 +733,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/exa-search",
           "destination": ".factory/skills/exa-search",
-          "folderSha256": "58823ea10c7212409bfcd3303b1365024ed36900af38e06c319b4a2ad74422a0",
+          "folderSha256": "cb104f1b0a4f666feb341b99760e366577626b37e533e170aafd6640e62ec45a",
           "executableFiles": [
             "scripts/exa-search.mjs"
           ],
@@ -758,7 +758,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "7e51b0459e615043effa31a171a9c24ec90a6a9a371e5b006a2140669fd30876",
+          "folderSha256": "34dd9e9608d9c565a407a8e947afd6d16e24104018f6b4d9071d2d02bdc72df9",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -769,7 +769,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/global-agent-guardrails",
           "destination": ".factory/skills/global-agent-guardrails",
-          "folderSha256": "7e51b0459e615043effa31a171a9c24ec90a6a9a371e5b006a2140669fd30876",
+          "folderSha256": "34dd9e9608d9c565a407a8e947afd6d16e24104018f6b4d9071d2d02bdc72df9",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
