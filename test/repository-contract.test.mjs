@@ -11,8 +11,8 @@ const cliPath = resolve(repositoryRoot, "bin/development-system.mjs");
 
 test("published manifest and catalog generators refuse to overwrite existing versions", async () => {
   for (const [script, path] of [
-    ["scripts/build-contract-manifest.mjs", "manifests/1.1.0.json"],
-    ["scripts/build-skill-catalog.mjs", "catalog/0.5.0.json"],
+    ["scripts/build-contract-manifest.mjs", "manifests/1.1.1.json"],
+    ["scripts/build-skill-catalog.mjs", "catalog/0.5.1.json"],
   ]) {
     const absolutePath = resolve(repositoryRoot, path);
     const before = await readFile(absolutePath);
@@ -72,7 +72,7 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1"]);
   assert.deepEqual(validation.json.errors, []);
 });
 
@@ -272,11 +272,11 @@ test("the 1.0 contract adds private measurement without rewriting published 0.9 
   assert.match(contract, /gaps between completed turns.*excluded from operational time/i);
 });
 
-test("the 1.1 contract versions Exa, executable guardrails, decisions, setup, and current native goals", async () => {
-  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.5.0.json"), "utf8"));
+test("the 1.1.1 contract patches Exa and guardrails while retaining the 1.1 capabilities", async () => {
+  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.5.1.json"), "utf8"));
   const skills = new Map(catalog.skills.map((skill) => [skill.logicalName, skill]));
   for (const name of ["exa-search", "global-agent-guardrails", "decisions", "setup-help"]) {
-    assert.ok(skills.has(name), `${name} is absent from catalog 0.5.0`);
+    assert.ok(skills.has(name), `${name} is absent from catalog 0.5.1`);
     assert.deepEqual(skills.get(name).physicalHarnesses, ["codex", "factory"]);
   }
   assert.equal(skills.get("work-multiple")?.variants[0].destination, ".codex/skills/work-multiple");
@@ -292,14 +292,16 @@ test("the 1.1 contract versions Exa, executable guardrails, decisions, setup, an
   assert.match(drive, /Never infer Wayfinder, grilling, specification, ticket creation, prototypes, `work-multiple`/);
   assert.match(drive, /Create or manage one only when the user explicitly asks for the native goal capability/);
 
-  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.1.0.json"), "utf8"));
-  assert.equal(manifest.contractVersion, "1.1.0");
+  assert.match(skills.get("exa-search").variants[0].sourceDirectory, /artifacts\/1\.1\.1/);
+  assert.match(skills.get("global-agent-guardrails").variants[0].sourceDirectory, /artifacts\/1\.1\.1/);
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.1.1.json"), "utf8"));
+  assert.equal(manifest.contractVersion, "1.1.1");
   assert.equal(manifest.artifacts.length, 45);
   assert.ok(manifest.artifacts.some((artifact) => artifact.id === "codex-agent.reviewer"));
   assert.ok(manifest.artifacts.some((artifact) => artifact.id === "factory-droid.security-reviewer"));
-  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.5.0.json"));
-  const contract = await readFile(resolve(repositoryRoot, "artifacts/1.1.0/contract.md"), "utf8");
-  assert.match(contract, /persistence never grants new authority/i);
+  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.5.1.json"));
+  const contract = await readFile(resolve(repositoryRoot, "artifacts/1.1.1/contract.md"), "utf8");
+  assert.match(contract, /retains every 1\.1\.0/i);
   assert.match(contract, /PreToolUse/);
   assert.match(contract, /never records query text/i);
   assert.match(contract, /consequential choices.*genuinely uncertain/i);

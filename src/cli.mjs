@@ -121,7 +121,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.5.0";
+    const version = options.version ?? "0.5.1";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -139,7 +139,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.5.0";
+    const version = options.version ?? "0.5.1";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );

@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.1.0` adds bounded Exa retrieval, executable destructive-command hooks, manual decision review, stepwise setup guidance, and current native-goal semantics. It retains the `1.0.0` operational-time measurement contract, the `0.9.1` custom-agent roster and explicit multi-ticket flow, and all prior lifecycle, authorization, pilot, privacy, and rollback guarantees. Skill catalog `0.5.0` installs 26 logical skills across Codex and Factory, with T3 Code inheriting Codex adapters.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.1.1` hardens the bounded Exa retrieval and executable destructive-command hooks introduced in `1.1.0`, while retaining manual decision review, stepwise setup guidance, current native-goal semantics, operational measurement, the custom-agent roster, and all prior guarantees. Skill catalog `0.5.1` installs 26 logical skills across Codex and Factory, with T3 Code inheriting Codex adapters.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,10 +16,10 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.1.0
-./bin/development-system sync-skills --version 0.5.0
+./bin/development-system install --version 1.1.1
+./bin/development-system sync-skills --version 0.5.1
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.5.0
+./bin/development-system audit-skills --version 0.5.1
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -153,7 +153,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.1.0 del sistema de desarrollo” → `install --version 1.1.0`, `sync-skills --version 0.5.0`, then `guardrails-enable`
+- “Instala la versión 1.1.1 del sistema de desarrollo” → `install --version 1.1.1`, `sync-skills --version 0.5.1`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -183,7 +183,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` adds Luna routing and fail-closed worktree ownership; `1.0.0` adds operational development-run measurement; `1.1.0` adds Exa, executable guardrails, decision/setup helpers, and current native-goal rules. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` adds Luna routing and fail-closed worktree ownership; `1.0.0` adds operational development-run measurement; `1.1.0` adds Exa, executable guardrails, decision/setup helpers, and current native-goal rules; `1.1.1` hardens Exa DLP and shell command parsing. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

@@ -160,7 +160,7 @@ const probeSucceeded = Boolean(
 );
 const evidence = {
   schemaVersion: 1,
-  catalogVersion: "0.5.0",
+  catalogVersion: "0.5.1",
   evidenceScope: {
     kind: "critical-capability-live-probe",
     structuralCatalogLogicalSkills: installedCatalog.skills.length,
