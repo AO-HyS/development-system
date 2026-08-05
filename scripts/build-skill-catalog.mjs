@@ -6,7 +6,13 @@ import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const version = "0.2.0";
+const requestedVersionIndex = process.argv.indexOf("--version");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.5.0";
+if (!["0.2.0", "0.3.0", "0.4.0", "0.5.0"].includes(version)) {
+  throw new Error("Skill catalog generator supports --version <0.2.0|0.3.0|0.4.0|0.5.0>");
+}
+const declaresPhysicalHarnesses = version !== "0.2.0";
+const baseSkillVersion = "0.2.0";
 const upstreamCommit = "9603c1cc8118d08bc1b3bf34cf714f62178dea3b";
 const upstreamPaths = {
   wayfinder: "skills/engineering/wayfinder",
@@ -48,11 +54,12 @@ async function folderHash(directory) {
   return hash.digest("hex");
 }
 
-/** @param {string} logicalName @param {string} sourceDirectory @param {Record<string, unknown>} source */
-async function sharedSkill(logicalName, sourceDirectory, source) {
+/** @param {string} logicalName @param {string} sourceDirectory @param {Record<string, unknown>} source @param {string[]} [executableFiles] */
+async function sharedSkill(logicalName, sourceDirectory, source, executableFiles = []) {
   const hash = await folderHash(resolve(repositoryRoot, sourceDirectory));
   return {
     logicalName,
+    ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
     source,
     variants: [
       {
@@ -61,6 +68,7 @@ async function sharedSkill(logicalName, sourceDirectory, source) {
         sourceDirectory,
         destination: `.agents/skills/${logicalName}`,
         folderSha256: hash,
+        ...(executableFiles.length ? { executableFiles } : {}),
         expectedMirrorOf: null,
       },
       {
@@ -69,6 +77,7 @@ async function sharedSkill(logicalName, sourceDirectory, source) {
         sourceDirectory,
         destination: `.factory/skills/${logicalName}`,
         folderSha256: hash,
+        ...(executableFiles.length ? { executableFiles } : {}),
         expectedMirrorOf: `${logicalName}.codex`,
       },
     ],
@@ -77,7 +86,7 @@ async function sharedSkill(logicalName, sourceDirectory, source) {
 
 const upstreamSkills = await Promise.all(
   Object.entries(upstreamPaths).map(([logicalName, upstreamPath]) =>
-    sharedSkill(logicalName, `artifacts/${version}/skills/upstream/${logicalName}`, {
+    sharedSkill(logicalName, `artifacts/${baseSkillVersion}/skills/upstream/${logicalName}`, {
       repository: "https://github.com/mattpocock/skills",
       commit: upstreamCommit,
       path: upstreamPath,
@@ -87,18 +96,19 @@ const upstreamSkills = await Promise.all(
 const internalNames = ["flow-code-review", "flow-implement", "flow-qa", "flow-research"];
 const internalSkills = await Promise.all(
   internalNames.map((logicalName) =>
-    sharedSkill(logicalName, `artifacts/${version}/skills/internal/${logicalName}`, {
+    sharedSkill(logicalName, `artifacts/${version === "0.5.0" && logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`, {
       repository: "https://github.com/AO-HyS/development-system",
       commit: "$INSTALL_COMMIT",
-      path: `artifacts/${version}/skills/internal/${logicalName}`,
+      path: `artifacts/${version === "0.5.0" && logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`,
     }),
   ),
 );
 
-const driveSource = `artifacts/${version}/skills/internal/drive-development-flow`;
+const driveSource = `artifacts/${version === "0.5.0" ? "1.1.0" : baseSkillVersion}/skills/internal/drive-development-flow`;
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
+  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
   source: {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
@@ -124,15 +134,17 @@ const drive = {
   ],
 };
 
-const adapterContract = "bounded-orchestration-parent-integrates-v1";
-const codexAdapterSource = `artifacts/${version}/adapters/codex/coding-orchestration`;
-const factoryAdapterSource = `artifacts/${version}/adapters/factory/coding-orchestration`;
+const orchestrationVersion = version === "0.5.0" ? "0.9.1" : baseSkillVersion;
+const adapterContract = version === "0.5.0" ? "fast-explicit-multiple-routing-v3" : "bounded-orchestration-parent-integrates-v1";
+const codexAdapterSource = `artifacts/${orchestrationVersion}/adapters/codex/coding-orchestration`;
+const factoryAdapterSource = `artifacts/${orchestrationVersion}/adapters/factory/coding-orchestration`;
 const orchestration = {
   logicalName: "coding-orchestration",
+  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
   source: {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: `artifacts/${version}/adapters`,
+    path: `artifacts/${orchestrationVersion}/adapters`,
   },
   variants: [
     {
@@ -155,6 +167,97 @@ const orchestration = {
     },
   ],
 };
+
+const measurementSource = version === "0.3.0"
+  ? "artifacts/0.9.0/skills/internal/measure-development-run"
+  : "artifacts/1.0.0/skills/internal/measure-development-run";
+const measurement = {
+  logicalName: "measure-development-run",
+  physicalHarnesses: ["codex"],
+  availabilityReason: "Codex session JSONL and CODEX_THREAD_ID are required; Factory is intentionally out of scope.",
+  source: {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: measurementSource,
+  },
+  variants: [
+    {
+      id: "measure-development-run.codex",
+      harness: "codex",
+      sourceDirectory: measurementSource,
+      destination: ".codex/skills/measure-development-run",
+      folderSha256: await folderHash(resolve(repositoryRoot, measurementSource)),
+      expectedMirrorOf: null,
+    },
+  ],
+};
+
+const additions = version === "0.5.0"
+  ? await Promise.all([
+      sharedSkill(
+        "exa-search",
+        "artifacts/1.1.0/skills/internal/exa-search",
+        {
+          repository: "https://github.com/AO-HyS/development-system",
+          commit: "$INSTALL_COMMIT",
+          path: "artifacts/1.1.0/skills/internal/exa-search",
+        },
+        ["scripts/exa-search.mjs"],
+      ),
+      sharedSkill(
+        "global-agent-guardrails",
+        "artifacts/1.1.0/skills/internal/global-agent-guardrails",
+        {
+          repository: "https://github.com/AO-HyS/development-system",
+          commit: "$INSTALL_COMMIT",
+          path: "artifacts/1.1.0/skills/internal/global-agent-guardrails",
+        },
+        ["scripts/command-guard.mjs"],
+      ),
+      sharedSkill("decisions", "artifacts/1.1.0/skills/internal/decisions", {
+        repository: "https://github.com/AO-HyS/development-system",
+        commit: "$INSTALL_COMMIT",
+        path: "artifacts/1.1.0/skills/internal/decisions",
+      }),
+      sharedSkill("setup-help", "artifacts/1.1.0/skills/internal/setup-help", {
+        repository: "https://github.com/AO-HyS/development-system",
+        commit: "$INSTALL_COMMIT",
+        path: "artifacts/1.1.0/skills/internal/setup-help",
+      }),
+    ])
+  : [];
+
+const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";
+const workMultipleHash = version === "0.5.0" ? await folderHash(resolve(repositoryRoot, workMultipleSource)) : null;
+const workMultiple = version === "0.5.0"
+  ? {
+      logicalName: "work-multiple",
+      physicalHarnesses: ["codex", "factory"],
+      source: {
+        repository: "https://github.com/AO-HyS/development-system",
+        commit: "$INSTALL_COMMIT",
+        path: workMultipleSource,
+      },
+      variants: [
+        {
+          id: "work-multiple.codex",
+          harness: "codex",
+          sourceDirectory: workMultipleSource,
+          destination: ".codex/skills/work-multiple",
+          folderSha256: workMultipleHash,
+          expectedMirrorOf: null,
+        },
+        {
+          id: "work-multiple.factory",
+          harness: "factory",
+          sourceDirectory: workMultipleSource,
+          destination: ".factory/skills/work-multiple",
+          folderSha256: workMultipleHash,
+          expectedMirrorOf: "work-multiple.codex",
+        },
+      ],
+    }
+  : null;
 
 const catalog = {
   schemaVersion: 1,
@@ -187,7 +290,15 @@ const catalog = {
     ".factory/skills/teach-impeccable",
     ".factory/skills/vercel-deploy-claimable",
   ],
-  skills: [...upstreamSkills, ...internalSkills, drive, orchestration],
+  skills: [
+    ...upstreamSkills,
+    ...internalSkills,
+    drive,
+    orchestration,
+    ...(version === "0.2.0" ? [] : [measurement]),
+    ...(workMultiple ? [workMultiple] : []),
+    ...additions,
+  ],
 };
 
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);

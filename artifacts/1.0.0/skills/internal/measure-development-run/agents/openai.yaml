@@ -1,0 +1,4 @@
+interface:
+  display_name: "Measure Development Run"
+  short_description: "Measure real Codex development runs"
+  default_prompt: "Use $measure-development-run to measure active Codex work and attributable external wait, exclude idle task age, and save a private evidence report."

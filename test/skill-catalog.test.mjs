@@ -306,6 +306,69 @@ test("catalog validation rejects undeclared divergent harness variants", async (
   assert.match(errors.join("\n"), /divergent.*adapter contract/i);
 });
 
+test("catalog validation accepts an explicitly scoped Codex-only skill and rejects an accidental omission", async () => {
+  const sourceRoot = await mkdtemp(resolve(tmpdir(), "aohys-skill-codex-only-"));
+  const source = resolve(sourceRoot, "measure-development-run");
+  await mkdir(source);
+  await writeFile(resolve(source, "SKILL.md"), `---
+name: measure-development-run
+description: Measures the current Codex run.
+---
+`, "utf8");
+  const hash = folderHash({
+    "SKILL.md": `---
+name: measure-development-run
+description: Measures the current Codex run.
+---
+`,
+  });
+  const skill = {
+    logicalName: "measure-development-run",
+    physicalHarnesses: ["codex"],
+    availabilityReason: "Requires Codex session telemetry.",
+    source: { repository: "https://example.test/source", commit: "a".repeat(40), path: "measure-development-run" },
+    variants: [{
+      id: "measure-development-run.codex",
+      harness: "codex",
+      sourceDirectory: "measure-development-run",
+      destination: ".codex/skills/measure-development-run",
+      folderSha256: hash,
+      expectedMirrorOf: null,
+    }],
+  };
+  const catalog = {
+    schemaVersion: 1,
+    catalogVersion: "0.4.0",
+    supportedHarnesses: [{ id: "codex" }, { id: "t3code" }, { id: "factory" }],
+    supportedRoots: [".codex/skills", ".factory/skills"],
+    maxCatalogEntries: 8,
+    cleanup: [],
+    skills: [skill],
+  };
+  assert.deepEqual(await validateSkillCatalog(catalog, sourceRoot), []);
+
+  const accidental = structuredClone(catalog);
+  accidental.skills[0].physicalHarnesses = ["codex", "factory"];
+  assert.match(
+    (await validateSkillCatalog(accidental, sourceRoot)).join("\n"),
+    /physicalHarnesses does not match/i,
+  );
+
+  const unexplained = structuredClone(catalog);
+  unexplained.skills[0].availabilityReason = "";
+  assert.match(
+    (await validateSkillCatalog(unexplained, sourceRoot)).join("\n"),
+    /single-harness availability needs a reason/i,
+  );
+
+  const undeclared = structuredClone(catalog);
+  delete undeclared.skills[0].physicalHarnesses;
+  assert.match(
+    (await validateSkillCatalog(undeclared, sourceRoot)).join("\n"),
+    /must declare physicalHarnesses/i,
+  );
+});
+
 test("catalog validation rejects nested symbolic links in canonical skill sources", async () => {
   const sourceRoot = await mkdtemp(resolve(tmpdir(), "aohys-skill-source-link-"));
   const source = resolve(sourceRoot, "skill");

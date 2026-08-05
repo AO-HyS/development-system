@@ -55,7 +55,7 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0"]);
   assert.deepEqual(validation.json.errors, []);
 });
 
@@ -227,6 +227,75 @@ test("the 0.8 operator interface is backed by the pinned skill catalog and bound
   );
   assert.match(flowImplement, /load `flow-code-review`/);
   assert.match(flowImplement, /Commit, push, open or merge a pull request, deploy, or promote only when the user's request and repository policy authorize/i);
+});
+
+test("the 0.9 contract declares private Codex-only real-run measurement", async () => {
+  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.3.0.json"), "utf8"));
+  const measurement = catalog.skills.find((skill) => skill.logicalName === "measure-development-run");
+  assert.ok(measurement);
+  assert.deepEqual(measurement.physicalHarnesses, ["codex"]);
+  assert.match(measurement.availabilityReason, /Factory is intentionally out of scope/i);
+  assert.equal(measurement.variants.length, 1);
+  assert.equal(measurement.variants[0].destination, ".codex/skills/measure-development-run");
+  assert.equal(measurement.variants[0].harness, "codex");
+
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/0.9.0.json"), "utf8"));
+  assert.equal(manifest.contractVersion, "0.9.0");
+  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.3.0.json"));
+  const contract = await readFile(resolve(repositoryRoot, "artifacts/0.9.0/contract.md"), "utf8");
+  assert.match(contract, /first real user prompt.*prompt that invokes the skill/i);
+  assert.match(contract, /no composite score/i);
+  assert.match(contract, /never copies full prompts/i);
+});
+
+test("the 1.0 contract excludes idle task age from measured delivery time", async () => {
+  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.4.0.json"), "utf8"));
+  const measurement = catalog.skills.find((skill) => skill.logicalName === "measure-development-run");
+  assert.ok(measurement);
+  assert.deepEqual(measurement.physicalHarnesses, ["codex"]);
+  assert.equal(
+    measurement.variants[0].sourceDirectory,
+    "artifacts/1.0.0/skills/internal/measure-development-run",
+  );
+
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.0.0.json"), "utf8"));
+  assert.equal(manifest.contractVersion, "1.0.0");
+  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.4.0.json"));
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.id === "development-contract.codex")?.sourcePath,
+    "artifacts/1.0.0/contract.md",
+  );
+  const contract = await readFile(resolve(repositoryRoot, "artifacts/1.0.0/contract.md"), "utf8");
+  assert.match(contract, /primary duration is measured work plus attributable external wait/i);
+  assert.match(contract, /thread span.*never presented as delivery time/i);
+  assert.match(contract, /gaps between completed turns.*excluded from operational time/i);
+});
+
+test("the 1.1 contract versions Exa, executable guardrails, decisions, setup, and current native goals", async () => {
+  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.5.0.json"), "utf8"));
+  const skills = new Map(catalog.skills.map((skill) => [skill.logicalName, skill]));
+  for (const name of ["exa-search", "global-agent-guardrails", "decisions", "setup-help"]) {
+    assert.ok(skills.has(name), `${name} is absent from catalog 0.5.0`);
+    assert.deepEqual(skills.get(name).physicalHarnesses, ["codex", "factory"]);
+  }
+  assert.equal(skills.get("work-multiple")?.variants[0].destination, ".codex/skills/work-multiple");
+  assert.match(skills.get("coding-orchestration").variants[0].sourceDirectory, /artifacts\/0\.9\.1/);
+  assert.deepEqual(skills.get("exa-search").variants[0].executableFiles, ["scripts/exa-search.mjs"]);
+  assert.deepEqual(skills.get("global-agent-guardrails").variants[0].executableFiles, ["scripts/command-guard.mjs"]);
+  assert.match(skills.get("drive-development-flow").variants[0].sourceDirectory, /artifacts\/1\.1\.0/);
+  assert.match(skills.get("flow-implement").variants[0].sourceDirectory, /artifacts\/1\.1\.0/);
+
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.1.0.json"), "utf8"));
+  assert.equal(manifest.contractVersion, "1.1.0");
+  assert.equal(manifest.artifacts.length, 45);
+  assert.ok(manifest.artifacts.some((artifact) => artifact.id === "codex-agent.reviewer"));
+  assert.ok(manifest.artifacts.some((artifact) => artifact.id === "factory-droid.security-reviewer"));
+  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.5.0.json"));
+  const contract = await readFile(resolve(repositoryRoot, "artifacts/1.1.0/contract.md"), "utf8");
+  assert.match(contract, /persistence never grants new authority/i);
+  assert.match(contract, /PreToolUse/);
+  assert.match(contract, /never records query text/i);
+  assert.match(contract, /consequential choices.*genuinely uncertain/i);
 });
 
 test("the first rollback restores pre-install bytes and removes only generated files", async () => {

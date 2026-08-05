@@ -149,8 +149,8 @@ async function entryIntegrityHash(root) {
 }
 
 /**
- * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, expectedMirrorOf: string | null, adapterContract?: string}} SkillVariant
- * @typedef {{logicalName: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
+ * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, executableFiles?: string[], expectedMirrorOf: string | null, adapterContract?: string}} SkillVariant
+ * @typedef {{logicalName: string, physicalHarnesses?: string[], availabilityReason?: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
  * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: string[]}>}} SkillCatalog
  * @typedef {{catalogued?: boolean, loaded?: boolean, influenced?: boolean, catalogWarning?: boolean, catalogOverflow?: boolean, scannerErrors?: string[], command?: string, version?: string}} HarnessEvidence
  */
@@ -268,10 +268,15 @@ export async function auditSkillCatalog(options) {
           return destination.startsWith(`${supportedRoot}${sep}`);
         });
         hash = await directoryHash(await realpath(destination));
+        const executablesHealthy = await Promise.all((variant.executableFiles ?? []).map(async (file) => {
+          const status = await lstat(resolveInsideRoot(file, destination));
+          return status.isFile() && (status.mode & 0o111) !== 0;
+        }));
         loadable =
           discovered &&
           skillName(contents) === logicalSkill.logicalName &&
-          (!variant.folderSha256 || variant.folderSha256 === hash);
+          (!variant.folderSha256 || variant.folderSha256 === hash) &&
+          executablesHealthy.every(Boolean);
       } catch (error) {
         if (!isMissing(error)) {
           problems.push(`${variant.id}: ${error instanceof Error ? error.message : String(error)}`);
@@ -414,6 +419,28 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
     if (distinctHashes.size > 1 && (adapterContracts.size !== 1 || skill.variants.some((variant) => !variant.adapterContract))) {
       errors.push(`${skill.logicalName} has divergent variants without one explicit adapter contract`);
     }
+    if (["0.3.0", "0.4.0", "0.5.0"].includes(catalog.catalogVersion ?? "") && skill.physicalHarnesses === undefined) {
+      errors.push(`${skill.logicalName} must declare physicalHarnesses in catalog ${catalog.catalogVersion}`);
+    }
+    if (skill.physicalHarnesses !== undefined) {
+      if (
+        !Array.isArray(skill.physicalHarnesses) ||
+        skill.physicalHarnesses.length === 0 ||
+        new Set(skill.physicalHarnesses).size !== skill.physicalHarnesses.length ||
+        skill.physicalHarnesses.some((harness) => !["codex", "factory"].includes(harness))
+      ) {
+        errors.push(`${skill.logicalName} physicalHarnesses is invalid`);
+      } else {
+        const declared = [...skill.physicalHarnesses].sort();
+        const variants = [...new Set(skill.variants.map((variant) => variant.harness))].sort();
+        if (JSON.stringify(declared) !== JSON.stringify(variants)) {
+          errors.push(`${skill.logicalName} physicalHarnesses does not match its variants`);
+        }
+        if (declared.length === 1 && (typeof skill.availabilityReason !== "string" || skill.availabilityReason.length === 0)) {
+          errors.push(`${skill.logicalName} single-harness availability needs a reason`);
+        }
+      }
+    }
 
     for (const variant of skill.variants) {
       if (ids.has(variant.id)) errors.push(`duplicate variant id: ${variant.id}`);
@@ -429,9 +456,23 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
       if (!/^[a-f0-9]{64}$/.test(variant.folderSha256 ?? "")) {
         errors.push(`${variant.id} has invalid folderSha256`);
       }
+      if (
+        variant.executableFiles !== undefined &&
+        (!Array.isArray(variant.executableFiles) || variant.executableFiles.length === 0 ||
+          new Set(variant.executableFiles).size !== variant.executableFiles.length)
+      ) {
+        errors.push(`${variant.id} executableFiles is invalid`);
+      }
       try {
-        const actual = await directoryHash(resolveInsideRoot(variant.sourceDirectory ?? "", sourceRoot));
+        const sourceDirectory = resolveInsideRoot(variant.sourceDirectory ?? "", sourceRoot);
+        const actual = await directoryHash(sourceDirectory);
         if (actual !== variant.folderSha256) errors.push(`${variant.id} canonical folder hash mismatch`);
+        for (const file of variant.executableFiles ?? []) {
+          const status = await lstat(resolveInsideRoot(file, sourceDirectory));
+          if (!status.isFile() || (status.mode & 0o111) === 0) {
+            errors.push(`${variant.id} canonical executable is not executable: ${file}`);
+          }
+        }
       } catch (error) {
         errors.push(`${variant.id} canonical source cannot be read: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -515,6 +556,13 @@ function gitDirectoryHash(sourceRoot, sourceDirectory, commit) {
   return hash.digest("hex");
 }
 
+/** @param {string} sourceRoot @param {string} sourceDirectory @param {string} file @param {string} commit */
+function gitFileIsExecutable(sourceRoot, sourceDirectory, file, commit) {
+  const path = `${sourceDirectory.replace(/\/$/, "")}/${file}`;
+  const listing = execFileSync("git", ["ls-tree", commit, "--", path], { cwd: sourceRoot, encoding: "utf8" }).trim();
+  return /^100755\s+blob\s+[a-f0-9]{40,64}\t/u.test(listing);
+}
+
 /** @param {string} path */
 async function entryMetadata(path) {
   try {
@@ -559,13 +607,10 @@ export async function synchronizeSkillCatalog(options) {
   } catch {
     throw new Error("Canonical skill source must be a Git checkout with a resolvable HEAD");
   }
-  if (repositoryDirty) throw new Error("Canonical skill source checkout must be clean before synchronization");
+  if (repositoryDirty && !options.sourceCommit) throw new Error("Canonical skill source checkout must be clean before synchronization unless an exact --source-commit is provided");
   const installCommit = options.sourceCommit ?? repositoryCommit;
   if (!installCommit || !/^[a-f0-9]{40}$/.test(installCommit)) {
     throw new Error("Skill source commit must be an exact lowercase 40-character Git commit");
-  }
-  if (repositoryCommit && installCommit !== repositoryCommit) {
-    throw new Error(`Skill source commit ${installCommit} does not match checkout HEAD ${repositoryCommit}`);
   }
   const committedHashes = new Map();
   for (const skill of options.catalog.skills) {
@@ -578,6 +623,11 @@ export async function synchronizeSkillCatalog(options) {
       }
       if (committedHash !== variant.folderSha256) {
         throw new Error(`${variant.id} canonical folder hash does not match Git ${installCommit}`);
+      }
+      for (const file of variant.executableFiles ?? []) {
+        if (!gitFileIsExecutable(sourceRoot, variant.sourceDirectory, file, installCommit)) {
+          throw new Error(`${variant.id} executable mode is not committed for ${file}`);
+        }
       }
     }
   }
@@ -670,6 +720,7 @@ export async function synchronizeSkillCatalog(options) {
           sourceDirectory: variant.sourceDirectory,
           destination: variant.destination,
           folderSha256: variant.folderSha256,
+          executableFiles: variant.executableFiles ?? [],
           expectedMirrorOf: variant.expectedMirrorOf,
           adapterContract: variant.adapterContract ?? null,
         })),

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Decisions"
+  short_description: "Surface consequential uncertain choices"
+  default_prompt: "Use $decisions to list only consequential choices from the current work that remain genuinely uncertain, with the best alternative and smallest resolving test."
+policy:
+  allow_implicit_invocation: false

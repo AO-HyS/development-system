@@ -579,7 +579,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
   assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.2.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.5.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
   assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
     "drive-development-flow",
@@ -589,13 +589,20 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     "to-tickets",
     "flow-implement",
     "flow-code-review",
+    "exa-search",
+    "global-agent-guardrails",
   ]);
+  assert.equal(contract.lifecycle.terminalSliceContract.objectives, 1);
+  assert.equal(contract.lifecycle.nativeGoal.creation, "explicit-user-request-only");
+  assert.match(contract.lifecycle.nativeGoal.persistenceEffect, /no-scope-or-authorization-expansion/);
   assert.match(initialized[".codex/development-system/repository.md"], /React.*Convex/is);
   for (const command of ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"]) {
     assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
     assert.match(initialized[".factory/development-system/repository.md"], new RegExp(`/${command}`));
   }
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
+  assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
+  assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
   assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
   assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
   assert.match(initialized[".factory/development-system/repository.md"], /documented equivalent/i);
