@@ -3,6 +3,8 @@
 import { spawnSync } from "node:child_process";
 import { isDeepStrictEqual } from "node:util";
 
+import { classifyHarnessFailure } from "./harness-diagnostics.mjs";
+
 const requiredChecks = [
   "instructions",
   "catalog",
@@ -243,7 +245,9 @@ export async function validateOperationalScenarios(options) {
           scenario: scenario.id,
           surface,
           source: "harness-runtime",
+          code: error instanceof Error && "code" in error ? String(error.code) : "HARNESS_RUNTIME_FAILED",
           message: error instanceof Error ? error.message : String(error),
+          diagnostic: error instanceof Error && "diagnostic" in error ? error.diagnostic : null,
         });
       }
     }
@@ -381,12 +385,18 @@ export function createProcessHarnessRuntime(options = {}) {
       killSignal: "SIGTERM",
     });
     if (run.status !== 0 || run.error) {
-      const timeoutMessage = run.error && "code" in run.error && run.error.code === "ETIMEDOUT"
-        ? `${request.surface} exceeded the ${timeoutMs}ms operational deadline`
-        : "";
-      const error = new Error(timeoutMessage || run.stderr || run.stdout || `${request.surface} exited ${run.status}`);
-      // @ts-ignore operational error code used by the diagnostic layer
-      error.code = "HARNESS_RUNTIME";
+      const diagnostic = classifyHarnessFailure({
+        harness: request.adapter.adapterId,
+        exitCode: run.status,
+        stdout: run.stdout ?? "",
+        stderr: run.stderr ?? "",
+        errorCode: run.error && "code" in run.error ? String(run.error.code) : null,
+      });
+      const error = new Error(diagnostic?.summary ?? `${request.surface} exited ${run.status}`);
+      // @ts-ignore operational error metadata used by the diagnostic layer
+      error.code = diagnostic?.code ?? "HARNESS_RUNTIME_FAILED";
+      // @ts-ignore operational error metadata used by the diagnostic layer
+      error.diagnostic = diagnostic;
       throw error;
     }
     const observed = parseLastJsonObject(`${run.stdout}\n${run.stderr}`);

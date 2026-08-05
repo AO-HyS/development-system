@@ -11,7 +11,7 @@ const cliPath = resolve(repositoryRoot, "bin/development-system.mjs");
 
 test("published manifest and catalog generators refuse to overwrite existing versions", async () => {
   for (const [script, path] of [
-    ["scripts/build-contract-manifest.mjs", "manifests/1.1.1.json"],
+    ["scripts/build-contract-manifest.mjs", "manifests/1.1.2.json"],
     ["scripts/build-skill-catalog.mjs", "catalog/0.5.1.json"],
   ]) {
     const absolutePath = resolve(repositoryRoot, path);
@@ -72,7 +72,7 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1", "1.1.2"]);
   assert.deepEqual(validation.json.errors, []);
 });
 
@@ -305,6 +305,23 @@ test("the 1.1.1 contract patches Exa and guardrails while retaining the 1.1 capa
   assert.match(contract, /PreToolUse/);
   assert.match(contract, /never records query text/i);
   assert.match(contract, /consequential choices.*genuinely uncertain/i);
+});
+
+test("the 1.1.2 contract clarifies paid tooling and conditional provider readiness", async () => {
+  const previousManifest = await readFile(resolve(repositoryRoot, "manifests/1.1.1.json"));
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.1.2.json"), "utf8"));
+  const contract = await readFile(resolve(repositoryRoot, "artifacts/1.1.2/contract.md"), "utf8");
+  const catalog = await readFile(resolve(repositoryRoot, "catalog/0.5.1.json"));
+
+  assert.equal(manifest.contractVersion, "1.1.2");
+  assert.equal(manifest.artifacts.length, 45);
+  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.5.1.json"));
+  assert.match(contract, /adapter generation and normalization never call, enable, subscribe to, or spend/i);
+  assert.match(contract, /provider readiness is a conditional delivery gate/i);
+  assert.match(contract, /must never invent an alias or green state/i);
+  assert.match(contract, /nonzero probe can never claim that a skill was loaded or influenced behavior/i);
+  assert.equal((await readFile(resolve(repositoryRoot, "manifests/1.1.1.json"))).equals(previousManifest), true);
+  assert.equal((await readFile(resolve(repositoryRoot, "catalog/0.5.1.json"))).equals(catalog), true);
 });
 
 test("the first rollback restores pre-install bytes and removes only generated files", async () => {

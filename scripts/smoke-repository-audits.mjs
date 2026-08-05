@@ -60,7 +60,6 @@ for (const name of targets) {
     deliveryPolicyReady: Boolean(
       audit.commands.changedValidation &&
       audit.commands.certification &&
-      audit.commands.providerReadiness &&
       audit.commands.qa &&
       audit.commands.preview
     ),
@@ -73,7 +72,7 @@ for (const name of targets) {
 
 const report = {
   schemaVersion: 1,
-  contractVersion: "0.9.1",
+  contractVersion: "1.1.2",
   generatedAt: new Date().toISOString(),
   operation: "repository-audit-smoke",
   mode: "read-only-compatibility-evidence",

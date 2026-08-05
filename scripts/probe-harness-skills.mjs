@@ -7,6 +7,11 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { hasBehaviorSignature } from "../src/skills.mjs";
+import {
+  classifyHarnessFailure,
+  classifyProbeAssertionFailure,
+  sanitizeProbeEvidence,
+} from "../src/harness-diagnostics.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
@@ -71,6 +76,7 @@ function run(executable, args) {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
     command: [executable, ...args].join(" "),
+    errorCode: result.error && "code" in result.error ? String(result.error.code) : null,
   };
 }
 
@@ -147,12 +153,44 @@ const codexCatalogFinal = jsonLines(codexCatalog.stdout)
 const factoryCatalogFinal = jsonLines(`${factoryCatalog.stdout}\n${factoryCatalog.stderr}`)
   .filter((event) => event?.type === "result" && typeof event.result === "string")
   .map((event) => event.result).at(-1) ?? "";
-const codexLoaded = codexCombined.includes(".agents/skills/research/SKILL.md") ||
-  hasBehaviorSignature(codexFinal, loadBehaviorSignature);
-const factoryLoaded = /Skill ["']research["'] activated/i.test(factoryCombined) ||
-  hasBehaviorSignature(factoryFinal, loadBehaviorSignature);
+const codexLoaded = codex.exitCode === 0 && (
+  codexCombined.includes(".agents/skills/research/SKILL.md") ||
+  hasBehaviorSignature(codexFinal, loadBehaviorSignature)
+);
+const factoryLoaded = factory.exitCode === 0 && (
+  /Skill ["']research["'] activated/i.test(factoryCombined) ||
+  hasBehaviorSignature(factoryFinal, loadBehaviorSignature)
+);
 const codexCatalogued = codexCatalog.exitCode === 0 && /^research\s*$/i.test(codexCatalogFinal);
 const factoryCatalogued = factoryCatalog.exitCode === 0 && /^research\s*$/i.test(factoryCatalogFinal);
+const codexInfluenced = codex.exitCode === 0 && codexLoaded && hasBehaviorSignature(codexFinal, behaviorSignature);
+const factoryInfluenced = factory.exitCode === 0 && factoryLoaded && hasBehaviorSignature(factoryFinal, behaviorSignature);
+const codexFailure = classifyHarnessFailure({ harness: "codex", ...codex });
+const factoryFailure = classifyHarnessFailure({ harness: "factory", ...factory });
+const codexCatalogFailure = classifyHarnessFailure({ harness: "codex", ...codexCatalog });
+const factoryCatalogFailure = classifyHarnessFailure({ harness: "factory", ...factoryCatalog });
+const codexProcessFailures = [codexCatalogFailure, codexFailure].filter(Boolean);
+const factoryProcessFailures = [factoryCatalogFailure, factoryFailure].filter(Boolean);
+const codexAssertionFailure = codexProcessFailures.length === 0
+  ? classifyProbeAssertionFailure({ harness: "codex", catalogued: codexCatalogued, loaded: codexLoaded, influenced: codexInfluenced })
+  : null;
+const factoryAssertionFailure = factoryProcessFailures.length === 0
+  ? classifyProbeAssertionFailure({ harness: "factory", catalogued: factoryCatalogued, loaded: factoryLoaded, influenced: factoryInfluenced })
+  : null;
+const codexFailures = [...codexProcessFailures, codexAssertionFailure].filter(Boolean);
+const factoryFailures = [...factoryProcessFailures, factoryAssertionFailure].filter(Boolean);
+const codexSafeEvidence = sanitizeProbeEvidence({
+  response: codexFinal,
+  catalogResponse: codexCatalogFinal,
+  scannerErrors: [...codexAll.matchAll(/[^\n]*(?:skill scanner|failed to load skill)[^\n]*/gi)].map((match) => match[0]),
+  failures: codexFailures,
+});
+const factorySafeEvidence = sanitizeProbeEvidence({
+  response: factoryFinal,
+  catalogResponse: factoryCatalogFinal,
+  scannerErrors: factoryScannerErrors(factoryLogDelta),
+  failures: factoryFailures,
+});
 const probeSucceeded = Boolean(
   codexCatalogued && codexLoaded && hasBehaviorSignature(codexFinal, behaviorSignature) &&
   factoryCatalogued && factoryLoaded && hasBehaviorSignature(factoryFinal, behaviorSignature) &&
@@ -183,31 +221,35 @@ const evidence = {
     research: {
       catalogued: codexCatalogued,
       loaded: codexLoaded,
-      influenced: codexLoaded && hasBehaviorSignature(codexFinal, behaviorSignature),
+      influenced: codexInfluenced,
       command: codex.command,
       version: codexVersion.stdout.trim(),
       exitCode: codex.exitCode,
-      response: codexFinal,
+      response: codexSafeEvidence.response,
       catalogCommand: codexCatalog.command,
-      catalogResponse: codexCatalogFinal,
+      catalogResponse: codexSafeEvidence.catalogResponse,
       catalogWarning: /skill descriptions were shortened/i.test(codexAll),
       catalogOverflow: /skills? (?:were )?omitted|omitted_skills=[1-9]/i.test(codexAll),
-      scannerErrors: [...codexAll.matchAll(/[^\n]*(?:skill scanner|failed to load skill)[^\n]*/gi)].map((match) => match[0]),
+      scannerErrors: codexSafeEvidence.scannerErrors,
+      failure: codexFailures[0] ?? null,
+      failures: codexFailures,
     },
   },
   factory: {
     research: {
       catalogued: factoryCatalogued,
       loaded: factoryLoaded,
-      influenced: factoryLoaded && hasBehaviorSignature(factoryFinal, behaviorSignature),
+      influenced: factoryInfluenced,
       command: factory.command,
       version: factoryVersion.stdout.trim(),
       exitCode: factory.exitCode,
-      response: factoryFinal,
+      response: factorySafeEvidence.response,
       catalogCommand: factoryCatalog.command,
-      catalogResponse: factoryCatalogFinal,
+      catalogResponse: factorySafeEvidence.catalogResponse,
       catalogOverflow: /skills? (?:were )?omitted|omitted_skills=[1-9]|skill catalog[^\n]*(?:limit|overflow)/i.test(`${factoryCombined}\n${factoryLogDelta}`),
-      scannerErrors: factoryScannerErrors(factoryLogDelta),
+      scannerErrors: factorySafeEvidence.scannerErrors,
+      failure: factoryFailures[0] ?? null,
+      failures: factoryFailures,
     },
   },
 };

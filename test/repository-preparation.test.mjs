@@ -558,6 +558,10 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.commands.qa.script, "test:e2e");
   assert.equal(contract.commands.preview.script, "preview");
   assert.equal(contract.services.paidActivation, false);
+  assert.equal(
+    contract.services.paidActivationMeaning,
+    "adapter-generation-does-not-call-or-enable-paid-services",
+  );
   assert.equal(contract.architectureDiagnostic.effect, "proposal-only");
   assert.equal(
     contract.harnesses.t3code.operationalEvidence,
@@ -604,9 +608,25 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
+  assert.match(
+    initialized[".codex/development-system/repository.md"],
+    /adapter never activates a paid service/i,
+  );
+  assert.match(
+    initialized[".codex/development-system/repository.md"],
+    /only declares its availability and never calls or activates it/i,
+  );
   assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
   assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
   assert.match(initialized[".factory/development-system/repository.md"], /documented equivalent/i);
+  assert.match(
+    initialized[".codex/development-system/repository.md"],
+    /Provider readiness\s+- npm run quality:provider-readiness/i,
+  );
+  assert.match(
+    initialized[".factory/development-system/repository.md"],
+    /Provider readiness\s+- npm run quality:provider-readiness/i,
+  );
   assert.deepEqual(first.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
 
   const packageJson = JSON.parse(initialized["package.json"]);
@@ -615,6 +635,55 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     const run = spawnSync(process.execPath, ["-e", "process.exit(0)"], { cwd: repository });
     assert.equal(run.status, 0, capability.script);
   }
+});
+
+test("repository readiness treats provider evidence as conditional instead of inventing a command", async () => {
+  const repository = await mkdtemp(resolve(tmpdir(), "aohys-repository-conditional-provider-"));
+  await write(
+    repository,
+    "package.json",
+    JSON.stringify({
+      name: "static-product",
+      private: true,
+      scripts: {
+        lint: "node -e \"process.exit(0)\"",
+        "verify:changed": "node -e \"process.exit(0)\"",
+        verify: "node -e \"process.exit(0)\"",
+        test: "node -e \"process.exit(0)\"",
+        preview: "node -e \"process.exit(0)\"",
+      },
+      dependencies: { react: "19.1.0" },
+    }),
+  );
+
+  const initialized = await initializeRepository({ repository, confirm: "initialize" });
+  const contract = JSON.parse(
+    await readFile(resolve(repository, ".development-system/repository.json"), "utf8"),
+  );
+
+  assert.equal(contract.commands.providerReadiness, null);
+  assert.deepEqual(contract.conditionalCapabilities.providerReadiness, {
+    configured: false,
+    requiredWhen: ["auth", "data", "migration", "seeds", "roles", "provider-config", "environment"],
+  });
+  assert.deepEqual(initialized.missingCapabilities, []);
+  assert.deepEqual(initialized.conditionalCapabilities.providerReadiness, {
+    configured: false,
+    requiredWhen: ["auth", "data", "migration", "seeds", "roles", "provider-config", "environment"],
+  });
+  assert.deepEqual(initialized.readiness, {
+    codex: "prepared",
+    t3code: "prepared",
+    factory: "prepared",
+  });
+  assert.equal(
+    initialized.remainingGaps.codex.includes("missing-providerReadiness-command"),
+    false,
+  );
+  assert.match(
+    await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8"),
+    /Conditional: required only when auth, data, migration, seed, role, provider-config, or environment surfaces change/i,
+  );
 });
 
 test("initialization prefers the selective QA script when both selective and legacy QA scripts exist", async () => {
