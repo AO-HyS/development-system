@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.5.0";
-if (!["0.4.0", "0.5.0"].includes(version)) {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished versions <0.4.0|0.5.0>");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.5.1";
+if (version !== "0.5.1") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.5.1");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -101,15 +101,15 @@ const upstreamSkills = await Promise.all(
 const internalNames = ["flow-code-review", "flow-implement", "flow-qa", "flow-research"];
 const internalSkills = await Promise.all(
   internalNames.map((logicalName) =>
-    sharedSkill(logicalName, `artifacts/${version === "0.5.0" && logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`, {
+    sharedSkill(logicalName, `artifacts/${logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`, {
       repository: "https://github.com/AO-HyS/development-system",
       commit: "$INSTALL_COMMIT",
-      path: `artifacts/${version === "0.5.0" && logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`,
+      path: `artifacts/${logicalName === "flow-implement" ? "1.1.0" : baseSkillVersion}/skills/internal/${logicalName}`,
     }),
   ),
 );
 
-const driveSource = `artifacts/${version === "0.5.0" ? "1.1.0" : "0.9.1"}/skills/internal/drive-development-flow`;
+const driveSource = "artifacts/1.1.0/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -195,25 +195,24 @@ const measurement = {
   ],
 };
 
-const additions = version === "0.5.0"
-  ? await Promise.all([
+const additions = await Promise.all([
       sharedSkill(
         "exa-search",
-        "artifacts/1.1.0/skills/internal/exa-search",
+        "artifacts/1.1.1/skills/internal/exa-search",
         {
           repository: "https://github.com/AO-HyS/development-system",
           commit: "$INSTALL_COMMIT",
-          path: "artifacts/1.1.0/skills/internal/exa-search",
+          path: "artifacts/1.1.1/skills/internal/exa-search",
         },
         ["scripts/exa-search.mjs"],
       ),
       sharedSkill(
         "global-agent-guardrails",
-        "artifacts/1.1.0/skills/internal/global-agent-guardrails",
+        "artifacts/1.1.1/skills/internal/global-agent-guardrails",
         {
           repository: "https://github.com/AO-HyS/development-system",
           commit: "$INSTALL_COMMIT",
-          path: "artifacts/1.1.0/skills/internal/global-agent-guardrails",
+          path: "artifacts/1.1.1/skills/internal/global-agent-guardrails",
         },
         ["scripts/command-guard.mjs"],
       ),
@@ -227,8 +226,7 @@ const additions = version === "0.5.0"
         commit: "$INSTALL_COMMIT",
         path: "artifacts/1.1.0/skills/internal/setup-help",
       }),
-    ])
-  : [];
+    ]);
 
 const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";
 const workMultipleHash = await folderHash(resolve(repositoryRoot, workMultipleSource));

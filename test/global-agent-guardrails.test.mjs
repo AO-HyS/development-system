@@ -13,7 +13,7 @@ import {
 } from "../src/guardrails.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const source = resolve(repositoryRoot, "artifacts/1.1.0/skills/internal/global-agent-guardrails");
+const source = resolve(repositoryRoot, "artifacts/1.1.1/skills/internal/global-agent-guardrails");
 const engine = resolve(source, "scripts/command-guard.mjs");
 
 function check(command) {
@@ -36,12 +36,20 @@ test("guard policy blocks destructive commands without blocking literal discussi
     "rg --pre formatter pattern .",
     "g\\it reset --hard",
     "g'i't push origin main --force",
+    "g$''it reset --hard",
+    "g\\\nit reset --hard",
+    "r\\g --pre formatter pattern .",
+    "r'g' --pre formatter pattern .",
+    "g${1:-}it reset --hard",
+    "r${1:-}g --pre formatter pattern .",
+    "echo <(git --version >&2)",
+    "printf data > overwritten.txt",
   ]) {
     const result = check(command);
     assert.equal(result.status, 2, `${command}: ${result.stdout} ${result.stderr}`);
     assert.equal(JSON.parse(result.stdout).allowed, false);
   }
-  for (const command of ["git status --short", "rm package.tmp", "echo 'git reset --hard'", "rg 'rm -rf' docs/", "grep 'git reset --hard' README.md"]) {
+  for (const command of ["git status --short", "rm package.tmp", "echo 'git reset --hard'", "echo '$HOME'", "rg 'rm -rf' docs/", "grep 'git reset --hard' README.md"]) {
     const result = check(command);
     assert.equal(result.status, 0, `${command}: ${result.stdout} ${result.stderr}`);
     assert.equal(JSON.parse(result.stdout).allowed, true);

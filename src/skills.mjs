@@ -419,7 +419,7 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
     if (distinctHashes.size > 1 && (adapterContracts.size !== 1 || skill.variants.some((variant) => !variant.adapterContract))) {
       errors.push(`${skill.logicalName} has divergent variants without one explicit adapter contract`);
     }
-    if (["0.4.0", "0.5.0"].includes(catalog.catalogVersion ?? "") && skill.physicalHarnesses === undefined) {
+    if (["0.4.0", "0.5.0", "0.5.1"].includes(catalog.catalogVersion ?? "") && skill.physicalHarnesses === undefined) {
       errors.push(`${skill.logicalName} must declare physicalHarnesses in catalog ${catalog.catalogVersion}`);
     }
     if (skill.physicalHarnesses !== undefined) {

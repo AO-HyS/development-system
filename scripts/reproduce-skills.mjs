@@ -32,6 +32,11 @@ await cp(
   resolve(sourceRoot, "artifacts", "1.1.0"),
   { recursive: true },
 );
+await cp(
+  resolve(repositoryRoot, "artifacts", "1.1.1"),
+  resolve(sourceRoot, "artifacts", "1.1.1"),
+  { recursive: true },
+);
 for (const args of [
   ["init"],
   ["add", "."],
