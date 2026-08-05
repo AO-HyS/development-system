@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.1.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "8e51196a976381585396729e97b51f34e3a4ee05a8c642011da6472efa6e8075",
+      "sha256": "79058199d7014c0da15363fb75b8fbbf359bce589e0078c2be2cd60db65baf7b",
       "expectedMirrorOf": null
     },
     {
@@ -35,7 +35,7 @@
       "sourcePath": "artifacts/1.1.0/contract.md",
       "destination": ".factory/development-system/contract.md",
       "harness": "factory",
-      "sha256": "8e51196a976381585396729e97b51f34e3a4ee05a8c642011da6472efa6e8075",
+      "sha256": "79058199d7014c0da15363fb75b8fbbf359bce589e0078c2be2cd60db65baf7b",
       "expectedMirrorOf": "development-contract.codex"
     },
     {
@@ -116,7 +116,7 @@
       "sourcePath": "catalog/0.5.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "629c407541932fdeb3fa9b313ee755e4555848651f1e66627a776aa4fe876649",
+      "sha256": "08140d249e9437e00b7788356fb4ebbb828efcdc36a97ff0e06818195c5d6476",
       "expectedMirrorOf": null
     },
     {
@@ -125,7 +125,7 @@
       "sourcePath": "catalog/0.5.0.json",
       "destination": ".factory/development-system/skills.json",
       "harness": "factory",
-      "sha256": "629c407541932fdeb3fa9b313ee755e4555848651f1e66627a776aa4fe876649",
+      "sha256": "08140d249e9437e00b7788356fb4ebbb828efcdc36a97ff0e06818195c5d6476",
       "expectedMirrorOf": "skill-catalog.codex"
     },
     {

@@ -38,6 +38,7 @@ await seed("package.json", JSON.stringify({
     validate: "node -e \"process.exit(0)\"",
     "quality:changed": "node -e \"process.exit(0)\"",
     "quality:certify": "node -e \"process.exit(0)\"",
+    "quality:provider-readiness": "node -e \"process.exit(0)\"",
     qa: "node -e \"process.exit(0)\"",
     preview: "node -e \"process.exit(0)\"",
   },

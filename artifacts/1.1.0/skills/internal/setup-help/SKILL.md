@@ -1,7 +1,6 @@
 ---
 name: setup-help
 description: Guide a setup one verified action at a time, with a compact view of what remains. Manual-only; use when the user invokes $setup-help or explicitly asks for stepwise setup guidance.
-disable-model-invocation: true
 ---
 
 # Setup Help

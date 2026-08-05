@@ -1,6 +1,6 @@
 # Development System contract 1.0.0
 
-Version 1.0.0 retains every 0.9.0 lifecycle, authorization, adapter, benchmark, repository-preparation, delivery, measurement, and rollback guarantee. It corrects delivery-time semantics for Codex tasks that remain open after work stops.
+Version 1.0.0 retains every 0.9.1 lifecycle, authorization, adapter, benchmark, repository-preparation, delivery, and rollback guarantee. It adds private real-run measurement with delivery-time semantics that exclude idle task age.
 
 ## Real-run measurement
 
@@ -18,7 +18,7 @@ Version 1.0.0 retains every 0.9.0 lifecycle, authorization, adapter, benchmark, 
 - Thread span remains recorded as context from the first prompt through invocation, but it is never presented as delivery time.
 - Gaps between completed turns and later user prompts are unattributed idle time. They are excluded from operational time and cannot be labeled human wait without direct evidence.
 - Child-agent duration remains capacity consumption. It is not added to elapsed delivery time because it can overlap the parent turn and other agents.
-- New telemetry, assessments, and measurements use schema version 2. The installed validator continues to validate immutable schema-version-1 reports created by contract 0.9.0.
+- Telemetry, assessments, and measurements use schema version 2. The validator can read pre-release schema-version-1 measurement snapshots without claiming they were part of a published earlier contract.
 
 ## Evidence and interpretation
 
@@ -38,6 +38,6 @@ Version 1.0.0 retains every 0.9.0 lifecycle, authorization, adapter, benchmark, 
 
 ## Installation and authorization
 
-- Catalog 0.4.0 declares 21 logical skills and 41 physical variants. The measurement skill declares its single Codex physical harness and the reason Factory is out of scope.
+- Catalog 0.4.0 preserves the 21 logical skills and 42 physical variants from catalog 0.3.1, then adds one Codex-only measurement skill for 22 logical skills and 43 physical variants. The measurement entry records why Factory is out of scope.
 - HOME remains generated state for canonical installation. Local development installation does not become published provenance.
 - This contract does not expand permission to push, open or merge pull requests, publish, release, deploy, activate paid infrastructure, or modify external systems.

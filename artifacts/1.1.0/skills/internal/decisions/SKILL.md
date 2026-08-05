@@ -1,7 +1,6 @@
 ---
 name: decisions
 description: Surface only consequential decisions from the current work that remain genuinely uncertain. Manual-only; use when the user explicitly invokes $decisions or asks which choices are still questionable.
-disable-model-invocation: true
 ---
 
 # Decisions

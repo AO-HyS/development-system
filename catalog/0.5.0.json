@@ -518,7 +518,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/flow-implement",
           "destination": ".agents/skills/flow-implement",
-          "folderSha256": "84efb528372cd03c2a968276ae01c9163719d3ef2a0da18f0beda7a6371e4b49",
+          "folderSha256": "37e47bcaf8a93f560ac9296b7c55c5564fff747d2cb62e5d442f9da24fa7c933",
           "expectedMirrorOf": null
         },
         {
@@ -526,7 +526,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/flow-implement",
           "destination": ".factory/skills/flow-implement",
-          "folderSha256": "84efb528372cd03c2a968276ae01c9163719d3ef2a0da18f0beda7a6371e4b49",
+          "folderSha256": "37e47bcaf8a93f560ac9296b7c55c5564fff747d2cb62e5d442f9da24fa7c933",
           "expectedMirrorOf": "flow-implement.codex"
         }
       ]
@@ -608,7 +608,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/drive-development-flow",
           "destination": ".codex/skills/drive-development-flow",
-          "folderSha256": "4b29c676fe7acb41be53c0c101967297ae052c13a324186b5923c40166d54c9e",
+          "folderSha256": "0225ce47e35813ce904611d2274452e17fa857ba43b3ea9c0bbb689985f1ec04",
           "expectedMirrorOf": null
         },
         {
@@ -616,7 +616,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/drive-development-flow",
           "destination": ".factory/skills/drive-development-flow",
-          "folderSha256": "4b29c676fe7acb41be53c0c101967297ae052c13a324186b5923c40166d54c9e",
+          "folderSha256": "0225ce47e35813ce904611d2274452e17fa857ba43b3ea9c0bbb689985f1ec04",
           "expectedMirrorOf": "drive-development-flow.codex"
         }
       ]
@@ -758,7 +758,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "07a7411b641a243121baf30850be454814538472f995f8a247f3228e9db7f466",
+          "folderSha256": "7e51b0459e615043effa31a171a9c24ec90a6a9a371e5b006a2140669fd30876",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -769,7 +769,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/global-agent-guardrails",
           "destination": ".factory/skills/global-agent-guardrails",
-          "folderSha256": "07a7411b641a243121baf30850be454814538472f995f8a247f3228e9db7f466",
+          "folderSha256": "7e51b0459e615043effa31a171a9c24ec90a6a9a371e5b006a2140669fd30876",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -794,7 +794,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/decisions",
           "destination": ".agents/skills/decisions",
-          "folderSha256": "6da4ef2b2249b7b3649d8a7fbf41b9724158170dd1e4902f30060db6833cc83b",
+          "folderSha256": "5faf8ac351f87752084523fe8ecbec5778aeb1776f1ed55b1bd22ef869fa30f1",
           "expectedMirrorOf": null
         },
         {
@@ -802,7 +802,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/decisions",
           "destination": ".factory/skills/decisions",
-          "folderSha256": "6da4ef2b2249b7b3649d8a7fbf41b9724158170dd1e4902f30060db6833cc83b",
+          "folderSha256": "5faf8ac351f87752084523fe8ecbec5778aeb1776f1ed55b1bd22ef869fa30f1",
           "expectedMirrorOf": "decisions.codex"
         }
       ]
@@ -824,7 +824,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
           "destination": ".agents/skills/setup-help",
-          "folderSha256": "bf4d807e9e849a962cea2123b25a5f500425d92328f3fec0b530c4a57fb81782",
+          "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
           "expectedMirrorOf": null
         },
         {
@@ -832,7 +832,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
           "destination": ".factory/skills/setup-help",
-          "folderSha256": "bf4d807e9e849a962cea2123b25a5f500425d92328f3fec0b530c4a57fb81782",
+          "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
           "expectedMirrorOf": "setup-help.codex"
         }
       ]

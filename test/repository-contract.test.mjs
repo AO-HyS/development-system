@@ -229,26 +229,7 @@ test("the 0.8 operator interface is backed by the pinned skill catalog and bound
   assert.match(flowImplement, /Commit, push, open or merge a pull request, deploy, or promote only when the user's request and repository policy authorize/i);
 });
 
-test("the 0.9 contract declares private Codex-only real-run measurement", async () => {
-  const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.3.0.json"), "utf8"));
-  const measurement = catalog.skills.find((skill) => skill.logicalName === "measure-development-run");
-  assert.ok(measurement);
-  assert.deepEqual(measurement.physicalHarnesses, ["codex"]);
-  assert.match(measurement.availabilityReason, /Factory is intentionally out of scope/i);
-  assert.equal(measurement.variants.length, 1);
-  assert.equal(measurement.variants[0].destination, ".codex/skills/measure-development-run");
-  assert.equal(measurement.variants[0].harness, "codex");
-
-  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/0.9.0.json"), "utf8"));
-  assert.equal(manifest.contractVersion, "0.9.0");
-  assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.3.0.json"));
-  const contract = await readFile(resolve(repositoryRoot, "artifacts/0.9.0/contract.md"), "utf8");
-  assert.match(contract, /first real user prompt.*prompt that invokes the skill/i);
-  assert.match(contract, /no composite score/i);
-  assert.match(contract, /never copies full prompts/i);
-});
-
-test("the 1.0 contract excludes idle task age from measured delivery time", async () => {
+test("the 1.0 contract adds private measurement without rewriting published 0.9 versions", async () => {
   const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.4.0.json"), "utf8"));
   const measurement = catalog.skills.find((skill) => skill.logicalName === "measure-development-run");
   assert.ok(measurement);
@@ -257,9 +238,12 @@ test("the 1.0 contract excludes idle task age from measured delivery time", asyn
     measurement.variants[0].sourceDirectory,
     "artifacts/1.0.0/skills/internal/measure-development-run",
   );
+  assert.ok(catalog.skills.some((skill) => skill.logicalName === "work-multiple"));
+  assert.equal(catalog.skills.length, 22);
 
   const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.0.0.json"), "utf8"));
   assert.equal(manifest.contractVersion, "1.0.0");
+  assert.equal(manifest.artifacts.length, 45);
   assert.ok(manifest.artifacts.some((artifact) => artifact.sourcePath === "catalog/0.4.0.json"));
   assert.equal(
     manifest.artifacts.find((artifact) => artifact.id === "development-contract.codex")?.sourcePath,
@@ -284,6 +268,12 @@ test("the 1.1 contract versions Exa, executable guardrails, decisions, setup, an
   assert.deepEqual(skills.get("global-agent-guardrails").variants[0].executableFiles, ["scripts/command-guard.mjs"]);
   assert.match(skills.get("drive-development-flow").variants[0].sourceDirectory, /artifacts\/1\.1\.0/);
   assert.match(skills.get("flow-implement").variants[0].sourceDirectory, /artifacts\/1\.1\.0/);
+  const drive = await readFile(
+    resolve(repositoryRoot, skills.get("drive-development-flow").variants[0].sourceDirectory, "SKILL.md"),
+    "utf8",
+  );
+  assert.match(drive, /Never infer Wayfinder, grilling, specification, ticket creation, prototypes, `work-multiple`/);
+  assert.match(drive, /Create or manage one only when the user explicitly asks for the native goal capability/);
 
   const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.1.0.json"), "utf8"));
   assert.equal(manifest.contractVersion, "1.1.0");

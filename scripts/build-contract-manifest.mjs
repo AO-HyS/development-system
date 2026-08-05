@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
 const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.1.0";
-if (!["0.9.0", "1.0.0", "1.1.0"].includes(version)) {
-  throw new Error("Contract manifest generator supports --version <0.9.0|1.0.0|1.1.0>");
+if (!["1.0.0", "1.1.0"].includes(version)) {
+  throw new Error("Published manifests are immutable; generator supports only unpublished versions <1.0.0|1.1.0>");
 }
 
 /** @param {string | Buffer} contents */
@@ -17,7 +17,7 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = version === "1.1.0" ? "0.9.1" : version === "1.0.0" ? "0.9.0" : "0.8.0";
+const previousVersion = version === "1.1.0" ? "1.0.0" : "0.9.1";
 const catalogVersion = version === "1.1.0" ? "0.5.0" : version === "1.0.0" ? "0.4.0" : "0.3.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;

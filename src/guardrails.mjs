@@ -259,11 +259,13 @@ export async function enableGlobalGuardrails({ home }) {
     },
   };
   async function restorePriorBytes() {
-    for (const [path, contents] of [
-      [managed.codexConfig, before.codex],
-      [managed.factoryConfig, before.factory],
-      [managed.state, before.state],
-    ]) {
+    /** @type {{path: string, contents: Buffer | null}[]} */
+    const priorFiles = [
+      { path: managed.codexConfig, contents: before.codex },
+      { path: managed.factoryConfig, contents: before.factory },
+      { path: managed.state, contents: before.state },
+    ];
+    for (const { path, contents } of priorFiles) {
       if (contents === null) {
         await unlink(path).catch((error) => { if (!missing(error)) throw error; });
       } else {

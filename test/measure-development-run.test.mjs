@@ -12,10 +12,6 @@ import {
   validateAssessment,
   validateMeasurement,
 } from "../artifacts/1.0.0/skills/internal/measure-development-run/scripts/measure-development-run.mjs";
-import {
-  collectTelemetry as collectLegacyTelemetry,
-  persistMeasurement as persistLegacyMeasurement,
-} from "../artifacts/0.9.0/skills/internal/measure-development-run/scripts/measure-development-run.mjs";
 
 const threadId = "019f92ca-886b-7133-8734-36b5cd68cef4";
 const childThreadId = "019f9306-c22e-7a60-891d-4591ec5fce49";
@@ -266,18 +262,6 @@ function validAssessment() {
   };
 }
 
-function legacyAssessment() {
-  const assessment = structuredClone(validAssessment());
-  assessment.schemaVersion = 1;
-  for (const entry of assessment.externalTiming) {
-    delete entry.verified;
-    delete entry.overlap;
-    delete entry.startedAt;
-    delete entry.endedAt;
-  }
-  return assessment;
-}
-
 test("collector excludes abandoned between-turn gaps from operational time", async () => {
   const { sessionsRoot, sessionPath } = await fixture();
   assert.equal(await findSessionFile(sessionsRoot, threadId), sessionPath);
@@ -431,17 +415,4 @@ test("external waits use verified non-overlapping interval unions", async () => 
     }),
     /overlaps agent operational time/i,
   );
-});
-
-test("the 1.0 validator preserves append-only 0.9 report validation", async () => {
-  const { root, sessionsRoot, sessionPath } = await fixture();
-  const telemetry = await collectLegacyTelemetry({ sessionsRoot, sessionPath, cutoff: "latest-user" });
-  const result = await persistLegacyMeasurement({
-    assessment: legacyAssessment(),
-    telemetry,
-    outputRoot: resolve(root, "legacy-measurements"),
-  });
-  const measurement = JSON.parse(await readFile(result.jsonPath, "utf8"));
-  assert.equal(measurement.schemaVersion, 1);
-  assert.deepEqual(validateMeasurement(measurement), []);
 });

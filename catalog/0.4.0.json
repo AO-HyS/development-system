@@ -600,23 +600,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/0.2.0/skills/internal/drive-development-flow"
+        "path": "artifacts/0.9.1/skills/internal/drive-development-flow"
       },
       "variants": [
         {
           "id": "drive-development-flow.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/0.2.0/skills/internal/drive-development-flow",
+          "sourceDirectory": "artifacts/0.9.1/skills/internal/drive-development-flow",
           "destination": ".codex/skills/drive-development-flow",
-          "folderSha256": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+          "folderSha256": "10ad78828f1a77b610dff380ee3ec05dd0d6c425ecd9d6848aa8e1c55a8db047",
           "expectedMirrorOf": null
         },
         {
           "id": "drive-development-flow.factory",
           "harness": "factory",
-          "sourceDirectory": "artifacts/0.2.0/skills/internal/drive-development-flow",
+          "sourceDirectory": "artifacts/0.9.1/skills/internal/drive-development-flow",
           "destination": ".factory/skills/drive-development-flow",
-          "folderSha256": "b3bd0bb2660cfed43fd4b5ae2234e2d279106c5a85d215797f039b2a318790e2",
+          "folderSha256": "10ad78828f1a77b610dff380ee3ec05dd0d6c425ecd9d6848aa8e1c55a8db047",
           "expectedMirrorOf": "drive-development-flow.codex"
         }
       ]
@@ -630,26 +630,26 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/0.2.0/adapters"
+        "path": "artifacts/0.9.1/adapters"
       },
       "variants": [
         {
           "id": "coding-orchestration.codex-adapter",
           "harness": "codex",
-          "sourceDirectory": "artifacts/0.2.0/adapters/codex/coding-orchestration",
+          "sourceDirectory": "artifacts/0.9.1/adapters/codex/coding-orchestration",
           "destination": ".codex/skills/coding-orchestration",
-          "folderSha256": "d57ada57e34982ec35f178d52f530e02622ea3db0eabaa7c430f5a36be49c3a6",
+          "folderSha256": "c25284ee715c0789ecf0f30023855cbdc292e3e32d5d7139202f020937548053",
           "expectedMirrorOf": null,
-          "adapterContract": "bounded-orchestration-parent-integrates-v1"
+          "adapterContract": "fast-explicit-multiple-routing-v3"
         },
         {
           "id": "coding-orchestration.factory-adapter",
           "harness": "factory",
-          "sourceDirectory": "artifacts/0.2.0/adapters/factory/coding-orchestration",
+          "sourceDirectory": "artifacts/0.9.1/adapters/factory/coding-orchestration",
           "destination": ".factory/skills/coding-orchestration",
-          "folderSha256": "c725a00e4ec14fcb1739e8b33c1858bd670774c6a3f1991dc93c1a1d77db514e",
+          "folderSha256": "156c69e9a6d3607963a2c1d07b78a8e59dab8c4c4949347e66d9b12afde0f586",
           "expectedMirrorOf": null,
-          "adapterContract": "bounded-orchestration-parent-integrates-v1"
+          "adapterContract": "fast-explicit-multiple-routing-v3"
         }
       ]
     },
@@ -672,6 +672,36 @@
           "destination": ".codex/skills/measure-development-run",
           "folderSha256": "c3392ac798091deb111d5a4e14bc5de23f54be99934ebcb20072f3176d57d6be",
           "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "work-multiple",
+      "physicalHarnesses": [
+        "codex",
+        "factory"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.9.1/skills/internal/work-multiple"
+      },
+      "variants": [
+        {
+          "id": "work-multiple.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.9.1/skills/internal/work-multiple",
+          "destination": ".codex/skills/work-multiple",
+          "folderSha256": "03fc8b11ac585ea48b1836fca8a36a4ff2d0361e537cd172d4d598b43118cf49",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "work-multiple.factory",
+          "harness": "factory",
+          "sourceDirectory": "artifacts/0.9.1/skills/internal/work-multiple",
+          "destination": ".factory/skills/work-multiple",
+          "folderSha256": "03fc8b11ac585ea48b1836fca8a36a4ff2d0361e537cd172d4d598b43118cf49",
+          "expectedMirrorOf": "work-multiple.codex"
         }
       ]
     }

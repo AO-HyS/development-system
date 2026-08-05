@@ -8,10 +8,10 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
 const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.5.0";
-if (!["0.2.0", "0.3.0", "0.4.0", "0.5.0"].includes(version)) {
-  throw new Error("Skill catalog generator supports --version <0.2.0|0.3.0|0.4.0|0.5.0>");
+if (!["0.4.0", "0.5.0"].includes(version)) {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished versions <0.4.0|0.5.0>");
 }
-const declaresPhysicalHarnesses = version !== "0.2.0";
+const declaresPhysicalHarnesses = true;
 const baseSkillVersion = "0.2.0";
 const upstreamCommit = "9603c1cc8118d08bc1b3bf34cf714f62178dea3b";
 const upstreamPaths = {
@@ -104,7 +104,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = `artifacts/${version === "0.5.0" ? "1.1.0" : baseSkillVersion}/skills/internal/drive-development-flow`;
+const driveSource = `artifacts/${version === "0.5.0" ? "1.1.0" : "0.9.1"}/skills/internal/drive-development-flow`;
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -134,8 +134,8 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = version === "0.5.0" ? "0.9.1" : baseSkillVersion;
-const adapterContract = version === "0.5.0" ? "fast-explicit-multiple-routing-v3" : "bounded-orchestration-parent-integrates-v1";
+const orchestrationVersion = "0.9.1";
+const adapterContract = "fast-explicit-multiple-routing-v3";
 const codexAdapterSource = `artifacts/${orchestrationVersion}/adapters/codex/coding-orchestration`;
 const factoryAdapterSource = `artifacts/${orchestrationVersion}/adapters/factory/coding-orchestration`;
 const orchestration = {
@@ -168,9 +168,7 @@ const orchestration = {
   ],
 };
 
-const measurementSource = version === "0.3.0"
-  ? "artifacts/0.9.0/skills/internal/measure-development-run"
-  : "artifacts/1.0.0/skills/internal/measure-development-run";
+const measurementSource = "artifacts/1.0.0/skills/internal/measure-development-run";
 const measurement = {
   logicalName: "measure-development-run",
   physicalHarnesses: ["codex"],
@@ -228,9 +226,8 @@ const additions = version === "0.5.0"
   : [];
 
 const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";
-const workMultipleHash = version === "0.5.0" ? await folderHash(resolve(repositoryRoot, workMultipleSource)) : null;
-const workMultiple = version === "0.5.0"
-  ? {
+const workMultipleHash = await folderHash(resolve(repositoryRoot, workMultipleSource));
+const workMultiple = {
       logicalName: "work-multiple",
       physicalHarnesses: ["codex", "factory"],
       source: {
@@ -256,8 +253,7 @@ const workMultiple = version === "0.5.0"
           expectedMirrorOf: "work-multiple.codex",
         },
       ],
-    }
-  : null;
+    };
 
 const catalog = {
   schemaVersion: 1,
@@ -295,8 +291,8 @@ const catalog = {
     ...internalSkills,
     drive,
     orchestration,
-    ...(version === "0.2.0" ? [] : [measurement]),
-    ...(workMultiple ? [workMultiple] : []),
+    measurement,
+    workMultiple,
     ...additions,
   ],
 };

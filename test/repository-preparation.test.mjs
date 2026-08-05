@@ -563,7 +563,8 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     contract.harnesses.t3code.operationalEvidence,
     "structural-inheritance-not-independently-probed",
   );
-  assert.equal(contract.lifecycle.automatic.stageSelection, "infer-load-and-run");
+  assert.equal(contract.lifecycle.automatic.stageSelection, "requested-flow-only");
+  assert.equal(contract.lifecycle.automatic.specialStages, "explicit-user-invocation-only");
   assert.equal(contract.lifecycle.automatic.progressLimit, "request-authority-and-human-gates");
   assert.equal(contract.lifecycle.automatic.recommendationEffect, "read-only");
   assert.equal(contract.lifecycle.implementPreview.command, "flow-implement");
