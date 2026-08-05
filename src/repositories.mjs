@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.1.1";
+const contractVersion = "1.1.2";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -38,6 +38,9 @@ const managedFiles = [
   ".codex/development-system/repository.md",
   ".factory/development-system/repository.md",
 ];
+/** @type {Array<"review" | "changedValidation" | "certification" | "qa" | "preview">} */
+const structuralCapabilities = ["review", "changedValidation", "certification", "qa", "preview"];
+const providerReadinessSurfaces = ["auth", "data", "migration", "seeds", "roles", "provider-config", "environment"];
 
 /** @param {unknown} error */
 function isMissing(error) {
@@ -471,7 +474,7 @@ function allowedReferenceReason(line, marker) {
 function readinessGaps(commands, skills, residue, managed) {
   /** @type {string[]} */
   const gaps = [];
-  for (const capability of ["review", "changedValidation", "certification", "providerReadiness", "qa", "preview"]) {
+  for (const capability of structuralCapabilities) {
     if (!commands[capability]) gaps.push(`missing-${capability}-command`);
   }
   if (residue.length > 0) gaps.push("foreign-product-residue");
@@ -676,6 +679,13 @@ function commandLine(command) {
   return command ? `- ${command.command}` : "- Not configured; repository owner action required.";
 }
 
+/** @param {any} command */
+function providerReadinessLine(command) {
+  return command
+    ? `- ${command.command}`
+    : "- Conditional: required only when auth, data, migration, seed, role, provider-config, or environment surfaces change; no universal command is configured.";
+}
+
 /** @param {any} audit @param {"codex" | "factory"} harness */
 function adapterContents(audit, harness) {
   const rules = [];
@@ -695,10 +705,19 @@ function adapterContents(audit, harness) {
 
 /** @param {any} audit @param {"codex" | "factory"} harness */
 function adapterContentsWithProviderReadiness(audit, harness) {
-  return adapterContents(audit, harness).replace(
-    "\n\nLegacy validation alias",
-    `\n\nProvider readiness\n\n${commandLine(audit.commands.providerReadiness)}\n\nLegacy validation alias`,
-  );
+  return adapterContents(audit, harness)
+    .replace(
+      "Do not import another product's vocabulary or activate paid services.",
+      "Do not import another product's vocabulary. Generating or normalizing this adapter never activates a paid service; later use of declared paid agent tooling still requires repository opt-in or an explicit user invocation.",
+    )
+    .replace(
+      "Global `exa-search` is paid public-web retrieval and must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
+      "Global `exa-search` is paid public-web retrieval. This adapter only declares its availability and never calls or activates it. A repository opt-in or explicit user invocation is required, and every request must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
+    )
+    .replace(
+      "\n\nLegacy validation alias",
+      `\n\nProvider readiness\n\n${providerReadinessLine(audit.commands.providerReadiness)}\n\nLegacy validation alias`,
+    );
 }
 
 /** @param {unknown} contract */
@@ -828,13 +847,22 @@ function repositoryContract(audit, mode) {
         "global-agent-guardrails",
       ],
     },
+    conditionalCapabilities: {
+      providerReadiness: {
+        configured: Boolean(audit.commands.providerReadiness),
+        requiredWhen: providerReadinessSurfaces,
+      },
+    },
     rules: {
       react: audit.stack.includes("react"),
       convex: audit.stack.includes("convex"),
       preserveProductIdentity: true,
     },
     architectureDiagnostic: audit.architectureDiagnostic,
-    services: { paidActivation: false },
+    services: {
+      paidActivation: false,
+      paidActivationMeaning: "adapter-generation-does-not-call-or-enable-paid-services",
+    },
   };
 }
 
@@ -870,9 +898,7 @@ async function prepareRepository(options, mode) {
     if (await writeIfChanged(resolve(repository, path), contents)) changedFiles.push(path);
   }
   const postAudit = await auditRepository({ repository });
-  const missingCapabilities = Object.entries(postAudit.commands)
-    .filter(([, command]) => !command)
-    .map(([capability]) => capability);
+  const missingCapabilities = structuralCapabilities.filter((capability) => !postAudit.commands[capability]);
   const readiness = Object.fromEntries(
     Object.entries(postAudit.readiness).map(([harness, result]) => [harness, result.status]),
   );
@@ -885,6 +911,12 @@ async function prepareRepository(options, mode) {
     changedFiles,
     preservedFiles: [...audit.preserved.releasePolicyFiles, ...audit.preserved.designFiles, "package.json"].filter((path, index, values) => values.indexOf(path) === index),
     missingCapabilities,
+    conditionalCapabilities: {
+      providerReadiness: {
+        configured: Boolean(postAudit.commands.providerReadiness),
+        requiredWhen: providerReadinessSurfaces,
+      },
+    },
     readiness,
     remainingGaps: Object.fromEntries(
       Object.entries(postAudit.readiness).map(([harness, result]) => [harness, result.gaps]),

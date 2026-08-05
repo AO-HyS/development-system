@@ -1,6 +1,6 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -12,7 +12,7 @@
     "benchmark": "node ./scripts/run-benchmarks.mjs",
     "benchmark:architecture": "node ./scripts/architecture-benchmark.mjs",
     "benchmark:codex": "node ./scripts/codex-benchmark-runtime.mjs",
-    "install:local": "./bin/development-system install --version 1.1.1",
+    "install:local": "./bin/development-system install --version 1.1.2",
     "measure:v2": "node ./scripts/measure-v2.mjs",
     "operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
     "t3code:probe": "node ./scripts/probe-t3code.mjs",

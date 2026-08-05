@@ -6,6 +6,69 @@ import {
   validateHarnessRegistry,
   validateOperationalScenarios,
 } from "../src/harnesses.mjs";
+import {
+  classifyHarnessFailure,
+  classifyProbeAssertionFailure,
+  sanitizeProbeEvidence,
+} from "../src/harness-diagnostics.mjs";
+
+test("harness failures classify authentication without retaining provider output", () => {
+  const diagnostic = classifyHarnessFailure({
+    harness: "factory",
+    exitCode: 1,
+    stderr: "Authentication failed. Please log in using /login or set FACTORY_API_KEY=secret-value",
+  });
+
+  assert.equal(diagnostic?.code, "FACTORY_AUTH_REQUIRED");
+  assert.equal(diagnostic?.category, "authentication");
+  assert.equal(JSON.stringify(diagnostic).includes("secret-value"), false);
+});
+
+test("harness failures distinguish timeout and missing binaries", () => {
+  assert.equal(
+    classifyHarnessFailure({ harness: "codex", exitCode: null, errorCode: "ETIMEDOUT" })?.code,
+    "HARNESS_TIMEOUT",
+  );
+  assert.equal(
+    classifyHarnessFailure({ harness: "factory", exitCode: null, errorCode: "ENOENT" })?.code,
+    "HARNESS_BINARY_MISSING",
+  );
+});
+
+test("failed probe evidence serializes no raw provider response or scanner text", () => {
+  const failure = classifyHarnessFailure({
+    harness: "factory",
+    exitCode: 1,
+    stderr: "Authentication failed with secret-token",
+  });
+  const evidence = sanitizeProbeEvidence({
+    response: "private response secret-token",
+    catalogResponse: "private catalog secret-token",
+    scannerErrors: ["private scanner secret-token"],
+    failures: [failure],
+  });
+
+  assert.deepEqual(evidence, { response: "", catalogResponse: "", scannerErrors: [] });
+  assert.equal(JSON.stringify({ failure, ...evidence }).includes("secret-token"), false);
+});
+
+test("exit-zero assertion failures are diagnostic and sanitize persisted evidence", () => {
+  const failure = classifyProbeAssertionFailure({
+    harness: "factory",
+    catalogued: true,
+    loaded: true,
+    influenced: false,
+  });
+  const evidence = sanitizeProbeEvidence({
+    response: "unexpected provider response",
+    catalogResponse: "research",
+    scannerErrors: [],
+    failures: [failure],
+  });
+
+  assert.equal(failure?.code, "HARNESS_INFLUENCE_ASSERTION_FAILED");
+  assert.deepEqual(evidence, { response: "", catalogResponse: "", scannerErrors: [] });
+});
 
 const observableChecks = {
   instructions: true,
