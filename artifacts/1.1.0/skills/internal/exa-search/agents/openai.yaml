@@ -1,0 +1,4 @@
+interface:
+  display_name: "Exa Search"
+  short_description: "Paid public-web retrieval with cost telemetry"
+  default_prompt: "Use $exa-search for bounded public-web research, prefer primary sources, and report grounded evidence and the API-estimated request cost."

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Setup Help"
+  short_description: "Configure one verified step at a time"
+  default_prompt: "Use $setup-help to guide this setup one verified action at a time."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "title": "Replace with a concise run title",
+  "workType": "mixed",
+  "status": "partial",
+  "supersedes": null,
+  "objective": {
+    "initial": "Replace with the initial requested outcome",
+    "changes": []
+  },
+  "scope": [
+    {
+      "item": "Replace with one explicit objective",
+      "origin": "initial",
+      "status": "partial",
+      "evidence": []
+    }
+  ],
+  "outcome": {
+    "implementation": {
+      "status": "unavailable",
+      "evidence": []
+    },
+    "localChecks": {
+      "status": "unavailable",
+      "evidence": []
+    },
+    "independentReview": {
+      "status": "unavailable",
+      "evidence": []
+    },
+    "runtime": {
+      "status": "unavailable",
+      "evidence": []
+    },
+    "preview": {
+      "status": "unavailable",
+      "evidence": []
+    },
+    "production": {
+      "status": "unavailable",
+      "evidence": []
+    }
+  },
+  "quality": {
+    "code": {
+      "status": "unavailable",
+      "evidence": [],
+      "gaps": []
+    },
+    "architecture": {
+      "status": "unavailable",
+      "evidence": [],
+      "gaps": []
+    },
+    "security": {
+      "status": "unavailable",
+      "evidence": [],
+      "gaps": []
+    }
+  },
+  "errors": [],
+  "externalTiming": [],
+  "retries": [],
+  "humanIntervention": {
+    "requiredApprovals": 0,
+    "clarifications": 0,
+    "corrections": 0,
+    "rescues": 0,
+    "notes": []
+  },
+  "reportedCosts": [],
+  "references": [],
+  "narrative": {
+    "approach": "Replace with how the work was executed",
+    "whatWorked": [],
+    "whatDidNotWork": [],
+    "timeLoss": [],
+    "rework": [],
+    "unmeasured": []
+  },
+  "recommendations": [
+    {
+      "action": "Replace with a concrete improvement",
+      "reason": "Tie the recommendation to evidence",
+      "expectedImpact": "Describe the expected measurable improvement",
+      "validation": "Describe how the next runs will prove or disprove it"
+    }
+  ],
+  "confidence": {
+    "level": "medium",
+    "limitations": []
+  }
+}

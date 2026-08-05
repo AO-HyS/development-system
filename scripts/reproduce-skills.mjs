@@ -17,6 +17,21 @@ await cp(
   resolve(sourceRoot, "artifacts", "0.2.0"),
   { recursive: true },
 );
+await cp(
+  resolve(repositoryRoot, "artifacts", "0.9.1"),
+  resolve(sourceRoot, "artifacts", "0.9.1"),
+  { recursive: true },
+);
+await cp(
+  resolve(repositoryRoot, "artifacts", "1.0.0"),
+  resolve(sourceRoot, "artifacts", "1.0.0"),
+  { recursive: true },
+);
+await cp(
+  resolve(repositoryRoot, "artifacts", "1.1.0"),
+  resolve(sourceRoot, "artifacts", "1.1.0"),
+  { recursive: true },
+);
 for (const args of [
   ["init"],
   ["add", "."],
@@ -53,14 +68,21 @@ await mkdir(dirname(unrelated), { recursive: true });
 await writeFile(unrelated, "user-owned\n", "utf8");
 
 assert.equal(step(["audit-skills"], 1).status, "invalid");
+step(["sync-skills", "--version", "0.3.1", "--source-root", sourceRoot, "--source-commit", sourceCommit]);
 step(["sync-skills", "--source-root", sourceRoot, "--source-commit", sourceCommit]);
 const structurallyHealthy = step(["audit-skills"], 1);
 assert.equal(structurallyHealthy.status, "invalid");
 assert.match(structurallyHealthy.problems.join("\n"), /operational evidence/i);
-assert.equal(structurallyHealthy.logicalSkillCount, 20);
-assert.equal(structurallyHealthy.physicalVariantCount, 40);
+assert.equal(structurallyHealthy.logicalSkillCount, 26);
+assert.equal(structurallyHealthy.physicalVariantCount, 51);
 assert.ok(structurallyHealthy.skills.every(/** @param {{states: Record<string, boolean>}} skill */ (skill) => skill.states.exists && skill.states.discovered && skill.states.loadable));
 assert.ok(structurallyHealthy.mirrors.every(/** @param {{status: string}} mirror */ (mirror) => mirror.status === "identical"));
+assert.equal(
+  structurallyHealthy.skills.find(
+    (/** @type {{logicalName: string}} */ skill) => skill.logicalName === "measure-development-run",
+  )?.destination,
+  ".codex/skills/measure-development-run",
+);
 
 await writeFile(oldResearch, "drifted research bytes\n", "utf8");
 assert.equal(step(["audit-skills"], 1).status, "invalid");

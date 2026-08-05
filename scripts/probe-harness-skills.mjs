@@ -9,10 +9,6 @@ import { fileURLToPath } from "node:url";
 import { hasBehaviorSignature } from "../src/skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceCommit = spawnSync("git", ["rev-parse", "HEAD"], {
-  cwd: repositoryRoot,
-  encoding: "utf8",
-}).stdout.trim();
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
 const loadBehaviorSignature = ["somewhere sensible", "say where"];
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -21,6 +17,10 @@ const factoryLog = resolve(process.env.HOME ?? "", ".factory", "logs", "droid-lo
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
 const probeHome = resolve(process.env.HOME ?? "");
+const installedLock = JSON.parse(await readFile(resolve(probeHome, ".development-system", "skills-lock.json"), "utf8"));
+const installedCatalog = JSON.parse(await readFile(resolve(probeHome, ".codex", "development-system", "skills.json"), "utf8"));
+const sourceCommit = installedLock.sourceCommit;
+if (!/^[a-f0-9]{40}$/.test(sourceCommit ?? "")) throw new Error("Installed skill lock has no exact source commit");
 
 /** @param {string} directory */
 async function directoryHash(directory) {
@@ -160,10 +160,10 @@ const probeSucceeded = Boolean(
 );
 const evidence = {
   schemaVersion: 1,
-  catalogVersion: "0.2.0",
+  catalogVersion: "0.5.0",
   evidenceScope: {
     kind: "critical-capability-live-probe",
-    structuralCatalogLogicalSkills: 20,
+    structuralCatalogLogicalSkills: installedCatalog.skills.length,
     liveInfluenceSkills: ["research"],
     exhaustive: false,
     claim: "Live influence is proven only for the named skill and harness observations.",

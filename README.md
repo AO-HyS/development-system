@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global multi-harness development contract. Version `0.9.1` keeps the five-minute fast path and explicit-only special flows, replaces Spark with Luna High for bounded Codex implementation, and makes writer worktree ownership fail closed. Normal implementation stays automatic; the operator triggers every additional lifecycle flow. Prior authorization guarantees remain intact.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.1.0` adds bounded Exa retrieval, executable destructive-command hooks, manual decision review, stepwise setup guidance, and current native-goal semantics. It retains the `1.0.0` operational-time measurement contract, the `0.9.1` custom-agent roster and explicit multi-ticket flow, and all prior lifecycle, authorization, pilot, privacy, and rollback guarantees. Skill catalog `0.5.0` installs 26 logical skills across Codex and Factory, with T3 Code inheriting Codex adapters.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,9 +16,11 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 0.9.1
-./bin/development-system sync-skills --version 0.3.1
-./bin/development-system audit-skills --version 0.3.1 --evidence evidence/skills-live-2026-07-20.json
+./bin/development-system install --version 1.1.0
+./bin/development-system sync-skills --version 0.5.0
+./bin/development-system guardrails-enable
+./bin/development-system audit-skills --version 0.5.0
+./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
 ./bin/development-system rollback-skills
@@ -83,11 +85,17 @@ HOME/
 
 The installed manifests record contract/catalog version, source repository, exact source commit, file/folder SHA-256 hashes, logical name, harness, destination, expected mirror, and explicit adapter contract. Direct edits under HOME are drift, not a new source of truth.
 
-`sync-skills` manages 21 logical workflow skills across 42 physical Codex/Factory variants. Twenty Factory copies are declared mirrors and do not count as separate logical skills. `coding-orchestration` is the sole divergent pair: two harness adapters with the same fast-evidence behavior contract. `work-multiple` is explicit-only and owns parallel ticket lanes instead of hiding them inside ordinary orchestration. Cleanup is limited to the stale workspace and broken links named in `catalog/0.3.1.json`; every replaced entry is snapshotted for `rollback-skills`.
+`sync-skills` manages 26 logical skills across 51 physical variants. Twenty-one established workflow skills retain their Codex/Factory contracts, including `work-multiple` and the current custom-agent-aware orchestration adapters. `measure-development-run` has one explicitly declared Codex variant because Factory does not expose the required Codex task ID and session JSONL. The four 1.1 capabilities are mirrored across Codex and Factory. Cleanup remains limited to the stale workspace and broken links declared by the catalog; every replaced entry is snapshotted for `rollback-skills`.
+
+## Real development-run measurement
+
+Invoke `$measure-development-run` anywhere in a Codex task. It uses the first real user prompt through the invocation prompt as the evidence boundary, but its headline duration is active parent-turn time plus only proven, non-overlapping external waits. Idle gaps while a task remains open are excluded. Thread span remains visible as context. Reports are private, append-only JSON and Markdown under `~/.development-system/measurements/`.
+
+The deterministic collector records timestamps, token counters, turns, tools, observed failures, models, subagents, concurrency, and repository provenance without persisting transcript text, reasoning, tool inputs, or tool output. The evidence-backed assessment records scope completion, functional proof, code/architecture/security quality, intervention, rework, cost availability, limitations, and concrete improvements. It deliberately produces no composite score.
 
 ## Operational skill evidence
 
-The audit reports six distinct states: `exists`, `discovered`, `catalogued`, `loadable`, `loaded`, and `influenced`. A copied file proves only existence. Full loading and behavioral influence require runtime evidence from the real harness.
+The audit reports six distinct states: `exists`, `discovered`, `catalogued`, `loadable`, `loaded`, and `influenced`. A copied file proves only existence. Full loading and behavioral influence require runtime evidence from the real harness. `pnpm run skills:audit` always runs the structural audit and reports live evidence as missing until a probe file is supplied; it does not point at a date-stamped file that may not exist.
 
 ```sh
 pnpm run skills:probe -- --output evidence/skills-live-$(date +%F).json
@@ -96,7 +104,7 @@ pnpm run skills:probe -- --output evidence/skills-live-$(date +%F).json
   --json
 ```
 
-The probe uses read-only, ephemeral Codex execution and read-only Factory Droid execution. Structural evidence covers the 21 logical catalog entries; the current live behavioral probe covers only the critical `research` capability in Codex and Factory. It does not claim exhaustive influence for all 21 skills. Evidence includes executable path, version, command, explicit activation/read signal, a three-part behavior signature taken only from the loaded skill, scanner errors, and catalog warnings. The expected answer is not supplied in the prompt.
+The probe uses read-only, ephemeral Codex execution and read-only Factory Droid execution. Structural evidence covers the established cross-harness catalog; the current behavioral probe covers only the critical `research` capability in Codex and Factory. `measure-development-run` requires a separate real-task invocation because its contract depends on the current Codex task. Evidence includes executable path, version, command, explicit activation/read signal, a skill-derived behavior signature, scanner errors, and catalog warnings.
 
 ## Operational harness parity
 
@@ -145,7 +153,8 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 0.9.1 del sistema de desarrollo” → `install --version 0.9.1` plus `sync-skills --version 0.3.1`
+- “Instala la versión 1.1.0 del sistema de desarrollo” → `install --version 1.1.0`, `sync-skills --version 0.5.0`, then `guardrails-enable`
+- “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
 - “Vuelve a la versión anterior del contrato” → `rollback`
@@ -174,8 +183,8 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` replaces the unstable Spark implementation route with Luna High and adds fail-closed worktree ownership. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` adds Luna routing and fail-closed worktree ownership; `1.0.0` adds operational development-run measurement; `1.1.0` adds Exa, executable guardrails, decision/setup helpers, and current native-goal rules. Published manifests and artifacts are immutable.
 
-## Current boundary
+## Release boundary
 
-This slice is AOH-147. It normalizes and validates NutriPlan, The Barber Central, and AOHYS, preserves their product-owned contracts, records comparable pilot evidence, and stops at PR/preview plus a human gate. Escuela 360 and every other repository remain explicitly unready. Merge, release, canonical HOME installation, and production remain separately authorized operations.
+Installing this contract never grants promotion authority. Each commit, push, pull request, merge, release, deployment, paid activation, or production synchronization still follows the user's exact request and the target repository's release policy.

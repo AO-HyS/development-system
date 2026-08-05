@@ -19,6 +19,11 @@ import {
 import { createCommandDeliveryRuntime, runImplementPreview } from "./delivery.mjs";
 import { auditSkillCatalog, rollbackSkillSync, synchronizeSkillCatalog } from "./skills.mjs";
 import { auditRepository, initializeRepository, normalizeRepository } from "./repositories.mjs";
+import {
+  auditGlobalGuardrails,
+  enableGlobalGuardrails,
+  rollbackGlobalGuardrails,
+} from "./guardrails.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -69,6 +74,9 @@ function formatHuman(result) {
     return `Synchronized ${result.logicalSkillCount} logical skills with reversible cleanup.`;
   }
   if (result.operation === "audit-skills") return `Skill catalog ${result.status}.`;
+  if (result.operation === "guardrails-enable") return `Global guardrails ${result.status}.`;
+  if (result.operation === "guardrails-audit") return `Global guardrails ${result.status}.`;
+  if (result.operation === "guardrails-rollback") return "Restored the prior global hook configuration.";
   if (result.operation === "lifecycle-request") {
     const transition = /** @type {{status?: string, operation?: string} | undefined} */ (result.transition);
     return `Lifecycle transition ${transition?.status}: ${transition?.operation ?? result.selectedStage ?? "none"}.`;
@@ -113,7 +121,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.2.0";
+    const version = options.version ?? "0.5.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -131,11 +139,17 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.2.0";
+    const version = options.version ?? "0.5.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
     result = await rollbackSkillSync({ home: options.home, catalog });
+  } else if (command === "guardrails-enable") {
+    result = await enableGlobalGuardrails({ home: options.home });
+  } else if (command === "guardrails-audit") {
+    result = await auditGlobalGuardrails({ home: options.home });
+  } else if (command === "guardrails-rollback") {
+    result = await rollbackGlobalGuardrails({ home: options.home });
   } else if (command === "validate-repository") {
     result = await validateRepository();
   } else if (command === "audit-repository") {
@@ -196,7 +210,7 @@ export async function run(argv) {
     };
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview> [options]",
     );
   }
 
