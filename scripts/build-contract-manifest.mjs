@@ -11,6 +11,11 @@ const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.1.0";
 if (!["1.0.0", "1.1.0"].includes(version)) {
   throw new Error("Published manifests are immutable; generator supports only unpublished versions <1.0.0|1.1.0>");
 }
+const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
+await readFile(destination).then(
+  () => { throw new Error(`Refusing to overwrite immutable manifest ${version}; add a new semantic version`); },
+  (error) => { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; },
+);
 
 /** @param {string | Buffer} contents */
 function sha256(contents) {
@@ -49,7 +54,7 @@ const manifest = {
   }),
 };
 await writeFile(
-  resolve(repositoryRoot, "manifests", `${version}.json`),
+  destination,
   `${JSON.stringify(manifest, null, 2)}\n`,
   "utf8",
 );

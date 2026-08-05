@@ -9,6 +9,23 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = resolve(repositoryRoot, "bin/development-system.mjs");
 
+test("published manifest and catalog generators refuse to overwrite existing versions", async () => {
+  for (const [script, path] of [
+    ["scripts/build-contract-manifest.mjs", "manifests/1.1.0.json"],
+    ["scripts/build-skill-catalog.mjs", "catalog/0.5.0.json"],
+  ]) {
+    const absolutePath = resolve(repositoryRoot, path);
+    const before = await readFile(absolutePath);
+    const result = spawnSync(process.execPath, [resolve(repositoryRoot, script)], {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Refusing to overwrite immutable/);
+    assert.deepEqual(await readFile(absolutePath), before);
+  }
+});
+
 function createSourceCommit() {
   const tree = spawnSync("git", ["write-tree"], { cwd: repositoryRoot, encoding: "utf8" });
   assert.equal(tree.status, 0, tree.stderr);

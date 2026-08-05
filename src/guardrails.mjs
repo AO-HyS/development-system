@@ -60,6 +60,26 @@ function parseObject(contents, label) {
   return value;
 }
 
+/** @param {Buffer | null} contents */
+function priorRollbackSnapshot(contents) {
+  if (contents === null) return null;
+  try {
+    const state = JSON.parse(contents.toString("utf8"));
+    if (state?.schemaVersion !== 2 || !state.files) return null;
+    /** @type {Record<string, string | null>} */
+    const snapshot = {};
+    for (const key of ["codex", "factory"]) {
+      const file = state.files[key];
+      if (!file || typeof file !== "object" || !("before" in file)) return null;
+      if (file.before !== null && typeof file.before !== "string") return null;
+      snapshot[key] = file.before;
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
 /** @param {string} path @param {Buffer} contents @param {number} [mode] */
 async function writeAtomic(path, contents, mode = 0o600) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
@@ -243,17 +263,18 @@ export async function enableGlobalGuardrails({ home }) {
     codex: Buffer.from(`${JSON.stringify(nextCodex, null, 2)}\n`),
     factory: Buffer.from(`${JSON.stringify(nextFactory, null, 2)}\n`),
   };
+  const priorSnapshot = priorRollbackSnapshot(before.state);
   const state = {
     schemaVersion: 2,
     operation: "global-guardrails-enable",
     installedAt: new Date().toISOString(),
     files: {
       codex: {
-        before: before.codex === null ? null : before.codex.toString("base64"),
+        before: priorSnapshot?.codex ?? (before.codex === null ? null : before.codex.toString("base64")),
         installed: installed.codex.toString("base64"),
       },
       factory: {
-        before: before.factory === null ? null : before.factory.toString("base64"),
+        before: priorSnapshot?.factory ?? (before.factory === null ? null : before.factory.toString("base64")),
         installed: installed.factory.toString("base64"),
       },
     },

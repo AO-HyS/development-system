@@ -11,6 +11,11 @@ const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex 
 if (!["0.4.0", "0.5.0"].includes(version)) {
   throw new Error("Published catalogs are immutable; generator supports only unpublished versions <0.4.0|0.5.0>");
 }
+const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
+await readFile(destination).then(
+  () => { throw new Error(`Refusing to overwrite immutable catalog ${version}; add a new semantic version`); },
+  (error) => { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; },
+);
 const declaresPhysicalHarnesses = true;
 const baseSkillVersion = "0.2.0";
 const upstreamCommit = "9603c1cc8118d08bc1b3bf34cf714f62178dea3b";
@@ -297,7 +302,6 @@ const catalog = {
   ],
 };
 
-const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await mkdir(dirname(destination), { recursive: true });
 await writeFile(destination, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
 process.stdout.write(`Wrote ${relative(repositoryRoot, destination)} with ${catalog.skills.length} logical skills.\n`);

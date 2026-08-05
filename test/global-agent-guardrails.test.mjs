@@ -132,3 +132,34 @@ test("failed post-write verification restores both configs and the prior state",
   assert.deepEqual(await readFile(factoryPath), factoryBefore);
   assert.deepEqual(await readFile(statePath), stateBefore);
 });
+
+test("re-enabling after drift preserves the first activation rollback snapshot", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-global-guards-drift-enable-"));
+  const codexSkill = resolve(home, ".agents/skills/global-agent-guardrails");
+  const factorySkill = resolve(home, ".factory/skills/global-agent-guardrails");
+  await mkdir(dirname(codexSkill), { recursive: true });
+  await mkdir(dirname(factorySkill), { recursive: true });
+  await cp(source, codexSkill, { recursive: true });
+  await cp(source, factorySkill, { recursive: true });
+
+  const codexPath = resolve(home, ".codex/hooks.json");
+  const factoryPath = resolve(home, ".factory/settings.json");
+  await mkdir(dirname(codexPath), { recursive: true });
+  await mkdir(dirname(factoryPath), { recursive: true });
+  const codexBefore = Buffer.from('{"hooks":{"Stop":[]}}\n');
+  const factoryBefore = Buffer.from('{"logoAnimation":"off"}\n');
+  await writeFile(codexPath, codexBefore);
+  await writeFile(factoryPath, factoryBefore);
+
+  await enableGlobalGuardrails({ home });
+  const driftedCodex = JSON.parse(await readFile(codexPath, "utf8"));
+  driftedCodex.hooks.PreToolUse.at(-1).hooks[0].timeout = 4;
+  await writeFile(codexPath, `${JSON.stringify(driftedCodex, null, 2)}\n`);
+
+  const reenabled = await enableGlobalGuardrails({ home });
+  assert.equal(reenabled.changed, true);
+  assert.equal((await auditGlobalGuardrails({ home })).ok, true);
+  await rollbackGlobalGuardrails({ home });
+  assert.deepEqual(await readFile(codexPath), codexBefore);
+  assert.deepEqual(await readFile(factoryPath), factoryBefore);
+});
