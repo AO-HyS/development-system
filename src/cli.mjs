@@ -24,13 +24,14 @@ import {
   enableGlobalGuardrails,
   rollbackGlobalGuardrails,
 } from "./guardrails.mjs";
+import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -54,6 +55,7 @@ function parseArguments(argv) {
     else if (token === "--plan") options.plan = value;
     else if (token === "--repository") options.repository = value;
     else if (token === "--confirm") options.confirm = value;
+    else if (token === "--input") options.input = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -91,6 +93,13 @@ function formatHuman(result) {
   }
   if (result.operation === "implement-preview") {
     return `Implement Preview ${result.status}; human decision required before promotion.`;
+  }
+  if (result.operation === "working-backwards") {
+    const profile = result.profile;
+    const selected = profile && typeof profile === "object" && "selected" in profile
+      ? profile.selected
+      : "Standard";
+    return `Working Backwards ${selected}; human gates remain required.`;
   }
   if (result.operation === "audit-repository") {
     return `Product repository ${result.status}; no files were changed.`;
@@ -208,9 +217,17 @@ export async function run(argv) {
         runtime: createCommandDeliveryRuntime(plan),
       })),
     };
+  } else if (command === "working-backwards") {
+    if (!options.input) throw new Error("working-backwards requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = await runWorkingBackwardsScenario({
+      ...input,
+      home: options.home,
+      workflowId: options.workflow ?? input.workflowId,
+    });
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|working-backwards> [options]",
     );
   }
 
