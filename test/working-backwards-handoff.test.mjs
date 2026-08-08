@@ -30,7 +30,6 @@ test("vertical slices expose dependency order, native blockers, and frontier", (
   assert.deepEqual(result.frontier, ["slice-a"]);
   assert.deepEqual(result.blockingEdges, [{ from: "slice-a", to: "slice-b" }]);
 });
-
 test("publication intent is deterministic and has no external or implementation authority", () => {
   const first = prepareTicketPublication({ ticketMap, approvedArtifacts: artifacts, repository, workflowId: "WB" });
   const second = prepareTicketPublication({ ticketMap, approvedArtifacts: artifacts, repository, workflowId: "WB" });
@@ -117,4 +116,3 @@ test("publication approval is not implied and denied publication does not call t
   );
   assert.equal(calls, 0);
 });
-

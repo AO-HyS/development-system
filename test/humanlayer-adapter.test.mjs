@@ -18,7 +18,6 @@ test("initial HumanLayer configuration is local, never-worktree, and integration
   assert.equal(DEFAULT_HUMANLAYER_CONFIG.autoAdvance, false);
   assert.deepEqual(DEFAULT_HUMANLAYER_CONFIG.integrations, { slack: false, linear: false, external: false });
 });
-
 test("task links are canonical-workflow references and cannot be rebound", () => {
   const links = new Map();
   assert.deepEqual(linkHumanLayerTask({ taskId: "hl-task-1", workflowId: "WB-1", existingLinks: links }), {
@@ -113,4 +112,3 @@ test("HumanLayer comments, status, and auto-advance are feedback only", () => {
   assert.equal(receipt.reason, "feedback-only");
   assert.deepEqual(receipt.sideEffects, []);
 });
-
