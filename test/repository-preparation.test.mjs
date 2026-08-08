@@ -547,6 +547,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.equal(initialized[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
+  assert.equal(contract.contractVersion, "1.2.0");
   assert.equal(contract.product.name, "aurora-studio");
   assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
@@ -584,7 +585,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
   assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.5.1");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.6.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
   assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
     "drive-development-flow",
@@ -594,6 +595,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     "to-tickets",
     "flow-implement",
     "flow-code-review",
+    "working-backwards",
     "exa-search",
     "global-agent-guardrails",
   ]);
@@ -605,6 +607,10 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
     assert.match(initialized[".factory/development-system/repository.md"], new RegExp(`/${command}`));
   }
+  assert.match(initialized[".codex/development-system/repository.md"], /\$working-backwards/);
+  assert.match(initialized[".factory/development-system/repository.md"], /\/working-backwards/);
+  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.2\.0`/);
+  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.2\.0`/);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
@@ -717,10 +723,24 @@ test("normalization replaces only managed drift and remains deterministic", asyn
   const repository = await seedOperationalRepository("aohys-repository-normalize-", false);
   await write(repository, "RELEASE.md", "Keep the product release policy.\n");
   await write(repository, "src/product-theme.css", ":root { --identity: lumen; }\n");
-  await write(repository, ".development-system/repository.json", "{\"contractVersion\":\"stale\"}\n");
-  await write(repository, ".codex/development-system/repository.md", "stale Codex adapter\n");
-  await write(repository, ".factory/development-system/repository.md", "stale Factory adapter\n");
+  await write(repository, ".development-system/repository.json", `${JSON.stringify({
+    contractVersion: "1.1.2",
+    operatorPrerequisites: { skillCatalogVersion: "0.5.1" },
+  })}\n`);
+  await write(repository, ".codex/development-system/repository.md", "Contract version: `1.1.2`\nSkill catalog `0.5.1`\n$flow-code-review\n");
+  await write(repository, ".factory/development-system/repository.md", "Contract version: `1.1.2`\nSkill catalog `0.5.1`\n/flow-code-review\n");
   const before = await snapshot(repository);
+
+  const staleAudit = await auditRepository({ repository });
+  assert.equal(staleAudit.status, "needs-preparation");
+  for (const harness of ["codex", "t3code", "factory"]) {
+    assert.ok(staleAudit.readiness[harness].gaps.includes("stale-development-system-contract"));
+  }
+  assert.ok(staleAudit.readiness.codex.gaps.includes("stale-codex-adapter"));
+  assert.ok(!staleAudit.readiness.codex.gaps.includes("stale-factory-adapter"));
+  assert.ok(!staleAudit.readiness.t3code.gaps.includes("stale-factory-adapter"));
+  assert.ok(staleAudit.readiness.factory.gaps.includes("stale-factory-adapter"));
+  assert.ok(!staleAudit.readiness.factory.gaps.includes("stale-codex-adapter"));
 
   await assert.rejects(normalizeRepository({ repository }), /confirm.*normalize/i);
   const normalized = await normalizeRepository({ repository, confirm: "normalize" });
@@ -732,10 +752,13 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.equal(after[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(after[".development-system/repository.json"]);
+  assert.equal(contract.contractVersion, "1.2.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.6.0");
   assert.equal(contract.preparation.mode, "normalize");
   assert.equal(contract.product.name, "lumen-console");
   assert.deepEqual(contract.preserved.releasePolicyFiles, ["RELEASE.md"]);
   assert.deepEqual(contract.preserved.designFiles, ["src/product-theme.css"]);
+  assert.equal((await auditRepository({ repository })).status, "prepared");
 
   const again = await normalizeRepository({ repository, confirm: "normalize" });
   assert.equal(again.status, "unchanged");
