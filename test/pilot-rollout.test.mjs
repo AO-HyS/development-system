@@ -82,9 +82,6 @@ function verification(document) {
     "aohys.com": "aohys-nested-read-only",
   };
   return {
-    candidateCommitExists: true,
-    evidenceCommitExists: true,
-    evidenceDescendsFromSource: true,
     harnessEvidence: {
       path: document.candidate.harnessEvidence.path,
       sha256: document.candidate.harnessEvidence.sha256,
@@ -108,7 +105,6 @@ function verification(document) {
     pilots: Object.fromEntries(document.pilots.map((pilot) => {
       const { attestation, ...pilotClaims } = pilot;
       return [pilot.name, {
-        commitExists: true,
         recapExists: true,
         path: attestation.path,
         sha256: attestation.sha256,
@@ -140,14 +136,14 @@ test("three comparable pilots and an untouched Escuela 360 reach the human gate"
   assert.equal(result.decision, "ready-for-human");
 });
 
-test("candidate evidence must come from a verified descendant commit", () => {
+test("candidate evidence must remain bound to verified artifact bytes", () => {
   const document = evidence();
   const observed = verification(document);
-  observed.evidenceDescendsFromSource = false;
+  observed.harnessEvidence.sha256 = "0".repeat(64);
 
   const result = validatePilotRolloutEvidence(document, observed);
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => error.includes("evidence commit is not descended")));
+  assert.ok(result.errors.some((error) => error.includes("harness evidence is not bound")));
 });
 
 test("the candidate fails closed on missing preview, harness parity, or Escuela 360 contact", () => {
@@ -191,7 +187,6 @@ test("self-declared statuses cannot reach readiness without bound runtime eviden
   const result = validatePilotRolloutEvidence(document);
 
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => error.includes("candidate commit was not verified")));
   assert.ok(result.errors.some((error) => error.includes("harness evidence is not bound")));
   assert.ok(result.errors.some((error) => error.includes("nutri-plan attestation is not bound")));
 });
@@ -205,16 +200,16 @@ test("a compact packet can source every pilot claim from its hash-bound attestat
   assert.equal(result.ok, true);
 });
 
-test("candidate and Nutri operational evidence must be bound to their source commits", () => {
+test("candidate and Nutri operational evidence must report native green results", () => {
   const document = evidence();
   const bound = verification(document);
-  bound.harnessEvidence.document.sourceCommit = "9".repeat(40);
-  bound.skillEvidence.document.sourceCommit = "9".repeat(40);
-  bound.pilots["nutri-plan"].operationalSkillEvidence.document.productCommit = "9".repeat(40);
+  bound.harnessEvidence.document.ok = false;
+  bound.skillEvidence.document.probeSucceeded = false;
+  bound.pilots["nutri-plan"].operationalSkillEvidence.document.probeSucceeded = false;
 
   const result = validatePilotRolloutEvidence(document, bound);
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => error.includes("harness evidence does not match")));
-  assert.ok(result.errors.some((error) => error.includes("skill evidence does not match")));
-  assert.ok(result.errors.some((error) => error.includes("not green for the product commit")));
+  assert.ok(result.errors.some((error) => error.includes("harness evidence is not a green")));
+  assert.ok(result.errors.some((error) => error.includes("skill live probe did not succeed")));
+  assert.ok(result.errors.some((error) => error.includes("operational skill evidence is not green")));
 });

@@ -65,13 +65,6 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
 
   if (!object(document.candidate)) errors.push("candidate evidence is required");
   else {
-    if (!hex(document.candidate.sourceCommit, 40)) errors.push("candidate sourceCommit must be a full Git commit");
-    if (verification.candidateCommitExists !== true) errors.push("candidate commit was not verified");
-    if (!hex(document.candidate.evidenceCommit, 40)) errors.push("candidate evidenceCommit must be a full Git commit");
-    if (verification.evidenceCommitExists !== true) errors.push("candidate evidence commit was not verified");
-    if (verification.evidenceDescendsFromSource !== true) {
-      errors.push("candidate evidence commit is not descended from the candidate sourceCommit");
-    }
     if (!/^https:\/\/github\.com\/.+\/pull\/\d+$/.test(document.candidate.pullRequest ?? "")) {
       errors.push("candidate pullRequest must be a GitHub PR URL");
     }
@@ -84,18 +77,12 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
         harnessDocument.failures.length > 0) {
         errors.push("candidate harness evidence is not a green 0.7.0 report");
       }
-      if (harnessDocument.sourceCommit !== document.candidate.sourceCommit) {
-        errors.push("candidate harness evidence does not match the candidate sourceCommit");
-      }
     }
     if (!artifactBound(document.candidate.skillEvidence, verification.skillEvidence)) {
       errors.push("candidate skill evidence is not bound to verified bytes");
     } else {
       if (verification.skillEvidence.document.probeSucceeded !== true) {
         errors.push("candidate skill live probe did not succeed");
-      }
-      if (verification.skillEvidence.document.sourceCommit !== document.candidate.sourceCommit) {
-        errors.push("candidate skill evidence does not match the candidate sourceCommit");
       }
     }
   }
@@ -114,7 +101,7 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
     const pilotVerification = verification?.pilots?.[name];
     if (!artifactBound(pilot?.attestation, pilotVerification)) {
       errors.push(`${name} attestation is not bound to verified bytes`);
-    } else if (hex(pilot?.baseCommit, 40)) {
+    } else if (Object.hasOwn(pilot ?? {}, "baseCommit")) {
       const { attestation: _attestation, ...pilotClaims } = pilot;
       if (!isDeepStrictEqual(pilotVerification.document, pilotClaims)) {
         errors.push(`${name} attestation does not match the rollout packet`);
@@ -123,9 +110,6 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
     const claims = artifactBound(pilot?.attestation, pilotVerification)
       ? pilotVerification.document
       : pilot;
-    if (!hex(claims?.baseCommit, 40)) errors.push(`${name} baseCommit must be a full Git commit`);
-    if (!hex(claims?.productCommit, 40)) errors.push(`${name} productCommit must be a full Git commit`);
-    if (pilotVerification?.commitExists !== true) errors.push(`${name} product commit was not verified`);
     if (pilotVerification?.recapExists !== true) errors.push(`${name} private Local Visual Recap path was not verified`);
     if (!hex(claims?.auditFingerprint, 64)) errors.push(`${name} auditFingerprint must be sha256`);
     if (name === "nutri-plan") {
@@ -134,8 +118,8 @@ export function validatePilotRolloutEvidence(document, verification = {}) {
         errors.push("nutri-plan operational skill evidence is not bound to verified bytes");
       } else {
         const operationalDocument = operationalEvidence.document;
-        if (operationalDocument.probeSucceeded !== true || operationalDocument.productCommit !== claims.productCommit) {
-          errors.push("nutri-plan operational skill evidence is not green for the product commit");
+        if (operationalDocument.probeSucceeded !== true) {
+          errors.push("nutri-plan operational skill evidence is not green");
         }
         for (const surface of harnesses) {
           const observation = operationalDocument?.surfaces?.[surface];

@@ -28,7 +28,7 @@ pnpm install --frozen-lockfile
 pnpm run rollout:validate
 ```
 
-`rollout:validate` returns either `ready-for-human` or a structured list of remaining pilot gates. It verifies candidate and product commits, SHA-256-bound live evidence and pilot attestations, private recap existence, review/QA disposition, PR/preview readiness, rollback, and the prohibition on merge, release, production, paid activation, canonical HOME synchronization, and Escuela 360 work.
+`rollout:validate` returns either `ready-for-human` or a structured list of remaining pilot gates. It verifies SHA-256-bound live evidence and pilot attestations, private recap existence, review/QA disposition, PR/preview readiness, rollback, and the prohibition on merge, release, production, paid activation, canonical HOME synchronization, and Escuela 360 work. Git owns repository history; the validator does not reproduce it with commit comparisons.
 
 Audit and prepare a product repository with distinct operations:
 
@@ -168,10 +168,10 @@ Installing or recovering this contract does **not** authorize merge, release, pr
 Every prepared repository exposes two distinct quality interfaces:
 
 - changed validation for ordinary implementation and pre-push feedback;
-- full certification once for the integrated candidate.
+- full certification once for the integrated change.
 
-Repository adapters also record risk-selected QA, one shared preview per exact
-candidate SHA, and provider readiness before preview when auth, data,
+Repository adapters also record risk-selected QA, one shared branch preview
+from `develop`, and provider readiness before preview when auth, data,
 migrations, seeds, roles, or environment contracts changed. Product
 repositories still own the concrete commands and provider implementation.
 
