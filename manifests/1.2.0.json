@@ -1,0 +1,429 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.2.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    },
+    {
+      "id": "factory",
+      "adapter": "native"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "development-contract.codex",
+      "logicalName": "development-contract",
+      "sourcePath": "artifacts/1.2.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "086110307eddebfb17adf2b1036732d570fe5cf71c358caa97af7604f861de88",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "development-contract.factory",
+      "logicalName": "development-contract",
+      "sourcePath": "artifacts/1.2.0/contract.md",
+      "destination": ".factory/development-system/contract.md",
+      "harness": "factory",
+      "sha256": "086110307eddebfb17adf2b1036732d570fe5cf71c358caa97af7604f861de88",
+      "expectedMirrorOf": "development-contract.codex"
+    },
+    {
+      "id": "operator-interface.codex",
+      "logicalName": "operator-interface",
+      "sourcePath": "artifacts/0.9.1/operator-interface.md",
+      "destination": ".codex/development-system/operator-interface.md",
+      "harness": "codex",
+      "sha256": "6fb5f69bcc177b9db0636ad7f30ce881dcea438fddfbca1fd73a6401860cf706",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "operator-interface.factory",
+      "logicalName": "operator-interface",
+      "sourcePath": "artifacts/0.9.1/operator-interface.md",
+      "destination": ".factory/development-system/operator-interface.md",
+      "harness": "factory",
+      "sha256": "6fb5f69bcc177b9db0636ad7f30ce881dcea438fddfbca1fd73a6401860cf706",
+      "expectedMirrorOf": "operator-interface.codex"
+    },
+    {
+      "id": "harness-adapters.codex",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/0.9.1/harness-adapters.json",
+      "destination": ".codex/development-system/harness-adapters.json",
+      "harness": "codex",
+      "sha256": "bb6d9ff00e33a235cd251ea544cf40270845367c743eddbb70638d59bcea9aa9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "harness-adapters.factory",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/0.9.1/harness-adapters.json",
+      "destination": ".factory/development-system/harness-adapters.json",
+      "harness": "factory",
+      "sha256": "bb6d9ff00e33a235cd251ea544cf40270845367c743eddbb70638d59bcea9aa9",
+      "expectedMirrorOf": "harness-adapters.codex"
+    },
+    {
+      "id": "capability-roster.codex",
+      "logicalName": "capability-roster",
+      "sourcePath": "config/0.9.1/capability-roster.json",
+      "destination": ".codex/development-system/capability-roster.json",
+      "harness": "codex",
+      "sha256": "0de586b8cc65c57cbdb889e41ec54d12f4421087eb82658be8e35795e8bc590d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "capability-roster.factory",
+      "logicalName": "capability-roster",
+      "sourcePath": "config/0.9.1/capability-roster.json",
+      "destination": ".factory/development-system/capability-roster.json",
+      "harness": "factory",
+      "sha256": "0de586b8cc65c57cbdb889e41ec54d12f4421087eb82658be8e35795e8bc590d",
+      "expectedMirrorOf": "capability-roster.codex"
+    },
+    {
+      "id": "benchmark-suite.codex",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".codex/development-system/benchmark-suite.json",
+      "harness": "codex",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "benchmark-suite.factory",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".factory/development-system/benchmark-suite.json",
+      "harness": "factory",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": "benchmark-suite.codex"
+    },
+    {
+      "id": "skill-catalog.codex",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.6.0.json",
+      "destination": ".codex/development-system/skills.json",
+      "harness": "codex",
+      "sha256": "a529043d2184fb18f37ea0b4e81fb3ad687cd471cb060518c5452e3add3093eb",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "skill-catalog.factory",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.6.0.json",
+      "destination": ".factory/development-system/skills.json",
+      "harness": "factory",
+      "sha256": "a529043d2184fb18f37ea0b4e81fb3ad687cd471cb060518c5452e3add3093eb",
+      "expectedMirrorOf": "skill-catalog.codex"
+    },
+    {
+      "id": "global-validator.shared",
+      "logicalName": "global-validator",
+      "sourcePath": "artifacts/0.6.0/validate-development-system.py",
+      "destination": ".agents/scripts/validate-development-system.py",
+      "harness": "codex",
+      "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.architecture-planner",
+      "logicalName": "codex-agent-architecture-planner",
+      "sourcePath": "artifacts/0.9.1/agents/codex/architecture-planner.toml",
+      "destination": ".codex/agents/architecture-planner.toml",
+      "harness": "codex",
+      "sha256": "5f1274e3bf8874bbcb9a5577152de5d4d75eebf5e32f8175c720d75beda1ae00",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.backend-specialist",
+      "logicalName": "codex-agent-backend-specialist",
+      "sourcePath": "artifacts/0.9.1/agents/codex/backend-specialist.toml",
+      "destination": ".codex/agents/backend-specialist.toml",
+      "harness": "codex",
+      "sha256": "3456c370d3a7a32ee6b3e2b935ca4a2f552a08f9d45bc182300e99cd68d1d514",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.code-mapper",
+      "logicalName": "codex-agent-code-mapper",
+      "sourcePath": "artifacts/0.9.1/agents/codex/code-mapper.toml",
+      "destination": ".codex/agents/code-mapper.toml",
+      "harness": "codex",
+      "sha256": "12a5310a98207bc308b9e59bd46e937f3980ebf2c128ca5a95a75486a3b0dd4c",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.docs-researcher",
+      "logicalName": "codex-agent-docs-researcher",
+      "sourcePath": "artifacts/0.9.1/agents/codex/docs-researcher.toml",
+      "destination": ".codex/agents/docs-researcher.toml",
+      "harness": "codex",
+      "sha256": "b6b5cc53dea679efd1aa87b47f842eb186df13e23e4031b84859990dfe030981",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.qa-planner",
+      "logicalName": "codex-agent-qa-planner",
+      "sourcePath": "artifacts/0.9.1/agents/codex/qa-planner.toml",
+      "destination": ".codex/agents/qa-planner.toml",
+      "harness": "codex",
+      "sha256": "7e368b530c81d8464aebf66e4fd0464665f9f3da8e7f54a3b073d5207be4859c",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.test-runner",
+      "logicalName": "codex-agent-test-runner",
+      "sourcePath": "artifacts/0.9.1/agents/codex/test-runner.toml",
+      "destination": ".codex/agents/test-runner.toml",
+      "harness": "codex",
+      "sha256": "e3b7b19605ceb46e5cb09d467ae21f5bdde0d19b380df35e64944b7a9ebbcae4",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.fast-implementer",
+      "logicalName": "codex-agent-fast-implementer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/fast-implementer.toml",
+      "destination": ".codex/agents/fast-implementer.toml",
+      "harness": "codex",
+      "sha256": "6ee07794cd430a49ee4a2e9824074235f8134a6f910b884786ca5da44be49f49",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.implementer",
+      "logicalName": "codex-agent-implementer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/implementer.toml",
+      "destination": ".codex/agents/implementer.toml",
+      "harness": "codex",
+      "sha256": "f115b0bd2883b5cab0cb93efbaa1520e8ae59e7545969f6e5510fcdbbd2a9b37",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.mechanical-worker",
+      "logicalName": "codex-agent-mechanical-worker",
+      "sourcePath": "artifacts/0.9.1/agents/codex/mechanical-worker.toml",
+      "destination": ".codex/agents/mechanical-worker.toml",
+      "harness": "codex",
+      "sha256": "428f0f0337b69f612978a5273227718f2510936bbe4d753be172688bb3741e69",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.performance-auditor",
+      "logicalName": "codex-agent-performance-auditor",
+      "sourcePath": "artifacts/0.9.1/agents/codex/performance-auditor.toml",
+      "destination": ".codex/agents/performance-auditor.toml",
+      "harness": "codex",
+      "sha256": "5628cc1d11bb9949bf066416a3cb65faac4d86da0849e07468b2335e72305991",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.release-manager",
+      "logicalName": "codex-agent-release-manager",
+      "sourcePath": "artifacts/0.9.1/agents/codex/release-manager.toml",
+      "destination": ".codex/agents/release-manager.toml",
+      "harness": "codex",
+      "sha256": "5c1b66dfa46b2fa209d2a79f75c80cf843ba7a25294d6dd8270f095dab893269",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.browser-qa",
+      "logicalName": "codex-agent-browser-qa",
+      "sourcePath": "artifacts/0.9.1/agents/codex/browser-qa.toml",
+      "destination": ".codex/agents/browser-qa.toml",
+      "harness": "codex",
+      "sha256": "01570a08fdd24fa8945ba351126a9b8460bc2e37d03956a3c60a45cf022f28ab",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.reviewer",
+      "logicalName": "codex-agent-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/reviewer.toml",
+      "destination": ".codex/agents/reviewer.toml",
+      "harness": "codex",
+      "sha256": "635d41469b06e9df7254a8d4bc5c52370686a74a0abff4d72a545f7a5bee82b3",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.security-reviewer",
+      "logicalName": "codex-agent-security-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/security-reviewer.toml",
+      "destination": ".codex/agents/security-reviewer.toml",
+      "harness": "codex",
+      "sha256": "96ce7c8222723e14e5f56e14e022b22b41a1ab3b861f4658f70226a0ccf32bb2",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.ui-designer",
+      "logicalName": "codex-agent-ui-designer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/ui-designer.toml",
+      "destination": ".codex/agents/ui-designer.toml",
+      "harness": "codex",
+      "sha256": "867b708276ecb16b6f31f7e6403e884366f9498544e8e30a39e277472a7a7886",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.visual-reviewer",
+      "logicalName": "codex-agent-visual-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/codex/visual-reviewer.toml",
+      "destination": ".codex/agents/visual-reviewer.toml",
+      "harness": "codex",
+      "sha256": "638c7efea2e5e9c2d9dcc95514da7228478235d545ad924f2243557d72f99f32",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.architecture-planner",
+      "logicalName": "factory-droid-architecture-planner",
+      "sourcePath": "artifacts/0.9.1/agents/factory/architecture-planner.md",
+      "destination": ".factory/droids/architecture-planner.md",
+      "harness": "factory",
+      "sha256": "0d91a1983c220075e3f7595a84b1e34dc65b978535cddfa3227026a541e58862",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.backend-specialist",
+      "logicalName": "factory-droid-backend-specialist",
+      "sourcePath": "artifacts/0.9.1/agents/factory/backend-specialist.md",
+      "destination": ".factory/droids/backend-specialist.md",
+      "harness": "factory",
+      "sha256": "fa3f61e8e2c61d1ada73f893ea419a8c261631714c1f86e29e356775ba2180a5",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.code-mapper",
+      "logicalName": "factory-droid-code-mapper",
+      "sourcePath": "artifacts/0.9.1/agents/factory/code-mapper.md",
+      "destination": ".factory/droids/code-mapper.md",
+      "harness": "factory",
+      "sha256": "88491e82e1c31cb1da85ca051400a5b2e186684e64e937bc7b4d1042155e3a51",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.docs-researcher",
+      "logicalName": "factory-droid-docs-researcher",
+      "sourcePath": "artifacts/0.9.1/agents/factory/docs-researcher.md",
+      "destination": ".factory/droids/docs-researcher.md",
+      "harness": "factory",
+      "sha256": "c69e00d0e914babd10872e3eec8c6232b0a0fd6e50e714efd73a180b7ae54e90",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.qa-planner",
+      "logicalName": "factory-droid-qa-planner",
+      "sourcePath": "artifacts/0.9.1/agents/factory/qa-planner.md",
+      "destination": ".factory/droids/qa-planner.md",
+      "harness": "factory",
+      "sha256": "e97ca06720586a0c88b0c4ef72c1fcab400237b00b87a8b34033c3126f53d9a8",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.test-runner",
+      "logicalName": "factory-droid-test-runner",
+      "sourcePath": "artifacts/0.9.1/agents/factory/test-runner.md",
+      "destination": ".factory/droids/test-runner.md",
+      "harness": "factory",
+      "sha256": "1951d831c159cc028a50005b9fdf0f105bc593704ff4a063c05c1feebec0d5dd",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.fast-implementer",
+      "logicalName": "factory-droid-fast-implementer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/fast-implementer.md",
+      "destination": ".factory/droids/fast-implementer.md",
+      "harness": "factory",
+      "sha256": "7e0479ecdb20269730514c3b77efe68cf06706119ce6ade55a0b606d3bebe0dc",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.implementer",
+      "logicalName": "factory-droid-implementer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/implementer.md",
+      "destination": ".factory/droids/implementer.md",
+      "harness": "factory",
+      "sha256": "d661a17568e409e03cd259c23dd7552ecee4292ce37a3814919cbd9641db2ea2",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.mechanical-worker",
+      "logicalName": "factory-droid-mechanical-worker",
+      "sourcePath": "artifacts/0.9.1/agents/factory/mechanical-worker.md",
+      "destination": ".factory/droids/mechanical-worker.md",
+      "harness": "factory",
+      "sha256": "7397992457bd92dccf9f4b3447bb1c8dc9cd8b15f2eed0888646fc63fc0a0333",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.performance-auditor",
+      "logicalName": "factory-droid-performance-auditor",
+      "sourcePath": "artifacts/0.9.1/agents/factory/performance-auditor.md",
+      "destination": ".factory/droids/performance-auditor.md",
+      "harness": "factory",
+      "sha256": "2b53766306a1da3491cf3e1fb1b5dd95124c191a882301c9314e0e3186e47f56",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.release-manager",
+      "logicalName": "factory-droid-release-manager",
+      "sourcePath": "artifacts/0.9.1/agents/factory/release-manager.md",
+      "destination": ".factory/droids/release-manager.md",
+      "harness": "factory",
+      "sha256": "96efa54898451545133757e7b0955f435f6f247d6029ccbcea3f1e890e62e4fb",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.browser-qa",
+      "logicalName": "factory-droid-browser-qa",
+      "sourcePath": "artifacts/0.9.1/agents/factory/browser-qa.md",
+      "destination": ".factory/droids/browser-qa.md",
+      "harness": "factory",
+      "sha256": "8ee12c77adac2e10de09c9e9c2dc3d215382072b2c72e860f6cdd98d9a1970b8",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.reviewer",
+      "logicalName": "factory-droid-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/reviewer.md",
+      "destination": ".factory/droids/reviewer.md",
+      "harness": "factory",
+      "sha256": "b46d47ac593488eaf6e122b66b2644308e5579018e4e0d5a11a4976dc47f492e",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.security-reviewer",
+      "logicalName": "factory-droid-security-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/security-reviewer.md",
+      "destination": ".factory/droids/security-reviewer.md",
+      "harness": "factory",
+      "sha256": "05104f4c72a8bd343a28883fd7f48f486da49af907aa4f5838cea1c1178f6c3a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.ui-designer",
+      "logicalName": "factory-droid-ui-designer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/ui-designer.md",
+      "destination": ".factory/droids/ui-designer.md",
+      "harness": "factory",
+      "sha256": "5fc51cf2e45c9a266980ff4ab5376664a4b5dcaa69642b7577811f7a3fa1d905",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "factory-droid.visual-reviewer",
+      "logicalName": "factory-droid-visual-reviewer",
+      "sourcePath": "artifacts/0.9.1/agents/factory/visual-reviewer.md",
+      "destination": ".factory/droids/visual-reviewer.md",
+      "harness": "factory",
+      "sha256": "5ab73a158baac314567e4ccf9b5076fb6af586b84ef4094c5260596b0c51e784",
+      "expectedMirrorOf": null
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.1.2` clarifies paid agent-tool declaration versus activation and makes provider readiness conditional on affected provider surfaces, while retaining the Exa and guardrail hardening from `1.1.1` and all prior guarantees. Skill catalog `0.5.1` installs 26 logical skills across Codex and Factory, with T3 Code inheriting Codex adapters.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.2.0` adds the portable Working Backwards definition workflow while retaining every `1.1.2` guarantee. Skill catalog `0.6.0` installs 27 logical skills across Codex and Factory, with T3 Code inheriting Codex adapters.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,10 +16,10 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.1.2
-./bin/development-system sync-skills --version 0.5.1
+./bin/development-system install --version 1.2.0
+./bin/development-system sync-skills --version 0.6.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.5.1
+./bin/development-system audit-skills --version 0.6.0
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -50,6 +50,19 @@ Lifecycle requests use natural language but persist canonical operation names:
 ```
 
 Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode recommend` for a read-only recommendation; it never persists a transition or grants authority. Use `--json` to inspect the exact transition, authorization source, evidence, stage, and reported external side effects.
+
+Working Backwards operations consume explicit JSON files:
+
+```sh
+./bin/development-system working-backwards --input /private/path/definition.json --home /tmp/isolated-home --json
+./bin/development-system working-backwards-publication-intent --input /private/path/ticket-map.json --json
+./bin/development-system working-backwards-t3-handoff --input /private/path/handoff-input.json --json
+./bin/development-system working-backwards-handoff-freshness --input /private/path/freshness-input.json --json
+./bin/development-system working-backwards-humanlayer --input /private/path/observations.json --json
+./bin/development-system working-backwards-evaluate --input evidence/working-backwards/ticket-06-evaluation.json --json
+```
+
+These commands prepare intent, private handoff, freshness, unverified supplied HumanLayer snapshots, and evaluation evidence without a default tracker or network runtime. Gate approvals persist private workflow-specific receipts bound to normalized repository identity/revision and exact artifact evidence. Publication binds the approved map and intent; resume requires injected authority validation of an opaque consumed-intent receipt and tracker reconciliation by idempotency key. The initial HumanLayer adapter rejects remote, synchronized, auto-advancing, worktree-creating, Slack, Linear, and external modes. Ticket 06 evidence remains incomplete because independently verifiable source packets are unavailable, so it recommends no pilot and ticket 07 stays blocked. Definition, evaluation, publication, and handoff keep implementation unauthorized until Implement Preview.
 
 After `Implement Preview` is authorized, execute a private structured plan with:
 
@@ -153,7 +166,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.1.2 del sistema de desarrollo” → `install --version 1.1.2`, `sync-skills --version 0.5.1`, then `guardrails-enable`
+- “Instala la versión 1.2.0 del sistema de desarrollo” → `install --version 1.2.0`, `sync-skills --version 0.6.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -183,7 +196,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`0.9.0` retain their published contracts; `0.9.1` adds Luna routing and fail-closed worktree ownership; `1.0.0` adds operational development-run measurement; `1.1.0` adds Exa, executable guardrails, decision/setup helpers, and current native-goal rules; `1.1.1` hardens Exa DLP and shell command parsing; `1.1.2` clarifies paid-tool activation and conditional provider readiness. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.1.2` retain their published contracts; `1.2.0` adds Working Backwards definition, risk evidence, optional HumanLayer observations, explicit publication intent, and private T3 handoff freshness. Published manifests and artifacts are immutable.
 
 ## Release boundary
 
