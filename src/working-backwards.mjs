@@ -312,7 +312,13 @@ const suspiciousClaimPattern = /(?:user quote|testimonial|\b\d+(?:\.\d+)?%|[$€
 function evidenceSupportsClaim(evidence, claim) {
   const mappedClaims = [evidence.claim, ...(Array.isArray(evidence.claims) ? evidence.claims : [])].filter((value) => typeof value === "string");
   const hash = typeof evidence.contentHash === "string" ? evidence.contentHash : "";
-  const integrity = /^sha256:[a-f0-9]{64}$/.test(hash) && (evidence.content === undefined || contentHash(evidence.content) === hash);
+  const embeddedContent = evidence.content;
+  const nonemptyContent = typeof embeddedContent === "string"
+    ? embeddedContent.trim().length > 0
+    : Array.isArray(embeddedContent)
+      ? embeddedContent.length > 0
+      : isRecord(embeddedContent) && Object.keys(embeddedContent).length > 0;
+  const integrity = nonemptyContent && /^sha256:[a-f0-9]{64}$/.test(hash) && contentHash(embeddedContent) === hash;
   return typeof evidence.id === "string" && evidence.id.trim().length > 0 && typeof evidence.source === "string" && evidence.source.trim().length > 0 && integrity && mappedClaims.includes(claim);
 }
 

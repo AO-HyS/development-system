@@ -165,6 +165,8 @@ test("claim evidence must be integrity-bound and mapped to the exact suspicious 
   const base = { ...completeFeature, experience: claim };
   for (const claimEvidence of [
     [{}],
+    [{ id: "e-missing", source: "does-not-exist", contentHash: `sha256:${"0".repeat(64)}`, claim }],
+    [{ id: "e-mismatch", source: "primary-record.json", content: { finding: "exact claim" }, contentHash: hash({ finding: "different content" }), claim }],
     [{ id: "e-1", source: "research.md", content: { finding: "unrelated" }, contentHash: hash({ finding: "unrelated" }), claim: "A different claim" }],
   ]) {
     const result = await runWorkingBackwardsScenario({
