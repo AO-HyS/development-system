@@ -25,6 +25,13 @@ import {
   rollbackGlobalGuardrails,
 } from "./guardrails.mjs";
 import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
+import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
+import {
+  createT3ImplementationHandoff,
+  prepareTicketPublication,
+  verifyT3HandoffFreshness,
+} from "./working-backwards-handoff.mjs";
+import { evaluateWorkingBackwards } from "./working-backwards-evaluation.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -101,6 +108,11 @@ function formatHuman(result) {
       : "Standard";
     return `Working Backwards ${selected}; human gates remain required.`;
   }
+  if (result.operation === "prepare-ticket-publication") return `Working Backwards publication intent ${result.ok ? "ready for separate authorization" : "blocked"}.`;
+  if (result.operation === "t3-implementation-handoff") return "Private T3 handoff created; Implement Preview remains required.";
+  if (result.operation === "working-backwards-handoff-freshness") return `T3 handoff ${result.fresh ? "fresh" : "requires refresh"}.`;
+  if (result.operation === "working-backwards-evaluation") return "Working Backwards evaluation recommends a bounded live pilot only.";
+  if (result.operation === "working-backwards-humanlayer") return "HumanLayer observations recorded without granting lifecycle authority.";
   if (result.operation === "audit-repository") {
     return `Product repository ${result.status}; no files were changed.`;
   }
@@ -130,7 +142,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.5.1";
+    const version = options.version ?? "0.6.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -148,7 +160,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.5.1";
+    const version = options.version ?? "0.6.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -225,9 +237,42 @@ export async function run(argv) {
       home: options.home,
       workflowId: options.workflow ?? input.workflowId,
     });
+  } else if ([
+    "working-backwards-publication-intent",
+    "working-backwards-t3-handoff",
+    "working-backwards-handoff-freshness",
+    "working-backwards-evaluate",
+    "working-backwards-humanlayer",
+  ].includes(command ?? "")) {
+    if (!options.input) throw new Error(`${command} requires --input <json-path>`);
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    if (command === "working-backwards-publication-intent") {
+      result = prepareTicketPublication(input);
+    } else if (command === "working-backwards-t3-handoff") {
+      result = createT3ImplementationHandoff(input);
+    } else if (command === "working-backwards-handoff-freshness") {
+      result = { operation: "working-backwards-handoff-freshness", ...verifyT3HandoffFreshness(input) };
+    } else if (command === "working-backwards-evaluate") {
+      result = evaluateWorkingBackwards(input);
+    } else {
+      const adapter = createHumanLayerAdapter({ config: input.config });
+      const observation = input.observation === undefined
+        ? null
+        : await adapter.probeReadOnly({ skill: "working-backwards", observation: input.observation });
+      result = {
+        ok: true,
+        operation: "working-backwards-humanlayer",
+        config: adapter.config,
+        observation,
+        receipt: adapter.receipt(input.receipt),
+        feedback: adapter.feedbackReceipt(input.feedback),
+        implementationAuthorized: false,
+        externalSideEffects: [],
+      };
+    }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|working-backwards> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "dogfood": {
+    "reconstructedFrom": [
+      "approved-spec",
+      "artifact-graph",
+      "ticket-dependency-graph",
+      "t3-handoff"
+    ],
+    "chatHistoryRequired": false,
+    "unavailableFields": [
+      "matched pre-workflow baseline",
+      "implementation defects after a real product pilot"
+    ]
+  },
+  "historicalCases": [
+    {
+      "id": "aohys-dashboard-navigation",
+      "evidenceAtTime": [
+        "CHANGED_FILES dashboard navigation source",
+        "quality:changed result passed",
+        "corrected wall time 17.73 seconds"
+      ],
+      "knownRework": [
+        "broad origin/develop diff invoked nearly the whole workspace",
+        "duplicate TypeScript invocation",
+        "non-local Impeccable scope"
+      ],
+      "classification": "caught",
+      "observedValidation": {
+        "beforeWallTimeSeconds": 96.15,
+        "afterWallTimeSeconds": 17.73,
+        "reportedReductionPercent": 81.6
+      },
+      "unavailableFields": [
+        "active operational time",
+        "human attention",
+        "tokens",
+        "authoritative cost",
+        "artifact revisions",
+        "review blockers",
+        "plan-to-code deviation"
+      ]
+    },
+    {
+      "id": "nutriplan-auth-resilience",
+      "evidenceAtTime": [
+        "CHANGED_FILES auth resilience source",
+        "quality:changed result passed",
+        "five mapped local browser tests",
+        "corrected wall time 93.84 seconds"
+      ],
+      "knownRework": [
+        "nine packages and 1359 unit tests started before mapped E2E",
+        "dashboard and admin servers initially started sequentially",
+        "provider readiness unavailable without protected environment variables"
+      ],
+      "classification": "caught",
+      "observedValidation": {
+        "stoppedBroadRunSeconds": 68.24,
+        "beforeConcurrentServersSeconds": 130.67,
+        "afterConcurrentServersSeconds": 93.84,
+        "reportedReductionPercent": 28.2
+      },
+      "unavailableFields": [
+        "active operational time",
+        "human attention",
+        "tokens",
+        "authoritative cost",
+        "artifact revisions",
+        "review blockers",
+        "plan-to-code deviation",
+        "protected provider readiness result"
+      ]
+    }
+  ],
+  "comparison": {
+    "paths": [
+      "HumanLayer Freeform plus canonical Working Backwards",
+      "existing Development System path"
+    ],
+    "unavailableFields": [
+      "matched feature pair",
+      "matched operator and environment",
+      "HumanLayer authoritative time, token, and cost telemetry"
+    ]
+  },
+  "signals": {
+    "activeOperationalTime": { "status": "unavailable", "value": null },
+    "humanAttention": { "status": "unavailable", "value": null },
+    "tokens": { "status": "unavailable", "value": null },
+    "authoritativeCost": { "status": "unavailable", "value": null },
+    "revisions": { "status": "observed", "value": "four approved implementation lane commits before integration" },
+    "corrections": { "status": "observed", "value": "integration required composing risk, adapter, and handoff contracts" },
+    "checks": { "status": "observed", "value": "focused Working Backwards and immutable installation contracts" },
+    "reviewBlockers": { "status": "unavailable", "value": null },
+    "planToCodeDeviation": { "status": "observed", "value": "standalone ticket modules required coordinator integration" },
+    "privacy": { "status": "observed", "value": "private handoff remains outside synced HumanLayer destinations" },
+    "synchronization": { "status": "observed", "value": "no remote synchronization invoked" },
+    "worktree": { "status": "observed", "value": "definition default Never; integration used the assigned isolated worktree" },
+    "authorization": { "status": "observed", "value": "three gates remain explicit and implementationAuthorized remains false" }
+  }
+}

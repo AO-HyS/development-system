@@ -2,6 +2,9 @@
 
 import { createHash } from "node:crypto";
 import { readLifecycleState, runLifecycleRequest } from "./lifecycle.mjs";
+import { assessWorkingBackwardsRisk } from "./working-backwards-risk.mjs";
+import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
+import { prepareTicketPublication } from "./working-backwards-handoff.mjs";
 
 /** @typedef {object} Feature
  * @property {string | undefined} featureId
@@ -54,6 +57,8 @@ import { readLifecycleState, runLifecycleRequest } from "./lifecycle.mjs";
  * @property {unknown} [profileEvidence]
  * @property {unknown} [artifactState]
  * @property {unknown} [humanLayer]
+ * @property {unknown} [riskEvidence]
+ * @property {unknown} [evidence]
  * @property {unknown[]} [gateOperations]
  */
 
@@ -87,7 +92,8 @@ const roleDependencies = {
   "research-report": ["research-questions"],
   "product-contract": ["working-backwards-brief", "research-report"],
   "domain-technical-design": ["product-contract", "research-report"],
-  "structure-outline": ["product-contract", "domain-technical-design"],
+  "risk-evidence": ["domain-technical-design"],
+  "structure-outline": ["product-contract", "domain-technical-design", "risk-evidence"],
   "ticket-map": ["structure-outline"],
   "t3-implementation-handoff": ["ticket-map", "structure-outline"],
 };
@@ -255,8 +261,8 @@ function artifactId(role, workflowId) {
   return `${workflowId}:${role}`;
 }
 
-/** @param {Record<string, unknown>} options @param {ProfileDecision} profile @param {Feature} feature @returns {Map<string, unknown>} */
-function artifactContent(options, profile, feature) {
+/** @param {Record<string, unknown>} options @param {ProfileDecision} profile @param {Feature} feature @param {ReturnType<typeof assessWorkingBackwardsRisk>} risk @returns {Map<string, unknown>} */
+function artifactContent(options, profile, feature, risk) {
   const repository = isRecord(options.repository) ? /** @type {Record<string, unknown>} */ (options.repository) : {};
   const observed = typeof repository.observed === "string" ? repository.observed : "Estado actual pendiente de observar.";
   const criteria = feature.acceptanceCriteria.length > 0
@@ -281,16 +287,26 @@ function artifactContent(options, profile, feature) {
       ["t3-implementation-handoff", { mode: "candidate", profile: profile.selected, firstSlice: "slice-1", acceptanceCriteria: criteria }],
     ])));
   }
-  return /** @type {Map<string, unknown>} */ (new Map(/** @type {[string, unknown][]} */ ([
+  const contents = /** @type {Map<string, unknown>} */ (new Map(/** @type {[string, unknown][]} */ ([
     ["working-backwards-brief", brief],
     ["research-questions", { questions: ["¿Qué comportamiento existe hoy?", "¿Qué evidencia falta para validar el resultado?"], solutionFree: true }],
     ["research-report", { mode: "current-state", observed, repositoryRevision: repository.revision ?? repository.baseRevision ?? "unknown", answeredQuestions: ["¿Qué comportamiento existe hoy?", "¿Qué evidencia falta para validar el resultado?"] }],
     ["product-contract", { mode: "future-state", userOutcome: feature.userOutcome, actor: feature.actor, acceptanceCriteria: criteria, scope: feature.scope, errors: [], recovery: [], permissions: [], outOfScope: feature.notBuilding }],
     ["domain-technical-design", { mode: "future-state", entities: [], relationships: [], invariants: [], reads: [], writes: [], events: [], migrations: [], security: [], rejectedDecisions: [] }],
     ["structure-outline", { mode: "future-state", slices: [{ id: "slice-1", outcome: feature.userOutcome, acceptanceCriteria: criteria, dependsOn: [] }] }],
-    ["ticket-map", { mode: "future-state", tickets: [{ id: "slice-1", dependsOn: [], status: "frontier" }] }],
+    ["ticket-map", { mode: "future-state", status: "draft", tickets: [{ id: "slice-1", title: feature.title, outcome: feature.userOutcome, acceptanceCriteria: criteria, checks: [], dependsOn: [], status: "ready-for-agent", fitsFreshContext: true, verifiable: true }] }],
     ["t3-implementation-handoff", { mode: "candidate", profile: profile.selected, firstSlice: "slice-1", acceptanceCriteria: criteria, implementationAuthorized: false }],
   ])));
+  if (risk.hardRiskTriggers.length > 0) {
+    contents.set("risk-evidence", {
+      mode: "risk-specific",
+      hardRiskTriggers: risk.hardRiskTriggers,
+      requirements: risk.requestedEvidence,
+      checks: risk.evidenceChecks,
+      technicalGate: risk.technicalGate,
+    });
+  }
+  return contents;
 }
 
 /** @param {string[]} roles @param {string} role */
@@ -368,7 +384,7 @@ function gateState(state, roles) {
   const rank = stageRank.indexOf(state.stage);
   return {
     product: { id: "product-contract-approved", status: rank >= 2 ? "approved" : "pending", requiredStage: "requirements_approved", artifactRoles: roles.filter((role) => ["working-backwards-brief", "research-questions", "research-report", "product-contract"].includes(role)) },
-    technical: { id: "technical-contract-approved", status: rank >= 4 ? "approved" : "pending", requiredStage: "spec_plan_approved", artifactRoles: roles.filter((role) => ["product-contract", "domain-technical-design"].includes(role)) },
+    technical: { id: "technical-contract-approved", status: rank >= 4 ? "approved" : "pending", requiredStage: "spec_plan_approved", artifactRoles: roles.filter((role) => ["product-contract", "domain-technical-design", "risk-evidence"].includes(role)) },
     implementationMap: { id: "implementation-map-approved", status: rank >= 6 ? "approved" : "pending", requiredStage: "tickets_approved", artifactRoles: roles.filter((role) => ["structure-outline", "ticket-map"].includes(role)) },
   };
 }
@@ -413,20 +429,41 @@ function applyExistingState(artifacts, existing) {
 function smallestResumeStage(changedRoles, affected) {
   const roles = new Set([...changedRoles, ...affected]);
   if (["working-backwards-brief", "research-questions", "research-report"].some((role) => roles.has(role))) return "requirements";
-  if (["product-contract", "domain-technical-design"].some((role) => roles.has(role))) return "technical-contract";
+  if (["product-contract", "domain-technical-design", "risk-evidence"].some((role) => roles.has(role))) return "technical-contract";
   if (["structure-outline", "ticket-map"].some((role) => roles.has(role))) return "implementation-map";
   return null;
 }
 
 /** @param {Partial<ScenarioOptions>} options */
 export async function runWorkingBackwardsScenario(options = {}) {
-  const feature = normalizeFeature(options.feature ?? options.featureIdea);
+  const featureInput = options.feature ?? options.featureIdea;
+  const feature = normalizeFeature(featureInput);
   const repository = isRecord(options.repository) ? /** @type {Record<string, unknown>} */ (options.repository) : {};
-  const profile = recommendWorkingBackwardsProfile({ feature, repository, profile: options.profile, profileEvidence: options.profileEvidence });
+  const risk = assessWorkingBackwardsRisk({
+    feature: featureInput,
+    repository,
+    profile: options.profile ?? (isRecord(options.profileEvidence) ? options.profileEvidence : undefined),
+    riskEvidence: options.riskEvidence ?? options.evidence,
+  });
+  const profile = {
+    ...risk,
+    recommended: risk.recommendedProfile,
+    selected: risk.selectedProfile,
+    requested: risk.requestedProfile ?? risk.recommendedProfile,
+    reason: risk.hardRiskTriggers.length > 0
+      ? `Hard risk triggers require at least Complex: ${risk.hardRiskTriggers.join(", ")}.`
+      : risk.recommendedProfile === "Quick"
+        ? "Behavior is settled, narrow, reversible, and limited to one surface."
+        : "Evidence does not justify Quick; Standard is the default definition depth.",
+  };
   const gateOptions = /** @type {ScenarioOptions} */ ({ ...options, home: options.home ?? ".", workflowId: options.workflowId ?? feature.featureId ?? "working-backwards" });
   const gateResult = await applyExplicitGates(gateOptions);
-  const roles = profile.selected === "Quick" ? quickRoles : standardRoles;
-  const contents = artifactContent(options, profile, feature);
+  const roles = profile.selected === "Quick"
+    ? quickRoles
+    : risk.hardRiskTriggers.length > 0
+      ? [...standardRoles.slice(0, 5), "risk-evidence", ...standardRoles.slice(5)]
+      : standardRoles;
+  const contents = artifactContent(options, profile, feature, risk);
   const existing = readArtifactState(options);
   const artifacts = /** @type {Artifact[]} */ (roles.map((role) => {
     const content = contents.get(role) ?? {};
@@ -450,21 +487,52 @@ export async function runWorkingBackwardsScenario(options = {}) {
   if (resumeFrom === "requirements") gates.product.status = "pending";
   if (resumeFrom === "technical-contract") gates.technical.status = "pending";
   if (resumeFrom === "implementation-map") gates.implementationMap.status = "pending";
+  if (risk.technicalGate.status === "blocked") gates.technical.status = "blocked";
+  for (const artifact of artifacts) {
+    if (artifact.role === "risk-evidence" && risk.technicalGate.status === "blocked") artifact.status = "blocked";
+    else if (gates.product.status === "approved" && gates.product.artifactRoles.includes(artifact.role)) artifact.status = "approved";
+    else if (gates.technical.status === "approved" && gates.technical.artifactRoles.includes(artifact.role)) artifact.status = "approved";
+    else if (gates.implementationMap.status === "approved" && gates.implementationMap.artifactRoles.includes(artifact.role)) artifact.status = "approved";
+  }
   const allGatesApproved = Object.values(gates).every((gate) => gate.status === "approved");
   const handoff = artifacts.find((artifact) => artifact.role === "t3-implementation-handoff");
   if (handoff && allGatesApproved && staleness.affected.size === 0) handoff.status = "ready";
   const featureId = feature.featureId ?? options.workflowId ?? "working-backwards";
+  const ticketMapArtifact = artifacts.find((artifact) => artifact.role === "ticket-map");
+  const governingArtifacts = artifacts.filter((artifact) => artifact.status === "approved" && artifact.role !== "t3-implementation-handoff");
+  const publicationIntent = allGatesApproved && ticketMapArtifact
+    ? prepareTicketPublication({
+        workflowId: options.workflowId ?? featureId,
+        ticketMap: { .../** @type {Record<string, unknown>} */ (ticketMapArtifact.content), status: "approved" },
+        approvedArtifacts: governingArtifacts,
+        repository,
+      })
+    : { ok: false, operation: "prepare-ticket-publication", errors: ["all three definition gates are required"], externalSideEffects: [] };
+  const humanLayerInput = isRecord(options.humanLayer) ? options.humanLayer : {};
+  const humanLayerAdapter = createHumanLayerAdapter({ config: isRecord(humanLayerInput.config) ? humanLayerInput.config : undefined });
+  const humanLayerObservation = humanLayerInput.observation === undefined
+    ? null
+    : await humanLayerAdapter.probeReadOnly({ skill: "working-backwards", observation: humanLayerInput.observation });
+  const humanLayer = {
+    config: humanLayerAdapter.config,
+    observation: humanLayerObservation,
+    receipt: humanLayerAdapter.receipt(isRecord(humanLayerInput.receipt) ? humanLayerInput.receipt : {}),
+    feedback: humanLayerAdapter.feedbackReceipt(humanLayerInput),
+  };
   return {
     ok: true,
     operation: "working-backwards",
     workflowId: options.workflowId ?? featureId,
     featureId,
     profile,
+    risk,
     artifacts,
     gates,
     staleArtifacts: artifacts.filter((artifact) => artifact.status === "stale").map((artifact) => artifact.id),
     resumeFrom,
-    handoffEligible: allGatesApproved && staleness.affected.size === 0,
+    handoffEligible: allGatesApproved && staleness.affected.size === 0 && risk.technicalGate.status !== "blocked",
+    publicationIntent,
+    humanLayer,
     implementationAuthorized: false,
     externalSideEffects: [],
     receipts: gateResult.receipts,

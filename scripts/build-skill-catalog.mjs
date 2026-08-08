@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.5.1";
-if (version !== "0.5.1") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.5.1");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.6.0";
+if (version !== "0.6.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.6.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -228,6 +228,16 @@ const additions = await Promise.all([
       }),
     ]);
 
+const workingBackwards = await sharedSkill(
+  "working-backwards",
+  "artifacts/1.2.0/skills/internal/working-backwards",
+  {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: "artifacts/1.2.0/skills/internal/working-backwards",
+  },
+);
+
 const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";
 const workMultipleHash = await folderHash(resolve(repositoryRoot, workMultipleSource));
 const workMultiple = {
@@ -296,6 +306,7 @@ const catalog = {
     orchestration,
     measurement,
     workMultiple,
+    workingBackwards,
     ...additions,
   ],
 };
