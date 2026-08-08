@@ -1,7 +1,7 @@
 // @ts-check
 
 import { createHash } from "node:crypto";
-import { WORKING_BACKWARDS_GATE_ROLES, hashWorkingBackwardsValue } from "./working-backwards-gates.mjs";
+import { WORKING_BACKWARDS_GATE_ROLES, hashWorkingBackwardsValue, normalizeWorkingBackwardsRepositoryIdentity } from "./working-backwards-gates.mjs";
 
 /** @typedef {Record<string, unknown>} RecordValue */
 /** @typedef {RecordValue & {
@@ -185,15 +185,16 @@ function approvedArtifactRef(artifact) {
   const id = firstString(artifact.id);
   const contentHash = firstString(artifact.contentHash, artifact.hash);
   const sourceRevision = firstString(artifact.sourceRevision);
-  if (!id || !contentHash || artifact.status !== "approved" || artifact.stale === true || artifact.content === undefined || hashValue(artifact.content) !== contentHash || !sourceRevision || !isRecord(artifact.lineage)) return null;
-  return { id, role: firstString(artifact.role) ?? "unknown", contentHash, sourceRevision, lineage: artifact.lineage };
+  const sourceIdentity = normalizeWorkingBackwardsRepositoryIdentity(artifact.sourceIdentity);
+  if (!id || !contentHash || artifact.status !== "approved" || artifact.stale === true || artifact.content === undefined || hashValue(artifact.content) !== contentHash || !sourceIdentity || !sourceRevision || !isRecord(artifact.lineage) || normalizeWorkingBackwardsRepositoryIdentity(artifact.lineage.sourceIdentity) !== sourceIdentity || artifact.lineage.sourceRevision !== sourceRevision) return null;
+  return { id, role: firstString(artifact.role) ?? "unknown", contentHash, sourceIdentity, sourceRevision, lineage: artifact.lineage };
 }
 
 /** @param {unknown} value @returns {RecordValue} */
 function normalizeRepository(value) {
   const repository = isRecord(value) ? value : {};
   return {
-    identity: firstString(repository.identity, repository.repoIdentity, repository.repository, repository.path),
+    identity: normalizeWorkingBackwardsRepositoryIdentity(firstString(repository.identity, repository.repoIdentity, repository.repository, repository.path)),
     baseRevision: firstString(repository.baseRevision, repository.revision, repository.sha),
   };
 }
@@ -239,13 +240,14 @@ function validPublicationResumeReceipt(receipt) {
     safeToResume: receipt.safeToResume,
     nextDependencyOrder: receipt.nextDependencyOrder,
     authorityConsumed: receipt.authorityConsumed,
+    authorityReceipt: receipt.authorityReceipt,
     implementationAuthorized: receipt.implementationAuthorized,
   };
-  return receipt.schemaVersion === 1 && receipt.operation === "publish-approved-tickets" && receipt.safeToResume === true && receipt.authorityConsumed === true && receipt.implementationAuthorized === false && receipt.receiptHash === hashValue(body);
+  return receipt.schemaVersion === 1 && receipt.operation === "publish-approved-tickets" && receipt.safeToResume === true && receipt.authorityConsumed === true && (typeof receipt.authorityReceipt === "string" || isRecord(receipt.authorityReceipt)) && receipt.implementationAuthorized === false && receipt.receiptHash === hashValue(body);
 }
 
-/** @param {unknown} value @param {string} workflowId @param {RecordValue[]} artifacts @param {unknown} ticketMap */
-function validateGateReceipts(value, workflowId, artifacts, ticketMap) {
+/** @param {unknown} value @param {string} workflowId @param {RecordValue[]} artifacts @param {unknown} ticketMap @param {RecordValue} repository */
+function validateGateReceipts(value, workflowId, artifacts, ticketMap, repository) {
   const required = ["product", "technical", "implementationMap"];
   const receipts = Array.isArray(value) ? value.filter(isRecord) : [];
   const errors = [];
@@ -257,6 +259,7 @@ function validateGateReceipts(value, workflowId, artifacts, ticketMap) {
       continue;
     }
     if (receipt.workflowId !== workflowId) errors.push(`${gate} gate receipt workflow mismatch`);
+    if (receipt.repositoryIdentity !== repository.identity || receipt.repositoryRevision !== repository.baseRevision) errors.push(`${gate} gate receipt repository mismatch`);
     const snapshots = Array.isArray(receipt.artifacts) ? receipt.artifacts.filter(isRecord) : [];
     if (snapshots.length === 0) errors.push(`${gate} gate receipt has no artifact snapshots`);
     const roles = WORKING_BACKWARDS_GATE_ROLES[/** @type {keyof typeof WORKING_BACKWARDS_GATE_ROLES} */ (gate)];
@@ -265,6 +268,7 @@ function validateGateReceipts(value, workflowId, artifacts, ticketMap) {
       schemaVersion: receipt.schemaVersion,
       workflowId: receipt.workflowId,
       gate: receipt.gate,
+      repositoryIdentity: receipt.repositoryIdentity,
       repositoryRevision: receipt.repositoryRevision,
       artifacts: receipt.artifacts,
       approvedAt: receipt.approvedAt,
@@ -272,7 +276,7 @@ function validateGateReceipts(value, workflowId, artifacts, ticketMap) {
     if (receipt.receiptHash !== hashWorkingBackwardsValue(receiptBody)) errors.push(`${gate} gate receipt integrity failure`);
     for (const snapshot of snapshots) {
       const artifact = artifacts.find((candidate) => candidate.id === snapshot.id && candidate.role === snapshot.role);
-      if (!artifact || artifact.contentHash !== snapshot.contentHash || artifact.sourceRevision !== snapshot.sourceRevision || JSON.stringify(stableValue(artifact.lineage)) !== JSON.stringify(stableValue(snapshot.lineage))) errors.push(`${gate} gate receipt artifact drift: ${String(snapshot.id)}`);
+      if (!artifact || artifact.contentHash !== snapshot.contentHash || artifact.sourceIdentity !== repository.identity || snapshot.sourceIdentity !== repository.identity || artifact.sourceRevision !== repository.baseRevision || snapshot.sourceRevision !== repository.baseRevision || JSON.stringify(stableValue(artifact.lineage)) !== JSON.stringify(stableValue(snapshot.lineage))) errors.push(`${gate} gate receipt artifact drift: ${String(snapshot.id)}`);
     }
   }
   const implementation = receipts.find((candidate) => candidate.gate === "implementationMap");
@@ -301,7 +305,7 @@ export function prepareTicketPublication(options = {}) {
   const repository = normalizeRepository(options.repository);
   if (!repository.identity || !repository.baseRevision) return { ok: false, operation: "prepare-ticket-publication", errors: ["repository identity and base revision are required"], externalSideEffects: [] };
   const workflowId = firstString(options.workflowId) ?? "working-backwards";
-  const gateValidation = validateGateReceipts(options.gateReceipts, workflowId, artifacts, ticketMap);
+  const gateValidation = validateGateReceipts(options.gateReceipts, workflowId, artifacts, ticketMap, repository);
   if (!gateValidation.ok) return { ok: false, operation: "prepare-ticket-publication", errors: gateValidation.errors, externalSideEffects: [] };
   const intentBody = {
     workflowId,
@@ -346,13 +350,20 @@ export async function publishApprovedTickets(options = {}) {
   const lookupIssue = tracker?.findByIdempotencyKey ?? tracker?.lookupIssue;
   const tickets = Array.isArray(intent.tickets) ? intent.tickets.filter(isRecord) : [];
   const resumeReceipt = isRecord(options.resumeReceipt) ? options.resumeReceipt : null;
+  const authority = isRecord(options.authority) ? options.authority : null;
+  let authorityReceipt = resumeReceipt?.authorityReceipt ?? null;
   if (resumeReceipt && resumeReceipt.intentId !== intent.intentId) throw new Error("Resume receipt does not match publication intent");
   if (resumeReceipt && !validPublicationResumeReceipt(resumeReceipt)) throw new Error("Resume receipt integrity is invalid");
-  if (!resumeReceipt) {
-    const authority = isRecord(options.authority) ? options.authority : null;
+  if (resumeReceipt) {
+    if (typeof lookupIssue !== "function") throw new Error("Publication resume requires tracker reconciliation by idempotency key");
+    if (typeof authority?.validateResume !== "function") throw new Error("Publication resume requires injected authority validation");
+    const validation = await authority.validateResume({ intentId: intent.intentId, authorityReceipt: resumeReceipt.authorityReceipt, publicationReceipt: resumeReceipt });
+    if (validation !== true && (!isRecord(validation) || validation.valid !== true || validation.intentId !== intent.intentId)) throw new Error("Publication resume authority validation failed");
+  } else {
     if (typeof authority?.consumeIntent !== "function") throw new Error("Publication requires an injected one-shot intent authority");
     const consumed = await authority.consumeIntent({ intentId: intent.intentId, operation: "publish-approved-tickets" });
-    if (consumed !== true && (!isRecord(consumed) || consumed.consumed !== true || consumed.intentId !== intent.intentId)) throw new Error("Publication intent authority was not consumed");
+    if (!isRecord(consumed) || consumed.consumed !== true || consumed.intentId !== intent.intentId || !(typeof consumed.resumeToken === "string" || isRecord(consumed.resumeToken))) throw new Error("Publication intent authority must return an opaque consumed-intent receipt");
+    authorityReceipt = consumed.resumeToken;
   }
   const created = Array.isArray(resumeReceipt?.created) ? resumeReceipt.created.filter(isRecord).map((entry) => ({ ...entry })) : [];
   const reconciled = /** @type {RecordValue[]} */ ([]);
@@ -368,6 +379,7 @@ export async function publishApprovedTickets(options = {}) {
     safeToResume: true,
     nextDependencyOrder: tickets.filter((candidate) => !trackerIds.has(String(candidate.id))).map((candidate) => candidate.id),
     authorityConsumed: true,
+    authorityReceipt,
     implementationAuthorized: false,
   }), cause);
   for (const ticket of tickets) {
@@ -434,7 +446,7 @@ export async function publishApprovedTickets(options = {}) {
 /** @param {unknown} value @returns {RecordValue[]} */
 function artifactRefsFrom(value) {
   const refs = Array.isArray(value) ? value : isRecord(value) && Array.isArray(value.governingArtifacts) ? value.governingArtifacts : [];
-  return refs.filter(isRecord).map((ref) => ({ id: firstString(ref.id), role: firstString(ref.role) ?? "unknown", contentHash: firstString(ref.contentHash, ref.hash) })).filter((ref) => ref.id && ref.contentHash);
+  return refs.filter(isRecord).map((ref) => ({ id: firstString(ref.id), role: firstString(ref.role) ?? "unknown", contentHash: firstString(ref.contentHash, ref.hash), sourceIdentity: normalizeWorkingBackwardsRepositoryIdentity(ref.sourceIdentity), sourceRevision: firstString(ref.sourceRevision) })).filter((ref) => ref.id && ref.contentHash && ref.sourceIdentity && ref.sourceRevision);
 }
 
 /**
@@ -457,7 +469,7 @@ export function createT3ImplementationHandoff(options = {}) {
   const trackerState = normalizeTrackerState(options.trackerState ?? publication?.trackerState);
   if (trackerState.status === "unknown") throw new Error("T3 handoff requires tracker state");
   const workflowId = firstString(options.workflowId, intent?.workflowId) ?? "working-backwards";
-  const gateValidation = validateGateReceipts(options.gateReceipts ?? intent?.gateReceipts, workflowId, rawArtifacts, options.ticketMap ?? intent?.tickets ?? options.tickets);
+  const gateValidation = validateGateReceipts(options.gateReceipts ?? intent?.gateReceipts, workflowId, rawArtifacts, options.ticketMap ?? intent?.tickets ?? options.tickets, repository);
   if (!gateValidation.ok) throw new Error(`T3 handoff requires complete gate receipts: ${gateValidation.errors.join("; ")}`);
   const firstSliceId = firstString(options.firstTerminalSlice, options.firstTerminalSliceId) ?? validation.frontier[0];
   if (!firstSliceId || !validation.frontier.includes(firstSliceId)) throw new Error("First terminal slice must be in the executable frontier");
@@ -495,7 +507,7 @@ export function createT3ImplementationHandoff(options = {}) {
 
 /** @param {unknown} value @returns {RecordValue[]} */
 function currentArtifactRefs(value) {
-  return extractArtifacts(value).map((artifact) => ({ id: firstString(artifact.id), contentHash: firstString(artifact.contentHash, artifact.hash), status: firstString(artifact.status), stale: artifact.stale === true, integrity: artifact.content !== undefined && hashValue(artifact.content) === firstString(artifact.contentHash, artifact.hash) })).filter((artifact) => artifact.id);
+  return extractArtifacts(value).map((artifact) => ({ id: firstString(artifact.id), contentHash: firstString(artifact.contentHash, artifact.hash), sourceIdentity: normalizeWorkingBackwardsRepositoryIdentity(artifact.sourceIdentity), sourceRevision: firstString(artifact.sourceRevision), status: firstString(artifact.status), stale: artifact.stale === true, integrity: artifact.content !== undefined && hashValue(artifact.content) === firstString(artifact.contentHash, artifact.hash) })).filter((artifact) => artifact.id);
 }
 
 /**
@@ -526,7 +538,7 @@ export function verifyT3HandoffFreshness(options = {}) {
   if (expectedArtifacts.length === 0 || rawExpectedArtifacts.length !== expectedArtifacts.length) drift.push("handoff governing artifact evidence is missing");
   for (const expected of expectedArtifacts) {
     const actual = actualArtifacts.find((candidate) => candidate.id === expected.id);
-    if (!actual || actual.status !== "approved" || actual.stale || !actual.integrity || actual.contentHash !== expected.contentHash) drift.push(`governing artifact drift: ${expected.id}`);
+    if (!actual || actual.status !== "approved" || actual.stale || !actual.integrity || actual.contentHash !== expected.contentHash || actual.sourceIdentity !== expectedRepository.identity || expected.sourceIdentity !== expectedRepository.identity || actual.sourceRevision !== expectedRepository.baseRevision || expected.sourceRevision !== expectedRepository.baseRevision) drift.push(`governing artifact drift: ${expected.id}`);
   }
   const currentGateReceipts = Array.isArray(options.gateReceipts) ? options.gateReceipts.filter(isRecord) : [];
   if (!Array.isArray(handoff?.gateReceipts) || handoff.gateReceipts.length !== 3 || handoff.gateReceiptsHash !== hashValue(handoff.gateReceipts)) drift.push("handoff gate receipt evidence is invalid");

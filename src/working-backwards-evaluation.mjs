@@ -44,14 +44,23 @@ function normalizeDisposition(source, key) {
   return { status, value: value.value ?? null, reason: typeof value.reason === "string" ? value.reason : null };
 }
 
-/** @param {unknown} input */
-function validateEvaluation(input) {
+/** @param {unknown} input @param {{verifySourcePacket?: (packet: Record<string, unknown>) => boolean}} options */
+function validateEvaluation(input, options) {
   const source = record(input);
   const errors = [];
+  /** @param {Record<string, unknown>} packet */
+  const verifiedSourcePacket = (packet) => {
+    try { return typeof options.verifySourcePacket === "function" && options.verifySourcePacket(packet) === true; } catch { return false; }
+  };
   const dogfood = record(source.dogfood);
   const provenance = Array.isArray(dogfood.provenance) ? dogfood.provenance.filter(isRecord) : [];
+  const requiredDogfoodSources = ["approved-spec", "artifact-graph", "ticket-dependency-graph", "t3-handoff"];
   if (strings(dogfood.reconstructedFrom).length < 4 || dogfood.chatHistoryRequired !== false) errors.push("dogfood reconstruction provenance is incomplete");
   if (provenance.length === 0 || provenance.some((entry) => typeof entry.id !== "string" || typeof entry.source !== "string" || !/^sha256:[a-f0-9]{64}$/.test(String(entry.contentHash)) || entry.content === undefined || hashValue(entry.content) !== entry.contentHash)) errors.push("dogfood provenance hashes are required");
+  for (const id of requiredDogfoodSources) {
+    const packet = provenance.find((entry) => entry.id === id);
+    if (!packet || typeof packet.sourceRevision !== "string" || !verifiedSourcePacket(packet)) errors.push(`dogfood ${id} requires a source-revision-bound verified source packet`);
+  }
   const cases = Array.isArray(source.historicalCases) ? source.historicalCases.filter(isRecord) : [];
   if (cases.length !== 2) errors.push("exactly two historical validation replay records are required");
   for (const entry of cases) {
@@ -59,6 +68,13 @@ function validateEvaluation(input) {
     if (entry.label !== "historical-validation-case") errors.push(`${id} must retain the historical-validation-case label`);
     const chain = Array.isArray(entry.artifactChain) ? entry.artifactChain.filter(isRecord) : [];
     if (chain.length < 3 || chain.some((artifact) => typeof artifact.role !== "string" || !/^sha256:[a-f0-9]{64}$/.test(String(artifact.contentHash)) || artifact.content === undefined || hashValue(artifact.content) !== artifact.contentHash)) errors.push(`${id} replay artifact chain is incomplete`);
+    if (chain.some((artifact) => typeof artifact.sourceRevision !== "string" || typeof artifact.provenanceId !== "string")) errors.push(`${id} replay artifact chain lacks source bindings`);
+    const thenKnownEvidence = Array.isArray(entry.thenKnownEvidence) ? entry.thenKnownEvidence.filter(isRecord) : [];
+    if (thenKnownEvidence.length === 0 || thenKnownEvidence.some((packet) => typeof packet.id !== "string" || typeof packet.sourceRevision !== "string" || !verifiedSourcePacket(packet))) errors.push(`${id} then-known evidence requires verified source packets`);
+    const thenKnownIds = new Set(thenKnownEvidence.map((packet) => packet.id));
+    if (chain.some((artifact) => !thenKnownIds.has(artifact.provenanceId))) errors.push(`${id} replay artifact chain is not bound to then-known evidence`);
+    const gateReceiptBindings = Array.isArray(entry.gateReceiptBindings) ? entry.gateReceiptBindings.filter(isRecord) : [];
+    if (gateReceiptBindings.length !== 3 || gateReceiptBindings.some((receipt) => typeof receipt.gate !== "string" || typeof receipt.receiptHash !== "string" || typeof receipt.sourceRevision !== "string" || !verifiedSourcePacket(receipt))) errors.push(`${id} replay requires three verified source-bound gate receipt bindings`);
     const assessments = Array.isArray(entry.knownReworkAssessment) ? entry.knownReworkAssessment.filter(isRecord) : [];
     if (assessments.length === 0 || assessments.some((assessment) => !classifications.includes(String(assessment.classification)) || typeof assessment.rationale !== "string")) errors.push(`${id} known-rework assessment is incomplete`);
     if (strings(entry.unavailableFields).length === 0) errors.push(`${id} must record unavailable fields`);
@@ -85,8 +101,8 @@ function validateEvaluation(input) {
  * fails closed and cannot recommend a pilot.
  * @param {unknown} input
  */
-export function evaluateWorkingBackwards(input = {}) {
-  const validation = validateEvaluation(input);
+export function evaluateWorkingBackwards(input = {}, options = {}) {
+  const validation = validateEvaluation(input, options);
   const historicalCases = validation.cases.map((entry) => {
     const assessments = Array.isArray(entry.knownReworkAssessment) ? entry.knownReworkAssessment.filter(isRecord) : [];
     const distinct = [...new Set(assessments.map((assessment) => String(assessment.classification)))];
@@ -106,7 +122,9 @@ export function evaluateWorkingBackwards(input = {}) {
   const sideEffects = Object.fromEntries(sideEffectKeys.map((key) => [key, normalizeDisposition(validation.sideEffects, key)]));
   return {
     ok: validation.ok,
+    status: validation.ok ? "complete" : "incomplete",
     errors: validation.errors,
+    missingFields: validation.errors,
     schemaVersion: 2,
     operation: "working-backwards-evaluation",
     evaluationType: "dogfood-and-historical-validation",

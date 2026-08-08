@@ -12,6 +12,7 @@ import {
   validateWorkingBackwardsGateReceipts,
   WORKING_BACKWARDS_GATES,
   WORKING_BACKWARDS_GATE_ROLES,
+  normalizeWorkingBackwardsRepositoryIdentity,
 } from "./working-backwards-gates.mjs";
 
 /** @typedef {object} Feature
@@ -53,6 +54,7 @@ import {
  * @property {number} version
  * @property {string} status
  * @property {string} visibility
+ * @property {string} sourceIdentity
  * @property {string} sourceRevision
  * @property {unknown} content
  * @property {string} contentHash
@@ -304,6 +306,16 @@ function completeFaq(value) {
   });
 }
 
+const suspiciousClaimPattern = /(?:user quote|testimonial|\b\d+(?:\.\d+)?%|[$€£]\s?\d|\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b20\d{2}[-/]\d{1,2}|external provider|guarantee[sd]?)/i;
+
+/** @param {Record<string, unknown>} evidence @param {string} claim */
+function evidenceSupportsClaim(evidence, claim) {
+  const mappedClaims = [evidence.claim, ...(Array.isArray(evidence.claims) ? evidence.claims : [])].filter((value) => typeof value === "string");
+  const hash = typeof evidence.contentHash === "string" ? evidence.contentHash : "";
+  const integrity = /^sha256:[a-f0-9]{64}$/.test(hash) && (evidence.content === undefined || contentHash(evidence.content) === hash);
+  return typeof evidence.id === "string" && evidence.id.trim().length > 0 && typeof evidence.source === "string" && evidence.source.trim().length > 0 && integrity && mappedClaims.includes(claim);
+}
+
 /** @param {unknown} featureInput @param {Feature} feature @param {Record<string, unknown>} repository @param {string} profile */
 function validateDefinition(featureInput, feature, repository, profile) {
   const raw = isRecord(featureInput) ? featureInput : {};
@@ -316,12 +328,12 @@ function validateDefinition(featureInput, feature, repository, profile) {
   if (!completeFaq(feature.internalFaq)) productErrors.push("missing or incomplete internal FAQ");
   if (feature.acceptanceCriteria.length === 0) productErrors.push("missing observable acceptance criteria");
   if (feature.evidenceGaps.length > 0) productErrors.push(`unresolved evidence gaps: ${feature.evidenceGaps.join("; ")}`);
-  if (feature.unsupportedClaims.length > 0) productErrors.push(`unsupported claims: ${feature.unsupportedClaims.join("; ")}`);
   if (raw.productFactsResolved !== true && profile !== "Quick") productErrors.push("product facts are not explicitly resolved");
-  const claimText = [feature.title, feature.userOutcome, feature.experience, ...faqText(feature.externalFaq), ...faqText(feature.internalFaq)].join(" ");
-  const suspiciousClaim = /(?:user quote|testimonial|\b\d+(?:\.\d+)?%|[$€£]\s?\d|\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b20\d{2}[-/]\d{1,2}|external provider|guarantee[sd]?)/i.test(claimText);
+  const suspiciousClaims = [feature.title, feature.userOutcome, feature.experience, ...faqText(feature.externalFaq), ...faqText(feature.internalFaq)].filter((claim) => suspiciousClaimPattern.test(claim));
+  const claimsRequiringEvidence = [...new Set([...feature.unsupportedClaims, ...suspiciousClaims])];
   const claimEvidence = Array.isArray(raw.claimEvidence) ? raw.claimEvidence.filter(isRecord) : [];
-  if (suspiciousClaim && claimEvidence.length === 0) productErrors.push("unsupported quote, metric, price, date, or external capability claim");
+  const unsupported = claimsRequiringEvidence.filter((claim) => !claimEvidence.some((evidence) => evidenceSupportsClaim(evidence, claim)));
+  if (unsupported.length > 0) productErrors.push(`unsupported quote, metric, price, date, or external capability claims: ${unsupported.join("; ")}`);
   const normalizedScope = feature.scope.trim().toLowerCase();
   if (normalizedScope && feature.notBuilding.some((entry) => entry.trim().toLowerCase() === normalizedScope)) productErrors.push("scope contradicts not-building boundary");
   if (textList(raw.scopeContradictions).length > 0) productErrors.push("explicit scope contradiction remains unresolved");
@@ -517,6 +529,7 @@ async function applyExplicitGates(options, artifacts, definitionValidation, risk
     const gateReceipt = createWorkingBackwardsGateReceipt({
       workflowId: options.workflowId ?? "working-backwards",
       gate,
+      repositoryIdentity: normalizeWorkingBackwardsRepositoryIdentity((/** @type {Record<string, unknown>} */ (options.repository ?? {})).identity) ?? "unknown",
       repositoryRevision: String((/** @type {Record<string, unknown>} */ (options.repository ?? {})).revision ?? (/** @type {Record<string, unknown>} */ (options.repository ?? {})).baseRevision ?? "unknown"),
       artifacts: /** @type {Record<string, unknown>[]} */ (artifacts),
     });
@@ -606,6 +619,8 @@ export async function runWorkingBackwardsScenario(options = {}) {
   };
   const featureId = feature.featureId ?? options.workflowId ?? "working-backwards";
   const workflowId = options.workflowId ?? featureId;
+  const repositoryIdentity = normalizeWorkingBackwardsRepositoryIdentity(repository.identity) ?? "unknown";
+  const repositoryRevision = String(repository.revision ?? repository.baseRevision ?? "unknown");
   const gateOptions = /** @type {ScenarioOptions} */ ({ ...options, home: options.home ?? ".", workflowId });
   const roles = profile.selected === "Quick"
     ? quickRoles
@@ -624,10 +639,11 @@ export async function runWorkingBackwardsScenario(options = {}) {
       version: 1,
       status: role === "t3-implementation-handoff" ? "candidate" : "draft",
       visibility,
-      sourceRevision: repository.revision ?? repository.baseRevision ?? "unknown",
+      sourceIdentity: repositoryIdentity,
+      sourceRevision: repositoryRevision,
       content,
       contentHash: contentHash(content),
-      lineage: { dependsOn, governedBy: dependsOn, sourceRevision: repository.revision ?? repository.baseRevision ?? "unknown" },
+      lineage: { dependsOn, governedBy: dependsOn, sourceIdentity: repositoryIdentity, sourceRevision: repositoryRevision },
     };
   }));
   const staleness = applyExistingState(artifacts, existing);
@@ -636,7 +652,8 @@ export async function runWorkingBackwardsScenario(options = {}) {
   const initialReceiptValidation = validateWorkingBackwardsGateReceipts({
     receipts: persistedReceipts,
     artifacts: /** @type {Record<string, unknown>[]} */ (artifacts),
-    repositoryRevision: String(repository.revision ?? repository.baseRevision ?? "unknown"),
+    repositoryIdentity,
+    repositoryRevision,
     artifactStateSupplied: options.artifactState !== undefined,
   });
   const gateResult = await applyExplicitGates(gateOptions, artifacts, definitionValidation, risk, initialReceiptValidation.validReceipts);
@@ -646,7 +663,8 @@ export async function runWorkingBackwardsScenario(options = {}) {
     : validateWorkingBackwardsGateReceipts({
         receipts: gateResult.gateReceipts,
         artifacts: /** @type {Record<string, unknown>[]} */ (artifacts),
-        repositoryRevision: String(repository.revision ?? repository.baseRevision ?? "unknown"),
+        repositoryIdentity,
+        repositoryRevision,
         artifactStateSupplied: options.artifactState !== undefined || acceptedThisRun,
       });
   const gates = gateState(receiptValidation.validReceipts, roles, definitionValidation, risk);

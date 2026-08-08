@@ -102,6 +102,8 @@ function mergeConfig(override) {
   const timing = typeof worktree.timing === "string"
     ? worktree.timing
     : typeof candidate.worktreeTiming === "string" ? candidate.worktreeTiming : defaultConfig.worktreeTiming;
+  const unsafe = location !== "local" || daemon.syncsExternally === true || timing !== "Never" || candidate.autoAdvance === true || integrations.slack === true || integrations.linear === true || integrations.external === true;
+  if (unsafe) throw new Error("Unsafe HumanLayer mode requires a separate authorized operation that is not implemented");
   return {
     daemon: {
       location,

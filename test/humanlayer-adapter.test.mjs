@@ -18,6 +18,18 @@ test("initial HumanLayer configuration is local, never-worktree, and integration
   assert.equal(DEFAULT_HUMANLAYER_CONFIG.autoAdvance, false);
   assert.deepEqual(DEFAULT_HUMANLAYER_CONFIG.integrations, { slack: false, linear: false, external: false });
 });
+test("initial HumanLayer adapter rejects every unsafe future mode", () => {
+  for (const config of [
+    { daemon: { location: "remote" } },
+    { daemon: { syncsExternally: true } },
+    { worktree: { timing: "Immediately" } },
+    { worktreeTiming: "AfterApproval" },
+    { autoAdvance: true },
+    { integrations: { slack: true } },
+    { integrations: { linear: true } },
+    { integrations: { external: true } },
+  ]) assert.throws(() => createHumanLayerAdapter({ config }), /not implemented/i);
+});
 test("task links are canonical-workflow references and cannot be rebound", () => {
   const links = new Map();
   assert.deepEqual(linkHumanLayerTask({ taskId: "hl-task-1", workflowId: "WB-1", existingLinks: links }), {

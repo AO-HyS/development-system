@@ -87,6 +87,16 @@ test("gate receipts bind exact artifacts and stale or missing artifact state can
   assert.ok(Object.values(changedRevision.gates).every((gate) => gate.status === "pending"));
   assert.equal(changedRevision.receiptValidation.invalidFrom, "product");
 
+  const changedRepository = await runWorkingBackwardsScenario({
+    home,
+    workflowId: "WB-receipts",
+    feature: completeFeature,
+    repository: { identity: "other/example", revision: "abc123", observed: "Search filters are currently ephemeral." },
+    artifactState: { artifacts: first.artifacts },
+  });
+  assert.equal(changedRepository.receiptValidation.invalidFrom, "product");
+  assert.match(changedRepository.receiptValidation.reason, /identity/i);
+
   const changedFeature = await runWorkingBackwardsScenario({
     home,
     workflowId: "WB-receipts",
@@ -150,6 +160,33 @@ test("unsupported customer claims and scope contradictions block the product gat
   assert.ok(Array.isArray(brief.content.internalFaq));
 });
 
+test("claim evidence must be integrity-bound and mapped to the exact suspicious claim", async () => {
+  const claim = "Our user quote proves 99% success by Friday for every external provider.";
+  const base = { ...completeFeature, experience: claim };
+  for (const claimEvidence of [
+    [{}],
+    [{ id: "e-1", source: "research.md", content: { finding: "unrelated" }, contentHash: hash({ finding: "unrelated" }), claim: "A different claim" }],
+  ]) {
+    const result = await runWorkingBackwardsScenario({
+      home: await mkdtemp(resolve(tmpdir(), "aohys-wb-claim-map-")),
+      workflowId: "WB-claim-map",
+      feature: { ...base, claimEvidence },
+      repository: { identity: "acme/example", revision: "abc123", observed: "Observed." },
+      gateOperations: ["approve-product-contract"],
+    });
+    assert.equal(result.gates.product.status, "blocked");
+  }
+  const content = { finding: "The exact claim is supported by the cited primary record." };
+  const supported = await runWorkingBackwardsScenario({
+    home: await mkdtemp(resolve(tmpdir(), "aohys-wb-claim-map-")),
+    workflowId: "WB-claim-map",
+    feature: { ...base, claimEvidence: [{ id: "e-2", source: "primary-record.json", content, contentHash: hash(content), claim }] },
+    repository: { identity: "acme/example", revision: "abc123", observed: "Observed." },
+    gateOperations: ["approve-product-contract"],
+  });
+  assert.equal(supported.gates.product.status, "approved");
+});
+
 test("Quick still holds exactly three receipt-bound gates and incomplete FAQ evidence fails closed", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-quick-gates-"));
   const quick = await runWorkingBackwardsScenario({
@@ -188,17 +225,20 @@ test("publication consumes an intent-bound authority and safely resumes a partia
     ["product-contract", { outcome: "approved" }],
     ["domain-technical-design", { design: "approved" }],
     ["ticket-map", ticketMap],
-  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceRevision: "abc123" } }));
-  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
+  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceIdentity: "acme/example", sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceIdentity: "acme/example", sourceRevision: "abc123" } }));
+  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryIdentity: "acme/example", repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
   const intent = prepareTicketPublication({ workflowId: "WB", repository: { identity: "acme/example", baseRevision: "abc123" }, approvedArtifacts: artifacts, ticketMap, gateReceipts });
   assert.equal(intent.ok, true);
+  const wrongRepositoryIntent = prepareTicketPublication({ workflowId: "WB", repository: { identity: "other/example", baseRevision: "abc123" }, approvedArtifacts: artifacts, ticketMap, gateReceipts });
+  assert.equal(wrongRepositoryIntent.ok, false);
+  assert.match(wrongRepositoryIntent.errors.join(" "), /repository|artifact set/i);
   const calls = [];
   let failure;
   try {
     await publishApprovedTickets({
       intent,
       publicationApproval: { intentId: intent.intentId, authorized: true },
-      authority: { consumeIntent: async ({ intentId }) => intentId === intent.intentId },
+      authority: { consumeIntent: async ({ intentId }) => ({ consumed: true, intentId, resumeToken: "opaque-run-1" }) },
       tracker: { createIssue: async (issue) => {
         calls.push(issue);
         if (issue.sliceId === "b") throw new Error("tracker unavailable");
@@ -216,8 +256,9 @@ test("publication consumes an intent-bound authority and safely resumes a partia
   const resumed = await publishApprovedTickets({
     intent,
     publicationApproval: { intentId: intent.intentId, authorized: true },
+    authority: { validateResume: async ({ intentId, authorityReceipt }) => intentId === intent.intentId && authorityReceipt === "opaque-run-1" },
     resumeReceipt: failure.receipt,
-    tracker: { createIssue: async (issue) => { resumedCalls.push(issue); return { id: "LIN-2" }; } },
+    tracker: { findByIdempotencyKey: async () => null, createIssue: async (issue) => { resumedCalls.push(issue); return { id: "LIN-2" }; } },
   });
   assert.deepEqual(resumedCalls.map((call) => call.sliceId), ["b"]);
   assert.deepEqual(resumed.created.map((entry) => entry.id), ["LIN-1", "LIN-2"]);
@@ -227,7 +268,7 @@ test("publication consumes an intent-bound authority and safely resumes a partia
     await publishApprovedTickets({
       intent,
       publicationApproval: { intentId: intent.intentId, authorized: true },
-      authority: { consumeIntent: async () => true },
+      authority: { consumeIntent: async () => ({ consumed: true, intentId: intent.intentId, resumeToken: "opaque-run-2" }) },
       tracker: { createIssue: async (issue) => issue.sliceId === "a" ? { id: "LIN-1" } : {} },
     });
   } catch (error) {
@@ -236,12 +277,47 @@ test("publication consumes an intent-bound authority and safely resumes a partia
   assert.equal(malformedFailure.code, "WORKING_BACKWARDS_PARTIAL_PUBLICATION");
   assert.equal(malformedFailure.receipt.created[0].id, "LIN-1");
   assert.equal(malformedFailure.receipt.safeToResume, true);
+  const forged = { ...failure.receipt, created: [] };
+  const { receiptHash: ignored, ...forgedBody } = forged;
+  forged.receiptHash = hash(forgedBody);
   await assert.rejects(publishApprovedTickets({
     intent,
     publicationApproval: { intentId: intent.intentId, authorized: true },
-    resumeReceipt: { ...failure.receipt, created: [] },
-    tracker: { createIssue: async () => ({ id: "duplicate" }) },
-  }), /receipt integrity/i);
+    authority: { validateResume: async () => false },
+    resumeReceipt: forged,
+    tracker: { findByIdempotencyKey: async () => null, createIssue: async () => ({ id: "duplicate" }) },
+  }), /authority validation failed/i);
+
+  const trackerRecords = new Map();
+  let createA = 0;
+  let lostFailure;
+  try {
+    await publishApprovedTickets({
+      intent,
+      publicationApproval: { intentId: intent.intentId, authorized: true },
+      authority: { consumeIntent: async () => ({ consumed: true, intentId: intent.intentId, resumeToken: "opaque-lost" }) },
+      tracker: { createIssue: async (issue) => {
+        if (issue.sliceId === "a") {
+          createA += 1;
+          trackerRecords.set(issue.idempotencyKey, { id: "LIN-LOST" });
+          throw new Error("response lost after commit");
+        }
+        return { id: "LIN-B" };
+      } },
+    });
+  } catch (error) { lostFailure = error; }
+  const recovered = await publishApprovedTickets({
+    intent,
+    publicationApproval: { intentId: intent.intentId, authorized: true },
+    authority: { validateResume: async ({ authorityReceipt }) => authorityReceipt === "opaque-lost" },
+    resumeReceipt: lostFailure.receipt,
+    tracker: {
+      findByIdempotencyKey: async ({ idempotencyKey }) => trackerRecords.get(idempotencyKey) ?? null,
+      createIssue: async (issue) => ({ id: issue.sliceId === "b" ? "LIN-B" : "duplicate" }),
+    },
+  });
+  assert.equal(createA, 1);
+  assert.equal(recovered.reconciled[0].id, "LIN-LOST");
 });
 
 test("T3 handoff rejects fabricated gates and binds complete receipts during freshness", () => {
@@ -250,9 +326,9 @@ test("T3 handoff rejects fabricated gates and binds complete receipts during fre
     ["product-contract", { outcome: "approved" }],
     ["domain-technical-design", { design: "approved" }],
     ["ticket-map", ticketMap],
-  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceRevision: "abc123" } }));
+  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceIdentity: "acme/example", sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceIdentity: "acme/example", sourceRevision: "abc123" } }));
   assert.throws(() => createT3ImplementationHandoff({ ticketMap, approvedArtifacts: artifacts, repository: { identity: "acme/example", baseRevision: "abc123" }, trackerState: { status: "published", issues: [] } }), /gate receipts/i);
-  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
+  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryIdentity: "acme/example", repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
   const handoff = createT3ImplementationHandoff({ workflowId: "WB", ticketMap, approvedArtifacts: artifacts, gateReceipts, repository: { identity: "acme/example", baseRevision: "abc123" }, trackerState: { status: "published", issues: [] } });
   assert.equal(handoff.gateReceipts.length, 3);
   const stale = verifyT3HandoffFreshness({ handoff, approvedArtifacts: artifacts, gateReceipts: gateReceipts.slice(0, 2), repository: handoff.repository, trackerState: { status: "published", issues: [] } });

@@ -722,7 +722,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.2.0/skills/internal/working-backwards",
           "destination": ".agents/skills/working-backwards",
-          "folderSha256": "6ec4b20332e7cb8dc6f96cb0e6b02d8d86352a595b1fe38e987a6d6617267838",
+          "folderSha256": "d4659b77b32879fa17d5491b7741985236f95b22c1bd9c34e14ed15687d44969",
           "expectedMirrorOf": null
         },
         {
@@ -730,7 +730,7 @@
           "harness": "factory",
           "sourceDirectory": "artifacts/1.2.0/skills/internal/working-backwards",
           "destination": ".factory/skills/working-backwards",
-          "folderSha256": "6ec4b20332e7cb8dc6f96cb0e6b02d8d86352a595b1fe38e987a6d6617267838",
+          "folderSha256": "d4659b77b32879fa17d5491b7741985236f95b22c1bd9c34e14ed15687d44969",
           "expectedMirrorOf": "working-backwards.codex"
         }
       ]

@@ -1,5 +1,13 @@
 {
   "schemaVersion": 2,
+  "status": "incomplete",
+  "missingSourcePackets": [
+    "source-revision-bound approved spec packet",
+    "source-revision-bound scenario output packet",
+    "source-revision-bound ticket graph packet",
+    "source-revision-bound private handoff packet",
+    "then-known historical evidence packets and gate receipt bindings"
+  ],
   "dogfood": {
     "reconstructedFrom": [
       "approved-spec",
@@ -36,7 +44,8 @@
     ],
     "unavailableFields": [
       "matched pre-workflow baseline",
-      "implementation defects after a real product pilot"
+      "implementation defects after a real product pilot",
+      "verifiable source-revision-bound dogfood packets"
     ]
   },
   "historicalCases": [
@@ -65,7 +74,7 @@
         { "item": "non-local Impeccable", "classification": "caught", "rationale": "The ticket boundary requires the changed dashboard surface only." }
       ],
       "observedValidation": { "beforeWallTimeSeconds": 96.15, "afterWallTimeSeconds": 17.73, "reportedReductionPercent": 81.6 },
-      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation"]
+      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation", "then-known source packets", "gate receipt bindings"]
     },
     {
       "id": "nutriplan-auth-resilience",
@@ -93,7 +102,7 @@
         { "item": "protected provider readiness", "classification": "not-applicable", "rationale": "Historical local evidence cannot reproduce protected CI environment variables." }
       ],
       "observedValidation": { "stoppedBroadRunSeconds": 68.24, "beforeConcurrentServersSeconds": 130.67, "afterConcurrentServersSeconds": 93.84, "reportedReductionPercent": 28.2 },
-      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation", "protected provider readiness result"]
+      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation", "protected provider readiness result", "then-known source packets", "gate receipt bindings"]
     }
   ],
   "comparison": {

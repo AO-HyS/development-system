@@ -6,6 +6,12 @@ import { resolve, sep } from "node:path";
 
 export const WORKING_BACKWARDS_GATES = Object.freeze(["product", "technical", "implementationMap"]);
 
+/** @param {unknown} value */
+export function normalizeWorkingBackwardsRepositoryIdentity(value) {
+  if (typeof value !== "string" || value.trim().length === 0) return null;
+  return value.trim().replaceAll("\\", "/").replace(/\/+$/, "").replace(/\.git$/i, "").toLowerCase();
+}
+
 export const WORKING_BACKWARDS_GATE_ROLES = Object.freeze({
   product: Object.freeze(["working-backwards-brief", "research-questions", "research-report", "product-contract", "acceptance-contract"]),
   technical: Object.freeze(["acceptance-contract", "product-contract", "domain-technical-design", "risk-evidence"]),
@@ -97,6 +103,7 @@ function artifactSnapshot(artifact) {
     id: artifact.id,
     role: artifact.role,
     contentHash: artifact.contentHash,
+    sourceIdentity: artifact.sourceIdentity,
     sourceRevision: artifact.sourceRevision,
     lineage: artifact.lineage,
   };
@@ -108,6 +115,7 @@ function receiptBody(receipt) {
     schemaVersion: receipt.schemaVersion,
     workflowId: receipt.workflowId,
     gate: receipt.gate,
+    repositoryIdentity: receipt.repositoryIdentity,
     repositoryRevision: receipt.repositoryRevision,
     artifacts: receipt.artifacts,
     approvedAt: receipt.approvedAt,
@@ -116,25 +124,29 @@ function receiptBody(receipt) {
 
 /** @param {Record<string, unknown>} receipt */
 function hasValidReceiptIntegrity(receipt) {
-  if (receipt.schemaVersion !== 1 || typeof receipt.workflowId !== "string" || typeof receipt.repositoryRevision !== "string" || typeof receipt.approvedAt !== "string") return false;
+  if (receipt.schemaVersion !== 1 || typeof receipt.workflowId !== "string" || normalizeWorkingBackwardsRepositoryIdentity(receipt.repositoryIdentity) !== receipt.repositoryIdentity || typeof receipt.repositoryRevision !== "string" || typeof receipt.approvedAt !== "string") return false;
   const gate = String(receipt.gate);
   if (!WORKING_BACKWARDS_GATES.includes(gate) || !Array.isArray(receipt.artifacts) || receipt.artifacts.length === 0) return false;
   const roles = WORKING_BACKWARDS_GATE_ROLES[/** @type {keyof typeof WORKING_BACKWARDS_GATE_ROLES} */ (gate)];
   if (!receipt.artifacts.some((artifact) => isRecord(artifact) && roles.includes(String(artifact.role)))) return false;
-  if (receipt.artifacts.some((artifact) => !isRecord(artifact) || typeof artifact.id !== "string" || typeof artifact.role !== "string" || typeof artifact.contentHash !== "string" || typeof artifact.sourceRevision !== "string" || !isRecord(artifact.lineage))) return false;
+  if (receipt.artifacts.some((artifact) => !isRecord(artifact) || typeof artifact.id !== "string" || typeof artifact.role !== "string" || typeof artifact.contentHash !== "string" || artifact.sourceIdentity !== receipt.repositoryIdentity || typeof artifact.sourceRevision !== "string" || !isRecord(artifact.lineage) || artifact.lineage.sourceIdentity !== receipt.repositoryIdentity || artifact.lineage.sourceRevision !== artifact.sourceRevision)) return false;
   return receipt.receiptHash === hashWorkingBackwardsValue(receiptBody(receipt));
 }
 
-/** @param {{workflowId: string, gate: string, repositoryRevision: string, artifacts: Record<string, unknown>[], approvedAt?: string}} options */
+/** @param {{workflowId: string, gate: string, repositoryIdentity: string, repositoryRevision: string, artifacts: Record<string, unknown>[], approvedAt?: string}} options */
 export function createWorkingBackwardsGateReceipt(options) {
   if (!WORKING_BACKWARDS_GATES.includes(options.gate)) throw new Error("Unknown Working Backwards gate");
   const roles = WORKING_BACKWARDS_GATE_ROLES[/** @type {keyof typeof WORKING_BACKWARDS_GATE_ROLES} */ (options.gate)];
   const artifacts = options.artifacts.filter((artifact) => roles.includes(String(artifact.role))).map(artifactSnapshot);
   if (artifacts.length === 0) throw new Error(`${options.gate} gate has no artifacts to approve`);
+  const repositoryIdentity = normalizeWorkingBackwardsRepositoryIdentity(options.repositoryIdentity);
+  if (!repositoryIdentity) throw new Error("Working Backwards gate receipt requires repository identity");
+  if (artifacts.some((artifact) => artifact.sourceIdentity !== repositoryIdentity || artifact.sourceRevision !== options.repositoryRevision || !isRecord(artifact.lineage) || artifact.lineage.sourceIdentity !== repositoryIdentity || artifact.lineage.sourceRevision !== options.repositoryRevision)) throw new Error(`${options.gate} gate artifacts do not match repository identity and revision`);
   const body = {
     schemaVersion: 1,
     workflowId: options.workflowId,
     gate: options.gate,
+    repositoryIdentity,
     repositoryRevision: options.repositoryRevision,
     artifacts,
     approvedAt: options.approvedAt ?? new Date().toISOString(),
@@ -177,24 +189,25 @@ function sameValue(left, right) {
 }
 
 /**
- * @param {{receipts: Record<string, unknown>[], artifacts: Record<string, unknown>[], repositoryRevision: string, artifactStateSupplied: boolean}} options
+ * @param {{receipts: Record<string, unknown>[], artifacts: Record<string, unknown>[], repositoryIdentity: string, repositoryRevision: string, artifactStateSupplied: boolean}} options
  */
 export function validateWorkingBackwardsGateReceipts(options) {
   if (options.receipts.length === 0) return { validReceipts: [], invalidFrom: null, reason: null };
   if (!options.artifactStateSupplied) return { validReceipts: [], invalidFrom: "product", reason: "artifact state is required to restore gate approval" };
+  const repositoryIdentity = normalizeWorkingBackwardsRepositoryIdentity(options.repositoryIdentity);
   const validReceipts = [];
   for (const gate of WORKING_BACKWARDS_GATES) {
     const receipt = options.receipts.find((candidate) => candidate.gate === gate);
     if (!receipt) return { validReceipts, invalidFrom: gate, reason: `missing ${gate} gate receipt` };
     if (!hasValidReceiptIntegrity(receipt)) return { validReceipts, invalidFrom: gate, reason: `${gate} gate receipt integrity failure` };
-    if (receipt.workflowId === undefined || receipt.repositoryRevision !== options.repositoryRevision) {
-      return { validReceipts, invalidFrom: gate, reason: "repository revision drift" };
+    if (receipt.workflowId === undefined || receipt.repositoryIdentity !== repositoryIdentity || receipt.repositoryRevision !== options.repositoryRevision) {
+      return { validReceipts, invalidFrom: gate, reason: "repository identity or revision drift" };
     }
     const snapshots = Array.isArray(receipt.artifacts) ? receipt.artifacts.filter(isRecord) : [];
     if (snapshots.length === 0) return { validReceipts, invalidFrom: gate, reason: `${gate} receipt has no artifact snapshots` };
     for (const snapshot of snapshots) {
       const current = options.artifacts.find((artifact) => artifact.id === snapshot.id && artifact.role === snapshot.role);
-      if (!current || current.contentHash !== snapshot.contentHash || current.sourceRevision !== snapshot.sourceRevision || !sameValue(current.lineage, snapshot.lineage)) {
+      if (!current || current.contentHash !== snapshot.contentHash || current.sourceIdentity !== repositoryIdentity || current.sourceIdentity !== snapshot.sourceIdentity || current.sourceRevision !== options.repositoryRevision || current.sourceRevision !== snapshot.sourceRevision || !sameValue(current.lineage, snapshot.lineage)) {
         return { validReceipts, invalidFrom: gate, reason: `artifact drift: ${String(snapshot.id)}` };
       }
     }

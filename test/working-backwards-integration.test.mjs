@@ -107,8 +107,8 @@ test("explicit JSON CLI operations prepare intent, private handoff, freshness, a
     ["product-contract", { outcome: "approved" }],
     ["domain-technical-design", { design: "approved" }],
     ["ticket-map", ticketMap],
-  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceRevision: "abc123" } }));
-  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryRevision: "abc123", artifacts: approvedArtifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
+  ].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceIdentity: "acme/example", sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceIdentity: "acme/example", sourceRevision: "abc123" } }));
+  const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryIdentity: "acme/example", repositoryRevision: "abc123", artifacts: approvedArtifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
   const intent = await runJsonCli(home, "working-backwards-publication-intent", { workflowId: "WB", repository, approvedArtifacts, ticketMap, gateReceipts });
   assert.equal(intent.publicationAuthorized, false);
 

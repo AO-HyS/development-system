@@ -34,8 +34,8 @@ const artifacts = [
   ["domain-technical-design", { design: "approved" }],
   ["structure-outline", { slices: ["slice-a", "slice-b"] }],
   ["ticket-map", ticketMap],
-].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceRevision: "abc123" } }));
-const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
+].map(([role, content]) => ({ id: `WB:${role}`, role, status: "approved", content, contentHash: hash(content), sourceIdentity: "acme/example", sourceRevision: "abc123", lineage: { dependsOn: [], governedBy: [], sourceIdentity: "acme/example", sourceRevision: "abc123" } }));
+const gateReceipts = ["product", "technical", "implementationMap"].map((gate) => createWorkingBackwardsGateReceipt({ workflowId: "WB", gate, repositoryIdentity: "acme/example", repositoryRevision: "abc123", artifacts, approvedAt: "2026-08-08T00:00:00.000Z" }));
 
 test("vertical slices expose dependency order, native blockers, and frontier", () => {
   const result = validateVerticalTicketSlices(ticketMap);
@@ -63,7 +63,7 @@ test("explicit publication creates issues in dependency order and never grants d
   const publication = await publishApprovedTickets({
     intent,
     publicationApproval: { authorized: true, intentId: intent.intentId },
-    authority: { async consumeIntent() { return true; } },
+    authority: { async consumeIntent() { return { consumed: true, intentId: intent.intentId, resumeToken: "opaque-success" }; } },
     tracker: {
       async createIssue(issue) {
         calls.push(issue);
