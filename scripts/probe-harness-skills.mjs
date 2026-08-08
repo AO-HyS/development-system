@@ -12,6 +12,7 @@ import {
   classifyProbeAssertionFailure,
   sanitizeProbeEvidence,
 } from "../src/harness-diagnostics.mjs";
+import { resolveSkillProbeMetadata } from "../src/skill-probe-metadata.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const behaviorSignature = ["background agent", "primary sources", "markdown file"];
@@ -24,10 +25,12 @@ const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : n
 const probeHome = resolve(process.env.HOME ?? "");
 const installedLock = JSON.parse(await readFile(resolve(probeHome, ".development-system", "skills-lock.json"), "utf8"));
 const installedCatalog = JSON.parse(await readFile(resolve(probeHome, ".codex", "development-system", "skills.json"), "utf8"));
-const sourceCommit = installedLock.sourceCommit;
-if (!/^[a-f0-9]{40}$/.test(sourceCommit ?? "")) throw new Error("Installed skill lock has no exact source commit");
-const catalogVersion = installedCatalog.catalogVersion;
-if (!/^\d+\.\d+\.\d+$/.test(catalogVersion ?? "")) throw new Error("Installed skill catalog has no valid version");
+const installedFactoryCatalog = JSON.parse(await readFile(resolve(probeHome, ".factory", "development-system", "skills.json"), "utf8"));
+const { sourceCommit, catalogVersion } = resolveSkillProbeMetadata({
+  installedLock,
+  codexCatalog: installedCatalog,
+  factoryCatalog: installedFactoryCatalog,
+});
 
 /** @param {string} directory */
 async function directoryHash(directory) {
