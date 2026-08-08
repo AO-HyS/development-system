@@ -587,6 +587,7 @@ const deliveryOperations = new Set([
   "correct",
   "qa",
   "commit",
+  "full_certification",
   "certify_candidate",
   "provider_readiness",
   "push",

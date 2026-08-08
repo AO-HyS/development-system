@@ -88,27 +88,6 @@ function validatePlan(plan) {
   }
 }
 
-/** @param {unknown} value */
-function isFullSha(value) {
-  return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
-}
-
-/**
- * @param {string} step
- * @param {any} result
- * @param {string} candidateSha
- * @param {{flag?: "certified" | "ready"}} [options]
- */
-function candidateEvidenceFailure(step, result, candidateSha, options = {}) {
-  if (!isFullSha(result?.sha) || result.sha !== candidateSha) {
-    return `${step} evidence must be bound to the exact committed SHA`;
-  }
-  if (options.flag && result?.[options.flag] !== true) {
-    return `${step} must report ${options.flag}=true for the committed SHA`;
-  }
-  return "";
-}
-
 /** @param {string} root @param {string} name @param {string} contents */
 async function writePrivateSurface(root, name, contents) {
   await mkdir(root, { recursive: true, mode: 0o700 });
@@ -346,11 +325,10 @@ export async function runImplementPreview(options) {
 
   let pullRequestUrl = "";
   let previewUrl = "";
-  let candidateSha = "";
   const publicationSteps = options.plan.schemaVersion === 2
     ? [
         "commit",
-        "certify_candidate",
+        "full_certification",
         ...(options.plan.providerReadiness.required ? ["provider_readiness"] : []),
         "push",
         "open_pr",
@@ -363,34 +341,24 @@ export async function runImplementPreview(options) {
       targetRepository: options.plan.targetRepository,
       terminalSlice: options.plan.terminalSlice,
       writer,
-      candidateSha,
       providerReadiness: options.plan.providerReadiness,
     });
     if (result.ok !== true) return { ok: false, status: "failed", step, result, visualPlanPath };
     if (options.plan.schemaVersion === 2) {
-      if (step === "commit") {
-        if (!isFullSha(result.sha)) {
-          return {
-            ok: false,
-            status: "failed",
-            step,
-            reason: "commit must return the exact 40-character candidate SHA",
-            result,
-            visualPlanPath,
-          };
-        }
-        candidateSha = result.sha;
-      } else {
-        const reason = candidateEvidenceFailure(step, result, candidateSha, {
-          flag: step === "certify_candidate"
-            ? "certified"
-            : step === "provider_readiness"
-              ? "ready"
-              : undefined,
-        });
-        if (reason) {
-          return { ok: false, status: "failed", step, reason, result, visualPlanPath };
-        }
+      const requiredFlag = step === "full_certification"
+        ? "certified"
+        : step === "provider_readiness"
+          ? "ready"
+          : null;
+      if (requiredFlag && result[requiredFlag] !== true) {
+        return {
+          ok: false,
+          status: "failed",
+          step,
+          reason: `${step} must report ${requiredFlag}=true`,
+          result,
+          visualPlanPath,
+        };
       }
     }
     if (step === "open_pr") pullRequestUrl = result.url ?? "";
@@ -399,7 +367,7 @@ export async function runImplementPreview(options) {
     await executeLifecycleOperation({ home: options.home, workflowId: options.workflowId, operation: step });
     if (
       options.plan.schemaVersion === 2 &&
-      step === "certify_candidate" &&
+      step === "full_certification" &&
       !options.plan.providerReadiness.required
     ) {
       evidence.push({
@@ -407,7 +375,6 @@ export async function runImplementPreview(options) {
         omitted: true,
         reason: options.plan.providerReadiness.reason,
         alternativeEvidence: options.plan.providerReadiness.alternativeEvidence,
-        sha: candidateSha,
       });
     }
   }
@@ -417,7 +384,7 @@ export async function runImplementPreview(options) {
   const recapPath = await writePrivateSurface(
     privateRoot,
     "recap.html",
-    recapHtml({ plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl, candidateSha }),
+    recapHtml({ plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl }),
   );
   const preRelease = await executeLifecycleOperation({
     home: options.home,
@@ -432,7 +399,6 @@ export async function runImplementPreview(options) {
     status: "ready-for-human",
     pullRequestUrl,
     previewUrl,
-    candidateSha,
     visualPlanPath,
     recapPath,
     failuresAndCorrections,
@@ -469,7 +435,9 @@ export function createCommandDeliveryRuntime(plan) {
     async run(/** @type {string} */ step, /** @type {any} */ context) {
       const specification = step === "review"
         ? plan.execution?.review?.[context.lane]
-        : plan.execution?.[step];
+        : step === "full_certification"
+          ? plan.execution?.full_certification ?? plan.execution?.certify_candidate
+          : plan.execution?.[step];
       if (!specification || typeof specification.command !== "string" || !Array.isArray(specification.args)) {
         return { ok: false, error: `No structured command is configured for ${step}` };
       }
@@ -489,7 +457,6 @@ export function createCommandDeliveryRuntime(plan) {
           AOHYS_REVIEW_LANE: context.lane ?? "",
           AOHYS_CLEAN_CONTEXT_ID: context.cleanContextId ?? "",
           AOHYS_REVIEW_FINDINGS_JSON: JSON.stringify(context.findings ?? []),
-          DEVELOPMENT_SYSTEM_CANDIDATE_SHA: context.candidateSha ?? "",
           DEVELOPMENT_SYSTEM_PROVIDER_READINESS_JSON: JSON.stringify(
             context.providerReadiness ?? null,
           ),

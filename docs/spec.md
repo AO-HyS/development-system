@@ -216,9 +216,9 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 * Create an audit/normalize capability that is read-only by default. Audit and mutation are separate transitions.
 * Create an initialize-new-repository capability that configures the contract without imposing visual design or activating paid services.
 * Detect stack capabilities such as Convex and React, then select validated repo-local rules and harness equivalents.
-* Require separate changed-validation and candidate-certification interfaces. Ordinary work uses changed validation; full certification runs once for the integrated candidate.
-* Bind candidate certification, conditional provider readiness, push, pull request, and preview evidence to the exact committed 40-character SHA. Fail closed on missing or mismatched evidence and publish at most one preview for that candidate.
-* Record deterministic QA selection, one shared preview for the exact candidate SHA and provider readiness before preview when auth, data, migrations, seeds, roles or environment contracts changed.
+* Require separate changed-validation and full-certification interfaces. Ordinary work uses changed validation; full certification runs once for the integrated change.
+* Let Git own repository continuity through refs, ancestry and diffs. Certification, conditional provider readiness, push, pull request and preview steps report their native result without copying or comparing commit SHAs.
+* Record deterministic QA selection, one shared branch preview from `develop` and provider readiness before preview when auth, data, migrations, seeds, roles or environment contracts changed.
 * Normalize skill installations by removing orphaned bundles, stale source checkouts and superseded divergent variants while preserving manifest-declared harness mirrors.
 * Integrate `codebase-design` vocabulary and a manual `improve-codebase-architecture` flow. Architecture reports precede refactoring.
 * Treat React Doctor and modern React checks as candidate evidence tools whose overlap and precedence must be validated.

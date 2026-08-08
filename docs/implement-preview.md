@@ -2,7 +2,7 @@
 
 `implement-preview` consumes one already-approved terminal slice and a private local JSON plan. It can run implementation, focused checks, validation, risk-appropriate review, corrections, proportional QA, commit, push, pull-request creation, and preview publication. It cannot run merge, release, or production. A full repository suite is never implied; the user must authorize it explicitly for the current run.
 
-The ordinary plan has one writer. Tiny changes target functional evidence in five minutes and stop for a process audit above the ten-minute exceptional ceiling. Multiple-ticket worktrees require an explicit `$work-multiple` request: overlapping/dependent tickets share a sequential lane, disjoint lanes may run in parallel, and all lanes integrate into one candidate.
+The ordinary plan has one writer. Tiny changes target functional evidence in five minutes and stop for a process audit above the ten-minute exceptional ceiling. Multiple-ticket worktrees require an explicit `$work-multiple` request: overlapping/dependent tickets share a sequential lane, disjoint lanes may run in parallel, and all lanes integrate into one change.
 
 ```json
 {
@@ -32,12 +32,12 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
       "standards": { "command": "codex", "args": ["exec", "review", "..."] }
     },
     "correct": { "command": "codex", "args": ["exec", "..."] },
-    "commit": { "command": "candidate-commit-wrapper", "args": [] },
-    "certify_candidate": { "command": "candidate-certification-wrapper", "args": [] },
+    "commit": { "command": "commit-wrapper", "args": [] },
+    "full_certification": { "command": "full-certification-wrapper", "args": [] },
     "provider_readiness": { "command": "provider-readiness-wrapper", "args": [] },
-    "push": { "command": "candidate-push-wrapper", "args": [] },
-    "open_pr": { "command": "candidate-pr-wrapper", "args": [] },
-    "publish_preview": { "command": "candidate-preview-wrapper", "args": [] }
+    "push": { "command": "push-wrapper", "args": [] },
+    "open_pr": { "command": "pull-request-wrapper", "args": [] },
+    "publish_preview": { "command": "preview-wrapper", "args": [] }
   }
 }
 ```
@@ -46,9 +46,9 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
 surfaces, and blockers. It owns lane/worktree grouping, focused verification,
 two isolated integrated reviews, measurement, and the authorization stop.
 
-Commands that return structured evidence should print a final JSON object. Review commands return `{"ok":true,"findings":[...]}` with `blocker`, `high`, `medium`, or `low` severity. The commit wrapper returns the exact candidate as `{"ok":true,"sha":"<40-char SHA>"}`. Certification and provider readiness return that same SHA plus `certified:true` or `ready:true`. Push, pull-request, and preview wrappers also return the same SHA; PR and preview add `url`. Any missing or mismatched SHA fails closed before the next publication step. Repeated blocker/high fingerprints pause the loop as non-convergent; they never become success.
+Commands that return structured evidence should print a final JSON object. Review commands return `{"ok":true,"findings":[...]}` with `blocker`, `high`, `medium`, or `low` severity. Certification and provider readiness return `certified:true` or `ready:true`; pull-request and preview commands return their native `url`. Git supplies repository continuity, so wrappers do not transcribe SHAs between steps. Repeated blocker/high fingerprints pause the loop as non-convergent; they never become success.
 
-Schema version 1 remains readable for existing private plans. New plans use version 2: ordinary implementation and every correction run `changed_validation`; full candidate certification runs exactly once after commit; provider readiness runs before push only when the plan maps an affected auth, data, migration, seed, role, or environment surface; and the preview is published once for that certified SHA.
+Schema version 1 remains readable for existing private plans. New plans use version 2: ordinary implementation and every correction run `changed_validation`; full certification runs exactly once after commit; provider readiness runs before push only when the plan maps an affected auth, data, migration, seed, role, or environment surface; and `develop` publishes one shared branch preview. Git owns commit continuity, so publication steps do not copy or compare SHAs.
 
 Run only after the lifecycle state has reached `delivery_authorized`:
 
