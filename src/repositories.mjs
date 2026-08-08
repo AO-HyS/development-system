@@ -661,12 +661,11 @@ export async function auditRepository(options) {
   const residueResult = await detectResidue(repository, governedEntries, identity.name);
   const residue = residueResult.residue;
   const managed = managedFiles.every((path) => files.includes(path));
-  const baseGaps = [
-    ...readinessGaps(identity.commands, inventory.skills, residue, managed),
-    ...await managedVersionGaps(repository, files),
-  ];
-  const codexGaps = [...baseGaps];
-  const factoryGaps = [...baseGaps];
+  const baseGaps = readinessGaps(identity.commands, inventory.skills, residue, managed);
+  const versionGaps = await managedVersionGaps(repository, files);
+  const sharedVersionGaps = versionGaps.filter((gap) => !gap.startsWith("stale-codex-") && !gap.startsWith("stale-factory-"));
+  const codexGaps = [...baseGaps, ...sharedVersionGaps, ...versionGaps.filter((gap) => gap.startsWith("stale-codex-"))];
+  const factoryGaps = [...baseGaps, ...sharedVersionGaps, ...versionGaps.filter((gap) => gap.startsWith("stale-factory-"))];
   if (!files.includes(".codex/development-system/repository.md")) codexGaps.push("missing-codex-equivalent");
   if (!files.includes(".factory/development-system/repository.md")) factoryGaps.push("missing-factory-equivalent");
   const readiness = {
