@@ -26,6 +26,8 @@ const installedLock = JSON.parse(await readFile(resolve(probeHome, ".development
 const installedCatalog = JSON.parse(await readFile(resolve(probeHome, ".codex", "development-system", "skills.json"), "utf8"));
 const sourceCommit = installedLock.sourceCommit;
 if (!/^[a-f0-9]{40}$/.test(sourceCommit ?? "")) throw new Error("Installed skill lock has no exact source commit");
+const catalogVersion = installedCatalog.catalogVersion;
+if (!/^\d+\.\d+\.\d+$/.test(catalogVersion ?? "")) throw new Error("Installed skill catalog has no valid version");
 
 /** @param {string} directory */
 async function directoryHash(directory) {
@@ -198,7 +200,7 @@ const probeSucceeded = Boolean(
 );
 const evidence = {
   schemaVersion: 1,
-  catalogVersion: "0.5.1",
+  catalogVersion,
   evidenceScope: {
     kind: "critical-capability-live-probe",
     structuralCatalogLogicalSkills: installedCatalog.skills.length,
