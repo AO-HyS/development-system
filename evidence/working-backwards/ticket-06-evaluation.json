@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "dogfood": {
     "reconstructedFrom": [
       "approved-spec",
@@ -8,6 +8,32 @@
       "t3-handoff"
     ],
     "chatHistoryRequired": false,
+    "provenance": [
+      {
+        "id": "approved-spec",
+        "source": "docs/specs/working-backwards.md",
+        "content": { "approvedSpec": "docs/specs/working-backwards.md", "status": "approved" },
+        "contentHash": "sha256:514fad6b7b5cd6aa4dbfbac454406d2741631665b72f3cae942b083c4c0b3764"
+      },
+      {
+        "id": "artifact-graph",
+        "source": "working-backwards scenario output",
+        "content": { "artifactGraph": ["brief", "research", "contract", "design", "outline", "tickets", "handoff"] },
+        "contentHash": "sha256:e52ee62e2088b06393ce0be9876b8738b42794ef1748ec4e517f881f42ba353c"
+      },
+      {
+        "id": "ticket-dependency-graph",
+        "source": "approved ticket map",
+        "content": { "ticketGraph": ["01", "02", "03", "04", "05", "06"] },
+        "contentHash": "sha256:2690a3d6e03ff45779dd7b0d68188c871897b99b2265232914d2339a6899aebb"
+      },
+      {
+        "id": "t3-handoff",
+        "source": "private handoff schema fixture",
+        "content": { "handoff": { "workflowId": "working-backwards", "implementationAuthorized": false } },
+        "contentHash": "sha256:1ef8f1f88f6dd7ee3d0c48694d12de6e6133bf68a1dcd05f1e7df9fc04638795"
+      }
+    ],
     "unavailableFields": [
       "matched pre-workflow baseline",
       "implementation defects after a real product pilot"
@@ -16,88 +42,84 @@
   "historicalCases": [
     {
       "id": "aohys-dashboard-navigation",
+      "label": "historical-validation-case",
       "evidenceAtTime": [
         "CHANGED_FILES dashboard navigation source",
         "quality:changed result passed",
         "corrected wall time 17.73 seconds"
+      ],
+      "artifactChain": [
+        { "role": "working-backwards-brief", "content": { "brief": "AOHYS dashboard navigation validation routes only the changed dashboard surface." }, "contentHash": "sha256:999df948fde26ee5e961340fd0714b8a775c55b80b91f9b18ae362fa34824c1f" },
+        { "role": "research-report", "content": { "research": "The prior broad origin/develop diff invoked nearly the whole workspace." }, "contentHash": "sha256:cee871a4c11ed8943d4e9c2459be982df189d3c342cc7df11dfde6f0efcb9c17" },
+        { "role": "product-contract", "content": { "contract": "Changed validation must remain package-local and avoid duplicate TypeScript work." }, "contentHash": "sha256:43d3208b0b466b6585a589056e088cce6d342c9d57d1c6046c1328c420c61775" },
+        { "role": "ticket-map", "content": { "tickets": ["route changed files locally", "remove duplicate typecheck", "limit Impeccable"] }, "contentHash": "sha256:bf974b9904989beb68c88035d9e5da306f55321de4ae9bb39f63518d6cdc71f8" }
       ],
       "knownRework": [
         "broad origin/develop diff invoked nearly the whole workspace",
         "duplicate TypeScript invocation",
         "non-local Impeccable scope"
       ],
-      "classification": "caught",
-      "observedValidation": {
-        "beforeWallTimeSeconds": 96.15,
-        "afterWallTimeSeconds": 17.73,
-        "reportedReductionPercent": 81.6
-      },
-      "unavailableFields": [
-        "active operational time",
-        "human attention",
-        "tokens",
-        "authoritative cost",
-        "artifact revisions",
-        "review blockers",
-        "plan-to-code deviation"
-      ]
+      "knownReworkAssessment": [
+        { "item": "broad diff scope", "classification": "caught", "rationale": "Current-state research and a scoped acceptance contract expose the mismatch before implementation." },
+        { "item": "duplicate typecheck", "classification": "caught", "rationale": "The focused-check map makes duplicated validation visible." },
+        { "item": "non-local Impeccable", "classification": "caught", "rationale": "The ticket boundary requires the changed dashboard surface only." }
+      ],
+      "observedValidation": { "beforeWallTimeSeconds": 96.15, "afterWallTimeSeconds": 17.73, "reportedReductionPercent": 81.6 },
+      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation"]
     },
     {
       "id": "nutriplan-auth-resilience",
+      "label": "historical-validation-case",
       "evidenceAtTime": [
         "CHANGED_FILES auth resilience source",
         "quality:changed result passed",
         "five mapped local browser tests",
         "corrected wall time 93.84 seconds"
       ],
+      "artifactChain": [
+        { "role": "working-backwards-brief", "content": { "brief": "NutriPlan auth resilience validates the affected dependency closure and mapped auth E2E." }, "contentHash": "sha256:cd8095213a00eb0e9c6f29f7a9e4bce9cce687ca876f4e957e87cf3ace0a9a4f" },
+        { "role": "research-report", "content": { "research": "The prior gate started nine packages and 1359 tests before E2E." }, "contentHash": "sha256:a21660bea467e52646614399b4a72645f8c937407b675bc6901cf2b1bab09403" },
+        { "role": "product-contract", "content": { "contract": "Auth risk requires affected lint/typecheck, changed unit tests, and five mapped browser tests." }, "contentHash": "sha256:0d7384a3a992c93a1edec82bc99976fd3113a69524f2b98256eb3676f3e5f09d" },
+        { "role": "ticket-map", "content": { "tickets": ["bound dependency closure", "map five auth tests", "start two apps concurrently", "defer protected provider readiness"] }, "contentHash": "sha256:2ae3b0078f33105e749adc1bb2b05417053e60e92ef9e7e29d021e1f3410d7fa" }
+      ],
       "knownRework": [
         "nine packages and 1359 unit tests started before mapped E2E",
         "dashboard and admin servers initially started sequentially",
         "provider readiness unavailable without protected environment variables"
       ],
-      "classification": "caught",
-      "observedValidation": {
-        "stoppedBroadRunSeconds": 68.24,
-        "beforeConcurrentServersSeconds": 130.67,
-        "afterConcurrentServersSeconds": 93.84,
-        "reportedReductionPercent": 28.2
-      },
-      "unavailableFields": [
-        "active operational time",
-        "human attention",
-        "tokens",
-        "authoritative cost",
-        "artifact revisions",
-        "review blockers",
-        "plan-to-code deviation",
-        "protected provider readiness result"
-      ]
+      "knownReworkAssessment": [
+        { "item": "unbounded dependency closure", "classification": "caught", "rationale": "The structure outline maps validation to affected auth dependencies." },
+        { "item": "sequential app startup", "classification": "caught", "rationale": "The technical contract exposes two-app orchestration before the check runs." },
+        { "item": "protected provider readiness", "classification": "not-applicable", "rationale": "Historical local evidence cannot reproduce protected CI environment variables." }
+      ],
+      "observedValidation": { "stoppedBroadRunSeconds": 68.24, "beforeConcurrentServersSeconds": 130.67, "afterConcurrentServersSeconds": 93.84, "reportedReductionPercent": 28.2 },
+      "unavailableFields": ["active operational time", "human attention", "tokens", "authoritative cost", "artifact revisions", "review blockers", "plan-to-code deviation", "protected provider readiness result"]
     }
   ],
   "comparison": {
-    "paths": [
-      "HumanLayer Freeform plus canonical Working Backwards",
-      "existing Development System path"
-    ],
-    "unavailableFields": [
-      "matched feature pair",
-      "matched operator and environment",
-      "HumanLayer authoritative time, token, and cost telemetry"
-    ]
+    "paths": ["HumanLayer Freeform plus canonical Working Backwards", "existing Development System path"],
+    "limitations": ["The paths are unmatched", "No common feature, operator, cache state, or environment was measured", "No causal inference is permitted"],
+    "unavailableFields": ["matched feature pair", "matched operator and environment", "HumanLayer authoritative time, token, and cost telemetry"]
   },
   "signals": {
-    "activeOperationalTime": { "status": "unavailable", "value": null },
-    "humanAttention": { "status": "unavailable", "value": null },
-    "tokens": { "status": "unavailable", "value": null },
-    "authoritativeCost": { "status": "unavailable", "value": null },
-    "revisions": { "status": "observed", "value": "four approved implementation lane commits before integration" },
-    "corrections": { "status": "observed", "value": "integration required composing risk, adapter, and handoff contracts" },
-    "checks": { "status": "observed", "value": "focused Working Backwards and immutable installation contracts" },
-    "reviewBlockers": { "status": "unavailable", "value": null },
-    "planToCodeDeviation": { "status": "observed", "value": "standalone ticket modules required coordinator integration" },
-    "privacy": { "status": "observed", "value": "private handoff remains outside synced HumanLayer destinations" },
-    "synchronization": { "status": "observed", "value": "no remote synchronization invoked" },
-    "worktree": { "status": "observed", "value": "definition default Never; integration used the assigned isolated worktree" },
-    "authorization": { "status": "observed", "value": "three gates remain explicit and implementationAuthorized remains false" }
+    "activeOperationalTime": { "status": "unavailable", "value": null, "reason": "No authoritative operation timer was captured for the historical cases." },
+    "humanAttention": { "status": "unavailable", "value": null, "reason": "Human attention intervals were not measured." },
+    "tokens": { "status": "unavailable", "value": null, "reason": "Historical token telemetry was not retained." },
+    "authoritativeCost": { "status": "unavailable", "value": null, "reason": "No authoritative comparable cost source was available." },
+    "revisions": { "status": "observed", "value": "Four approved implementation lane commits preceded integration." },
+    "corrections": { "status": "observed", "value": "Integration composed risk, adapter, handoff, and receipt contracts." },
+    "checks": { "status": "observed", "value": "Focused Working Backwards, HumanLayer, catalog, and isolated installation checks." },
+    "reviewBlockers": { "status": "unavailable", "value": null, "reason": "Historical review finding telemetry was not retained." },
+    "planToCodeDeviation": { "status": "observed", "value": "Standalone ticket modules required coordinator integration and receipt hardening." },
+    "privacy": { "status": "observed", "value": "Private handoff and gate receipts remain in private local storage." },
+    "synchronization": { "status": "observed", "value": "No remote synchronization was invoked." },
+    "worktree": { "status": "observed", "value": "Definition defaults to Never; integration used the assigned isolated worktree." },
+    "authorization": { "status": "observed", "value": "Exactly three receipt-bound gates preserve implementationAuthorized false." }
+  },
+  "sideEffects": {
+    "privacy": { "status": "observed", "value": "Only content hashes and non-secret historical summaries are stored in repository evidence." },
+    "synchronization": { "status": "observed", "value": "No HumanLayer cloud or tracker synchronization occurred." },
+    "worktree": { "status": "observed", "value": "No definition worktree was created by the workflow." },
+    "authorization": { "status": "observed", "value": "Evaluation grants no gate, publication, implementation, or promotion authority." }
   }
 }

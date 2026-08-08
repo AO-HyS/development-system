@@ -111,8 +111,10 @@ function formatHuman(result) {
   if (result.operation === "prepare-ticket-publication") return `Working Backwards publication intent ${result.ok ? "ready for separate authorization" : "blocked"}.`;
   if (result.operation === "t3-implementation-handoff") return "Private T3 handoff created; Implement Preview remains required.";
   if (result.operation === "working-backwards-handoff-freshness") return `T3 handoff ${result.fresh ? "fresh" : "requires refresh"}.`;
-  if (result.operation === "working-backwards-evaluation") return "Working Backwards evaluation recommends a bounded live pilot only.";
-  if (result.operation === "working-backwards-humanlayer") return "HumanLayer observations recorded without granting lifecycle authority.";
+  if (result.operation === "working-backwards-evaluation") return result.ok === true && result.recommendation === "bounded-live-pilot-only"
+    ? "Working Backwards evaluation recommends a bounded live pilot only."
+    : "Working Backwards evaluation is not ready for a pilot.";
+  if (result.operation === "working-backwards-humanlayer") return "HumanLayer supplied snapshot recorded as unverified input without granting lifecycle authority.";
   if (result.operation === "audit-repository") {
     return `Product repository ${result.status}; no files were changed.`;
   }

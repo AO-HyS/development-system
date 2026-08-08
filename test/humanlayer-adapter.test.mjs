@@ -86,7 +86,7 @@ test("receipt keeps app and CLI versions independent and records runtime evidenc
   assert.equal(receipt.sessionId, "hl-session-1");
 });
 
-test("read-only probe reports existence, discovery, loading, and influence independently", async () => {
+test("caller-supplied read-only probe snapshots are explicitly unverified", async () => {
   let request;
   const result = await probeHumanLayerReadOnly({
     skill: "working-backwards",
@@ -96,10 +96,11 @@ test("read-only probe reports existence, discovery, loading, and influence indep
     },
   });
   assert.deepEqual(request, { skill: "working-backwards", readOnly: true });
-  assert.equal(result.exists, true);
-  assert.equal(result.discovered, true);
-  assert.equal(result.loaded, false);
+  assert.equal(result.exists, null);
+  assert.equal(result.discovered, null);
+  assert.equal(result.loaded, null);
   assert.equal(result.influenced, null);
+  assert.equal(result.provenance.kind, "unverified-input");
   assert.equal(result.ok, true);
   assert.deepEqual(result.sideEffects, []);
 });

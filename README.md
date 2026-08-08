@@ -62,7 +62,7 @@ Working Backwards operations consume explicit JSON files:
 ./bin/development-system working-backwards-evaluate --input evidence/working-backwards/ticket-06-evaluation.json --json
 ```
 
-These commands prepare intent, private handoff, freshness, adapter observations, and evaluation evidence without a default tracker or HumanLayer runtime. Actual ticket publication exists only through an injected adapter plus separate explicit authorization. Definition and handoff keep implementation unauthorized until Implement Preview.
+These commands prepare intent, private handoff, freshness, unverified supplied HumanLayer snapshots, and evaluation evidence without a default tracker or network runtime. Gate approvals persist private workflow-specific artifact receipts only for exact canonical gate operations. Publication binds the exact approved map and intent and exists only through injected one-shot authority and tracker adapters with idempotent safe-resume receipts. A provenance-bound HumanLayer runtime probe is available only through injected local read-only adapters. Definition, evaluation, publication, and handoff keep implementation unauthorized until Implement Preview.
 
 After `Implement Preview` is authorized, execute a private structured plan with:
 

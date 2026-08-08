@@ -24,6 +24,22 @@ const quickFeature = {
   acceptanceCriteria: ["Sólo muestra tareas enfocadas", "Permite volver a todas las tareas"],
 };
 
+const completeDefinition = {
+  actor: "account owner",
+  problem: "The repeated task must be rebuilt manually.",
+  scope: "One account and one product surface.",
+  experience: "The account owner completes the task and can return to it later.",
+  firstValueJourney: ["Start", "Complete", "Return"],
+  externalFaq: [{ question: "What changes?", answer: "The user-visible flow." }],
+  internalFaq: [{ question: "How is success checked?", answer: "The acceptance criteria pass." }],
+  acceptanceCriteria: ["The result is observable"],
+  evidenceGaps: [],
+  unsupportedClaims: [],
+  notBuilding: ["Cross-account sharing"],
+  productFactsResolved: true,
+  technicalFactsResolved: true,
+};
+
 test("Quick produces a compact private handoff without mutating lifecycle or external systems", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-working-backwards-quick-"));
   const result = await runWorkingBackwardsScenario({
@@ -54,14 +70,15 @@ test("Standard is the default and preserves current-state research, lineage, has
     home,
     workflowId: "WB-standard",
     feature: {
+      ...completeDefinition,
       featureId: "saved-search",
       title: "Búsquedas guardadas",
       userOutcome: "Una persona puede volver a una búsqueda que usa con frecuencia.",
       scope: "Cuenta y pantalla de resultados.",
       acceptanceCriteria: ["Guarda una búsqueda", "Recupera una búsqueda guardada"],
     },
-    repository: { revision: "def456", observed: "La pantalla ya lista búsquedas, pero no las persiste." },
-    gateOperations: ["product-contract-approved", "technical-contract-approved", "implementation-map-approved"],
+    repository: { identity: "acme/example", revision: "def456", observed: "La pantalla ya lista búsquedas, pero no las persiste." },
+    gateOperations: ["approve-product-contract", "approve-technical-contract", "approve-implementation-map"],
   });
 
   assert.equal(result.profile.recommended, "Standard");
@@ -98,12 +115,13 @@ test("HumanLayer feedback cannot grant a gate, while an approved upstream edit s
     home,
     workflowId: "WB-stale",
     feature: {
+      ...completeDefinition,
       featureId: "saved-search",
       title: "Búsquedas guardadas",
       userOutcome: "Una persona puede volver a una búsqueda frecuente.",
       scope: "Resultados.",
     },
-    repository: { revision: "ghi789" },
+    repository: { identity: "acme/example", revision: "ghi789", observed: "Searches are not persisted." },
   });
   const contract = initial.artifacts.find((artifact) => artifact.role === "product-contract");
   const outline = initial.artifacts.find((artifact) => artifact.role === "structure-outline");
@@ -112,12 +130,13 @@ test("HumanLayer feedback cannot grant a gate, while an approved upstream edit s
     home,
     workflowId: "WB-stale",
     feature: {
+      ...completeDefinition,
       featureId: "saved-search",
       title: "Búsquedas guardadas",
       userOutcome: "Una persona puede volver a una búsqueda frecuente.",
       scope: "Resultados.",
     },
-    repository: { revision: "ghi789" },
+    repository: { identity: "acme/example", revision: "ghi789", observed: "Searches are not persisted." },
     artifactState: {
       artifacts: [
         { ...contract, status: "approved", content: { ...contract.content, changed: true } },

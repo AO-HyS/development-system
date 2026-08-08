@@ -1,5 +1,7 @@
 // @ts-check
 
+import { createHash } from "node:crypto";
+
 /** @typedef {"portable" | "private"} Visibility */
 
 /** @typedef {object} HumanLayerConfig
@@ -72,9 +74,16 @@ function stringList(value) {
     : [];
 }
 
-/** @param {unknown} value @returns {boolean | null} */
-function observedBoolean(value) {
-  return typeof value === "boolean" ? value : null;
+/** @param {unknown} value @returns {unknown} */
+function stableValue(value) {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, entry]) => [key, stableValue(entry)]));
+}
+
+/** @param {unknown} value */
+function hashValue(value) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(stableValue(value))).digest("hex")}`;
 }
 
 /** @param {Partial<HumanLayerConfig> | undefined} override @returns {HumanLayerConfig} */
@@ -241,16 +250,74 @@ export async function probeHumanLayerReadOnly(input) {
       ? await input.probe({ skill, readOnly: true })
       : {};
   const record = isRecord(observation) ? observation : {};
-  const existence = observedBoolean(record.existence ?? record.exists);
-  const discovery = observedBoolean(record.discovery ?? record.discovered);
-  const loading = observedBoolean(record.loading ?? record.loaded);
-  const influence = observedBoolean(record.influence ?? record.influenced);
   const sideEffects = Array.isArray(record.sideEffects) ? record.sideEffects : [];
   return {
     ok: sideEffects.length === 0,
     operation: "humanlayer-read-only-probe",
     readOnly: true,
     skill,
+    existence: null,
+    discovery: null,
+    loading: null,
+    influence: null,
+    exists: null,
+    discovered: null,
+    loaded: null,
+    influenced: null,
+    evidence: { existence: null, discovery: null, loading: null, influence: null },
+    suppliedSnapshot: record,
+    provenance: { kind: "unverified-input", verified: false, source: "caller-supplied-snapshot" },
+    sideEffects,
+  };
+}
+
+/**
+ * Observe a local HumanLayer runtime only through injected read-only adapters.
+ * Runtime booleans are derived from command and metadata provenance rather
+ * than accepted from the caller.
+ * @param {{
+ *   skill: string,
+ *   exec: (request: {command: string, args: string[], readOnly: true}) => Promise<unknown> | unknown,
+ *   readMetadata: (request: {skill: string, readOnly: true}) => Promise<unknown> | unknown,
+ *   now?: () => string,
+ *   signature?: {id?: string, terms?: string[]}
+ * }} input
+ */
+export async function probeHumanLayerLocalRuntime(input) {
+  const skill = requireText(input?.skill, "skill");
+  if (typeof input?.exec !== "function" || typeof input?.readMetadata !== "function") {
+    throw new Error("local HumanLayer probe requires injected exec and readMetadata adapters");
+  }
+  const timestamp = typeof input.now === "function" ? input.now() : new Date().toISOString();
+  const commandResult = await input.exec({ command: "humanlayer", args: ["--version"], readOnly: true });
+  const command = isRecord(commandResult) ? commandResult : {};
+  const metadataResult = await input.readMetadata({ skill, readOnly: true });
+  const metadata = isRecord(metadataResult) ? metadataResult : {};
+  const exitCode = typeof command.exitCode === "number" ? command.exitCode : null;
+  const executablePath = typeof command.executablePath === "string" ? command.executablePath : null;
+  const stdout = typeof command.stdout === "string" ? command.stdout : "";
+  const catalogSkills = stringList(metadata.catalogSkills);
+  const loadedSkills = stringList(metadata.loadedSkills);
+  const signature = isRecord(input.signature) ? input.signature : {};
+  const signatureTerms = stringList(signature.terms);
+  const finalOutput = typeof metadata.finalOutput === "string" ? metadata.finalOutput : "";
+  const existence = exitCode === 0 && executablePath !== null;
+  const discovery = existence && catalogSkills.includes(skill);
+  const loading = discovery && loadedSkills.includes(skill);
+  const influence = loading && signatureTerms.length > 0 && signatureTerms.every((term) => finalOutput.includes(term));
+  const artifacts = Array.isArray(metadata.artifacts)
+    ? metadata.artifacts.filter(isRecord).map((artifact) => ({
+        id: typeof artifact.id === "string" ? artifact.id : null,
+        contentHash: hashValue(artifact.content),
+        source: typeof artifact.source === "string" ? artifact.source : metadata.source ?? null,
+      }))
+    : [];
+  return {
+    ok: exitCode === 0,
+    operation: "humanlayer-local-runtime-probe",
+    readOnly: true,
+    skill,
+    evidence: { existence, discovery, loading, influence },
     existence,
     discovery,
     loading,
@@ -259,8 +326,26 @@ export async function probeHumanLayerReadOnly(input) {
     discovered: discovery,
     loaded: loading,
     influenced: influence,
-    evidence: { existence, discovery, loading, influence },
-    sideEffects,
+    executablePath,
+    version: stdout.trim() || null,
+    task: isRecord(metadata.task) ? metadata.task : null,
+    session: isRecord(metadata.session) ? metadata.session : null,
+    comments: Array.isArray(metadata.comments) ? metadata.comments : [],
+    artifacts,
+    signature: {
+      id: typeof signature.id === "string" ? signature.id : null,
+      terms: signatureTerms,
+      matched: influence,
+    },
+    provenance: {
+      kind: "local-runtime",
+      verified: true,
+      command: "humanlayer --version",
+      source: typeof metadata.source === "string" ? metadata.source : null,
+      timestamp,
+      exitCode,
+    },
+    sideEffects: [],
   };
 }
 
@@ -285,7 +370,7 @@ export function humanLayerFeedbackReceipt(input = {}) {
 /**
  * Construct an injectable operator surface. No HumanLayer process is touched
  * unless a caller explicitly supplies and invokes one of the injected hooks.
- * @param {{config?: Partial<HumanLayerConfig>, runtime?: {writeArtifact?: (request: Record<string, unknown>) => unknown | Promise<unknown>}}} [options]
+ * @param {{config?: Partial<HumanLayerConfig>, runtime?: {writeArtifact?: (request: Record<string, unknown>) => unknown | Promise<unknown>, exec?: (request: {command: string, args: string[], readOnly: true}) => unknown | Promise<unknown>, readMetadata?: (request: {skill: string, readOnly: true}) => unknown | Promise<unknown>, now?: () => string}}} [options]
  */
 export function createHumanLayerAdapter(options = {}) {
   const config = mergeConfig(options.config);
@@ -301,6 +386,13 @@ export function createHumanLayerAdapter(options = {}) {
     feedbackReceipt: humanLayerFeedbackReceipt,
     receipt: (input = {}) => createHumanLayerReceipt(input, config),
     probeReadOnly: probeHumanLayerReadOnly,
+    /** @param {{skill: string, signature?: {id?: string, terms?: string[]}}} input */
+    probeLocalRuntime: (input) => probeHumanLayerLocalRuntime({
+      ...input,
+      exec: /** @type {NonNullable<typeof runtime.exec>} */ (runtime.exec),
+      readMetadata: /** @type {NonNullable<typeof runtime.readMetadata>} */ (runtime.readMetadata),
+      now: runtime.now,
+    }),
     /** @param {{artifacts: unknown[], destinations: unknown[]}} input */
     async materializeArtifacts(input) {
       const plan = routeHumanLayerArtifacts(input);

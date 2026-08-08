@@ -13,10 +13,12 @@ test("ticket 06 evidence is deterministic, reconstructable, and bounded to a liv
   const second = evaluateWorkingBackwards(fixture);
 
   assert.deepEqual(first, second);
+  assert.equal(first.ok, true);
   assert.equal(first.dogfood.chatHistoryRequired, false);
   assert.deepEqual(first.dogfood.reconstructedFrom, ["approved-spec", "artifact-graph", "ticket-dependency-graph", "t3-handoff"]);
   assert.deepEqual(first.historicalCases.map((entry) => entry.label), ["historical-validation-case", "historical-validation-case"]);
   assert.deepEqual(first.historicalCases.map((entry) => entry.id), ["aohys-dashboard-navigation", "nutriplan-auth-resilience"]);
+  assert.deepEqual(first.historicalCases.map((entry) => entry.classification), ["caught", "mixed"]);
   assert.ok(first.historicalCases.every((entry) => entry.unavailableFields.length > 0));
   assert.equal(first.comparison.mode, "unmatched-descriptive");
   assert.equal(first.claims.causal, "prohibited");
