@@ -737,7 +737,10 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.ok(staleAudit.readiness[harness].gaps.includes("stale-development-system-contract"));
   }
   assert.ok(staleAudit.readiness.codex.gaps.includes("stale-codex-adapter"));
+  assert.ok(!staleAudit.readiness.codex.gaps.includes("stale-factory-adapter"));
+  assert.ok(!staleAudit.readiness.t3code.gaps.includes("stale-factory-adapter"));
   assert.ok(staleAudit.readiness.factory.gaps.includes("stale-factory-adapter"));
+  assert.ok(!staleAudit.readiness.factory.gaps.includes("stale-codex-adapter"));
 
   await assert.rejects(normalizeRepository({ repository }), /confirm.*normalize/i);
   const normalized = await normalizeRepository({ repository, confirm: "normalize" });
