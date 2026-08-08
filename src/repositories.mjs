@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.1.2";
+const contractVersion = "1.2.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -707,6 +707,18 @@ function adapterContents(audit, harness) {
 function adapterContentsWithProviderReadiness(audit, harness) {
   return adapterContents(audit, harness)
     .replace(
+      "- `$flow-code-review`: independent review of an existing branch or pull request.",
+      "- `$flow-code-review`: independent review of an existing branch or pull request.\n- `$working-backwards`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.",
+    )
+    .replace(
+      "- `/flow-code-review`: independent review of an existing branch or pull request.",
+      "- `/flow-code-review`: independent review of an existing branch or pull request.\n- `/working-backwards`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.",
+    )
+    .replace(
+      "Synchronize global skill catalog `0.5.1` and verify that the active Codex or Factory harness discovers these commands plus `drive-development-flow`.",
+      "Synchronize global skill catalog `0.6.0` and verify that the active Codex or Factory harness discovers these commands plus `drive-development-flow` and `working-backwards`.",
+    )
+    .replace(
       "Do not import another product's vocabulary or activate paid services.",
       "Do not import another product's vocabulary. Generating or normalizing this adapter never activates a paid service; later use of declared paid agent tooling still requires repository opt-in or an explicit user invocation.",
     )
@@ -832,7 +844,7 @@ function repositoryContract(audit, mode) {
       providerReadiness: "before-shared-preview-when-affected",
     },
     operatorPrerequisites: {
-      skillCatalogVersion: "0.5.1",
+      skillCatalogVersion: "0.6.0",
       installationScope: "global",
       readinessScope: "repository-adapter-only",
       requiredSkills: [
@@ -843,6 +855,7 @@ function repositoryContract(audit, mode) {
         "to-tickets",
         "flow-implement",
         "flow-code-review",
+        "working-backwards",
         "exa-search",
         "global-agent-guardrails",
       ],
