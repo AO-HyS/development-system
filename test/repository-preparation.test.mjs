@@ -547,7 +547,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.equal(initialized[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.4.0");
+  assert.equal(contract.contractVersion, "1.4.1");
   assert.equal(contract.product.name, "aurora-studio");
   assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
@@ -568,8 +568,11 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     contract.harnesses.t3code.operationalEvidence,
     "structural-inheritance-not-independently-probed",
   );
-  assert.equal(contract.lifecycle.automatic.stageSelection, "requested-flow-only");
-  assert.equal(contract.lifecycle.automatic.specialStages, "explicit-user-invocation-only");
+  assert.equal(contract.lifecycle.automatic.stageSelection, "requested-flow-or-working-backwards-intent");
+  assert.equal(
+    contract.lifecycle.automatic.specialStages,
+    "working-backwards-intent-aware-others-explicit-user-invocation-only",
+  );
   assert.equal(contract.lifecycle.automatic.progressLimit, "request-authority-and-human-gates");
   assert.equal(contract.lifecycle.automatic.recommendationEffect, "read-only");
   assert.equal(contract.lifecycle.implementPreview.command, "flow-implement");
@@ -602,6 +605,8 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.lifecycle.terminalSliceContract.objectives, 1);
   assert.equal(contract.lifecycle.nativeGoal.creation, "explicit-user-request-only");
   assert.match(contract.lifecycle.nativeGoal.persistenceEffect, /no-scope-or-authorization-expansion/);
+  assert.ok(contract.lifecycle.explicitCommands.codex.includes("working-backwards"));
+  assert.ok(contract.lifecycle.explicitCommands.factory.includes("working-backwards"));
   assert.match(initialized[".codex/development-system/repository.md"], /React.*Convex/is);
   for (const command of ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"]) {
     assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
@@ -609,8 +614,8 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   }
   assert.match(initialized[".codex/development-system/repository.md"], /\$working-backwards/);
   assert.match(initialized[".factory/development-system/repository.md"], /\/working-backwards/);
-  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.4\.0`/);
-  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.4\.0`/);
+  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.4\.1`/);
+  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.4\.1`/);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
@@ -752,7 +757,7 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.equal(after[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(after[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.4.0");
+  assert.equal(contract.contractVersion, "1.4.1");
   assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.8.0");
   assert.equal(contract.preparation.mode, "normalize");
   assert.equal(contract.product.name, "lumen-console");
