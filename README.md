@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.4.0` runs progressive Working Backwards entirely inside T3 Code while retaining every `1.3.0` guarantee. Skill catalog `0.8.0` installs 27 logical skills across Codex and Factory, with T3 Code consuming the Codex-compatible surface.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.4.1` runs progressive Working Backwards entirely inside T3 Code and keeps repository JSON routing consistent with the human-readable adapter. Skill catalog `0.8.0` installs 27 logical skills across Codex and Factory, with T3 Code consuming the Codex-compatible surface.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,7 +16,7 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.4.0
+./bin/development-system install --version 1.4.1
 ./bin/development-system sync-skills --version 0.8.0
 ./bin/development-system guardrails-enable
 ./bin/development-system audit-skills --version 0.8.0
@@ -168,7 +168,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.4.0 del sistema de desarrollo” → `install --version 1.4.0`, `sync-skills --version 0.8.0`, then `guardrails-enable`
+- “Instala la versión 1.4.1 del sistema de desarrollo” → `install --version 1.4.1`, `sync-skills --version 0.8.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -198,7 +198,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.3.0` retain their published contracts. `1.4.0` moves progressive Working Backwards into T3 Code, preserves canonical Markdown, derives one private local technical Reader, and retains conversational checkpoints, hash-bound drift recovery, three formal gates, and the private T3 handoff boundary. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.4.0` retain their published contracts. `1.4.1` keeps the T3-native Reader and makes generated repository JSON declare the same intent-aware Working Backwards routing as the Markdown adapters. Published manifests and artifacts are immutable.
 
 ## Release boundary
 
