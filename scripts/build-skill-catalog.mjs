@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.6.0";
-if (version !== "0.6.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.6.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.8.0";
+if (version !== "0.8.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.8.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -109,7 +109,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.1.0/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.4.0/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -230,12 +230,13 @@ const additions = await Promise.all([
 
 const workingBackwards = await sharedSkill(
   "working-backwards",
-  "artifacts/1.2.0/skills/internal/working-backwards",
+  "artifacts/1.4.0/skills/internal/working-backwards",
   {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.2.0/skills/internal/working-backwards",
+    path: "artifacts/1.4.0/skills/internal/working-backwards",
   },
+  ["scripts/t3-workflow.mjs"],
 );
 
 const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";

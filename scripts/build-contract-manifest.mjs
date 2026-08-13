@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.2.0";
-if (version !== "1.2.0") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.2.0");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.4.0";
+if (version !== "1.4.0") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.4.0");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 await readFile(destination).then(
@@ -22,8 +22,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.1.2";
-const catalogVersion = "0.6.0";
+const previousVersion = "1.3.0";
+const catalogVersion = "0.8.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
