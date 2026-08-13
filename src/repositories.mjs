@@ -6,7 +6,7 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.4.0";
+const contractVersion = "1.4.1";
 const skillCatalogVersion = "0.8.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
@@ -848,8 +848,8 @@ function repositoryContract(audit, mode) {
     lifecycle: {
       automatic: {
         router: "drive-development-flow",
-        stageSelection: "requested-flow-only",
-        specialStages: "explicit-user-invocation-only",
+        stageSelection: "requested-flow-or-working-backwards-intent",
+        specialStages: "working-backwards-intent-aware-others-explicit-user-invocation-only",
         progressLimit: "request-authority-and-human-gates",
         recommendationEffect: "read-only",
       },
@@ -862,8 +862,8 @@ function repositoryContract(audit, mode) {
         persistenceEffect: "no-scope-or-authorization-expansion",
       },
       explicitCommands: {
-        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
-        factory: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"],
+        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards"],
+        factory: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards"],
       },
       implementPreview: {
         command: "flow-implement",
