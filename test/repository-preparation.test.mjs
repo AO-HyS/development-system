@@ -547,7 +547,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.equal(initialized[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.2.0");
+  assert.equal(contract.contractVersion, "1.4.0");
   assert.equal(contract.product.name, "aurora-studio");
   assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
@@ -585,7 +585,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
   assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.6.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.8.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
   assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
     "drive-development-flow",
@@ -609,8 +609,8 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   }
   assert.match(initialized[".codex/development-system/repository.md"], /\$working-backwards/);
   assert.match(initialized[".factory/development-system/repository.md"], /\/working-backwards/);
-  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.2\.0`/);
-  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.2\.0`/);
+  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.4\.0`/);
+  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.4\.0`/);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
@@ -752,8 +752,8 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.equal(after[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(after[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.2.0");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.6.0");
+  assert.equal(contract.contractVersion, "1.4.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.8.0");
   assert.equal(contract.preparation.mode, "normalize");
   assert.equal(contract.product.name, "lumen-console");
   assert.deepEqual(contract.preserved.releasePolicyFiles, ["RELEASE.md"]);
