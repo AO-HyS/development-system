@@ -1,0 +1,4 @@
+interface:
+  display_name: "Drive Development Flow"
+  short_description: "Route goals through the engineering lifecycle"
+  default_prompt: "Use $drive-development-flow to choose and run the right stage for this development goal."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Working Backwards"
+  short_description: "Define customer value before implementation"
+  default_prompt: "Use $working-backwards to define this feature from customer value through an approved implementation map."

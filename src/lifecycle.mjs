@@ -1,8 +1,17 @@
 // @ts-check
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { execFile } from "node:child_process";
 import { lstat, mkdir, open, readFile, rename, rmdir, unlink, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
+
+/** @param {string} value */
+function normalizeRepositoryIdentity(value) {
+  return value.trim().replaceAll("\\", "/").replace(/\/+$/u, "").replace(/\.git$/iu, "").toLowerCase();
+}
 
 const workflowIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const lifecycleStages = new Set([
@@ -23,7 +32,7 @@ const lifecycleStages = new Set([
  * @property {string} recordedAt
  * @property {string} operation
  * @property {string} request
- * @property {"explicit-human-request" | "implement-preview" | "operation-specific"} authorization
+ * @property {"explicit-human-request" | "implement-preview" | "operation-specific" | "system-invalidation"} authorization
  * @property {string} stageBefore
  * @property {string} stageAfter
  */
@@ -59,6 +68,95 @@ function assertWorkflowId(workflowId) {
 function lifecyclePath(home, workflowId) {
   assertWorkflowId(workflowId);
   return resolve(home, ".development-system", "lifecycles", `${workflowId}.json`);
+}
+
+/** @param {string} value */
+function t3ArtifactHash(value) {
+  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
+}
+
+/**
+ * A T3 Working Backwards workflow carries artifact-bound approvals beside the
+ * generic lifecycle. When present, verify them before any delivery operation;
+ * generic workflows without this state keep their existing behavior.
+ * @param {{home: string, workflowId: string}} options
+ * @param {string | null} [terminalSlice]
+ * @param {"exact" | "descendant"} [revisionMode]
+ */
+async function verifyT3WorkingBackwardsBinding(options, terminalSlice = null, revisionMode = "exact") {
+  const root = resolve(options.home, ".development-system", "private", "working-backwards", options.workflowId);
+  const statePath = resolve(root, "t3-workflow.json");
+  let current = resolve(options.home);
+  for (const component of relative(current, statePath).split(sep).filter(Boolean)) {
+    current = resolve(current, component);
+    try {
+      if ((await lstat(current)).isSymbolicLink()) return { valid: false, reason: "T3 Working Backwards state uses an unsafe symbolic link" };
+    } catch (error) {
+      if (isMissing(error)) break;
+      throw error;
+    }
+  }
+  let state;
+  try {
+    state = JSON.parse(await readFile(statePath, "utf8"));
+  } catch (error) {
+    if (isMissing(error)) return { valid: true, reason: null };
+    throw error;
+  }
+  if (!state || state.schemaVersion !== 1 || state.workflow !== "working-backwards" || state.workflowId !== options.workflowId || typeof state.workspaceDir !== "string" || !Array.isArray(state.documentApprovals)) {
+    return { valid: false, reason: "T3 Working Backwards approval state is invalid" };
+  }
+  if (typeof state.repositoryPath !== "string" || typeof state.repositoryRevision !== "string" || typeof state.repositoryIdentity !== "string") {
+    return { valid: false, reason: "T3 Working Backwards repository binding is incomplete" };
+  }
+  try {
+    const repositoryPath = resolve(state.repositoryPath);
+    const [{ stdout: headOutput }, { stdout: remoteOutput }] = await Promise.all([
+      execFileAsync("git", ["-C", repositoryPath, "rev-parse", "HEAD"], { encoding: "utf8" }),
+      execFileAsync("git", ["-C", repositoryPath, "remote", "get-url", "origin"], { encoding: "utf8" }),
+    ]);
+    if (normalizeRepositoryIdentity(remoteOutput) !== state.repositoryIdentity) {
+      return { valid: false, reason: "T3 Working Backwards repository identity drift" };
+    }
+    const head = headOutput.trim();
+    if (revisionMode === "exact" && head !== state.repositoryRevision) {
+      return { valid: false, reason: "T3 Working Backwards repository revision drift before Implement Preview" };
+    }
+    if (revisionMode === "descendant") {
+      await execFileAsync("git", ["-C", repositoryPath, "merge-base", "--is-ancestor", state.repositoryRevision, head], { encoding: "utf8" });
+    }
+  } catch {
+    return { valid: false, reason: revisionMode === "descendant" ? "T3 Working Backwards repository continuity cannot be verified" : "T3 Working Backwards repository binding cannot be verified" };
+  }
+  if (terminalSlice !== null && (typeof state.approvedFirstSlice !== "string" || terminalSlice !== state.approvedFirstSlice)) {
+    return { valid: false, reason: "Implement Preview terminal slice does not match the approved Working Backwards first slice" };
+  }
+  const workspaceDir = resolve(state.workspaceDir);
+  const privateRoot = resolve(options.home, ".development-system", "private", "working-backwards");
+  const workspaceFromRoot = relative(privateRoot, workspaceDir);
+  if (!workspaceFromRoot || workspaceFromRoot === "." || workspaceFromRoot === ".." || workspaceFromRoot.startsWith(`..${sep}`)) {
+    return { valid: false, reason: "T3 Working Backwards workspace escaped private HOME" };
+  }
+  for (const approval of state.documentApprovals) {
+    if (!approval || typeof approval.artifactPath !== "string" || typeof approval.contentHash !== "string") {
+      return { valid: false, reason: "T3 Working Backwards approval binding is incomplete" };
+    }
+    const artifactPath = resolve(approval.artifactPath);
+    const fromWorkspace = relative(workspaceDir, artifactPath);
+    if (!fromWorkspace || fromWorkspace === "." || fromWorkspace === ".." || fromWorkspace.startsWith(`..${sep}`)) {
+      return { valid: false, reason: "T3 Working Backwards artifact escaped its workspace" };
+    }
+    try {
+      if ((await lstat(artifactPath)).isSymbolicLink()) return { valid: false, reason: "T3 Working Backwards artifact uses an unsafe symbolic link" };
+      if (t3ArtifactHash(await readFile(artifactPath, "utf8")) !== approval.contentHash) {
+        return { valid: false, reason: `T3 Working Backwards artifact drift: ${String(approval.role ?? fromWorkspace)}` };
+      }
+    } catch (error) {
+      if (isMissing(error)) return { valid: false, reason: `T3 Working Backwards artifact is missing: ${String(approval.role ?? fromWorkspace)}` };
+      throw error;
+    }
+  }
+  return { valid: true, reason: null };
 }
 
 /** @param {unknown} error */
@@ -125,7 +223,7 @@ function isValidEvidence(candidate) {
     isIsoDate(evidence.recordedAt) &&
     typeof evidence.operation === "string" &&
     typeof evidence.request === "string" &&
-    ["explicit-human-request", "implement-preview", "operation-specific"].includes(
+    ["explicit-human-request", "implement-preview", "operation-specific", "system-invalidation"].includes(
       /** @type {string} */ (evidence.authorization),
     ) &&
     typeof evidence.stageBefore === "string" &&
@@ -495,6 +593,20 @@ async function runLifecycleRequestInternal(options, lockHeld) {
       externalSideEffects: [],
     };
   }
+  if (operation === "authorize_implement_preview") {
+    const binding = await verifyT3WorkingBackwardsBinding(options, options.terminalSlice?.trim() ?? null);
+    if (!binding.valid) {
+      return {
+        ok: false,
+        operation: "lifecycle-request",
+        selectedStage: null,
+        transition: { status: "denied", operation, reason: binding.reason },
+        state,
+        evidence: state.evidence,
+        externalSideEffects: [],
+      };
+    }
+  }
 
   const stageAfter = transition?.[1] ?? state.stage;
   const authorizationCandidate = operation.startsWith("authorize_")
@@ -622,6 +734,10 @@ export async function executeLifecycleOperation(options) {
     throw new Error(`Unknown lifecycle operation: ${options.operation}`);
   }
   const initialState = await readLifecycleState(options);
+  if (isDeliveryOperation) {
+    const binding = await verifyT3WorkingBackwardsBinding(options, initialState.terminalSlice, "descendant");
+    if (!binding.valid) return deniedExecution(initialState, options.operation, binding.reason ?? "T3 Working Backwards approval binding is stale");
+  }
   if (isDeliveryOperation && (!initialState.terminalSlice || !["delivery_authorized", "pre_release_ready"].includes(initialState.stage))) {
     return deniedExecution(initialState, options.operation, "Implement Preview has not authorized a terminal slice");
   }
@@ -646,6 +762,11 @@ export async function executeLifecycleOperation(options) {
 async function executeLifecycleOperationUnlocked(options) {
   const state = await readLifecycleState(options);
   const isDeliveryOperation = deliveryOperations.has(options.operation);
+
+  if (isDeliveryOperation) {
+    const binding = await verifyT3WorkingBackwardsBinding(options, state.terminalSlice, "descendant");
+    if (!binding.valid) return deniedExecution(state, options.operation, binding.reason ?? "T3 Working Backwards approval binding is stale");
+  }
 
   let authorization = null;
   let authorizationIndex = -1;
