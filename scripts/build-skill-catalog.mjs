@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.10.0";
-if (version !== "0.10.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.10.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.11.0";
+if (version !== "0.11.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.11.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -192,11 +192,11 @@ const additions = await Promise.all([
       ),
       sharedSkill(
         "global-agent-guardrails",
-        "artifacts/1.1.1/skills/internal/global-agent-guardrails",
+        "artifacts/1.5.2/skills/internal/global-agent-guardrails",
         {
           repository: "https://github.com/AO-HyS/development-system",
           commit: "$INSTALL_COMMIT",
-          path: "artifacts/1.1.1/skills/internal/global-agent-guardrails",
+          path: "artifacts/1.5.2/skills/internal/global-agent-guardrails",
         },
         ["scripts/command-guard.mjs"],
       ),

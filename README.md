@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.1` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.10.0` supports Codex and T3 Code only. The patch invokes Codex through the scheduler's absolute Node path so the weekly run works under the minimal macOS `launchd` environment.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.2` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.11.0` supports Codex and T3 Code only. The patch keeps the scheduler, guardrails, and live recertification independent from Factory.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,13 +16,14 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.1
-./bin/development-system sync-skills --version 0.10.0
+./bin/development-system install --version 1.5.2
+./bin/development-system sync-skills --version 0.11.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.10.0
+./bin/development-system audit-skills --version 0.11.0
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
+./bin/development-system guardrails-rollback
 ./bin/development-system rollback-skills
 ./bin/development-system rollback
 pnpm run rollout:validate
@@ -84,7 +85,7 @@ parallel and integrate into one candidate. Publication remains a separate
 authorization.
 
 Install the private weekly Development Steward on macOS after installing the
-1.5.1 contract. It runs Monday at 09:00 local time for the five allowlisted
+1.5.2 contract. It runs Monday at 09:00 local time for the five allowlisted
 primary repositories and publishes one concise Check-in input without writing
 to repositories or providers:
 
@@ -116,13 +117,12 @@ HOME/
 │   ├── lifecycles/
 │   ├── private/
 │   └── snapshots/
-├── .codex/development-system/contract.md
-└── .factory/development-system/contract.md
+└── .codex/development-system/contract.md
 ```
 
 The installed manifests record contract/catalog version, source repository, exact source commit, file/folder SHA-256 hashes, logical name, harness, destination, expected mirror, and explicit adapter contract. Direct edits under HOME are drift, not a new source of truth.
 
-`sync-skills` manages 26 logical skills across 51 physical variants. Twenty-one established workflow skills retain their Codex/Factory contracts, including `work-multiple` and the current custom-agent-aware orchestration adapters. `measure-development-run` has one explicitly declared Codex variant because Factory does not expose the required Codex task ID and session JSONL. The four 1.1 capabilities are mirrored across Codex and Factory. Cleanup remains limited to the stale workspace and broken links declared by the catalog; every replaced entry is snapshotted for `rollback-skills`.
+`sync-skills` manages 33 logical skills across 33 physical Codex variants. T3 Code consumes the same Codex-compatible installation. Factory paths from previously installed catalogs are retired managed outputs: synchronization removes them and snapshots every replaced entry for `rollback-skills`. Historical immutable manifests still describe the harnesses supported by those old releases; they do not expand the current 1.5.x runtime surface.
 
 ## Real development-run measurement
 
@@ -141,30 +141,15 @@ pnpm run skills:probe -- --output evidence/skills-live-$(date +%F).json
   --json
 ```
 
-The probe uses read-only, ephemeral Codex execution and read-only Factory Droid execution. Structural evidence covers the established cross-harness catalog; the current behavioral probe covers only the critical `research` capability in Codex and Factory. `measure-development-run` requires a separate real-task invocation because its contract depends on the current Codex task. Evidence includes executable path, version, command, explicit activation/read signal, a skill-derived behavior signature, scanner errors, and catalog warnings.
+The probe uses read-only, ephemeral Codex execution. T3 Code consumes this same Codex-compatible skill installation, so it does not require or claim a second harness probe. The current behavioral probe covers only the critical `research` capability. `measure-development-run` requires a separate real-task invocation because its contract depends on the current Codex task. Evidence includes executable path, version, command, explicit activation/read signal, a skill-derived behavior signature, scanner errors, and catalog warnings.
 
-## Operational harness parity
-
-```sh
-pnpm run harnesses:validate -- \
-  --projects-root /path/to/projects \
-  --timeout-ms 60000 \
-  --output evidence/harnesses-live-$(date +%F).json
-```
-
-After a failed run, add `--resume evidence/harnesses-live-YYYY-MM-DD.json` to re-run only failed surfaces. The merged report retains the first failure under `recoveredFailures` and records each attempt; recovery never rewrites the initial evidence.
-
-The validator launches installed Codex and Factory executables against AO root, the Development System, NutriPlan, The Barber Central, and AOHYS nested CWDs. T3Code is exercised through the Codex adapter and must preserve the same state namespace and observable behavior. Commands are read-only and do not initialize, normalize, or declare any product ready.
-
-## Capability benchmark and roster
+## Operational T3 Code evidence
 
 ```sh
-pnpm run benchmark -- --concurrency 3 --timeout-ms 60000
+pnpm run t3code:probe
 ```
 
-The suite compares identical fixtures for orchestration, implementation, review, architecture, browser QA, and visual judgment. Each record is explicitly `validated`, `provisional`, `timeout`, or `permission-blocked`; only validated records enter rankings. `config/0.6.0/capability-roster.json` separates a mapping's validated/provisional status from its supporting evidence status. No incomplete result is declared a winner.
-
-Use `--provisional-only` to rerun only mappings the versioned roster still marks provisional while validating the complete suite definition first.
+The T3 Code probe exercises the installed application through its Codex-compatible surface and verifies that repository and authorization state remain bound to the same contract. It is separate from the Codex skill probe because a shared installation is not proof that the T3 client actually consumes it. Both probes are read-only and do not initialize, normalize, or declare any product ready.
 
 ## Reproducible acceptance scenario
 
@@ -172,25 +157,19 @@ Use `--provisional-only` to rerun only mappings the versioned roster still marks
 pnpm run scenario
 ```
 
-The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `harnesses:validate` is the separate live operational gate.
+The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
+
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.2 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
 [`docs/changed-validation-benchmark-2026-07-28.md`](docs/changed-validation-benchmark-2026-07-28.md).
 
-To prove the dual interface through the installed Codex and Factory runtimes without mutating a product repository:
-
-```sh
-pnpm run operator:probe -- --output evidence/lifecycle-interface-live-2026-07-21.json
-```
-
-This live probe activates the automatic router and all six explicit phase skills in read-only sandboxes, verifies their authorization-boundary responses, and records per-harness evidence separately from structural repository readiness.
-
 ## Natural-language recovery
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.5.1 del sistema de desarrollo” → `install --version 1.5.1`, `sync-skills --version 0.10.0`, then `guardrails-enable`
+- “Instala la versión 1.5.2 del sistema de desarrollo” → `install --version 1.5.2`, `sync-skills --version 0.11.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -220,7 +199,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime without rewriting 1.5.0. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails without rewriting either published patch. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

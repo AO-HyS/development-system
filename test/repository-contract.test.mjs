@@ -11,8 +11,8 @@ const cliPath = resolve(repositoryRoot, "bin/development-system.mjs");
 
 test("published manifest and catalog generators refuse to overwrite existing versions", async () => {
   for (const [script, path] of [
-    ["scripts/build-contract-manifest.mjs", "manifests/1.5.1.json"],
-    ["scripts/build-skill-catalog.mjs", "catalog/0.10.0.json"],
+    ["scripts/build-contract-manifest.mjs", "manifests/1.5.2.json"],
+    ["scripts/build-skill-catalog.mjs", "catalog/0.11.0.json"],
   ]) {
     const absolutePath = resolve(repositoryRoot, path);
     const before = await readFile(absolutePath);
@@ -72,7 +72,7 @@ test("the repository validator proves manifests, canonical hashes, harnesses, an
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1", "1.1.2", "1.2.0", "1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.5.1"]);
+  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1", "1.1.2", "1.2.0", "1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.5.1", "1.5.2"]);
   assert.deepEqual(validation.json.errors, []);
 });
 

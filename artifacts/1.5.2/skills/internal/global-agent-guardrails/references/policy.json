@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.0.0",
+  "rules": [
+    {
+      "id": "broad-recursive-delete",
+      "pattern": "\\brm\\b(?=[^;&|\\n]*\\s(?:-[A-Za-z]*r[A-Za-z]*\\b|--recursive\\b))(?=[^;&|\\n]*\\s(?:-[A-Za-z]*f[A-Za-z]*\\b|--force\\b))[^;&|\\n]*",
+      "reason": "Recursive forced deletion is blocked. Resolve and review an exact recoverable target outside the agent harness."
+    },
+    {
+      "id": "disk-destruction",
+      "pattern": "\\b(?:mkfs(?:\\.[A-Za-z0-9_-]+)?|diskutil\\s+(?:eraseDisk|eraseVolume|partitionDisk)|format-volume|dd\\s+[^;&|\\n]*\\bof=/dev/)\\b",
+      "reason": "Disk formatting or raw device writes are blocked."
+    },
+    {
+      "id": "git-hard-reset",
+      "pattern": "\\bgit\\b[^;&|\\n]{0,120}\\breset\\s+--hard\\b",
+      "reason": "git reset --hard can destroy uncommitted work and is blocked."
+    },
+    {
+      "id": "git-clean",
+      "pattern": "\\bgit\\b[^;&|\\n]{0,120}\\bclean\\b(?=[^;&|\\n]*(?:\\s-[A-Za-z]*f[A-Za-z]*\\b|\\s--force\\b))[^;&|\\n]*",
+      "reason": "git clean with force can destroy untracked work and is blocked."
+    },
+    {
+      "id": "git-discard",
+      "pattern": "\\bgit\\b[^;&|\\n]{0,120}\\b(?:checkout\\s+--|restore\\s+(?:--worktree\\s+)?(?:--source\\s+\\S+\\s+)?)\\b",
+      "reason": "Discarding worktree changes through Git is blocked."
+    },
+    {
+      "id": "git-branch-delete-force",
+      "pattern": "\\bgit\\b[^;&|\\n]{0,120}\\bbranch\\b(?=[^;&|\\n]*(?:\\s-D\\b|\\s--delete\\b|\\s-[A-Za-z]*d[A-Za-z]*\\b))(?=[^;&|\\n]*(?:\\s-D\\b|\\s--force\\b|\\s-[A-Za-z]*f[A-Za-z]*\\b))[^;&|\\n]*",
+      "reason": "Forced branch deletion is blocked."
+    },
+    {
+      "id": "git-force-push",
+      "pattern": "\\bgit\\b[^;&|\\n]{0,160}\\bpush\\b[^;&|\\n]*(?:--force(?:-with-lease|-if-includes)?|-f)(?:\\s|$)",
+      "reason": "Forced pushes are blocked by the global policy."
+    },
+    {
+      "id": "repository-delete",
+      "pattern": "\\bgh\\s+repo\\s+delete\\b",
+      "reason": "Repository deletion is blocked."
+    },
+    {
+      "id": "infrastructure-destroy",
+      "pattern": "\\b(?:terraform\\s+destroy|pulumi\\s+destroy|kubectl\\s+delete\\s+namespace|wrangler\\s+delete|vercel\\s+remove)\\b",
+      "reason": "High-impact infrastructure destruction is blocked."
+    },
+    {
+      "id": "download-to-shell",
+      "pattern": "\\b(?:curl|wget)\\b[^\\n|]*\\|\\s*(?:sudo\\s+)?(?:sh|bash|zsh)\\b",
+      "reason": "Piping downloaded code directly into a shell is blocked."
+    },
+    {
+      "id": "fork-bomb",
+      "pattern": ":\\(\\)\\s*\\{\\s*:\\|:\\s*&\\s*\\}\\s*;\\s*:",
+      "reason": "Fork bombs are blocked."
+    }
+  ]
+}
