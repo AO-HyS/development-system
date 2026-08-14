@@ -1,0 +1,6 @@
+interface:
+  display_name: "Parallel Work"
+  short_description: "Run explicit dependency-aware ticket lanes safely"
+  default_prompt: "Use $parallel-work to execute these authorized tickets through safe parallel lanes and one integrated candidate."
+policy:
+  allow_implicit_invocation: false

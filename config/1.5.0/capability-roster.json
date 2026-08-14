@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "contractVersion": "1.5.0",
+  "policy": "codex-native-role-routing-with-runtime-receipts",
+  "executionRoles": {
+    "codex": {
+      "orchestrator": { "role": "orchestrator", "agent": "parent", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required" },
+      "discovery": { "role": "code_mapper", "agent": "code_mapper", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "xhigh", "evidenceStatus": "runtime-required" },
+      "implementation": { "role": "fast_implementer", "agent": "fast_implementer", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "high", "evidenceStatus": "runtime-required" },
+      "verification": { "role": "test_runner", "agent": "test_runner", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "high", "evidenceStatus": "runtime-required" },
+      "browserQa": { "role": "browser_qa", "agent": "browser_qa", "harness": "codex", "model": "gpt-5.6-terra", "reasoning": "max", "evidenceStatus": "runtime-required" },
+      "review": { "role": "reviewer", "agent": "reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required" },
+      "visualReview": { "role": "visual_reviewer", "agent": "visual_reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required" }
+    }
+  },
+  "clientSurfaces": {
+    "t3code": { "adapter": "codex" }
+  }
+}

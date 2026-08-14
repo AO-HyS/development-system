@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.4.1` runs progressive Working Backwards entirely inside T3 Code and keeps repository JSON routing consistent with the human-readable adapter. Skill catalog `0.8.0` installs 27 logical skills across Codex and Factory, with T3 Code consuming the Codex-compatible surface.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.0` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.9.0` supports Codex and T3 Code only.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,10 +16,10 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.4.1
-./bin/development-system sync-skills --version 0.8.0
+./bin/development-system install --version 1.5.0
+./bin/development-system sync-skills --version 0.9.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.8.0
+./bin/development-system audit-skills --version 0.9.0
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -76,11 +76,33 @@ After `Implement Preview` is authorized, execute a private structured plan with:
 
 The command runs one writer, independent intent/standards reviews, proportional TDD/QA, commit, push, PR, and preview commands. It creates a private Local Visual Plan and Recap and stops at `ready-for-human`; see `docs/implement-preview.md`. It rejects promotion operations.
 
-Invoke `$work-multiple` only when several authorized tickets should be worked
-together. Merely supplying several tickets does not activate worktrees. Shared
+Invoke `$parallel-work` when several authorized tickets should be worked
+together. The deprecated `$work-multiple` spelling remains only as a migration
+alias. Merely supplying several tickets does not activate worktrees. Shared
 surfaces and dependencies remain sequential; disjoint lanes may run in
 parallel and integrate into one candidate. Publication remains a separate
 authorization.
+
+Install the private weekly Development Steward on macOS after installing the
+1.5.0 contract. It runs Monday at 09:00 local time for the five allowlisted
+primary repositories and publishes one concise Check-in input without writing
+to repositories or providers:
+
+```sh
+./bin/development-system development-steward-schedule-enable \
+  --home "$HOME" \
+  --projects-root /absolute/path/to/projects \
+  --codex-path /absolute/path/to/codex \
+  --node-path /absolute/path/to/node \
+  --json
+./bin/development-system development-steward-schedule-audit --home "$HOME" --json
+./bin/development-system development-steward-schedule-disable --home "$HOME" --json
+```
+
+The validated, machine-consumable report is
+`~/.development-system/steward/reports/latest.json`; it contains both the
+normalized Steward review, its Check-in result, and derived readable Markdown.
+Disabling the scheduler unloads it but preserves completed reports.
 
 Use `--home /path/to/isolated-home` to operate on a fixture or clean environment. `install` resolves the checkout's current commit automatically; automation and fixtures may pin it explicitly with `--source-commit <40-hex-commit>`. Add `--json` for machine-readable evidence.
 
@@ -168,7 +190,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.4.1 del sistema de desarrollo” → `install --version 1.4.1`, `sync-skills --version 0.8.0`, then `guardrails-enable`
+- “Instala la versión 1.5.0 del sistema de desarrollo” → `install --version 1.5.0`, `sync-skills --version 0.9.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -198,7 +220,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.4.0` retain their published contracts. `1.4.1` keeps the T3-native Reader and makes generated repository JSON declare the same intent-aware Working Backwards routing as the Markdown adapters. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.4.1` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.5.0",
+  "adapters": {
+    "codex": {
+      "kind": "native",
+      "executable": "codex",
+      "tools": "Codex tools, plugins, and MCP apps",
+      "agents": "personal Codex agents",
+      "hooks": "Codex global and repository instructions",
+      "stateNamespace": "codex",
+      "activationPrefix": "$"
+    },
+    "t3code": {
+      "kind": "client-surface",
+      "adapter": "codex",
+      "executable": "codex",
+      "stateNamespace": "codex"
+    }
+  }
+}

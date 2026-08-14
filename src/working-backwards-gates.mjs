@@ -13,8 +13,8 @@ export function normalizeWorkingBackwardsRepositoryIdentity(value) {
 }
 
 export const WORKING_BACKWARDS_GATE_ROLES = Object.freeze({
-  product: Object.freeze(["working-backwards-brief", "research-questions", "research-report", "product-contract", "acceptance-contract"]),
-  technical: Object.freeze(["acceptance-contract", "product-contract", "domain-technical-design", "risk-evidence"]),
+  product: Object.freeze(["product-grill-evidence", "working-backwards-brief", "research-questions", "research-report", "product-contract", "acceptance-contract"]),
+  technical: Object.freeze(["technical-grill-evidence", "acceptance-contract", "product-contract", "domain-technical-design", "risk-evidence"]),
   implementationMap: Object.freeze(["structure-outline", "ticket-map"]),
 });
 

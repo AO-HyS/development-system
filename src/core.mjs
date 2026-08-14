@@ -215,9 +215,11 @@ async function validateManifest(manifest) {
   }
 
   const harnesses = new Set((manifest.supportedHarnesses ?? []).map((harness) => harness.id));
-  for (const requiredHarness of ["codex", "t3code", "factory"]) {
+  const codexAndT3Only = manifest.contractVersion === "1.5.0";
+  for (const requiredHarness of codexAndT3Only ? ["codex", "t3code"] : ["codex", "t3code", "factory"]) {
     if (!harnesses.has(requiredHarness)) errors.push(`missing supported harness: ${requiredHarness}`);
   }
+  if (codexAndT3Only && harnesses.has("factory")) errors.push("Factory is unsupported in contract 1.5.0");
 
   const artifacts = Array.isArray(manifest.artifacts) ? manifest.artifacts : [];
   if (artifacts.length === 0) errors.push("manifest must declare at least one artifact");
