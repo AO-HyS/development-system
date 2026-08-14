@@ -19,7 +19,8 @@ pnpm install --frozen-lockfile
 ./bin/development-system install --version 1.5.5
 ./bin/development-system sync-skills --version 0.12.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.12.0
+pnpm run skills:probe
+./bin/development-system audit-skills --version 0.12.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

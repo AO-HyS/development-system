@@ -100,13 +100,15 @@ test("contract 1.5.4 serializes Codex live observations after the real concurren
 });
 
 test("contract 1.5.5 and catalog 0.12.0 install the offline Reader patch immutably", async () => {
-  const [manifest, contract, catalog, reader, workflow, skill] = await Promise.all([
+  const [manifest, contract, catalog, reader, workflow, skill, packageJson, readme] = await Promise.all([
     readFile(resolve(root, "manifests/1.5.5.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.5/contract.md"), "utf8"),
     readFile(resolve(root, "catalog/0.12.0.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-reader.mjs"), "utf8"),
     readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs"), "utf8"),
     readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/SKILL.md"), "utf8"),
+    readFile(resolve(root, "package.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "README.md"), "utf8"),
   ]);
   const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
 
@@ -124,4 +126,6 @@ test("contract 1.5.5 and catalog 0.12.0 install the offline Reader patch immutab
   assert.match(reader, /font-size:1\.1875rem/);
   assert.match(workflow, /readerFileName\(initiativeName, slug\)/);
   assert.match(skill, /<initiative-slug>\.html/);
+  assert.match(packageJson.scripts["skills:audit"], /skills-live-latest\.json/);
+  assert.match(readme, /skills:probe[\s\S]*audit-skills[^\n]*--evidence[^\n]*skills-live-latest\.json/);
 });

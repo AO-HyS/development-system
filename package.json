@@ -22,7 +22,7 @@
     "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
     "reader:browser": "node ./scripts/verify-technical-reader-browser.mjs",
     "implement-preview": "./bin/development-system implement-preview",
-    "skills:audit": "./bin/development-system audit-skills --version 0.12.0",
+    "skills:audit": "./bin/development-system audit-skills --version 0.12.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",
     "skills:sync": "./bin/development-system sync-skills --version 0.12.0",
     "measure:test": "node --test test/measure-development-run.test.mjs",
