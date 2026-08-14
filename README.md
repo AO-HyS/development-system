@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.2` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.11.0` supports Codex and T3 Code only. The patch keeps the scheduler, guardrails, and live recertification independent from Factory.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.3` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.11.0` supports Codex and T3 Code only. The patch keeps the scheduler, guardrails, and live recertification independent from Factory and binds the T3 Code probe to the exact installed contract.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,7 +16,7 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.2
+./bin/development-system install --version 1.5.3
 ./bin/development-system sync-skills --version 0.11.0
 ./bin/development-system guardrails-enable
 ./bin/development-system audit-skills --version 0.11.0
@@ -85,7 +85,7 @@ parallel and integrate into one candidate. Publication remains a separate
 authorization.
 
 Install the private weekly Development Steward on macOS after installing the
-1.5.2 contract. It runs Monday at 09:00 local time for the five allowlisted
+1.5.3 contract. It runs Monday at 09:00 local time for the five allowlisted
 primary repositories and publishes one concise Check-in input without writing
 to repositories or providers:
 
@@ -149,7 +149,7 @@ The probe uses read-only, ephemeral Codex execution. T3 Code consumes this same 
 pnpm run t3code:probe
 ```
 
-The T3 Code probe exercises the installed application through its Codex-compatible surface and verifies that repository and authorization state remain bound to the same contract. It is separate from the Codex skill probe because a shared installation is not proof that the T3 client actually consumes it. Both probes are read-only and do not initialize, normalize, or declare any product ready.
+The T3 Code probe exercises the installed application through its Codex-compatible surface and verifies that repository and authorization state remain bound to the same contract. It consumes the canonical private `skills-live-latest.json` written by the immediately preceding `skills:probe`; pass `--skill-evidence /absolute/path.json` only to use another exact evidence packet. It is separate from the Codex skill probe because a shared installation is not proof that the T3 client actually consumes it. Both probes are read-only and do not initialize, normalize, or declare any product ready.
 
 ## Reproducible acceptance scenario
 
@@ -159,7 +159,7 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
 
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.2 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.3 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -169,7 +169,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.5.2 del sistema de desarrollo” → `install --version 1.5.2`, `sync-skills --version 0.11.0`, then `guardrails-enable`
+- “Instala la versión 1.5.3 del sistema de desarrollo” → `install --version 1.5.3`, `sync-skills --version 0.11.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -199,7 +199,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails without rewriting either published patch. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails; `1.5.3` binds T3 Code recertification to the exact installed contract and current evidence. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

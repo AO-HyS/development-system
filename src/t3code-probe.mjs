@@ -6,6 +6,7 @@ import { isAbsolute } from "node:path";
 
 export { stopDetachedProcess } from "./bounded-process.mjs";
 import { stopDetachedProcess } from "./bounded-process.mjs";
+import { resolveSkillProbeMetadata } from "./skill-probe-metadata.mjs";
 
 export const requiredT3CodeLifecycleSkills = [
   "wayfinder",
@@ -15,6 +16,87 @@ export const requiredT3CodeLifecycleSkills = [
   "flow-implement",
   "flow-code-review",
 ];
+
+/**
+ * Resolve the T3 live probe against the exact contract and catalog installed
+ * in HOME. A checkout default or historical evidence fixture must never choose
+ * the runtime contract implicitly.
+ *
+ * @param {{installedManifest: unknown, installedLock: unknown, installedCatalog: unknown}} input
+ */
+export function resolveT3CodeProbeMetadata(input) {
+  const manifest = input.installedManifest && typeof input.installedManifest === "object" && !Array.isArray(input.installedManifest)
+    ? input.installedManifest
+    : {};
+  const contractVersion = "contractVersion" in manifest ? manifest.contractVersion : undefined;
+  const coreSource = "source" in manifest && manifest.source && typeof manifest.source === "object" && !Array.isArray(manifest.source)
+    ? manifest.source
+    : {};
+  const coreCommit = "commit" in coreSource ? coreSource.commit : undefined;
+  if (typeof contractVersion !== "string" || !/^\d+\.\d+\.\d+$/.test(contractVersion)) {
+    throw new Error("Installed Development System manifest has no valid contract version");
+  }
+  if (typeof coreCommit !== "string" || !/^[a-f0-9]{40}$/.test(coreCommit)) {
+    throw new Error("Installed Development System manifest has no exact source commit");
+  }
+  const manifestArtifacts = "artifacts" in manifest && Array.isArray(manifest.artifacts)
+    ? manifest.artifacts
+    : [];
+  const catalogArtifacts = manifestArtifacts.filter((artifact) =>
+    artifact &&
+    typeof artifact === "object" &&
+    !Array.isArray(artifact) &&
+    artifact.logicalName === "skill-catalog"
+  );
+  if (catalogArtifacts.length !== 1) {
+    throw new Error("Installed Development System manifest must bind exactly one skill catalog");
+  }
+  const catalogSourcePath = catalogArtifacts[0].sourcePath;
+  const catalogVersionMatch = typeof catalogSourcePath === "string"
+    ? /^catalog\/(\d+\.\d+\.\d+)\.json$/.exec(catalogSourcePath)
+    : null;
+  if (!catalogVersionMatch) {
+    throw new Error("Installed Development System manifest has no exact skill catalog version");
+  }
+  const skills = resolveSkillProbeMetadata({
+    installedLock: input.installedLock,
+    codexCatalog: input.installedCatalog,
+  });
+  if (skills.sourceCommit !== coreCommit) {
+    throw new Error("Installed contract and skill catalog source commits do not match");
+  }
+  if (skills.catalogVersion !== catalogVersionMatch[1]) {
+    throw new Error("Installed manifest and skill catalog versions do not match");
+  }
+  return { contractVersion, catalogVersion: skills.catalogVersion, sourceCommit: coreCommit };
+}
+
+/**
+ * Select an installed T3 Code server entrypoint. New desktop builds keep the
+ * server inside app.asar and must run it through Electron's Node mode; older
+ * builds expose the same entrypoint under app.asar.unpacked.
+ *
+ * @param {{explicitCli?: string, explicitExecutable?: string, nodeExecutable: string, candidates: Array<{entrypoint: string, availabilityPath?: string, executable?: string, electronRunAsNode?: boolean}>, exists: (path: string) => boolean}} input
+ */
+export function resolveT3CodeServerRuntime(input) {
+  if (input.explicitCli) {
+    return {
+      executable: input.explicitExecutable ?? input.nodeExecutable,
+      argsPrefix: [input.explicitCli],
+      environment: input.explicitExecutable ? { ELECTRON_RUN_AS_NODE: "1" } : {},
+    };
+  }
+  for (const candidate of input.candidates) {
+    if (!input.exists(candidate.availabilityPath ?? candidate.entrypoint)) continue;
+    if (candidate.executable && !input.exists(candidate.executable)) continue;
+    return {
+      executable: candidate.executable ?? input.nodeExecutable,
+      argsPrefix: [candidate.entrypoint],
+      environment: candidate.electronRunAsNode ? { ELECTRON_RUN_AS_NODE: "1" } : {},
+    };
+  }
+  throw new Error("T3 Code server entrypoint is not installed in a supported stable or nightly application path");
+}
 
 /** @type {Record<string, RegExp[]>} */
 const influencePatterns = {
@@ -223,6 +305,80 @@ export async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 5_000)
   return { response, body };
 }
 
+/** @param {unknown} error */
+function classifyPollingFailure(error) {
+  if (
+    error instanceof SyntaxError ||
+    (error instanceof Error && /json/i.test(error.message))
+  ) return "invalid-json";
+  if (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError" || /abort|timeout/i.test(error.message))
+  ) return "http-timeout";
+  return "http-error";
+}
+
+/**
+ * Poll a T3 Code thread without discarding the last usable snapshot when an
+ * HTTP request times out or returns invalid JSON. Failure evidence is bounded
+ * and categorical so reports do not retain response bodies or secrets.
+ *
+ * @param {{
+ *   timeoutMs: number,
+ *   fetchSnapshot: () => Promise<any>,
+ *   inspectSnapshot: (snapshot: any) => Promise<boolean> | boolean,
+ *   intervalMs?: number,
+ *   now?: () => number,
+ *   sleep?: (milliseconds: number) => Promise<void>,
+ * }} input
+ */
+export async function pollT3CodeThread(input) {
+  if (!Number.isFinite(input.timeoutMs) || input.timeoutMs <= 0) {
+    throw new Error("T3Code thread polling timeout must be positive");
+  }
+  const now = input.now ?? Date.now;
+  const sleep = input.sleep ?? ((milliseconds) =>
+    new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds))
+  );
+  const intervalMs = input.intervalMs ?? 1_000;
+  const deadline = now() + input.timeoutMs;
+  let snapshot = null;
+  let completed = false;
+  let failureCount = 0;
+  /** @type {string[]} */
+  const recentFailureKinds = [];
+
+  while (now() < deadline) {
+    try {
+      const candidate = await input.fetchSnapshot();
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+        throw new SyntaxError("T3Code thread response is not a JSON object");
+      }
+      snapshot = candidate;
+      if (await input.inspectSnapshot(candidate)) {
+        completed = true;
+        break;
+      }
+    } catch (error) {
+      failureCount += 1;
+      recentFailureKinds.push(classifyPollingFailure(error));
+      if (recentFailureKinds.length > 3) recentFailureKinds.shift();
+    }
+    const remainingMs = deadline - now();
+    if (remainingMs <= 0) break;
+    await sleep(Math.min(intervalMs, remainingMs));
+  }
+
+  return {
+    snapshot,
+    completed,
+    pollingFailures: {
+      count: failureCount,
+      recentKinds: recentFailureKinds,
+    },
+  };
+}
+
 /** @param {any} report */
 function hasIndependentLoadEvidence(report) {
   const commands = report?.toolEvidence?.completedCommands ?? [];
@@ -295,7 +451,19 @@ export function evaluateT3CodeProbe(report) {
       observed.routerLoaded.includes("drive-development-flow") &&
       observed.routerLoaded.includes("coding-orchestration")
     );
+  const healthyManagedHome = (/** @type {any} */ snapshot) =>
+    snapshot?.installation?.ok === true &&
+    snapshot?.installation?.status === "healthy" &&
+    snapshot?.installation?.contractVersion === report?.contractVersion &&
+    snapshot?.installation?.source?.commit === report?.sourceCommit &&
+    snapshot?.skills?.ok === true &&
+    snapshot?.skills?.status === "healthy" &&
+    snapshot?.skills?.catalogVersion === report?.catalogVersion &&
+    snapshot?.skills?.sourceCommit === report?.sourceCommit;
   return (
+    report?.failure === null &&
+    healthyManagedHome(report?.stateInvariants?.managedHome?.before) &&
+    healthyManagedHome(report?.stateInvariants?.managedHome?.after) &&
     routerLoaded &&
     skillAuditHealthy &&
     Array.isArray(observed.lifecycleSkills) &&

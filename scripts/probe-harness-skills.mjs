@@ -11,6 +11,7 @@ import {
   runSkillProbeProcess,
 } from "../src/skill-probe-runtime.mjs";
 import { resolveSkillProbeMetadata } from "../src/skill-probe-metadata.mjs";
+import { writePrivateEvidence } from "../src/private-evidence.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -19,6 +20,13 @@ if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("AOHYS_SKILL_
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
 const probeHome = resolve(process.env.HOME ?? "");
+const latestOutputPath = resolve(
+  probeHome,
+  ".development-system",
+  "private",
+  "reports",
+  "skills-live-latest.json",
+);
 const installedLock = JSON.parse(await readFile(resolve(probeHome, ".development-system", "skills-lock.json"), "utf8"));
 const installedCatalog = JSON.parse(await readFile(resolve(probeHome, ".codex", "development-system", "skills.json"), "utf8"));
 const { sourceCommit, catalogVersion } = resolveSkillProbeMetadata({
@@ -70,9 +78,11 @@ const evidence = buildCodexSkillProbeEvidence({
   skillResult: codex,
 });
 
-if (outputPath) {
+const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;
+await writePrivateEvidence({ home: probeHome, destination: latestOutputPath, contents: serializedEvidence });
+if (outputPath && outputPath !== latestOutputPath) {
   await mkdir(dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+  await writeFile(outputPath, serializedEvidence, { encoding: "utf8", mode: 0o600 });
 }
 process.stdout.write(`${JSON.stringify(evidence, null, 2)}\n`);
 if (
