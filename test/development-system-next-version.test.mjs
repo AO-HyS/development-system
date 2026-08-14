@@ -63,3 +63,22 @@ test("contract 1.5.2 and catalog 0.11.0 remove Factory from current live evidenc
   assert.doesNotMatch(metadataSource, /factoryCatalog/);
   assert.doesNotMatch(guardrailsSource, /factoryConfig|factoryEngine|Factory settings/);
 });
+
+test("contract 1.5.3 binds T3 Code recertification to the installed contract", async () => {
+  const [manifest, contract, t3Probe, codexProbe] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.3.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.3/contract.md"), "utf8"),
+    readFile(resolve(root, "scripts/probe-t3code.mjs"), "utf8"),
+    readFile(resolve(root, "scripts/probe-harness-skills.mjs"), "utf8"),
+  ]);
+  assert.equal(manifest.contractVersion, "1.5.3");
+  assert.deepEqual(manifest.supportedHarnesses.map((entry) => entry.id), ["codex", "t3code"]);
+  assert.match(contract, /exact installed contract/i);
+  assert.doesNotMatch(t3Probe, /"0\.2\.0"|skills-live-2026-07-23-recertification/);
+  assert.match(t3Probe, /skills-live-latest\.json/);
+  assert.match(t3Probe, /app\.asar\/apps\/server\/dist\/bin\.mjs/);
+  assert.match(t3Probe, /electronRunAsNode/);
+  assert.match(t3Probe, /turn-timeout/);
+  assert.match(t3Probe, /T3CODE_TURN_TIMEOUT_MS/);
+  assert.match(codexProbe, /skills-live-latest\.json/);
+});
