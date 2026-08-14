@@ -3,11 +3,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 
-test("contract 1.5.0 and catalog 0.9.0 expose only Codex and T3 Code while retaining exact provenance", async () => {
+test("contract 1.5.1 and catalog 0.10.0 patch launchd without rewriting 1.5.0", async () => {
   const root = resolve(import.meta.dirname, "..");
   const [manifest, catalog] = await Promise.all([
-    readFile(resolve(root, "manifests/1.5.0.json"), "utf8").then(JSON.parse),
-    readFile(resolve(root, "catalog/0.9.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "manifests/1.5.1.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "catalog/0.10.0.json"), "utf8").then(JSON.parse),
   ]);
 
   assert.deepEqual(manifest.supportedHarnesses.map((harness) => harness.id), ["codex", "t3code"]);
@@ -22,6 +22,7 @@ test("contract 1.5.0 and catalog 0.9.0 expose only Codex and T3 Code while retai
   }
   assert.ok(manifest.artifacts.some((artifact) => artifact.logicalName === "stack-quality-profiles"));
   assert.ok(manifest.artifacts.some((artifact) => artifact.logicalName === "development-steward-schedule"));
+  assert.equal(catalog.skills.find((skill) => skill.logicalName === "development-steward").source.path, "artifacts/1.5.1/skills/internal/development-steward");
 
   const [operatorInterface, harnessAdaptersSource, capabilityRosterSource] = await Promise.all(
     ["operator-interface", "harness-adapters", "capability-roster"].map(async (logicalName) => {

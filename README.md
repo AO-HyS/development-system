@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.0` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.9.0` supports Codex and T3 Code only.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.1` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.10.0` supports Codex and T3 Code only. The patch invokes Codex through the scheduler's absolute Node path so the weekly run works under the minimal macOS `launchd` environment.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,10 +16,10 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.0
-./bin/development-system sync-skills --version 0.9.0
+./bin/development-system install --version 1.5.1
+./bin/development-system sync-skills --version 0.10.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.9.0
+./bin/development-system audit-skills --version 0.10.0
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -84,7 +84,7 @@ parallel and integrate into one candidate. Publication remains a separate
 authorization.
 
 Install the private weekly Development Steward on macOS after installing the
-1.5.0 contract. It runs Monday at 09:00 local time for the five allowlisted
+1.5.1 contract. It runs Monday at 09:00 local time for the five allowlisted
 primary repositories and publishes one concise Check-in input without writing
 to repositories or providers:
 
@@ -190,7 +190,7 @@ This live probe activates the automatic router and all six explicit phase skills
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.5.0 del sistema de desarrollo” → `install --version 1.5.0`, `sync-skills --version 0.9.0`, then `guardrails-enable`
+- “Instala la versión 1.5.1 del sistema de desarrollo” → `install --version 1.5.1`, `sync-skills --version 0.10.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -220,7 +220,7 @@ The gate typechecks the dependency-free Node implementation, runs the CLI accept
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.4.1` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime without rewriting 1.5.0. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

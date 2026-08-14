@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.9.0";
-if (version !== "0.9.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.9.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.10.0";
+if (version !== "0.10.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.10.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -233,10 +233,10 @@ const nextInternalNames = [
   "posthog-observability",
 ];
 const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName) =>
-  sharedSkill(logicalName, `artifacts/1.5.0/skills/internal/${logicalName}`, {
+  sharedSkill(logicalName, `artifacts/${logicalName === "development-steward" ? "1.5.1" : "1.5.0"}/skills/internal/${logicalName}`, {
         repository: "https://github.com/AO-HyS/development-system",
         commit: "$INSTALL_COMMIT",
-        path: `artifacts/1.5.0/skills/internal/${logicalName}`,
+        path: `artifacts/${logicalName === "development-steward" ? "1.5.1" : "1.5.0"}/skills/internal/${logicalName}`,
   }),
 ));
 
