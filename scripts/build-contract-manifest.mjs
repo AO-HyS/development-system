@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.0";
-if (version !== "1.5.0") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.0");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.1";
+if (version !== "1.5.1") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.1");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 await readFile(destination).then(
@@ -22,8 +22,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.4.1";
-const catalogVersion = "0.9.0";
+const previousVersion = "1.5.0";
+const catalogVersion = "0.10.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
@@ -37,7 +37,7 @@ const capabilityRosterPath = "config/1.5.0/capability-roster.json";
 const capabilityRosterHash = sha256(await readFile(resolve(repositoryRoot, capabilityRosterPath)));
 const qualityPath = "artifacts/1.5.0/quality/stack-quality-profiles.json";
 const qualityHash = sha256(await readFile(resolve(repositoryRoot, qualityPath)));
-const stewardSchedulePath = "artifacts/1.5.0/steward/schedule.json";
+const stewardSchedulePath = "artifacts/1.5.1/steward/schedule.json";
 const stewardScheduleHash = sha256(await readFile(resolve(repositoryRoot, stewardSchedulePath)));
 const manifest = {
   ...previous,
@@ -73,27 +73,14 @@ const manifest = {
     if (artifact.logicalName === "capability-roster") {
       return { ...artifact, sourcePath: capabilityRosterPath, sha256: capabilityRosterHash };
     }
+    if (artifact.logicalName === "stack-quality-profiles") {
+      return { ...artifact, sourcePath: qualityPath, sha256: qualityHash };
+    }
+    if (artifact.logicalName === "development-steward-schedule") {
+      return { ...artifact, sourcePath: stewardSchedulePath, sha256: stewardScheduleHash };
+    }
     return artifact;
-  }).concat([
-    {
-      id: "stack-quality-profiles.codex",
-      logicalName: "stack-quality-profiles",
-      sourcePath: qualityPath,
-      destination: ".codex/development-system/stack-quality-profiles.json",
-      harness: "codex",
-      sha256: qualityHash,
-      expectedMirrorOf: null,
-    },
-    {
-      id: "development-steward-schedule.codex",
-      logicalName: "development-steward-schedule",
-      sourcePath: stewardSchedulePath,
-      destination: ".codex/development-system/development-steward-schedule.json",
-      harness: "codex",
-      sha256: stewardScheduleHash,
-      expectedMirrorOf: null,
-    },
-  ]),
+  }),
 };
 await writeFile(
   destination,

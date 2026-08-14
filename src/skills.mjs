@@ -394,11 +394,11 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
     errors.push("catalogVersion must use semantic versioning");
   }
   const harnesses = new Set((catalog.supportedHarnesses ?? []).map((harness) => harness.id));
-  const codexAndT3Only = catalog.catalogVersion === "0.9.0";
+  const codexAndT3Only = catalog.catalogVersion === "0.9.0" || catalog.catalogVersion === "0.10.0";
   for (const required of codexAndT3Only ? ["codex", "t3code"] : ["codex", "t3code", "factory"]) {
     if (!harnesses.has(required)) errors.push(`missing supported harness: ${required}`);
   }
-  if (codexAndT3Only && harnesses.has("factory")) errors.push("Factory is unsupported in catalog 0.9.0");
+  if (codexAndT3Only && harnesses.has("factory")) errors.push(`Factory is unsupported in catalog ${catalog.catalogVersion}`);
   const logicalNames = new Set();
   const ids = new Set();
   const destinations = new Set();

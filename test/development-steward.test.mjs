@@ -113,7 +113,7 @@ test("the private report is concise, device-classified, and consumable by Check-
 });
 
 test("the installable skill preserves upstream, no-auto-merge, and reporting boundaries", async () => {
-  const root = resolve(import.meta.dirname, "../artifacts/1.5.0/skills/internal/development-steward");
+  const root = resolve(import.meta.dirname, "../artifacts/1.5.1/skills/internal/development-steward");
   const [skill, metadata] = await Promise.all([
     readFile(resolve(root, "SKILL.md"), "utf8"),
     readFile(resolve(root, "agents/openai.yaml"), "utf8"),

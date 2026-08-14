@@ -13,7 +13,7 @@ import {
   getDevelopmentStewardSchedulerPaths,
   installDevelopmentStewardScheduler,
 } from "../src/development-steward-scheduler.mjs";
-import { runDevelopmentSteward } from "../artifacts/1.5.0/skills/internal/development-steward/scripts/runner.mjs";
+import { runDevelopmentSteward } from "../artifacts/1.5.1/skills/internal/development-steward/scripts/runner.mjs";
 
 const stewardContractPath = resolve(import.meta.dirname, "../src/development-steward.mjs");
 const checkInContractPath = resolve(import.meta.dirname, "../src/check-in.mjs");
@@ -170,6 +170,7 @@ test("runner injects codex without a shell, enforces read-only, and atomically r
   let invocation;
   const result = await runDevelopmentSteward({
     codexPath: "/fixture/codex",
+    nodePath: "/fixture/node",
     promptPath,
     reportPath,
     workingDirectory: home,
@@ -182,8 +183,9 @@ test("runner injects codex without a shell, enforces read-only, and atomically r
     },
   });
   assert.equal(result.status, "completed");
-  assert.equal(invocation.command, "/fixture/codex");
-  assert.deepEqual(invocation.args.slice(0, 8), ["exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "--cd"]);
+  assert.equal(invocation.command, "/fixture/node");
+  assert.equal(invocation.args[0], "/fixture/codex");
+  assert.deepEqual(invocation.args.slice(1, 9), ["exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "--cd"]);
   assert.equal(invocation.args.includes("--dangerously-bypass-approvals-and-sandbox"), false);
   const report = JSON.parse(await readFile(reportPath, "utf8"));
   assert.equal(report.operation, "development-steward-weekly-report");
@@ -204,6 +206,7 @@ test("failed runner preserves the last complete report", async () => {
   await writeFile(reportPath, "last good report", { mode: 0o600 });
   await assert.rejects(runDevelopmentSteward({
     codexPath: "/fixture/codex",
+    nodePath: "/fixture/node",
     promptPath,
     reportPath,
     workingDirectory: home,
@@ -223,6 +226,7 @@ test("runner rejects unvalidated prose and preserves the last complete structure
   await writeFile(reportPath, "last validated report", { mode: 0o600 });
   await assert.rejects(runDevelopmentSteward({
     codexPath: "/fixture/codex",
+    nodePath: "/fixture/node",
     promptPath,
     reportPath,
     workingDirectory: home,
