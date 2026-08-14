@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -13,6 +13,7 @@ import {
   writeT3Reader,
   WORKING_BACKWARDS_PHASES,
 } from "../artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { writeT3Reader as writeT3ReaderV2 } from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 
@@ -141,6 +142,68 @@ test("the derived HTML escapes artifact content and never becomes canonical stat
   assert.match(html, /&lt;script&gt;alert/iu);
   assert.equal(rendered.artifacts.length, 1);
   assert.equal(rendered.artifacts[0].fileName, "01-customer-story.md");
+});
+
+test("the v2 Reader maintains one private metadata-only library across human initiatives", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-library-home-"));
+  const root = resolve(home, ".development-system", "private", "working-backwards");
+  const firstWorkspace = resolve(root, "development-system-next");
+  const secondWorkspace = resolve(root, "release-train-refresh");
+  await mkdir(firstWorkspace, { recursive: true });
+  await mkdir(secondWorkspace, { recursive: true });
+  await writeFile(resolve(firstWorkspace, "01-product-grill.md"), `---
+working_backwards_role: product-grill
+working_backwards_status: draft
+initiative_name: Development System Next
+created_at: 2026-08-01
+---
+
+# Product Grill
+
+Private canonical content must not enter the common catalog.
+`, "utf8");
+
+  const first = await writeT3ReaderV2({
+    home,
+    workspaceDir: firstWorkspace,
+    repositoryIdentity: "https://github.com/AO-HyS/development-system.git",
+    repositoryRevision: "abc123",
+    now: () => "2026-08-14T12:00:00.000Z",
+  });
+  const second = await writeT3ReaderV2({
+    home,
+    workspaceDir: secondWorkspace,
+    initiativeName: "Release Train Refresh",
+    repositoryIdentity: "https://github.com/AO-HyS/development-system.git",
+    repositoryRevision: "def456",
+    now: () => "2026-08-14T13:00:00.000Z",
+  });
+
+  const catalog = JSON.parse(await readFile(first.readerLibraryCatalogPath, "utf8"));
+  const library = await readFile(first.readerLibraryPath, "utf8");
+  const reader = await readFile(first.readerPath, "utf8");
+  assert.equal(first.readerLibraryPath, second.readerLibraryPath);
+  assert.equal(catalog.schemaVersion, 1);
+  assert.equal(catalog.entries.length, 2);
+  assert.deepEqual(catalog.entries.map((entry) => entry.name), ["Development System Next", "Release Train Refresh"]);
+  assert.equal(catalog.entries[0].slug, "development-system-next");
+  assert.equal(catalog.entries[0].repository, "https://github.com/ao-hys/development-system");
+  assert.equal(catalog.entries[0].phase, "Product Grill With Docs");
+  assert.equal(catalog.entries[0].status, "in-review");
+  assert.equal(catalog.entries[0].createdAt, "2026-08-01T00:00:00.000Z");
+  assert.equal(catalog.entries[0].updatedAt, "2026-08-14T12:00:00.000Z");
+  assert.equal(catalog.entries[0].nextAction, "Revisar y aprobar Product Grill With Docs");
+  assert.match(catalog.entries[0].readerHref, /^development-system-next\/index\.html$/u);
+  assert.doesNotMatch(JSON.stringify(catalog), /Private canonical content/);
+  assert.match(library, /Biblioteca del Technical Reader/);
+  assert.match(library, /Development System Next/);
+  assert.match(library, /Release Train Refresh/);
+  assert.doesNotMatch(library, /Private canonical content/);
+  assert.match(reader, /class="source-button library-link" href="\.\.\/index\.html"/);
+  assert.deepEqual(first.localWrites, [first.readerPath, first.readerLibraryCatalogPath, first.readerLibraryPath]);
+  assert.equal((await stat(first.readerPath)).mode & 0o777, 0o600);
+  assert.equal((await stat(first.readerLibraryCatalogPath)).mode & 0o777, 0o600);
+  assert.equal((await stat(first.readerLibraryPath)).mode & 0o777, 0o600);
 });
 
 test("the review surface renders local Mermaid flows, charts, and code snippets without remote scripts", async () => {

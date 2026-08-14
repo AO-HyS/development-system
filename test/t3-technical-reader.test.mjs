@@ -4,7 +4,8 @@ import test from "node:test";
 import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
-} from "../artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
+  renderTechnicalReaderLibraryHtml,
+} from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -29,6 +30,36 @@ The reader accepts a plain JSON input and never mutates lifecycle state.
 flowchart LR
   A[Private Markdown] --> B{Contract valid}
   B -->|Yes| C[Offline reader]
+\`\`\`
+
+\`\`\`mermaid
+gantt
+  title Release progress
+  dateFormat YYYY-MM-DD
+  section Reader
+  Visual system :done, v1, 2026-08-10, 2d
+  Offline runtime :active, v2, after v1, 3d
+\`\`\`
+
+\`\`\`mermaid
+sequenceDiagram
+  User->>Reader: Open local HTML
+  Reader-->>User: Render without a server
+\`\`\`
+
+\`\`\`mermaid
+timeline
+  title Reader delivery
+  2026-08-10 : Visual system
+  2026-08-12 : Offline runtime
+\`\`\`
+
+\`\`\`mermaid
+architecture-beta
+  group library(cloud)[Private Library]
+  service source(database)[Markdown] in library
+  service reader(server)[Reader] in library
+  source:R -- L:reader
 \`\`\`
 
 ## Evidence
@@ -67,11 +98,14 @@ function readerInput(markdown = representativePlan) {
     productName: "Working Backwards",
     workflow: {
       id: "reader-contract",
+      name: "Development System Next",
+      slug: "development-system-next",
       profile: "Standard",
       action: "Review and approve Technical Contract",
       implementationAuthorized: false,
       repository: "github.com/aohys/development-system",
       revision: "revision-1",
+      libraryHref: "../index.html",
     },
     document: {
       type: "Technical Contract",
@@ -95,11 +129,13 @@ test("the reusable model builder turns Markdown plus JSON metadata into a serial
   assert.equal(model.document.summary, "Review one settled plan without dashboard chrome competing with the document.");
   assert.equal(model.document.priority, "high");
   assert.equal(model.document.profile, "Standard");
+  assert.equal(model.workflow.name, "Development System Next");
+  assert.equal(model.workflow.slug, "development-system-next");
   assert.equal(model.document.readTimeMinutes >= 1, true);
   assert.deepEqual(model.outline.map((entry) => entry.id), ["architecture", "evidence", "architecture-2"]);
   assert.deepEqual(
     model.blocks.filter((block) => ["mermaid", "chart", "table", "callout", "code"].includes(block.type)).map((block) => block.type),
-    ["mermaid", "chart", "table", "callout", "code", "code"],
+    ["mermaid", "mermaid", "mermaid", "mermaid", "mermaid", "chart", "table", "callout", "code", "code"],
   );
   assert.equal(model.blocks.find((block) => block.type === "code" && block.language === "typescript")?.filename, "scripts/t3-reader.mjs");
   assert.deepEqual(model.blocks.find((block) => block.type === "code" && block.language === "typescript")?.highlightLines, [2]);
@@ -112,6 +148,7 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
 
   assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
   assert.match(html, /connect-src 'none'/);
+  assert.match(html, /font-src data:/);
   assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
   assert.doesNotMatch(html, /script-src[^;]*unsafe-inline/);
   assert.match(html, /class="reader-layout"/);
@@ -119,15 +156,19 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
   assert.match(html, /class="artifacts-rail"/);
   assert.match(html, /class="toc-rail"/);
   assert.match(html, /class="mobile-reader-tools"/);
-  assert.match(html, /grid-template-columns:minmax\(12rem,1fr\) minmax\(0,56rem\) minmax\(11rem,1fr\)/);
-  assert.match(html, /@media\(max-width:70rem\)/);
+  assert.match(html, /grid-template-columns:minmax\(11rem,14rem\) minmax\(0,56rem\) minmax\(10rem,13rem\)/);
+  assert.match(html, /@media\(max-width:76rem\)/);
   assert.match(html, /Implementation not authorized/);
   assert.doesNotMatch(html, /class="hero"|class="score"|KPI/);
 
-  for (const action of ["zoom-out", "zoom-in", "fit", "expand", "fullscreen", "copy-source", "view-source"]) {
+  for (const action of ["zoom-out", "zoom-in", "fit", "reset", "expand", "fullscreen", "copy-source", "view-source"]) {
     assert.match(html, new RegExp(`data-action="${action}"`));
   }
-  assert.match(html, /class="diagram-fallback"/);
+  assert.match(html, /data-rendered="false"/);
+  assert.match(html, /securityLevel:"strict"/);
+  assert.match(html, /htmlLabels:false/);
+  assert.match(html, /IntersectionObserver/);
+  assert.match(html, /Panzoom\(svg/);
   assert.match(html, /<table class="chart-data-table">/);
   assert.match(html, /<table class="data-table">/);
   assert.match(html, /scripts\/t3-reader\.mjs/);
@@ -137,8 +178,9 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
   assert.match(html, /class="code-line diff-removed"/);
   assert.match(html, /aria-live="polite"/);
 
-  assert.doesNotMatch(html, /https?:\/\//iu);
-  assert.doesNotMatch(html, /\bfetch\b|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage/iu);
+  const staticMarkup = html.replace(/<style>[\s\S]*?<\/style>/u, "").replace(/<script>[\s\S]*?<\/script>/u, "");
+  assert.doesNotMatch(staticMarkup, /<script[^>]+src=|<link[^>]+href=|<iframe/iu);
+  assert.doesNotMatch(html, /XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage/iu);
 });
 
 test("inline evidence stays inside the document track while expanded evidence becomes an overlay", () => {
@@ -146,20 +188,37 @@ test("inline evidence stays inside the document track while expanded evidence be
 
   assert.match(html, /\.visual-block,\.code-block,\.table-scroll\{width:100%;/);
   assert.doesNotMatch(html, /\.visual-block,\.code-block,\.table-scroll\{width:min\(68rem/);
-  assert.match(html, /class="diagram-viewport"[^>]*><div class="diagram-canvas" data-diagram-canvas/);
+  assert.match(html, /class="diagram-viewport"[^>]*>[\s\S]*?<div class="diagram-canvas" data-diagram-canvas/);
   assert.match(html, /\.mermaid-block\.is-expanded\{position:fixed;z-index:\d+;inset:/);
-  assert.match(html, /\.mermaid-block\.is-expanded\{[^}]*width:auto;[^}]*transform:none/);
+  assert.match(html, /\.mermaid-block\.is-expanded\{[^}]*display:flex/);
 });
 
-test("Mermaid zoom sizes an inner canvas so the viewport gains real scroll geometry", () => {
+test("official Mermaid supports many diagram families and Panzoom provides direct manipulation", () => {
   const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput()));
 
-  assert.match(html, /data-natural-width="780" data-natural-height="340"/);
-  assert.match(html, /const canvas=figure\.querySelector\("\[data-diagram-canvas\]"\)/);
-  assert.match(html, /canvas\.style\.width=/);
-  assert.match(html, /canvas\.style\.height=/);
-  assert.match(html, /\.diagram-viewport\{[^}]*overscroll-behavior:contain/);
-  assert.doesNotMatch(html, /svg\.style\.transform=/);
+  assert.match(html, /Release progress/);
+  assert.match(html, /sequenceDiagram/);
+  assert.match(html, /timeline/);
+  assert.match(html, /architecture-beta/);
+  assert.match(html, /mermaid\.render\("reader-mermaid-/);
+  assert.match(html, /instance\.zoomWithWheel\(event\)/);
+  assert.match(html, /instance\.pan\(pan\.x-event\.deltaX,pan\.y-event\.deltaY/);
+  assert.match(html, /touch-action:none/);
+  assert.match(html, /maxScale:4,minScale:\.3/);
+  assert.match(html, /pinchAndPan:true/);
+  assert.doesNotMatch(html, /function parseMermaidNode|function mermaidModel|function layoutMermaid|Local safe render/);
+});
+
+test("the visual system uses readable embedded type, soft paper light mode, and quiet active navigation", () => {
+  const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput()));
+
+  assert.match(html, /@font-face\{font-family:"Atkinson Hyperlegible Next"/);
+  assert.match(html, /@font-face\{font-family:"Monaspace Neon"/);
+  assert.match(html, /font-size:17px;line-height:1\.72/);
+  assert.match(html, /--page:#f2f3f0;--document:#f7f8f5/);
+  assert.match(html, /font-size:clamp\(2rem,4vw,2\.75rem\)/);
+  assert.match(html, /\.artifact-link\.is-active\{background:transparent;color:var\(--ink\)\}/);
+  assert.match(html, /\.artifact-link\.is-active::before\{background:var\(--accent\)\}/);
 });
 
 test("mobile panels expose workflow context and dismiss predictably", () => {
@@ -225,4 +284,41 @@ test("the same reader accepts a JSON-authored document without Working Backwards
   assert.equal(model.document.title, "Recover the queue");
   assert.equal(model.document.repository, "local/operations");
   assert.match(renderTechnicalReaderHtml(model), /Recover the queue/);
+});
+
+test("the metadata-only library is searchable, responsive, offline, and rejects remote Reader links", () => {
+  const html = renderTechnicalReaderLibraryHtml({
+    language: "en",
+    entries: [
+      {
+        id: "development-system-next-123",
+        name: "Development System Next",
+        slug: "development-system-next",
+        repository: "github.com/aohys/development-system",
+        phase: "Technical Contract",
+        status: "in-review",
+        createdAt: "2026-08-10T00:00:00.000Z",
+        updatedAt: "2026-08-14T12:00:00.000Z",
+        nextAction: "Review and approve Technical Contract",
+        readerHref: "development-system-next/index.html",
+      },
+      {
+        id: "remote-reader",
+        name: "Remote Reader",
+        slug: "remote-reader",
+        readerHref: "https://example.com/reader",
+      },
+    ],
+  });
+
+  assert.match(html, /Technical Reader Library/);
+  assert.match(html, /Development System Next/);
+  assert.match(html, /github\.com\/aohys\/development-system/);
+  assert.match(html, /Technical Contract/);
+  assert.match(html, /Review and approve Technical Contract/);
+  assert.match(html, /data-library-search/);
+  assert.match(html, /@media\(max-width:58rem\)/);
+  assert.match(html, /connect-src 'none'/);
+  assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
+  assert.doesNotMatch(html, /https:\/\/example\.com\/reader/);
 });

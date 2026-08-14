@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.5.0",
+  "operation": "development-steward-schedule",
+  "cadence": "weekly",
+  "runner": "macos-launchd-codex-exec",
+  "localTime": {
+    "weekday": "monday",
+    "hour": 9,
+    "minute": 0
+  },
+  "activation": "development-steward-schedule-enable",
+  "audit": "development-steward-schedule-audit",
+  "disable": "development-steward-schedule-disable",
+  "sessionRequired": false,
+  "repositoryIds": [
+    "aohys",
+    "casa-roca",
+    "the-barber-central",
+    "nutri-plan",
+    "eteria"
+  ],
+  "output": "private-report-for-check-in",
+  "autoMerge": false,
+  "releaseAuthorized": false,
+  "productionAuthorized": false
+}

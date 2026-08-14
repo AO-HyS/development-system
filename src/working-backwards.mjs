@@ -89,7 +89,9 @@ const profileOrder = ["Quick", "Standard", "Complex"];
 
 /** @type {readonly string[]} */
 export const WORKING_BACKWARDS_ROLES = [
+  "product-grill-evidence",
   "working-backwards-brief",
+  "technical-grill-evidence",
   "research-questions",
   "research-report",
   "product-contract",
@@ -101,21 +103,27 @@ export const WORKING_BACKWARDS_ROLES = [
 
 /** @type {Record<string, string[]>} */
 const roleDependencies = {
-  "working-backwards-brief": [],
-  "research-questions": ["working-backwards-brief"],
+  "product-grill-evidence": [],
+  "working-backwards-brief": ["product-grill-evidence"],
+  "technical-grill-evidence": ["working-backwards-brief"],
+  "acceptance-contract": ["working-backwards-brief", "technical-grill-evidence"],
+  "research-questions": ["technical-grill-evidence"],
   "research-report": ["research-questions"],
   "product-contract": ["working-backwards-brief", "research-report"],
   "domain-technical-design": ["product-contract", "research-report"],
   "risk-evidence": ["domain-technical-design"],
-  "structure-outline": ["product-contract", "domain-technical-design", "risk-evidence"],
+  "structure-outline": ["acceptance-contract", "product-contract", "domain-technical-design", "risk-evidence"],
   "ticket-map": ["structure-outline"],
   "t3-implementation-handoff": ["ticket-map", "structure-outline"],
 };
 
 const quickRoles = [
+  "product-grill-evidence",
   "working-backwards-brief",
+  "technical-grill-evidence",
   "acceptance-contract",
   "structure-outline",
+  "ticket-map",
   "t3-implementation-handoff",
 ];
 
@@ -379,6 +387,8 @@ function resolvedFacts(raw, key, unknown) {
 function artifactContent(options, profile, feature, risk) {
   const repository = isRecord(options.repository) ? /** @type {Record<string, unknown>} */ (options.repository) : {};
   const rawFeature = isRecord(options.feature ?? options.featureIdea) ? /** @type {Record<string, unknown>} */ (options.feature ?? options.featureIdea) : {};
+  const productGrill = isRecord(options.productGrill) ? options.productGrill : {};
+  const technicalGrill = isRecord(options.technicalGrill) ? options.technicalGrill : {};
   const observed = typeof repository.observed === "string" ? repository.observed : "Estado actual pendiente de observar.";
   const criteria = feature.acceptanceCriteria.length > 0
     ? feature.acceptanceCriteria
@@ -398,16 +408,35 @@ function artifactContent(options, profile, feature, risk) {
     externalFaq: feature.externalFaq,
     internalFaq: feature.internalFaq,
   };
+  const productGrillEvidence = {
+    mode: "product",
+    topics: Array.isArray(productGrill.topics) ? productGrill.topics : [],
+    settledDecisions: Array.isArray(productGrill.settledDecisions) ? productGrill.settledDecisions : [],
+    technicalDecisionsAllowed: false,
+  };
+  const technicalGrillEvidence = {
+    mode: "technical",
+    governedBy: "working-backwards-brief",
+    topics: Array.isArray(technicalGrill.topics) ? technicalGrill.topics : [],
+    settledDecisions: Array.isArray(technicalGrill.settledDecisions) ? technicalGrill.settledDecisions : [],
+    repositoryObserved: typeof repository.observed === "string",
+    riskTriggers: risk.hardRiskTriggers,
+  };
   if (profile.selected === "Quick") {
     return /** @type {Map<string, unknown>} */ (new Map(/** @type {[string, unknown][]} */ ([
+      ["product-grill-evidence", productGrillEvidence],
       ["working-backwards-brief", brief],
+      ["technical-grill-evidence", technicalGrillEvidence],
       ["acceptance-contract", { behavior: feature.userOutcome, acceptanceCriteria: criteria, scope: feature.scope }],
       ["structure-outline", { mode: "future-state", slices: [{ id: "slice-1", outcome: feature.userOutcome, acceptanceCriteria: criteria }] }],
-      ["t3-implementation-handoff", { mode: "candidate", profile: profile.selected, firstSlice: "slice-1", acceptanceCriteria: criteria }],
+      ["ticket-map", { mode: "future-state", status: "draft", tickets: [{ id: "slice-1", title: feature.title, outcome: feature.userOutcome, acceptanceCriteria: criteria, checks: [], dependsOn: [], status: "ready-for-agent", fitsFreshContext: true, verifiable: true }] }],
+      ["t3-implementation-handoff", { mode: "candidate", profile: profile.selected, firstSlice: "slice-1", acceptanceCriteria: criteria, implementationAuthorized: false }],
     ])));
   }
   const contents = /** @type {Map<string, unknown>} */ (new Map(/** @type {[string, unknown][]} */ ([
+    ["product-grill-evidence", productGrillEvidence],
     ["working-backwards-brief", brief],
+    ["technical-grill-evidence", technicalGrillEvidence],
     ["research-questions", { questions: researchQuestions(feature, repository), solutionFree: true }],
     ["research-report", { mode: "current-state", observed, repositoryRevision: repository.revision ?? repository.baseRevision ?? "unknown", answeredQuestions: researchQuestions(feature, repository), unknowns: feature.evidenceGaps }],
     ["product-contract", { mode: "future-state", userOutcome: feature.userOutcome, actor: feature.actor, acceptanceCriteria: criteria, scope: feature.scope, errors: resolvedFacts(rawFeature, "errors", "Error behavior requires an explicit decision."), recovery: resolvedFacts(rawFeature, "recovery", "Recovery behavior requires an explicit decision."), permissions: resolvedFacts(rawFeature, "permissions", "Permission behavior requires an explicit decision."), outOfScope: feature.notBuilding, unknowns: feature.evidenceGaps }],

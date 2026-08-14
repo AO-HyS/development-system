@@ -32,13 +32,27 @@ import {
   verifyT3HandoffFreshness,
 } from "./working-backwards-handoff.mjs";
 import { evaluateWorkingBackwards } from "./working-backwards-evaluation.mjs";
+import { routeDefinition } from "./definition-router.mjs";
+import { buildDevelopmentRun } from "./development-run.mjs";
+import { planParallelWork } from "./parallel-work.mjs";
+import { planReleaseTrain } from "./release-train-v2.mjs";
+import { buildCheckIn } from "./check-in.mjs";
+import { buildLinearHygienePlan } from "./linear-hygiene.mjs";
+import { buildDevelopmentStewardReview } from "./development-steward.mjs";
+import {
+  auditDevelopmentStewardScheduler,
+  disableDevelopmentStewardScheduler,
+  installDevelopmentStewardScheduler,
+} from "./development-steward-scheduler.mjs";
+import { auditPostHogObservability } from "./posthog-observability.mjs";
+import { auditConvexGuardian } from "./convex-guardian.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -63,6 +77,9 @@ function parseArguments(argv) {
     else if (token === "--repository") options.repository = value;
     else if (token === "--confirm") options.confirm = value;
     else if (token === "--input") options.input = value;
+    else if (token === "--projects-root") options.projectsRoot = value;
+    else if (token === "--codex-path") options.codexPath = value;
+    else if (token === "--node-path") options.nodePath = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -115,6 +132,45 @@ function formatHuman(result) {
     ? "Working Backwards evaluation recommends a bounded live pilot only."
     : "Working Backwards evaluation is not ready for a pilot.";
   if (result.operation === "working-backwards-humanlayer") return "HumanLayer supplied snapshot recorded as unverified input without granting lifecycle authority.";
+  if (result.operation === "definition-route") return `Definition route: ${result.currentStage}; ${result.nextAction}.`;
+  if (result.operation === "development-run") {
+    const identity = result.identity && typeof result.identity === "object" ? result.identity : {};
+    const speed = result.speed && typeof result.speed === "object" ? result.speed : {};
+    const functionalEvidence = "functionalEvidence" in speed && speed.functionalEvidence && typeof speed.functionalEvidence === "object" ? speed.functionalEvidence : {};
+    return `Development run ${"runId" in identity ? identity.runId : "unknown"}: ${result.valid ? "valid" : "invalid"}; functional evidence ${"status" in functionalEvidence ? functionalEvidence.status : "unproven"}.`;
+  }
+  if (result.operation === "parallel-work") {
+    const activeLaneCount = Array.isArray(result.activeLanes) ? result.activeLanes.length : 0;
+    const frontierCount = Array.isArray(result.frontier) ? result.frontier.length : 0;
+    return `Parallel Work: ${activeLaneCount} active lanes; ${frontierCount} frontier tickets; ${String(result.nextAction ?? "inspect the plan")}.`;
+  }
+  if (result.operation === "release-train-v2") {
+    const outcome = result.outcome && typeof result.outcome === "object" ? result.outcome : {};
+    return `Release Train v2: ${result.valid ? "valid" : "blocked"}; preview ${"preview" in outcome ? outcome.preview : "unproven"}; production ${"production" in outcome ? outcome.production : "unproven"}.`;
+  }
+  if (result.operation === "check-in") {
+    const actions = Array.isArray(result.actions) ? result.actions.length : 0;
+    return `Check-in: ${String(result.summary ?? "sin resumen")}; ${actions} acciones humanas.`;
+  }
+  if (result.operation === "linear-hygiene-audit") {
+    const preview = Array.isArray(result.cleanupPreview) ? result.cleanupPreview.length : 0;
+    return `Linear hygiene: ${result.valid ? "valid" : "blocked"}; ${preview} cleanup changes previewed; no writes applied.`;
+  }
+  if (result.operation === "development-steward") {
+    const report = result.report && typeof result.report === "object" ? result.report : {};
+    return `Development Steward: ${"summary" in report ? report.summary : "report unproven"}`;
+  }
+  if (result.operation === "development-steward-scheduler") {
+    return `Development Steward scheduler: ${String(result.status ?? "unproven")}.`;
+  }
+  if (result.operation === "posthog-observability-audit") {
+    const findings = Array.isArray(result.findings) ? result.findings.length : 0;
+    return `PostHog observability: ${String(result.status ?? "unproven")}; ${findings} findings; no live writes.`;
+  }
+  if (result.operation === "audit-convex-guardian") {
+    const findings = Array.isArray(result.findings) ? result.findings.length : 0;
+    return `Convex Guardian: ${String(result.status ?? "unproven")}; ${findings} findings; read-only.`;
+  }
   if (result.operation === "audit-repository") {
     return `Product repository ${result.status}; no files were changed.`;
   }
@@ -144,7 +200,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.8.0";
+    const version = options.version ?? "0.9.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -162,7 +218,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.8.0";
+    const version = options.version ?? "0.9.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -231,6 +287,65 @@ export async function run(argv) {
         runtime: createCommandDeliveryRuntime(plan),
       })),
     };
+  } else if (command === "definition-route") {
+    if (!options.input) throw new Error("definition-route requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = routeDefinition(input);
+  } else if (command === "development-run") {
+    if (!options.input) throw new Error("development-run requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = buildDevelopmentRun(input);
+  } else if (command === "parallel-work" || command === "work-multiple") {
+    if (!options.input) throw new Error(`${command} requires --input <json-path>`);
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = planParallelWork(input);
+    if (command === "work-multiple") result = { ...result, deprecatedAlias: true, migrationAlias: "work-multiple" };
+  } else if (command === "release-train-v2") {
+    if (!options.input) throw new Error("release-train-v2 requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = planReleaseTrain(input);
+  } else if (command === "check-in") {
+    if (!options.input) throw new Error("check-in requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = buildCheckIn(input);
+  } else if (command === "linear-hygiene") {
+    if (!options.input) throw new Error("linear-hygiene requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = buildLinearHygienePlan(input);
+  } else if (command === "development-steward") {
+    if (!options.input) throw new Error("development-steward requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = buildDevelopmentStewardReview(input);
+  } else if (command === "development-steward-schedule-enable") {
+    if (!options.projectsRoot) throw new Error("development-steward-schedule-enable requires --projects-root <path>");
+    if (!options.codexPath) throw new Error("development-steward-schedule-enable requires --codex-path <absolute-path>");
+    result = {
+      operation: "development-steward-scheduler",
+      ...(await installDevelopmentStewardScheduler({
+        home: options.home,
+        projectsRoot: resolve(options.projectsRoot),
+        codexPath: resolve(options.codexPath),
+        nodePath: options.nodePath ? resolve(options.nodePath) : undefined,
+      })),
+    };
+  } else if (command === "development-steward-schedule-audit") {
+    result = {
+      operation: "development-steward-scheduler",
+      ...(await auditDevelopmentStewardScheduler({ home: options.home })),
+    };
+  } else if (command === "development-steward-schedule-disable") {
+    result = {
+      operation: "development-steward-scheduler",
+      ...(await disableDevelopmentStewardScheduler({ home: options.home })),
+    };
+  } else if (command === "posthog-observability") {
+    if (!options.input) throw new Error("posthog-observability requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = auditPostHogObservability(input);
+  } else if (command === "convex-guardian") {
+    if (!options.input) throw new Error("convex-guardian requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = auditConvexGuardian(input);
   } else if (command === "working-backwards") {
     if (!options.input) throw new Error("working-backwards requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -274,7 +389,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

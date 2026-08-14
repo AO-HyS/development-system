@@ -72,7 +72,7 @@ for (const name of targets) {
 
 const report = {
   schemaVersion: 1,
-  contractVersion: "1.4.1",
+  contractVersion: "1.5.0",
   generatedAt: new Date().toISOString(),
   operation: "repository-audit-smoke",
   mode: "read-only-compatibility-evidence",

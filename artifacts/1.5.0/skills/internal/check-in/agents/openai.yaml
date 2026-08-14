@@ -1,0 +1,4 @@
+interface:
+  display_name: "Check-in"
+  short_description: "Show the few development actions that need you now"
+  default_prompt: "Use $check-in to reconcile current read-only evidence and show only the actions that need me now."

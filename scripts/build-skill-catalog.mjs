@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.8.0";
-if (version !== "0.8.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.8.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.9.0";
+if (version !== "0.9.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.9.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -17,6 +17,7 @@ await readFile(destination).then(
   (error) => { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; },
 );
 const declaresPhysicalHarnesses = true;
+const supportsFactory = false;
 const baseSkillVersion = "0.2.0";
 const upstreamCommit = "9603c1cc8118d08bc1b3bf34cf714f62178dea3b";
 const upstreamPaths = {
@@ -64,7 +65,7 @@ async function sharedSkill(logicalName, sourceDirectory, source, executableFiles
   const hash = await folderHash(resolve(repositoryRoot, sourceDirectory));
   return {
     logicalName,
-    ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
+    ...(declaresPhysicalHarnesses ? { physicalHarnesses: supportsFactory ? ["codex", "factory"] : ["codex"] } : {}),
     source,
     variants: [
       {
@@ -76,7 +77,7 @@ async function sharedSkill(logicalName, sourceDirectory, source, executableFiles
         ...(executableFiles.length ? { executableFiles } : {}),
         expectedMirrorOf: null,
       },
-      {
+      ...(supportsFactory ? [{
         id: `${logicalName}.factory`,
         harness: "factory",
         sourceDirectory,
@@ -84,7 +85,7 @@ async function sharedSkill(logicalName, sourceDirectory, source, executableFiles
         folderSha256: hash,
         ...(executableFiles.length ? { executableFiles } : {}),
         expectedMirrorOf: `${logicalName}.codex`,
-      },
+      }] : []),
     ],
   };
 }
@@ -109,11 +110,11 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.4.0/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.5.0/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
-  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
+  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex"] } : {}),
   source: {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
@@ -128,14 +129,6 @@ const drive = {
       folderSha256: driveHash,
       expectedMirrorOf: null,
     },
-    {
-      id: "drive-development-flow.factory",
-      harness: "factory",
-      sourceDirectory: driveSource,
-      destination: ".factory/skills/drive-development-flow",
-      folderSha256: driveHash,
-      expectedMirrorOf: "drive-development-flow.codex",
-    },
   ],
 };
 
@@ -145,7 +138,7 @@ const codexAdapterSource = `artifacts/${orchestrationVersion}/adapters/codex/cod
 const factoryAdapterSource = `artifacts/${orchestrationVersion}/adapters/factory/coding-orchestration`;
 const orchestration = {
   logicalName: "coding-orchestration",
-  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex", "factory"] } : {}),
+  ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex"] } : {}),
   source: {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
@@ -158,15 +151,6 @@ const orchestration = {
       sourceDirectory: codexAdapterSource,
       destination: ".codex/skills/coding-orchestration",
       folderSha256: await folderHash(resolve(repositoryRoot, codexAdapterSource)),
-      expectedMirrorOf: null,
-      adapterContract,
-    },
-    {
-      id: "coding-orchestration.factory-adapter",
-      harness: "factory",
-      sourceDirectory: factoryAdapterSource,
-      destination: ".factory/skills/coding-orchestration",
-      folderSha256: await folderHash(resolve(repositoryRoot, factoryAdapterSource)),
       expectedMirrorOf: null,
       adapterContract,
     },
@@ -230,44 +214,39 @@ const additions = await Promise.all([
 
 const workingBackwards = await sharedSkill(
   "working-backwards",
-  "artifacts/1.4.0/skills/internal/working-backwards",
+  "artifacts/1.5.0/skills/internal/working-backwards",
   {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.4.0/skills/internal/working-backwards",
+    path: "artifacts/1.5.0/skills/internal/working-backwards",
   },
-  ["scripts/t3-workflow.mjs"],
+  ["scripts/t3-workflow.mjs", "scripts/t3-reader.mjs"],
 );
 
-const workMultipleSource = "artifacts/0.9.1/skills/internal/work-multiple";
-const workMultipleHash = await folderHash(resolve(repositoryRoot, workMultipleSource));
-const workMultiple = {
-      logicalName: "work-multiple",
-      physicalHarnesses: ["codex", "factory"],
-      source: {
+const nextInternalNames = [
+  "parallel-work",
+  "release-train",
+  "check-in",
+  "linear-hygiene",
+  "development-steward",
+  "convex-guardian",
+  "posthog-observability",
+];
+const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName) =>
+  sharedSkill(logicalName, `artifacts/1.5.0/skills/internal/${logicalName}`, {
         repository: "https://github.com/AO-HyS/development-system",
         commit: "$INSTALL_COMMIT",
-        path: workMultipleSource,
-      },
-      variants: [
-        {
-          id: "work-multiple.codex",
-          harness: "codex",
-          sourceDirectory: workMultipleSource,
-          destination: ".codex/skills/work-multiple",
-          folderSha256: workMultipleHash,
-          expectedMirrorOf: null,
-        },
-        {
-          id: "work-multiple.factory",
-          harness: "factory",
-          sourceDirectory: workMultipleSource,
-          destination: ".factory/skills/work-multiple",
-          folderSha256: workMultipleHash,
-          expectedMirrorOf: "work-multiple.codex",
-        },
-      ],
-    };
+        path: `artifacts/1.5.0/skills/internal/${logicalName}`,
+  }),
+));
+
+const previousCatalog = /** @type {{skills: Array<{variants: Array<{harness: string, destination: string}>}>}} */ (
+  JSON.parse(await readFile(resolve(repositoryRoot, "catalog", "0.8.0.json"), "utf8"))
+);
+const retiredFactoryDestinations = previousCatalog.skills
+  .flatMap((skill) => skill.variants)
+  .filter((variant) => variant.harness === "factory")
+  .map((variant) => variant.destination);
 
 const catalog = {
   schemaVersion: 1,
@@ -275,7 +254,6 @@ const catalog = {
   supportedHarnesses: [
     { id: "codex", adapter: "native" },
     { id: "t3code", adapter: "codex" },
-    { id: "factory", adapter: "native" },
   ],
   supportedRoots: [".agents/skills", ".codex/skills", ".factory/skills"],
   maxCatalogEntries: 512,
@@ -284,12 +262,14 @@ const catalog = {
     research: { behaviorSignature: ["background agent", "primary sources", "markdown file"] },
   },
   cleanup: [
+    ...retiredFactoryDestinations,
     ".agents/skills/grill-me-workspace",
     ".agents/skills/email-best-practices-repo",
     ".codex/skills/agent-browser",
     ".codex/skills/convex",
     ".codex/skills/find-skills",
     ".codex/skills/vercel-react-best-practices",
+    ".codex/skills/work-multiple",
     ".factory/skills/extract",
     ".factory/skills/email-best-practices-repo",
     ".factory/skills/frontend-design",
@@ -306,8 +286,8 @@ const catalog = {
     drive,
     orchestration,
     measurement,
-    workMultiple,
     workingBackwards,
+    ...nextInternalSkills,
     ...additions,
   ],
 };

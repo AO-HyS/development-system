@@ -52,13 +52,21 @@ test("Quick produces a compact private handoff without mutating lifecycle or ext
   assert.equal(result.profile.recommended, "Quick");
   assert.equal(result.profile.selected, "Quick");
   assert.deepEqual(result.artifacts.map((artifact) => artifact.role), [
+    "product-grill-evidence",
     "working-backwards-brief",
+    "technical-grill-evidence",
     "acceptance-contract",
     "structure-outline",
+    "ticket-map",
     "t3-implementation-handoff",
   ]);
+  assert.equal(result.artifacts[0].content.technicalDecisionsAllowed, false);
+  assert.equal(result.artifacts[2].content.governedBy, "working-backwards-brief");
+  assert.deepEqual(result.artifacts[3].lineage.dependsOn, ["WB-quick:working-backwards-brief", "WB-quick:technical-grill-evidence"]);
+  assert.deepEqual(result.artifacts[4].lineage.dependsOn, ["WB-quick:acceptance-contract"]);
   assert.equal(result.artifacts.at(-1).visibility, "private");
   assert.equal(result.artifacts.at(-1).status, "candidate");
+  assert.equal(result.artifacts.at(-1).content.implementationAuthorized, false);
   assert.equal(result.implementationAuthorized, false);
   assert.deepEqual(result.externalSideEffects, []);
   await assert.rejects(access(resolve(home, ".development-system", "lifecycles", "WB-quick.json")));
@@ -84,7 +92,9 @@ test("Standard is the default and preserves current-state research, lineage, has
   assert.equal(result.profile.recommended, "Standard");
   assert.equal(result.profile.selected, "Standard");
   assert.deepEqual(result.artifacts.map((artifact) => artifact.role), [
+    "product-grill-evidence",
     "working-backwards-brief",
+    "technical-grill-evidence",
     "research-questions",
     "research-report",
     "product-contract",

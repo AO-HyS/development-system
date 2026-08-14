@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.5.0",
+  "operation": "stack-quality-catalog",
+  "defaultNewMobileProfile": "expo-react-native",
+  "oracles": {
+    "stack-profile-auditor": "Architecture, locality, module depth, interfaces, state, data fetching, and platform-boundary evidence declared by a selected stack profile.",
+    "react-doctor": "React component composition, hooks, rendering, and React-specific performance evidence.",
+    "lint": "Syntax, style, forbidden TypeScript escape syntax, and repository-declared static rules.",
+    "typecheck": "Type compatibility and inference across owned TypeScript boundaries.",
+    "focused-tests": "Observable behavior of the changed surface and its regression contract.",
+    "impeccable": "Visual hierarchy, responsive behavior, accessibility craft, and interaction polish; it does not own functional correctness.",
+    "codex-security": "General trust boundaries, secrets, permissions, injection, and data-exposure risk outside Convex-specific function rules.",
+    "convex-review": "Convex authorization, validators, indexes, pagination, bounded reads, contention, actions, scheduling, storage, and component selection.",
+    "provider-checks": "Provider-specific configuration and runtime constraints that cannot be proven by a stack-neutral oracle."
+  },
+  "sources": {
+    "react-thinking": { "kind": "primary", "title": "Thinking in React", "url": "https://react.dev/learn/thinking-in-react" },
+    "react-effects": { "kind": "primary", "title": "You Might Not Need an Effect", "url": "https://react.dev/learn/you-might-not-need-an-effect" },
+    "tanstack-query": { "kind": "primary", "title": "TanStack Query Important Defaults", "url": "https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults" },
+    "tanstack-router": { "kind": "primary", "title": "TanStack Router Type Safety", "url": "https://tanstack.com/router/latest/docs/framework/react/guide/type-safety" },
+    "turborepo-tasks": { "kind": "primary", "title": "Turborepo Configuring Tasks", "url": "https://turborepo.com/docs/crafting-your-repository/configuring-tasks" },
+    "turborepo-cache": { "kind": "primary", "title": "Turborepo Caching", "url": "https://turborepo.com/docs/crafting-your-repository/caching" },
+    "shadcn-cli": { "kind": "primary", "title": "shadcn CLI", "url": "https://ui.shadcn.com/docs/cli" },
+    "shadcn-registry": { "kind": "primary", "title": "shadcn Registry", "url": "https://ui.shadcn.com/docs/registry" },
+    "convex-best-practices": { "kind": "primary", "title": "Convex Best Practices", "url": "https://docs.convex.dev/understanding/best-practices" },
+    "convex-production": { "kind": "primary", "title": "Convex Production Best Practices", "url": "https://docs.convex.dev/production/best-practices" },
+    "cloudflare-r2": { "kind": "primary", "title": "Cloudflare R2 Workers API", "url": "https://developers.cloudflare.com/r2/api/workers/workers-api-reference/" },
+    "cloudflare-bindings": { "kind": "primary", "title": "Cloudflare Workers Bindings", "url": "https://developers.cloudflare.com/workers/runtime-apis/bindings/" },
+    "expo-architecture": { "kind": "primary", "title": "Expo New Architecture", "url": "https://docs.expo.dev/guides/new-architecture/" },
+    "react-native-performance": { "kind": "primary", "title": "React Native Performance Overview", "url": "https://reactnative.dev/docs/performance" },
+    "apple-swiftui-data": { "kind": "primary", "title": "Apple SwiftUI Model Data", "url": "https://developer.apple.com/documentation/swiftui/model-data" },
+    "apple-performance": { "kind": "primary", "title": "Apple Improving App Responsiveness", "url": "https://developer.apple.com/documentation/xcode/improving-your-app-s-responsiveness" },
+    "android-architecture": { "kind": "primary", "title": "Android Guide to App Architecture", "url": "https://developer.android.com/topic/architecture" },
+    "android-compose-performance": { "kind": "primary", "title": "Jetpack Compose Performance", "url": "https://developer.android.com/develop/ui/compose/performance" },
+    "electron-process-model": { "kind": "primary", "title": "Electron Process Model", "url": "https://www.electronjs.org/docs/latest/tutorial/process-model" },
+    "electron-security": { "kind": "primary", "title": "Electron Security", "url": "https://www.electronjs.org/docs/latest/tutorial/security" },
+    "typescript-any": { "kind": "primary", "title": "TypeScript any", "url": "https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#any" },
+    "owasp-asvs": { "kind": "standard", "title": "OWASP Application Security Verification Standard", "url": "https://owasp.org/www-project-application-security-verification-standard/" },
+    "wcag": { "kind": "standard", "title": "Web Content Accessibility Guidelines", "url": "https://www.w3.org/TR/WCAG22/" }
+  },
+  "rules": {
+    "quality.no-type-erasure": { "oracle": "lint", "level": "finding", "sourceIds": ["typescript-any"], "exceptionPolicy": "narrow-external-adapter" },
+    "quality.type-contract": { "oracle": "typecheck", "level": "finding", "sourceIds": ["typescript-any"], "exceptionPolicy": "none" },
+    "quality.focused-behavior": { "oracle": "focused-tests", "level": "finding", "sourceIds": ["react-thinking"], "exceptionPolicy": "documented-repository" },
+    "quality.visual-craft": { "oracle": "impeccable", "level": "recommendation", "sourceIds": ["wcag"], "exceptionPolicy": "documented-repository" },
+    "security.trust-boundaries": { "oracle": "codex-security", "level": "finding", "sourceIds": ["owasp-asvs"], "exceptionPolicy": "none" },
+    "react.composition": { "oracle": "react-doctor", "level": "finding", "sourceIds": ["react-thinking"], "exceptionPolicy": "documented-repository" },
+    "react.state-and-effects": { "oracle": "react-doctor", "level": "finding", "sourceIds": ["react-effects"], "exceptionPolicy": "documented-repository" },
+    "tanstack.server-state": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["tanstack-query"], "exceptionPolicy": "documented-repository" },
+    "tanstack.route-types": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["tanstack-router"], "exceptionPolicy": "documented-repository" },
+    "turborepo.task-graph": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["turborepo-tasks", "turborepo-cache"], "exceptionPolicy": "documented-repository" },
+    "shadcn.current-components": { "oracle": "stack-profile-auditor", "level": "recommendation", "sourceIds": ["shadcn-cli"], "exceptionPolicy": "version-pin" },
+    "shadcn.registry-and-icons": { "oracle": "stack-profile-auditor", "level": "recommendation", "sourceIds": ["shadcn-registry"], "exceptionPolicy": "version-pin" },
+    "convex.function-contract": { "oracle": "convex-review", "level": "finding", "sourceIds": ["convex-best-practices", "convex-production"], "exceptionPolicy": "documented-repository" },
+    "cloudflare.storage-boundary": { "oracle": "provider-checks", "level": "finding", "sourceIds": ["cloudflare-r2", "cloudflare-bindings"], "exceptionPolicy": "documented-repository" },
+    "mobile.expo-architecture": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["expo-architecture", "react-native-performance"], "exceptionPolicy": "documented-repository" },
+    "ios.architecture-performance": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["apple-swiftui-data", "apple-performance"], "exceptionPolicy": "documented-repository" },
+    "android.architecture-performance": { "oracle": "stack-profile-auditor", "level": "finding", "sourceIds": ["android-architecture", "android-compose-performance"], "exceptionPolicy": "documented-repository" },
+    "electron.process-security": { "oracle": "provider-checks", "level": "finding", "sourceIds": ["electron-process-model", "electron-security"], "exceptionPolicy": "none" }
+  },
+  "profiles": {
+    "react": {
+      "dimensions": { "composition": "Feature-local components with explicit ownership.", "performance": "Measure render work before memoization.", "locality": "Keep state beside its consumers.", "modules": "Deep feature modules behind small component interfaces.", "interfaces": "Prefer explicit props and composition.", "state": "Derive values during render; effects synchronize external systems.", "dataFetching": "Keep server state outside ad hoc effects.", "platformBoundaries": "Browser and server APIs stay behind narrow adapters." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "react.composition", "react.state-and-effects"],
+      "sourceIds": ["react-thinking", "react-effects"]
+    },
+    "tanstack": {
+      "dimensions": { "composition": "Compose router, query, table, and form capabilities independently.", "performance": "Use cache and stale semantics intentionally.", "locality": "Keep query options and route contracts near features.", "modules": "Hide library mechanics behind domain-facing modules.", "interfaces": "Preserve inferred route and query types.", "state": "Separate server, URL, form, and client state.", "dataFetching": "Use stable query keys and explicit invalidation.", "platformBoundaries": "Keep loaders and runtime adapters explicit." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "security.trust-boundaries", "tanstack.server-state", "tanstack.route-types"],
+      "sourceIds": ["tanstack-query", "tanstack-router"]
+    },
+    "turborepo": {
+      "dimensions": { "composition": "Packages expose coherent capabilities rather than shared dumping grounds.", "performance": "Cache only deterministic tasks with declared inputs and outputs.", "locality": "Package configuration follows the package that owns it.", "modules": "Workspace packages have deep contracts and narrow exports.", "interfaces": "Package boundaries are explicit exports.", "state": "Generated and cached state stays distinguishable from source.", "dataFetching": "Network-dependent tasks declare cache policy.", "platformBoundaries": "Environment variables and platform tasks are explicit inputs." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "security.trust-boundaries", "turborepo.task-graph"],
+      "sourceIds": ["turborepo-tasks", "turborepo-cache"]
+    },
+    "shadcn": {
+      "dimensions": { "composition": "Own generated components and compose them locally.", "performance": "Review update diffs before accepting new dependencies or markup.", "locality": "Keep registry provenance and local modifications visible.", "modules": "Wrap repeated product behavior, not primitive access.", "interfaces": "Preserve accessible primitive contracts.", "state": "Keep interaction state in the owning feature.", "dataFetching": "UI primitives do not own domain fetching.", "platformBoundaries": "Registry, icon family, and primitive-family choices are repository declarations." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "shadcn.current-components", "shadcn.registry-and-icons"],
+      "sourceIds": ["shadcn-cli", "shadcn-registry"]
+    },
+    "convex": {
+      "dimensions": { "composition": "Functions compose domain capabilities with explicit auth.", "performance": "Use indexes, pagination, bounded reads, and contention-aware writes.", "locality": "Schema, validators, and functions follow domain ownership.", "modules": "Expose small validated function interfaces over deep domain modules.", "interfaces": "Every public function validates arguments and return values.", "state": "Domain records and relationships stay in Convex.", "dataFetching": "Queries are reactive, indexed, bounded, and paginated where needed.", "platformBoundaries": "Actions, scheduling, storage, and official components are explicit boundaries." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "security.trust-boundaries", "convex.function-contract"],
+      "sourceIds": ["convex-best-practices", "convex-production"]
+    },
+    "cloudflare": {
+      "dimensions": { "composition": "Workers and bindings expose narrow provider adapters.", "performance": "Cache and storage choices follow measured access patterns.", "locality": "Provider configuration stays beside its adapter.", "modules": "Domain code does not depend directly on runtime globals.", "interfaces": "Bindings are typed and injected.", "state": "Suitable binary and static objects use R2; domain relationships remain in the domain store.", "dataFetching": "External fetches have explicit caching, limits, and failure behavior.", "platformBoundaries": "Runtime, bindings, destinations, and credentials remain explicit." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "security.trust-boundaries", "cloudflare.storage-boundary"],
+      "sourceIds": ["cloudflare-r2", "cloudflare-bindings"]
+    },
+    "expo-react-native": {
+      "dimensions": { "composition": "Shared React Native features preserve platform-specific seams.", "performance": "Protect JS and UI frame budgets and measure native-boundary work.", "locality": "Screen state and platform adapters stay feature-local.", "modules": "Use deep feature modules with narrow native interfaces.", "interfaces": "Native modules and permissions have typed adapters.", "state": "Separate navigation, server, form, and device state.", "dataFetching": "Account for offline, retry, lifecycle, and constrained networks.", "platformBoundaries": "Use Expo/React Native by default for new mobile work; eject or add native code only for a concrete capability." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "react.composition", "mobile.expo-architecture"],
+      "sourceIds": ["expo-architecture", "react-native-performance"]
+    },
+    "ios": {
+      "dimensions": { "composition": "Compose SwiftUI views from explicit feature models.", "performance": "Measure responsiveness, launch, memory, and main-thread work.", "locality": "Observable state belongs at the narrowest owning level.", "modules": "Frameworks and packages expose small Swift interfaces.", "interfaces": "Protocols represent real varying adapters, not speculative seams.", "state": "Use one clear source of truth for model data.", "dataFetching": "Networking, persistence, cancellation, and lifecycle are explicit.", "platformBoundaries": "Entitlements, privacy, background work, and native APIs remain visible." },
+      "ruleIds": ["quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "ios.architecture-performance"],
+      "sourceIds": ["apple-swiftui-data", "apple-performance"]
+    },
+    "android": {
+      "dimensions": { "composition": "Compose UI consumes unidirectional feature state.", "performance": "Measure startup, recomposition, frame timing, and memory.", "locality": "UI and data layers retain clear ownership.", "modules": "Modules follow cohesive product capabilities.", "interfaces": "Repositories and platform services expose small contracts.", "state": "Use lifecycle-aware observable state and a single source of truth.", "dataFetching": "Offline, caching, paging, cancellation, and retries are intentional.", "platformBoundaries": "Permissions, services, background work, and device APIs use adapters." },
+      "ruleIds": ["quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "android.architecture-performance"],
+      "sourceIds": ["android-architecture", "android-compose-performance"]
+    },
+    "electron": {
+      "dimensions": { "composition": "Renderer, preload, and main process have separate responsibilities.", "performance": "Measure startup, renderer work, IPC, and memory.", "locality": "Desktop integrations stay behind feature-owned IPC adapters.", "modules": "Main-process capabilities expose narrow preload interfaces.", "interfaces": "IPC channels are explicit, validated, and least-privilege.", "state": "Renderer UI state and privileged process state remain separated.", "dataFetching": "Network and filesystem access occur in the appropriate process.", "platformBoundaries": "Context isolation, sandboxing, navigation, permissions, and code loading are explicit." },
+      "ruleIds": ["quality.no-type-erasure", "quality.type-contract", "quality.focused-behavior", "quality.visual-craft", "security.trust-boundaries", "electron.process-security"],
+      "sourceIds": ["electron-process-model", "electron-security"]
+    }
+  }
+}
