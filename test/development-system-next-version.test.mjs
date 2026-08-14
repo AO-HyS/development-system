@@ -3,8 +3,9 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
 
+const root = resolve(import.meta.dirname, "..");
+
 test("contract 1.5.1 and catalog 0.10.0 patch launchd without rewriting 1.5.0", async () => {
-  const root = resolve(import.meta.dirname, "..");
   const [manifest, catalog] = await Promise.all([
     readFile(resolve(root, "manifests/1.5.1.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "catalog/0.10.0.json"), "utf8").then(JSON.parse),
@@ -39,4 +40,26 @@ test("contract 1.5.1 and catalog 0.10.0 patch launchd without rewriting 1.5.0", 
   assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "operator-interface").sourcePath, "artifacts/1.5.0/operator-interface.md");
   assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "harness-adapters").sourcePath, "config/1.5.0/harness-adapters.json");
   assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "capability-roster").sourcePath, "config/1.5.0/capability-roster.json");
+});
+
+test("contract 1.5.2 and catalog 0.11.0 remove Factory from current live evidence and guardrails", async () => {
+  const [manifest, catalog, contract, probe, metadataSource, guardrailsSource] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.2.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "catalog/0.11.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.2/contract.md"), "utf8"),
+    readFile(resolve(root, "scripts/probe-harness-skills.mjs"), "utf8"),
+    readFile(resolve(root, "src/skill-probe-metadata.mjs"), "utf8"),
+    readFile(resolve(root, "src/guardrails.mjs"), "utf8"),
+  ]);
+
+  assert.equal(manifest.contractVersion, "1.5.2");
+  assert.deepEqual(manifest.supportedHarnesses.map((entry) => entry.id), ["codex", "t3code"]);
+  assert.equal(manifest.artifacts.some((artifact) => artifact.harness === "factory"), false);
+  assert.deepEqual(catalog.supportedHarnesses.map((entry) => entry.id), ["codex", "t3code"]);
+  assert.equal(catalog.skills.flatMap((skill) => skill.variants).some((variant) => variant.harness === "factory"), false);
+  assert.equal(catalog.skills.find((skill) => skill.logicalName === "global-agent-guardrails").source.path, "artifacts/1.5.2/skills/internal/global-agent-guardrails");
+  assert.match(contract, /does not own a second catalog mirror/);
+  assert.doesNotMatch(probe, /AOHYS_FACTORY_PATH|\.factory|factoryPath|factoryCatalog/);
+  assert.doesNotMatch(metadataSource, /factoryCatalog/);
+  assert.doesNotMatch(guardrailsSource, /factoryConfig|factoryEngine|Factory settings/);
 });

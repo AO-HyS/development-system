@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -13,7 +13,7 @@ import {
 } from "../src/guardrails.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const source = resolve(repositoryRoot, "artifacts/1.1.1/skills/internal/global-agent-guardrails");
+const source = resolve(repositoryRoot, "artifacts/1.5.2/skills/internal/global-agent-guardrails");
 const engine = resolve(source, "scripts/command-guard.mjs");
 
 function check(command) {
@@ -56,7 +56,7 @@ test("guard policy blocks destructive commands without blocking literal discussi
   }
 });
 
-test("Codex and Factory hook adapters block closed with their native contracts", () => {
+test("the current guard engine exposes Codex only and blocks closed", () => {
   const payload = JSON.stringify({ tool_name: "Bash", tool_input: { command: "git reset --hard" } });
   const codex = spawnSync(process.execPath, [engine, "hook", "--harness", "codex"], { input: payload, encoding: "utf8" });
   assert.equal(codex.status, 0, codex.stderr);
@@ -64,8 +64,8 @@ test("Codex and Factory hook adapters block closed with their native contracts",
   assert.equal(codexOutput.hookSpecificOutput.permissionDecision, "deny");
 
   const factory = spawnSync(process.execPath, [engine, "hook", "--harness", "factory"], { input: payload, encoding: "utf8" });
-  assert.equal(factory.status, 2);
-  assert.match(factory.stderr, /git reset --hard/i);
+  assert.equal(factory.status, 1);
+  assert.match(factory.stderr, /hook requires --harness codex/i);
 
   const malformed = spawnSync(process.execPath, [engine, "hook", "--harness", "codex"], { input: "not json", encoding: "utf8" });
   assert.equal(malformed.status, 0);
@@ -75,11 +75,8 @@ test("Codex and Factory hook adapters block closed with their native contracts",
 test("activation merges existing settings, audits behavior, is idempotent, and rolls back exact bytes", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-global-guards-"));
   const codexSkill = resolve(home, ".agents/skills/global-agent-guardrails");
-  const factorySkill = resolve(home, ".factory/skills/global-agent-guardrails");
   await mkdir(dirname(codexSkill), { recursive: true });
-  await mkdir(dirname(factorySkill), { recursive: true });
   await cp(source, codexSkill, { recursive: true });
-  await cp(source, factorySkill, { recursive: true });
   const codexPath = resolve(home, ".codex/hooks.json");
   const factoryPath = resolve(home, ".factory/settings.json");
   await mkdir(dirname(codexPath), { recursive: true });
@@ -93,19 +90,20 @@ test("activation merges existing settings, audits behavior, is idempotent, and r
   assert.equal(enabled.ok, true);
   assert.equal(enabled.changed, true);
   assert.match(await readFile(codexPath, "utf8"), /keep-codex/);
-  assert.match(await readFile(factoryPath, "utf8"), /keep-factory/);
+  assert.deepEqual(await readFile(factoryPath), factoryBefore);
+  assert.deepEqual(enabled.adapters, { codex: "PreToolUse Bash|exec", t3code: "inherits Codex" });
+  assert.equal("factoryConfig" in enabled.paths, false);
   assert.equal((await auditGlobalGuardrails({ home })).ok, true);
   assert.equal((await enableGlobalGuardrails({ home })).changed, false);
 
   const codexInstalled = await readFile(codexPath);
-  const factoryInstalled = await readFile(factoryPath);
   await writeFile(codexPath, `${codexInstalled.toString("utf8").trimEnd()}\n `);
   await assert.rejects(
     rollbackGlobalGuardrails({ home }),
     /codex configuration changed after activation/,
   );
   assert.equal((await readFile(codexPath, "utf8")).endsWith("\n "), true);
-  assert.deepEqual(await readFile(factoryPath), factoryInstalled);
+  assert.deepEqual(await readFile(factoryPath), factoryBefore);
   await writeFile(codexPath, codexInstalled);
 
   await rollbackGlobalGuardrails({ home });
@@ -113,14 +111,36 @@ test("activation merges existing settings, audits behavior, is idempotent, and r
   assert.deepEqual(await readFile(factoryPath), factoryBefore);
 });
 
+test("full rollback removes the Codex hook before skill removal and preserves Factory bytes", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-global-guards-full-rollback-"));
+  const codexSkill = resolve(home, ".agents/skills/global-agent-guardrails");
+  const codexPath = resolve(home, ".codex/hooks.json");
+  const factoryPath = resolve(home, ".factory/settings.json");
+  const statePath = resolve(home, ".development-system/guardrails/state.json");
+  const factoryBefore = Buffer.from('{"logoAnimation":"off","custom":"preserve-me"}\n');
+
+  await mkdir(dirname(codexSkill), { recursive: true });
+  await mkdir(dirname(factoryPath), { recursive: true });
+  await cp(source, codexSkill, { recursive: true });
+  await writeFile(factoryPath, factoryBefore);
+
+  assert.equal((await enableGlobalGuardrails({ home })).ok, true);
+  assert.match(await readFile(codexPath, "utf8"), /command-guard\.mjs/);
+
+  await rollbackGlobalGuardrails({ home });
+  await rm(codexSkill, { recursive: true });
+
+  await assert.rejects(readFile(codexPath), { code: "ENOENT" });
+  await assert.rejects(readFile(statePath), { code: "ENOENT" });
+  await assert.rejects(readFile(codexSkill), { code: "ENOENT" });
+  assert.deepEqual(await readFile(factoryPath), factoryBefore);
+});
+
 test("failed post-write verification restores both configs and the prior state", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-global-guards-failed-audit-"));
   const codexSkill = resolve(home, ".agents/skills/global-agent-guardrails");
-  const factorySkill = resolve(home, ".factory/skills/global-agent-guardrails");
   await mkdir(dirname(codexSkill), { recursive: true });
-  await mkdir(dirname(factorySkill), { recursive: true });
   await cp(source, codexSkill, { recursive: true });
-  await cp(source, factorySkill, { recursive: true });
 
   const codexPath = resolve(home, ".codex/hooks.json");
   const factoryPath = resolve(home, ".factory/settings.json");
@@ -148,11 +168,8 @@ test("failed post-write verification restores both configs and the prior state",
 test("re-enabling after drift preserves the first activation rollback snapshot", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-global-guards-drift-enable-"));
   const codexSkill = resolve(home, ".agents/skills/global-agent-guardrails");
-  const factorySkill = resolve(home, ".factory/skills/global-agent-guardrails");
   await mkdir(dirname(codexSkill), { recursive: true });
-  await mkdir(dirname(factorySkill), { recursive: true });
   await cp(source, codexSkill, { recursive: true });
-  await cp(source, factorySkill, { recursive: true });
 
   const codexPath = resolve(home, ".codex/hooks.json");
   const factoryPath = resolve(home, ".factory/settings.json");

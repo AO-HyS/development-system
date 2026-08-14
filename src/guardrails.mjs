@@ -68,7 +68,7 @@ function priorRollbackSnapshot(contents) {
     if (state?.schemaVersion !== 2 || !state.files) return null;
     /** @type {Record<string, string | null>} */
     const snapshot = {};
-    for (const key of ["codex", "factory"]) {
+    for (const key of ["codex"]) {
       const file = state.files[key];
       if (!file || typeof file !== "object" || !("before" in file)) return null;
       if (file.before !== null && typeof file.before !== "string") return null;
@@ -94,9 +94,9 @@ function shellQuote(value) {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
-/** @param {string} engine @param {"codex" | "factory"} harness */
-function managedCommand(engine, harness) {
-  return `${marker} node ${shellQuote(engine)} hook --harness ${harness}`;
+/** @param {string} engine */
+function managedCommand(engine) {
+  return `${marker} node ${shellQuote(engine)} hook --harness codex`;
 }
 
 /** @param {any} entry */
@@ -106,8 +106,8 @@ function isManagedEntry(entry) {
   return entryHooks.some((hook) => hook && typeof hook === "object" && typeof hook.command === "string" && hook.command.includes(marker));
 }
 
-/** @param {any} container @param {string} matcher @param {string} command @param {boolean} [factory] */
-function mergedHooks(container, matcher, command, factory = false) {
+/** @param {any} container @param {string} matcher @param {string} command */
+function mergedHooks(container, matcher, command) {
   const hooks = container && typeof container === "object" && !Array.isArray(container) ? { ...container } : {};
   const preToolUse = Array.isArray(hooks.PreToolUse) ? /** @type {any[]} */ (hooks.PreToolUse) : [];
   const existing = preToolUse.filter((entry) => !isManagedEntry(entry));
@@ -115,7 +115,6 @@ function mergedHooks(container, matcher, command, factory = false) {
     ...existing,
     {
       matcher,
-      ...(factory ? { commandRegex: ".*" } : {}),
       hooks: [{ type: "command", command, timeout: 5, statusMessage: "Checking destructive-command policy" }],
     },
   ];
@@ -126,9 +125,7 @@ function mergedHooks(container, matcher, command, factory = false) {
 function paths(home) {
   return {
     codexConfig: insideHome(home, ".codex/hooks.json"),
-    factoryConfig: insideHome(home, ".factory/settings.json"),
     codexEngine: insideHome(home, ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs"),
-    factoryEngine: insideHome(home, ".factory/skills/global-agent-guardrails/scripts/command-guard.mjs"),
     state: insideHome(home, stateRelative),
   };
 }
@@ -139,13 +136,13 @@ async function assertEngine(path) {
   if (!status?.isFile()) throw new Error(`Guard engine is not installed: ${path}`);
 }
 
-/** @param {any} config @param {string} command @param {string} matcher @param {boolean} [factory] */
-function exactEntry(config, command, matcher, factory = false) {
+/** @param {any} config @param {string} command @param {string} matcher */
+function exactEntry(config, command, matcher) {
   if (!Array.isArray(config?.hooks?.PreToolUse)) return false;
   const preToolUse = /** @type {any[]} */ (config.hooks.PreToolUse);
   return preToolUse.some((entry) => {
     if (!entry || typeof entry !== "object" || !Array.isArray(entry.hooks)) return false;
-    if (entry.matcher !== matcher || (factory && entry.commandRegex !== ".*")) return false;
+    if (entry.matcher !== matcher) return false;
     const entryHooks = /** @type {any[]} */ (entry.hooks);
     return entryHooks.some((hook) =>
       hook?.type === "command" && hook?.command === command && hook?.timeout === 5);
@@ -190,48 +187,39 @@ export async function auditGlobalGuardrails({ home }) {
     try { await assertNoSymlinkParents(resolvedHome, path); }
     catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
   }
-  for (const engine of [managed.codexEngine, managed.factoryEngine]) {
-    try { await assertEngine(engine); } catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-  }
+  try { await assertEngine(managed.codexEngine); } catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
   try {
-    const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.5.1.json"), "utf8"));
+    const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.11.0.json"), "utf8"));
     const catalogSkills = /** @type {any[]} */ (catalog.skills);
     const declared = catalogSkills.find((skill) => skill.logicalName === "global-agent-guardrails");
-    if (!declared) problems.push("Catalog 0.5.1 does not declare global-agent-guardrails");
+    if (!declared) problems.push("Catalog 0.11.0 does not declare global-agent-guardrails");
     else {
       const variants = /** @type {any[]} */ (declared.variants);
       const expectedByHarness = new Map(variants.map((variant) => [variant.harness, variant.folderSha256]));
-      for (const [harness, directory] of [["codex", dirname(dirname(managed.codexEngine))], ["factory", dirname(dirname(managed.factoryEngine))]]) {
-        if (await existsFile(directory) && await directoryHash(directory) !== expectedByHarness.get(harness)) {
-          problems.push(`${harness} guard skill bytes do not match catalog 0.5.1`);
-        }
+      const directory = dirname(dirname(managed.codexEngine));
+      if (await existsFile(directory) && await directoryHash(directory) !== expectedByHarness.get("codex")) {
+        problems.push("codex guard skill bytes do not match catalog 0.11.0");
       }
     }
   } catch (error) {
     problems.push(`Cannot verify guard catalog hash: ${error instanceof Error ? error.message : String(error)}`);
   }
   let codex = {};
-  let factory = {};
   try { codex = parseObject(await readOptional(managed.codexConfig), "Codex hooks"); }
   catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-  try { factory = parseObject(await readOptional(managed.factoryConfig), "Factory settings"); }
-  catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-  const codexCommand = managedCommand(managed.codexEngine, "codex");
-  const factoryCommand = managedCommand(managed.factoryEngine, "factory");
+  const codexCommand = managedCommand(managed.codexEngine);
   if (!exactEntry(codex, codexCommand, "Bash|exec")) problems.push("Codex managed PreToolUse hook is missing or drifted");
-  if (!exactEntry(factory, factoryCommand, "Execute", true)) problems.push("Factory managed PreToolUse hook is missing or drifted");
-  for (const [label, engine] of [["Codex", managed.codexEngine], ["Factory", managed.factoryEngine]]) {
-    if (!(await readOptional(engine))) continue;
-    const safe = probe(engine, "git status --short");
-    const blocked = probe(engine, "git reset --hard");
-    if (safe.status !== 0) problems.push(`${label} guard did not allow the safe probe`);
-    if (blocked.status !== 2) problems.push(`${label} guard did not block the destructive probe`);
+  if (await readOptional(managed.codexEngine)) {
+    const safe = probe(managed.codexEngine, "git status --short");
+    const blocked = probe(managed.codexEngine, "git reset --hard");
+    if (safe.status !== 0) problems.push("Codex guard did not allow the safe probe");
+    if (blocked.status !== 2) problems.push("Codex guard did not block the destructive probe");
   }
   return {
     ok: problems.length === 0,
     operation: "guardrails-audit",
     status: problems.length === 0 ? "healthy" : "invalid",
-    adapters: { codex: "PreToolUse Bash|exec", t3code: "inherits Codex", factory: "PreToolUse Execute" },
+    adapters: { codex: "PreToolUse Bash|exec", t3code: "inherits Codex" },
     paths: managed,
     problems,
     externalSideEffects: [],
@@ -244,24 +232,18 @@ export async function enableGlobalGuardrails({ home }) {
   const managed = paths(resolvedHome);
   for (const path of Object.values(managed)) await assertNoSymlinkParents(resolvedHome, path);
   await assertEngine(managed.codexEngine);
-  await assertEngine(managed.factoryEngine);
   const before = {
     codex: await readOptional(managed.codexConfig),
-    factory: await readOptional(managed.factoryConfig),
     state: await readOptional(managed.state),
   };
   const codex = parseObject(before.codex, "Codex hooks");
-  const factory = parseObject(before.factory, "Factory settings");
-  const codexCommand = managedCommand(managed.codexEngine, "codex");
-  const factoryCommand = managedCommand(managed.factoryEngine, "factory");
-  if (exactEntry(codex, codexCommand, "Bash|exec") && exactEntry(factory, factoryCommand, "Execute", true)) {
+  const codexCommand = managedCommand(managed.codexEngine);
+  if (exactEntry(codex, codexCommand, "Bash|exec")) {
     return { ...(await auditGlobalGuardrails({ home: resolvedHome })), operation: "guardrails-enable", changed: false };
   }
   const nextCodex = { ...codex, hooks: mergedHooks(codex.hooks, "Bash|exec", codexCommand) };
-  const nextFactory = { ...factory, hooks: mergedHooks(factory.hooks, "Execute", factoryCommand, true) };
   const installed = {
     codex: Buffer.from(`${JSON.stringify(nextCodex, null, 2)}\n`),
-    factory: Buffer.from(`${JSON.stringify(nextFactory, null, 2)}\n`),
   };
   const priorSnapshot = priorRollbackSnapshot(before.state);
   const state = {
@@ -273,17 +255,12 @@ export async function enableGlobalGuardrails({ home }) {
         before: priorSnapshot?.codex ?? (before.codex === null ? null : before.codex.toString("base64")),
         installed: installed.codex.toString("base64"),
       },
-      factory: {
-        before: priorSnapshot?.factory ?? (before.factory === null ? null : before.factory.toString("base64")),
-        installed: installed.factory.toString("base64"),
-      },
     },
   };
   async function restorePriorBytes() {
     /** @type {{path: string, contents: Buffer | null}[]} */
     const priorFiles = [
       { path: managed.codexConfig, contents: before.codex },
-      { path: managed.factoryConfig, contents: before.factory },
       { path: managed.state, contents: before.state },
     ];
     for (const { path, contents } of priorFiles) {
@@ -298,7 +275,6 @@ export async function enableGlobalGuardrails({ home }) {
   try {
     await writeAtomic(managed.state, Buffer.from(`${JSON.stringify(state, null, 2)}\n`));
     await writeAtomic(managed.codexConfig, installed.codex);
-    await writeAtomic(managed.factoryConfig, installed.factory);
     const audit = await auditGlobalGuardrails({ home: resolvedHome });
     if (!audit.ok) throw new Error(`Guardrail activation failed verification:\n- ${audit.problems.join("\n- ")}`);
     return { ...audit, operation: "guardrails-enable", changed: true, statePath: managed.state };
@@ -312,17 +288,17 @@ export async function enableGlobalGuardrails({ home }) {
 export async function rollbackGlobalGuardrails({ home }) {
   const resolvedHome = resolve(home);
   const managed = paths(resolvedHome);
-  for (const path of [managed.codexConfig, managed.factoryConfig, managed.state]) {
+  for (const path of [managed.codexConfig, managed.state]) {
     await assertNoSymlinkParents(resolvedHome, path);
   }
   const contents = await readOptional(managed.state);
   if (contents === null) throw new Error("No guardrail activation snapshot exists");
   const state = JSON.parse(contents.toString("utf8"));
-  if (state?.schemaVersion !== 2 || !state.files || !("codex" in state.files) || !("factory" in state.files)) {
+  if (state?.schemaVersion !== 2 || !state.files || !("codex" in state.files)) {
     throw new Error("Guardrail activation snapshot is invalid");
   }
   const entries = [];
-  for (const [key, path] of [["codex", managed.codexConfig], ["factory", managed.factoryConfig]]) {
+  for (const [key, path] of [["codex", managed.codexConfig]]) {
     const file = state.files[key];
     if (!file || typeof file !== "object" || !("before" in file) || typeof file.installed !== "string") {
       throw new Error(`Guardrail snapshot contains invalid ${key} metadata`);
