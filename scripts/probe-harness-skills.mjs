@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildCodexSkillProbeEvidence,
   buildCodexSkillProbeInvocations,
+  runCodexSkillProbeSequence,
   runSkillProbeProcess,
 } from "../src/skill-probe-runtime.mjs";
 import { resolveSkillProbeMetadata } from "../src/skill-probe-metadata.mjs";
@@ -61,11 +62,10 @@ async function directoryHash(directory) {
 const invocations = buildCodexSkillProbeInvocations({ codexPath, repositoryRoot });
 /** @param {{executable: string, args: string[]}} invocation */
 const execute = (invocation) => runSkillProbeProcess({ ...invocation, cwd: repositoryRoot, timeoutMs });
-const [codexVersion, codexCatalog, codex] = await Promise.all([
-  execute(invocations.version),
-  execute(invocations.catalog),
-  execute(invocations.skill),
-]);
+const { codexVersion, codexCatalog, codex, observationAttempts } = await runCodexSkillProbeSequence({
+  invocations,
+  execute,
+});
 const evidence = buildCodexSkillProbeEvidence({
   catalogVersion,
   sourceCommit,
@@ -76,6 +76,7 @@ const evidence = buildCodexSkillProbeEvidence({
   codexVersion,
   catalogResult: codexCatalog,
   skillResult: codex,
+  observationAttempts,
 });
 
 const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;

@@ -82,3 +82,18 @@ test("contract 1.5.3 binds T3 Code recertification to the installed contract", a
   assert.match(t3Probe, /T3CODE_TURN_TIMEOUT_MS/);
   assert.match(codexProbe, /skills-live-latest\.json/);
 });
+
+test("contract 1.5.4 serializes Codex live observations after the real concurrent failure", async () => {
+  const [manifest, contract, codexProbe, runtime] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.4.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.4/contract.md"), "utf8"),
+    readFile(resolve(root, "scripts/probe-harness-skills.mjs"), "utf8"),
+    readFile(resolve(root, "src/skill-probe-runtime.mjs"), "utf8"),
+  ]);
+  assert.equal(manifest.contractVersion, "1.5.4");
+  assert.deepEqual(manifest.supportedHarnesses.map((entry) => entry.id), ["codex", "t3code"]);
+  assert.match(contract, /sequentially/i);
+  assert.match(codexProbe, /runCodexSkillProbeSequence/);
+  assert.doesNotMatch(codexProbe, /Promise\.all/);
+  assert.match(runtime, /exit-zero.*final agent message/is);
+});
