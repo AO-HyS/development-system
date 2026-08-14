@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
   renderTechnicalReaderLibraryHtml,
-} from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
+} from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -121,6 +122,15 @@ function readerInput(markdown = representativePlan) {
   };
 }
 
+function inlineScriptIntegrity(html) {
+  const declared = /script-src 'sha256-([^']+)'/u.exec(html)?.[1] ?? "";
+  const script = /<script>([\s\S]*?)<\/script>/u.exec(html)?.[1] ?? "";
+  return {
+    declared,
+    actual: createHash("sha256").update(script).digest("base64"),
+  };
+}
+
 test("the reusable model builder turns Markdown plus JSON metadata into a serializable reader model", () => {
   const model = buildTechnicalReaderModel(readerInput());
 
@@ -151,12 +161,13 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
   assert.match(html, /font-src data:/);
   assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
   assert.doesNotMatch(html, /script-src[^;]*unsafe-inline/);
+  assert.match(html, /<meta name="generator" content="development-system-technical-reader">/);
   assert.match(html, /class="reader-layout"/);
   assert.match(html, /class="document-column"/);
   assert.match(html, /class="artifacts-rail"/);
   assert.match(html, /class="toc-rail"/);
   assert.match(html, /class="mobile-reader-tools"/);
-  assert.match(html, /grid-template-columns:minmax\(11rem,14rem\) minmax\(0,56rem\) minmax\(10rem,13rem\)/);
+  assert.match(html, /grid-template-columns:minmax\(12rem,15\.5rem\) minmax\(0,58rem\) minmax\(11rem,14\.5rem\)/);
   assert.match(html, /@media\(max-width:76rem\)/);
   assert.match(html, /Implementation not authorized/);
   assert.doesNotMatch(html, /class="hero"|class="score"|KPI/);
@@ -214,9 +225,12 @@ test("the visual system uses readable embedded type, soft paper light mode, and 
 
   assert.match(html, /@font-face\{font-family:"Atkinson Hyperlegible Next"/);
   assert.match(html, /@font-face\{font-family:"Monaspace Neon"/);
-  assert.match(html, /font-size:17px;line-height:1\.72/);
+  assert.match(html, /font-size:1\.1875rem;line-height:1\.68/);
   assert.match(html, /--page:#f2f3f0;--document:#f7f8f5/);
-  assert.match(html, /font-size:clamp\(2rem,4vw,2\.75rem\)/);
+  assert.match(html, /font-size:clamp\(2\.35rem,4vw,2\.75rem\)/);
+  assert.match(html, /font-size:clamp\(2\.05rem,8vw,2\.45rem\)/);
+  assert.match(html, /min-width:2\.75rem;min-height:2\.75rem/);
+  assert.match(html, /@media\(pointer:coarse\)/);
   assert.match(html, /\.artifact-link\.is-active\{background:transparent;color:var\(--ink\)\}/);
   assert.match(html, /\.artifact-link\.is-active::before\{background:var\(--accent\)\}/);
 });
@@ -260,6 +274,46 @@ flowchart LR
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /&lt;script&gt;bad&lt;\/script&gt;/);
   assert.doesNotMatch(html, /<script>alert|<img src=x/iu);
+});
+
+test("safe inline links render before CSP while active-content protocols remain text", () => {
+  const markdown = `# Evidence\n\nRead [the source](https://example.com/evidence?q=reader) and keep [unsafe](javascript:alert(1)) inert.`;
+  const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput(markdown)));
+
+  assert.match(html, /<a href="https:\/\/example\.com\/evidence\?q=reader" target="_blank" rel="noopener noreferrer">the source<\/a>/);
+  assert.match(html, /\[unsafe\]\(javascript:alert\(1\)\)/);
+  assert.doesNotMatch(html, /href="javascript:/iu);
+  const integrity = inlineScriptIntegrity(html);
+  assert.equal(integrity.declared, integrity.actual);
+});
+
+test("final-report status is modeled before serialization so CSP remains valid", () => {
+  const input = readerInput();
+  input.workflow.reportStatusLabel = "Delivery complete · follow-ups documented";
+  input.workflow.authorityLabel = "Implementation authorized";
+  input.workflow.gateLabel = "Status";
+  const model = buildTechnicalReaderModel(input);
+  const html = renderTechnicalReaderHtml(model);
+
+  assert.equal(model.workflow.reportStatusLabel, "Delivery complete · follow-ups documented");
+  assert.equal("authorityLabel" in model.workflow, false);
+  assert.match(html, /Delivery complete · follow-ups documented/);
+  assert.match(html, /<span>Status<\/span><strong>Technical Contract<\/strong>/);
+  assert.match(html, /Implementation not authorized · requires Implement Preview/);
+  assert.doesNotMatch(html, /class="authority-state is-authorized"/);
+  const integrity = inlineScriptIntegrity(html);
+  assert.equal(integrity.declared, integrity.actual);
+
+  const authorizedInput = readerInput();
+  authorizedInput.workflow.implementationAuthorized = true;
+  authorizedInput.workflow.reportStatusLabel = "Delivery complete";
+  const authorizedHtml = renderTechnicalReaderHtml(buildTechnicalReaderModel(authorizedInput));
+  assert.match(authorizedHtml, /class="authority-state is-authorized"[^>]*>Implementation authorized<\/span>/);
+  assert.doesNotMatch(authorizedHtml, /Implementation not authorized/);
+
+  const unsafePostprocessed = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput())).replaceAll("Implementation", "Delivery");
+  const brokenIntegrity = inlineScriptIntegrity(unsafePostprocessed);
+  assert.notEqual(brokenIntegrity.declared, brokenIntegrity.actual);
 });
 
 test("the same reader accepts a JSON-authored document without Working Backwards fields", () => {
@@ -317,6 +371,7 @@ test("the metadata-only library is searchable, responsive, offline, and rejects 
   assert.match(html, /Technical Contract/);
   assert.match(html, /Review and approve Technical Contract/);
   assert.match(html, /data-library-search/);
+  assert.match(html, /\.library-header h1\{[^}]*font-size:clamp\(2rem,5vw,2\.8rem\)/);
   assert.match(html, /@media\(max-width:58rem\)/);
   assert.match(html, /connect-src 'none'/);
   assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);

@@ -35,7 +35,7 @@ Use the reading hierarchy of Mintlify, the diagram inspection patterns of Trayce
 
 ## Evidence
 
-- Current renderer: `artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-reader.mjs`
+- Current published renderer: `artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-reader.mjs`
 - Current focused tests: `test/t3-technical-reader.test.mjs`
 - Current private workflow: `~/.development-system/private/working-backwards/development-system-next-generation/`
 - Visual issue reference: `/Users/corrortiz/.t3/userdata/attachments/03ede281-4c43-4376-bcdd-ec4990a5b2ca-2f22ffc0-2c9f-4b6d-b238-c294a2e2891a.png`

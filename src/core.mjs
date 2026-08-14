@@ -215,7 +215,10 @@ async function validateManifest(manifest) {
   }
 
   const harnesses = new Set((manifest.supportedHarnesses ?? []).map((harness) => harness.id));
-  const codexAndT3Only = ["1.5.0", "1.5.1", "1.5.2", "1.5.3", "1.5.4"].includes(manifest.contractVersion);
+  const contractVersion = /^(\d+)\.(\d+)\.(\d+)$/.exec(manifest.contractVersion);
+  const codexAndT3Only = contractVersion !== null
+    && (Number(contractVersion[1]) > 1
+      || (Number(contractVersion[1]) === 1 && Number(contractVersion[2]) >= 5));
   for (const requiredHarness of codexAndT3Only ? ["codex", "t3code"] : ["codex", "t3code", "factory"]) {
     if (!harnesses.has(requiredHarness)) errors.push(`missing supported harness: ${requiredHarness}`);
   }
