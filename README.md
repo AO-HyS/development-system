@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.4` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.11.0` supports Codex and T3 Code only. The patch keeps the scheduler, guardrails, and live recertification independent from Factory, binds the T3 Code probe to the exact installed contract, and serializes live Codex observations.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.5` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.12.0` supports Codex and T3 Code only. The patch repairs the offline Reader's CSP-safe final-report rendering, raises legibility, and gives each workflow a human initiative filename.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,10 +16,10 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.4
-./bin/development-system sync-skills --version 0.11.0
+./bin/development-system install --version 1.5.5
+./bin/development-system sync-skills --version 0.12.0
 ./bin/development-system guardrails-enable
-./bin/development-system audit-skills --version 0.11.0
+./bin/development-system audit-skills --version 0.12.0
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -40,6 +40,8 @@ Audit and prepare a product repository with distinct operations:
 ```
 
 Audit never writes. Initialization and normalization manage only the Development System namespace, preserve product-owned files, and never activate paid services; see `docs/repository-preparation.md`.
+
+Adapter normalization prepares a repository for the Development System; it does not refactor that product's architecture. Separate Working Backwards entry prompts for the five primary product convergence initiatives live in [`docs/product-convergence/`](docs/product-convergence/README.md).
 
 Lifecycle requests use natural language but persist canonical operation names:
 
@@ -63,7 +65,7 @@ Working Backwards operations consume explicit JSON files:
 ./bin/development-system working-backwards-evaluate --input evidence/working-backwards/ticket-06-evaluation.json --json
 ```
 
-For the progressive T3 Code experience, invoke `$working-backwards` (or write `work backwards`) followed by a normal feature idea. The skill drafts one concise canonical Markdown artifact at a time under private Development System HOME, asks one high-leverage question only when needed, and advances on clear replies such as `Apruebo, sigue` or `Se ve bien, continúa`. Feedback edits the active document. A reusable offline Reader derives a plain JSON view model from Markdown plus workflow state and continuously generates the default local `index.html` format: compact artifact navigation, a continuous technical document, active page outline, restrained metadata, first-class Mermaid controls, explicit-data charts, semantic tables/callouts, and filename-aware code/diff blocks. The private terminal handoff never authorizes implementation.
+For the progressive T3 Code experience, invoke `$working-backwards` (or write `work backwards`) followed by a normal feature idea. The skill drafts one concise canonical Markdown artifact at a time under private Development System HOME, asks one high-leverage question only when needed, and advances on clear replies such as `Apruebo, sigue` or `Se ve bien, continúa`. Feedback edits the active document. A reusable offline Reader derives a plain JSON view model from Markdown plus workflow state and continuously generates a human-named `<initiative-slug>.html`: compact artifact navigation, a continuous technical document, active page outline, restrained metadata, first-class Mermaid controls, explicit-data charts, semantic tables/callouts, and filename-aware code/diff blocks. The metadata-only library alone retains `index.html`. The private terminal handoff never authorizes implementation.
 
 These commands prepare intent, private handoff, freshness, unverified supplied HumanLayer snapshots, and evaluation evidence without a default tracker or network runtime. Gate approvals persist private workflow-specific receipts bound to normalized repository identity/revision and exact artifact evidence. Publication binds the approved map and intent; resume requires injected authority validation of an opaque consumed-intent receipt and tracker reconciliation by idempotency key. The initial HumanLayer adapter rejects remote, synchronized, auto-advancing, worktree-creating, Slack, Linear, and external modes. Ticket 06 evidence remains incomplete because independently verifiable source packets are unavailable, so it recommends no pilot and ticket 07 stays blocked. Definition, evaluation, publication, and handoff keep implementation unauthorized until Implement Preview.
 
@@ -85,7 +87,7 @@ parallel and integrate into one candidate. Publication remains a separate
 authorization.
 
 Install the private weekly Development Steward on macOS after installing the
-1.5.4 contract. It runs Monday at 09:00 local time for the five allowlisted
+1.5.5 contract. It runs Monday at 09:00 local time for the five allowlisted
 primary repositories and publishes one concise Check-in input without writing
 to repositories or providers:
 
@@ -159,7 +161,7 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
 
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.4 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.5 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -169,7 +171,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión 1.5.4 del sistema de desarrollo” → `install --version 1.5.4`, `sync-skills --version 0.11.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.5`, `sync-skills --version 0.12.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -192,14 +194,15 @@ migrations, seeds, roles, or environment contracts changed. Product
 repositories still own the concrete commands and provider implementation.
 
 ```sh
+pnpm run reader:browser
 pnpm run verify
 ```
 
-The gate typechecks the dependency-free Node implementation, runs the CLI acceptance tests, and verifies every committed manifest, artifact hash, supported harness, destination, and mirror relationship.
+The focused Reader gate opens a generated report directly from `file://` in Chrome or Chromium and proves five Mermaid families, SVG rendering, zoom, wheel, drag, pinch, expand, fullscreen, responsive rails, 19 px body text, zero HTTP(S) requests, and no browser exceptions. The full gate typechecks the dependency-free Node implementation, runs the CLI acceptance tests, and verifies every committed manifest, artifact hash, supported harness, destination, and mirror relationship.
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails; `1.5.3` binds T3 Code recertification to the exact installed contract and current evidence; `1.5.4` serializes Codex live-probe observations after a real concurrent-run failure. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails; `1.5.3` binds T3 Code recertification to the exact installed contract and current evidence; `1.5.4` serializes Codex live-probe observations after a real concurrent-run failure; `1.5.5` repairs the offline Reader, enlarges its interactive/reading surfaces, and names workflow HTML from the initiative. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { validateSkillCatalog } from "../src/skills.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -96,4 +97,31 @@ test("contract 1.5.4 serializes Codex live observations after the real concurren
   assert.match(codexProbe, /runCodexSkillProbeSequence/);
   assert.doesNotMatch(codexProbe, /Promise\.all/);
   assert.match(runtime, /exit-zero.*final agent message/is);
+});
+
+test("contract 1.5.5 and catalog 0.12.0 install the offline Reader patch immutably", async () => {
+  const [manifest, contract, catalog, reader, workflow, skill] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.5.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.5/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.12.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-reader.mjs"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.5/skills/internal/working-backwards/SKILL.md"), "utf8"),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+
+  assert.equal(manifest.contractVersion, "1.5.5");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.5/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.12.0.json");
+  assert.equal(catalog.catalogVersion, "0.12.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.5/skills/internal/working-backwards");
+  assert.equal(workingBackwards.variants[0].sourceDirectory, "artifacts/1.5.5/skills/internal/working-backwards");
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  assert.match(contract, /before serializing the Reader and computing its Content Security Policy/i);
+  assert.match(contract, /human initiative slug/i);
+  assert.match(reader, /reportStatusLabel/);
+  assert.doesNotMatch(reader, /workflowInput\.authorityLabel/);
+  assert.match(reader, /font-size:1\.1875rem/);
+  assert.match(workflow, /readerFileName\(initiativeName, slug\)/);
+  assert.match(skill, /<initiative-slug>\.html/);
 });
