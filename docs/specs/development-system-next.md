@@ -102,6 +102,7 @@ Evolucionar el repositorio canónico a **Development System Next**, soportado ú
 - Maintain stack-specific architecture profiles sourced from primary docs, recognized open-source implementations and local product evidence. A profile guides locality, module depth, composition and seams; it never copies a repository wholesale.
 - Use deterministic fitness functions on changed code and periodic semantic reviews for patterns that static tools cannot prove.
 - Compose existing tools by ownership: formatter/lint, typecheck, focused behavior tests, React Doctor, Impeccable, Codex Security, Convex review and provider-specific checks. Do not execute two tools for the same evidence without a documented reason.
+- Development Steward must treat the installed Impeccable skill and CLI as versioned upstream dependencies: compare the exact repo-local version against the current official release, show the pinned diff and changelog, and prepare updates only for repositories that already use it.
 - Treat `any`, double assertions and equivalent type erasure as violations in owned TypeScript unless an external boundary has a narrow documented adapter.
 - Keep shadcn updates diff-aware and repo-specific. Preserve working design and behavior; do not migrate primitive families automatically.
 
@@ -140,6 +141,8 @@ The scenario must prove the normal definition path, simple implementation escape
 
 - Lifecycle fixtures prove Product Grill evidence precedes the non-technical story, story approval precedes the Technical Grill, and the Technical Grill governs the programmed contracts, tickets and handoff for each profile.
 - Reader fixtures render flowchart, Gantt/progress, sequence, timeline and architecture Mermaid offline, then prove pan/zoom/pinch controls, responsive layout and CSP.
+- Reader browser evidence must use at least one realistically wide technical diagram and prove that expanded/fullscreen rendering preserves readable labels instead of shrinking the entire diagram into a thumbnail.
+- Final implementation reports must render explicitly requested prompts and handoffs as reviewable content, not links alone, and include a known-issues ledger that distinguishes fixed, remaining, and exact-authorization-blocked work.
 - Check-in fixtures reconcile conflicting Linear/Git/CI/provider evidence and produce a bounded mobile or computer action list without writes.
 - Parallel Work fixtures prove dependency frontier, one writer per surface, continued independent lanes and one integrated candidate.
 - Quality fixtures seed React, type-safety, Convex, shadcn and security problems and assert only the responsible oracle reports each failure.

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
   renderTechnicalReaderLibraryHtml,
-} from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-reader.mjs";
+} from "../artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -131,6 +132,16 @@ function inlineScriptIntegrity(html) {
   };
 }
 
+test("final reports keep requested prompt and handoff content reviewable with explicit known-issue dispositions", async () => {
+  const skill = await readFile(new URL("../artifacts/1.5.6/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
+
+  assert.match(skill, /full text or clearly separated Reader sections/i);
+  assert.match(skill, /product-convergence prompt or handoff/i);
+  assert.match(skill, /Known issues/);
+  for (const disposition of ["fixed", "remaining", "authorization-blocked"]) assert.match(skill, new RegExp(`\\b${disposition}\\b`));
+  assert.match(skill, /Links may support those sections but never replace their reviewable content/);
+});
+
 test("the reusable model builder turns Markdown plus JSON metadata into a serializable reader model", () => {
   const model = buildTechnicalReaderModel(readerInput());
 
@@ -202,6 +213,7 @@ test("inline evidence stays inside the document track while expanded evidence be
   assert.match(html, /class="diagram-viewport"[^>]*>[\s\S]*?<div class="diagram-canvas" data-diagram-canvas/);
   assert.match(html, /\.mermaid-block\.is-expanded\{position:fixed;z-index:\d+;inset:/);
   assert.match(html, /\.mermaid-block\.is-expanded\{[^}]*display:flex/);
+  assert.match(html, /@media print\{[\s\S]*?\.diagram-viewport\{height:auto;overflow:visible/);
 });
 
 test("official Mermaid supports many diagram families and Panzoom provides direct manipulation", () => {
@@ -215,7 +227,12 @@ test("official Mermaid supports many diagram families and Panzoom provides direc
   assert.match(html, /instance\.zoomWithWheel\(event\)/);
   assert.match(html, /instance\.pan\(pan\.x-event\.deltaX,pan\.y-event\.deltaY/);
   assert.match(html, /touch-action:none/);
-  assert.match(html, /maxScale:4,minScale:\.3/);
+  assert.match(html, /minimumReadableScale=\.875/);
+  assert.match(html, /Math\.max\(minimumReadableScale,containScale\)/);
+  assert.match(html, /svg\.style\.width=naturalWidth\+"px"/);
+  assert.match(html, /figure\.dataset\.fitScale=String\(scale\)/);
+  assert.match(html, /maxScale:4,minScale:\.5/);
+  assert.match(html, /overflow:auto[^}]*scrollbar-gutter:stable/);
   assert.match(html, /pinchAndPan:true/);
   assert.doesNotMatch(html, /function parseMermaidNode|function mermaidModel|function layoutMermaid|Local safe render/);
 });
