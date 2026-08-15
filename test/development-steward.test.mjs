@@ -25,6 +25,7 @@ test("the weekly headless schedule is bounded to exactly the five primary reposi
   assert.equal(schedule.sessionRequired, false);
   assert.deepEqual(schedule.repositoryIds, ["aohys", "casa-roca", "the-barber-central", "nutri-plan", "eteria"]);
   assert.deepEqual(schedule.repositoryIds, primaryRepositoryAllowlist.map((repository) => repository.id));
+  assert.equal(schedule.reviewedAreas.includes("impeccable"), true);
 });
 
 test("unknown repositories fail closed and never silently expand the allowlist", () => {
@@ -110,6 +111,30 @@ test("the private report is concise, device-classified, and consumable by Check-
   assert.equal(review.report.items[0].device, "computer");
   assert.equal(review.checkInEvidence[0].source, "repository");
   assert.equal(review.checkInEvidence[0].action.capability, "computer");
+});
+
+test("the bounded weekly report preserves repository diversity before taking second items", () => {
+  const review = buildDevelopmentStewardReview({
+    observedAt: "2026-08-14T12:00:00.000Z",
+    repositories: repositories.map((repository) => ({
+      ...repository,
+      evaluations: Array.from({ length: repository.id === "aohys" ? 5 : 1 }, (_, index) => ({
+        id: `finding-${index + 1}`,
+        area: "react",
+        state: "action-needed",
+        summary: `${repository.id} needs review ${index + 1}.`,
+        deterministic: false,
+        safeUpdate: false,
+        device: "computer",
+      })),
+    })),
+  });
+
+  assert.equal(review.report.items.length, 5);
+  assert.deepEqual(
+    review.report.items.map((item) => item.repositoryId),
+    ["aohys", "casa-roca", "the-barber-central", "nutri-plan", "eteria"],
+  );
 });
 
 test("the installable skill preserves upstream, no-auto-merge, and reporting boundaries", async () => {

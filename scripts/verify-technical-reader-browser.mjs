@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 
-const readerModulePath = join(process.cwd(), "artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-reader.mjs");
+const readerModulePath = join(process.cwd(), "artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs");
 const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import(pathToFileURL(readerModulePath).href);
 
 const candidates = [
@@ -138,8 +138,20 @@ gantt
 
 \`\`\`mermaid
 sequenceDiagram
-  User->>Reader: Open file directly
-  Reader-->>User: Render an SVG offline
+  actor A as Alejandro
+  participant D as Definition Router
+  participant W as Working Backwards
+  participant P as Parallel Work
+  participant R as Release Train
+  A->>D: Describe la funcionalidad normalmente
+  D->>W: Product Grill por Topics
+  W-->>A: Future Customer Story breve
+  A->>W: Aprobar o corregir
+  W->>W: Technical Grill + contratos + tickets
+  W-->>A: Handoff privado e Implement Preview
+  A->>P: Autorizar el slice
+  P->>R: Integrar candidato y validar superficies afectadas
+  R-->>A: Preview, producción, smoke y rollback verificables
 \`\`\`
 
 ## Progress
@@ -204,26 +216,54 @@ architecture-beta
     await cdp.send("Log.enable", {}, sessionId);
     await cdp.send("Network.enable", {}, sessionId);
     await cdp.send("Page.enable", {}, sessionId);
+    await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false }, sessionId);
     await cdp.send("Page.navigate", { url: reportUrl }, sessionId);
     const observation = await waitForRendered(cdp.send, sessionId);
     const interaction = await cdp.send("Runtime.evaluate", {
       expression: `(async () => {
-        const figure = document.querySelector('[data-mermaid]');
+        const figure = [...document.querySelectorAll('[data-mermaid]')].find((candidate) => candidate.querySelector('[data-diagram-source]')?.textContent?.trim().startsWith('sequenceDiagram'));
         figure.scrollIntoView({ block: 'center' });
         await new Promise((resolve) => setTimeout(resolve, 50));
+        const measure = () => {
+          const viewport = figure.querySelector('.diagram-viewport').getBoundingClientRect();
+          const svg = figure.querySelector('svg');
+          const svgRect = svg.getBoundingClientRect();
+          const textHeights = [...svg.querySelectorAll('text')]
+            .map((node) => node.getBoundingClientRect().height)
+            .filter((height) => Number.isFinite(height) && height > 0);
+          return {
+            viewport: { x: viewport.x, y: viewport.y, width: viewport.width, height: viewport.height },
+            svg: { width: svgRect.width, height: svgRect.height },
+            viewportWidthUse: Math.min(svgRect.width, viewport.width) / viewport.width,
+            requiresHorizontalPan: svgRect.width > viewport.width,
+            renderedScale: svgRect.width / svg.viewBox.baseVal.width,
+            minimumTextHeight: Math.min(...textHeights),
+            fitScale: Number(figure.dataset.fitScale || '0'),
+          };
+        };
         const beforeZoom = figure.querySelector('svg').style.transform;
         figure.querySelector('[data-action="zoom-in"]').click();
         await new Promise((resolve) => setTimeout(resolve, 50));
         const afterZoom = figure.querySelector('svg').style.transform;
+        figure.querySelector('[data-action="fit"]').click();
+        await new Promise((resolve) => setTimeout(resolve, 220));
+        const afterFit = figure.querySelector('svg').style.transform;
+        const inlineFitMetrics = measure();
+        figure.querySelector('[data-action="reset"]').click();
+        await new Promise((resolve) => setTimeout(resolve, 220));
+        const afterReset = figure.querySelector('svg').style.transform;
         figure.querySelector('[data-action="expand"]').click();
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        const viewport = figure.querySelector('.diagram-viewport').getBoundingClientRect();
+        await new Promise((resolve) => setTimeout(resolve, 220));
+        const expandedMetrics = measure();
         const fullscreenButton = figure.querySelector('[data-action="fullscreen"]').getBoundingClientRect();
         return JSON.stringify({
           expanded: figure.classList.contains('is-expanded'),
           beforeZoom,
           afterZoom,
-          viewport: { x: viewport.x, y: viewport.y, width: viewport.width, height: viewport.height },
+          afterFit,
+          afterReset,
+          inlineFitMetrics,
+          expandedMetrics,
           fullscreenButton: { x: fullscreenButton.x, y: fullscreenButton.y, width: fullscreenButton.width, height: fullscreenButton.height },
         });
       })()`,
@@ -232,12 +272,12 @@ architecture-beta
     }, sessionId);
     const interactionEvidence = JSON.parse(interaction.result.value);
     const center = {
-      x: interactionEvidence.viewport.x + interactionEvidence.viewport.width / 2,
-      y: interactionEvidence.viewport.y + interactionEvidence.viewport.height / 2,
+      x: interactionEvidence.expandedMetrics.viewport.x + interactionEvidence.expandedMetrics.viewport.width / 2,
+      y: interactionEvidence.expandedMetrics.viewport.y + interactionEvidence.expandedMetrics.viewport.height / 2,
     };
     const transform = async () => {
       const result = await cdp.send("Runtime.evaluate", {
-        expression: "document.querySelector('[data-mermaid] svg').style.transform",
+        expression: `[...document.querySelectorAll('[data-mermaid]')].find((candidate) => candidate.querySelector('[data-diagram-source]')?.textContent?.trim().startsWith('sequenceDiagram')).querySelector('svg').style.transform`,
         returnByValue: true,
       }, sessionId);
       return result.result.value;
@@ -277,9 +317,35 @@ architecture-beta
     await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x: fullX, y: fullY, button: "left", buttons: 0, clickCount: 1 }, sessionId);
     await new Promise((resolve) => setTimeout(resolve, 100));
     const fullscreen = await cdp.send("Runtime.evaluate", {
-      expression: "document.fullscreenElement?.matches('[data-mermaid]') === true || document.querySelector('[data-mermaid]').classList.contains('is-fullscreen-fallback')",
+      expression: "document.fullscreenElement?.matches('[data-mermaid]') === true || [...document.querySelectorAll('[data-mermaid]')].some((candidate) => candidate.classList.contains('is-fullscreen-fallback'))",
       returnByValue: true,
     }, sessionId);
+    const fullscreenMeasurement = await cdp.send("Runtime.evaluate", {
+      expression: `(() => {
+        const figure = document.fullscreenElement?.matches('[data-mermaid]')
+          ? document.fullscreenElement
+          : [...document.querySelectorAll('[data-mermaid]')].find((candidate) => candidate.classList.contains('is-fullscreen-fallback'));
+        const viewport = figure.querySelector('.diagram-viewport').getBoundingClientRect();
+        const svg = figure.querySelector('svg');
+        const svgRect = svg.getBoundingClientRect();
+        const textHeights = [...svg.querySelectorAll('text')]
+          .map((node) => node.getBoundingClientRect().height)
+          .filter((height) => Number.isFinite(height) && height > 0);
+        return JSON.stringify({
+          viewport: { width: viewport.width, height: viewport.height },
+          viewportWidthUse: Math.min(svgRect.width, viewport.width) / viewport.width,
+          renderedScale: svgRect.width / svg.viewBox.baseVal.width,
+          minimumTextHeight: Math.min(...textHeights),
+          fitScale: Number(figure.dataset.fitScale || '0'),
+        });
+      })()`,
+      returnByValue: true,
+    }, sessionId);
+    const fullscreenEvidence = JSON.parse(fullscreenMeasurement.result.value);
+    if (process.env.DEVELOPMENT_SYSTEM_READER_SCREENSHOT) {
+      const screenshot = await cdp.send("Page.captureScreenshot", { format: "png", fromSurface: true }, sessionId);
+      writeFileSync(process.env.DEVELOPMENT_SYSTEM_READER_SCREENSHOT, Buffer.from(screenshot.data, "base64"));
+    }
     await cdp.send("Runtime.evaluate", {
       expression: "document.fullscreenElement ? document.exitFullscreen() : undefined",
       awaitPromise: true,
@@ -308,11 +374,29 @@ architecture-beta
     assert.deepEqual(observation.resources, []);
     assert.equal(observation.bodyFontSize, "19px");
     assert.equal(interactionEvidence.expanded, true);
+    assert.equal(interactionEvidence.expandedMetrics.viewport.width / 1440 >= 0.95, true);
+    assert.equal(interactionEvidence.expandedMetrics.viewport.height / 900 >= 0.72, true);
+    assert.equal(interactionEvidence.expandedMetrics.viewportWidthUse >= 0.75, true);
+    assert.equal(interactionEvidence.expandedMetrics.renderedScale >= 0.875, true);
+    assert.equal(interactionEvidence.expandedMetrics.minimumTextHeight >= 13, true);
+    assert.equal(interactionEvidence.expandedMetrics.fitScale >= 0.875, true);
+    assert.equal(interactionEvidence.inlineFitMetrics.requiresHorizontalPan, true);
+    assert.equal(interactionEvidence.inlineFitMetrics.renderedScale >= 0.875, true);
+    assert.equal(interactionEvidence.inlineFitMetrics.minimumTextHeight >= 13, true);
+    assert.equal(interactionEvidence.inlineFitMetrics.fitScale >= 0.875, true);
     assert.notEqual(interactionEvidence.afterZoom, interactionEvidence.beforeZoom);
+    assert.notEqual(interactionEvidence.afterFit, interactionEvidence.afterZoom);
+    assert.notEqual(interactionEvidence.afterReset, interactionEvidence.afterFit);
     assert.notEqual(afterWheel, beforeWheel);
     assert.notEqual(afterDrag, beforeDrag);
     assert.notEqual(afterPinch, beforePinch);
     assert.equal(fullscreen.result.value, true);
+    assert.equal(fullscreenEvidence.viewport.width / 1440 >= 0.98, true);
+    assert.equal(fullscreenEvidence.viewport.height / 900 >= 0.78, true);
+    assert.equal(fullscreenEvidence.viewportWidthUse >= 0.75, true);
+    assert.equal(fullscreenEvidence.renderedScale >= 0.875, true);
+    assert.equal(fullscreenEvidence.minimumTextHeight >= 13, true);
+    assert.equal(fullscreenEvidence.fitScale >= 0.875, true);
     assert.equal(responsiveEvidence.narrow, true);
     assert.notEqual(responsiveEvidence.mobileTools, "none");
     assert.equal(responsiveEvidence.artifactsRail, "none");
@@ -327,6 +411,9 @@ architecture-beta
       diagrams: 5,
       renderedSvg: true,
       zoomPanPinchExpandFullscreen: true,
+      inline: interactionEvidence.inlineFitMetrics,
+      expanded: interactionEvidence.expandedMetrics,
+      fullscreen: fullscreenEvidence,
       responsive: true,
       networkRequests: 0,
       bodyFontSize: observation.bodyFontSize,

@@ -189,16 +189,16 @@ export async function auditGlobalGuardrails({ home }) {
   }
   try { await assertEngine(managed.codexEngine); } catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
   try {
-    const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.12.0.json"), "utf8"));
+    const catalog = JSON.parse(await readFile(resolve(repositoryRoot, "catalog/0.13.0.json"), "utf8"));
     const catalogSkills = /** @type {any[]} */ (catalog.skills);
     const declared = catalogSkills.find((skill) => skill.logicalName === "global-agent-guardrails");
-    if (!declared) problems.push("Catalog 0.12.0 does not declare global-agent-guardrails");
+    if (!declared) problems.push("Catalog 0.13.0 does not declare global-agent-guardrails");
     else {
       const variants = /** @type {any[]} */ (declared.variants);
       const expectedByHarness = new Map(variants.map((variant) => [variant.harness, variant.folderSha256]));
       const directory = dirname(dirname(managed.codexEngine));
       if (await existsFile(directory) && await directoryHash(directory) !== expectedByHarness.get("codex")) {
-        problems.push("codex guard skill bytes do not match catalog 0.12.0");
+        problems.push("codex guard skill bytes do not match catalog 0.13.0");
       }
     }
   } catch (error) {

@@ -129,3 +129,32 @@ test("contract 1.5.5 and catalog 0.12.0 install the offline Reader patch immutab
   assert.match(packageJson.scripts["skills:audit"], /skills-live-latest\.json/);
   assert.match(readme, /skills:probe[\s\S]*audit-skills[^\n]*--evidence[^\n]*skills-live-latest\.json/);
 });
+
+test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report details readable", async () => {
+  const [manifest, contract, catalog, reader, skill, packageJson, readme] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.6.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.6/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.13.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.6/skills/internal/working-backwards/SKILL.md"), "utf8"),
+    readFile(resolve(root, "package.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "README.md"), "utf8"),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+
+  assert.equal(manifest.contractVersion, "1.5.6");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.6/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.13.0.json");
+  assert.equal(catalog.catalogVersion, "0.13.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.6/skills/internal/working-backwards");
+  assert.equal(workingBackwards.variants[0].sourceDirectory, "artifacts/1.5.6/skills/internal/working-backwards");
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  assert.match(contract, /wide technical diagram.*readable/is);
+  assert.match(contract, /reviewable content, not links alone/i);
+  assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
+  assert.match(reader, /minimumReadableScale=\.875/);
+  assert.match(skill, /Known issues/);
+  assert.equal(packageJson.version, "1.5.6");
+  assert.match(packageJson.scripts["skills:sync"], /0\.13\.0/);
+  assert.match(readme, /Version `1\.5\.6`/);
+});

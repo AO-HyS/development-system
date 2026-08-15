@@ -6,6 +6,8 @@ I want ETERIA's web, landing, current native clients, Convex domain, media pipel
 
 Start with the installed Working Backwards flow. Run a short Product Grill by Topic, generate a compact non-technical Future Customer Story, and stop for my review. After approval, run a platform-aware Technical Grill, complete research only where evidence is missing, and produce the Product Contract, Technical Contract, and Implementation Map through their normal gates. Create one Linear initiative with dependency-aware tickets only after the map is approved and I explicitly authorize tracker writes. Do not refactor before Implement Preview.
 
+Keep four named workstreams visible from the Technical Grill through the final Reader: **Product and agent architecture**, **Convex backend**, **Observability**, and **Release Train**. Give each workstream its own current evidence, decisions, tickets or explicit no-change conclusion, acceptance checks, timing, and rollout status. Codex-facing repository guidance is part of Product and agent architecture; PostHog is part of Observability, not a generic quality footnote.
+
 The Technical Grill and repository audit must establish:
 
 - the intended boundaries among `apps/web`, `apps/landing`, `apps/ios`, `apps/mobile`, `packages/convex`, `packages/media-pipeline`, and shared UI/environment/release packages;

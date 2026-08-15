@@ -10,7 +10,7 @@ export const primaryRepositoryAllowlist = Object.freeze([
 
 const allowedIds = new Set(primaryRepositoryAllowlist.map((repository) => repository.id));
 const reviewedAreas = Object.freeze([
-  "skills", "codex-security", "react", "tanstack", "shadcn", "convex",
+  "skills", "impeccable", "codex-security", "react", "tanstack", "shadcn", "convex",
   "cloudflare", "expo-mobile", "posthog", "release-train",
 ]);
 
@@ -120,7 +120,7 @@ export function buildDevelopmentStewardReview(input) {
     };
   });
 
-  const reportItems = repositories.flatMap((repository) => {
+  const reportItemsByRepository = repositories.map((repository) => {
     if (repository.status === "blocked-local") return [{ repositoryId: repository.id, title: `${repository.name}: collection blocked`, detail: repository.error ?? "Unknown local blocker.", device: "computer", state: "blocked" }];
     if (repository.status === "unproven") return [{ repositoryId: repository.id, title: `${repository.name}: evidence unproven`, detail: repository.error ?? "Repository freshness evidence is missing.", device: "computer", state: "unproven" }];
     const evaluationItems = repository.evaluations.filter((evaluation) => evaluation.state === "action-needed").map((evaluation) => ({
@@ -138,7 +138,19 @@ export function buildDevelopmentStewardReview(input) {
       state: "action-needed",
     }));
     return [...evaluationItems, ...upstreamItems];
-  }).slice(0, 5);
+  });
+  const reportItems = [];
+  for (let itemIndex = 0; reportItems.length < 5; itemIndex += 1) {
+    let added = false;
+    for (const repositoryItems of reportItemsByRepository) {
+      const item = repositoryItems[itemIndex];
+      if (!item) continue;
+      reportItems.push(item);
+      added = true;
+      if (reportItems.length === 5) break;
+    }
+    if (!added) break;
+  }
   const draftChanges = repositories.flatMap((repository) => repository.evaluations
     .filter((evaluation) => evaluation.state === "action-needed" && evaluation.deterministic && evaluation.safeUpdate && evaluation.focusedChecks.length > 0)
     .map((evaluation) => ({
