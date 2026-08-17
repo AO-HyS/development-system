@@ -15,6 +15,7 @@ import {
 } from "../artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { writeT3Reader as writeT3ReaderV2 } from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { writeT3Reader as writeT3ReaderV3 } from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { classifyApproval as classifyApprovalV4 } from "../artifacts/1.5.7/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 
@@ -404,6 +405,29 @@ test("negated, combined, and ambiguous language never approves", () => {
   assert.equal(classifyApproval("De acuerdo, puedes avanzar").accepted, true);
   assert.equal(classifyApproval("Claro, avanza").accepted, true);
   assert.equal(classifyApproval("Sí, pero cambia el título y continúa").accepted, false);
+});
+
+test("the 1.5.7 workflow accepts direct natural approval for only the active artifact", () => {
+  for (const message of [
+    "Está muy bien.",
+    "Me gusta",
+    "Todo lo recomendado está muy bien",
+    "Perfecto todo aquí",
+    "Suena muy bien",
+    "Excelente",
+  ]) {
+    assert.equal(classifyApprovalV4(message).accepted, true, message);
+  }
+  for (const message of [
+    "El título está bien",
+    "Me gusta el título",
+    "Está muy bien, pero cambia el título",
+    "¿Está muy bien?",
+    "El reviewer dijo que está muy bien",
+    "Todo bien con producto y técnico",
+  ]) {
+    assert.equal(classifyApprovalV4(message).accepted, false, message);
+  }
 });
 
 test("formal product approval is bound to the exact artifact and drift blocks descendants", async () => {

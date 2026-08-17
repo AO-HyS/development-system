@@ -201,8 +201,23 @@ export function buildCheckIn(input) {
       || right.priority - left.priority
       || left.id.localeCompare(right.id));
   const uniqueCandidates = candidates.filter((action, index, all) => all.findIndex((candidate) => candidate.reconciliationKey === action.reconciliationKey) === index);
-  const actions = uniqueCandidates.slice(0, maxActions).map(({ priority: _priority, fit: _fit, reconciliationKey: _key, ...action }) => action);
-  const deferred = uniqueCandidates.slice(maxActions).map(({ priority: _priority, fit: _fit, reconciliationKey: _key, ...action }) => action);
+  const selected = [];
+  const remaining = [...uniqueCandidates];
+  const seenRepositories = new Set();
+  for (let index = 0; index < remaining.length && selected.length < maxActions;) {
+    const candidate = remaining[index];
+    if (!seenRepositories.has(candidate.repository)) {
+      selected.push(candidate);
+      seenRepositories.add(candidate.repository);
+      remaining.splice(index, 1);
+    } else index += 1;
+  }
+  while (selected.length < maxActions && remaining.length > 0) {
+    selected.push(remaining[0]);
+    remaining.splice(0, 1);
+  }
+  const actions = selected.map(({ priority: _priority, fit: _fit, reconciliationKey: _key, ...action }) => action);
+  const deferred = remaining.map(({ priority: _priority, fit: _fit, reconciliationKey: _key, ...action }) => action);
   const staleEvidence = normalized.filter((item) => item.freshness === "stale").map((item) => item.id);
   const unprovenEvidence = normalized.filter((item) => item.freshness === "unproven" || item.state === null).map((item) => item.id);
   const nothingToDo = actions.length === 0;

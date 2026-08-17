@@ -119,3 +119,25 @@ test("development-run CLI emits the provider-neutral record", async () => {
   assert.deepEqual(output.consumers, ["check-in", "development-steward", "release-train"]);
   assert.deepEqual(output.externalSideEffects, []);
 });
+
+test("orchestration evidence caps normal concurrency and closes every lane", () => {
+  const observed = buildDevelopmentRun({
+    ...identity,
+    orchestration: { mode: "multi-agent-v2", concurrentAgents: 3, lanes: [
+      { id: "writer", status: "integrated" },
+      { id: "review", status: "discarded" },
+      { id: "qa", status: "blocked-with-owner", owner: "release-manager" },
+    ] },
+    events: [{ id: "implementation", phase: "implementation", kind: "functional-evidence", monotonicMs: 0 }],
+  });
+  assert.equal(observed.valid, true);
+  assert.equal(observed.orchestration.allLanesTerminal, true);
+
+  const invalid = buildDevelopmentRun({
+    ...identity,
+    orchestration: { mode: "multi-agent-v2", concurrentAgents: 4, lanes: [{ id: "writer", status: "running" }] },
+    events: [{ id: "implementation", phase: "implementation", kind: "functional-evidence", monotonicMs: 0 }],
+  });
+  assert.equal(invalid.valid, false);
+  assert.match(invalid.errors.join("\n"), /three concurrent agents|not terminal/);
+});

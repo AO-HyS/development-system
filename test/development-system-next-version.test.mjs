@@ -154,7 +154,41 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.6");
-  assert.match(packageJson.scripts["skills:sync"], /0\.13\.0/);
-  assert.match(readme, /Version `1\.5\.6`/);
+  assert.equal(packageJson.version, "1.5.7");
+  assert.match(packageJson.scripts["skills:sync"], /0\.14\.0/);
+  assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
+});
+
+test("contract 1.5.7 and catalog 0.14.0 compose one Topic for native questions or an equivalent chat fallback", async () => {
+  const [manifest, contract, catalog, skill, composer] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.7.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.7/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.14.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.7/skills/internal/working-backwards/SKILL.md"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.7/skills/internal/working-backwards/scripts/topic-questions.mjs"), "utf8"),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+  const orchestration = catalog.skills.find((entry) => entry.logicalName === "coding-orchestration");
+  const pilot = catalog.skills.find((entry) => entry.logicalName === "orchestration-pilot");
+
+  assert.equal(manifest.contractVersion, "1.5.7");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.7/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.14.0.json");
+  assert.equal(catalog.catalogVersion, "0.14.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.7/skills/internal/working-backwards");
+  assert.deepEqual(workingBackwards.variants[0].executableFiles, [
+    "scripts/t3-workflow.mjs",
+    "scripts/t3-reader.mjs",
+    "scripts/topic-questions.mjs",
+  ]);
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  assert.equal(orchestration.source.path, "artifacts/1.5.7/adapters");
+  assert.equal(orchestration.variants[0].adapterContract, "bounded-measurable-orchestration-v4");
+  assert.equal(pilot.source.path, "artifacts/1.5.7/skills/internal/orchestration-pilot");
+  assert.match(contract, /one to three mutually related decisions/i);
+  assert.match(contract, /five non-trivial candidate runs or five calendar days/i);
+  assert.match(skill, /request_user_input/);
+  assert.match(skill, /exact `chat` fallback/i);
+  assert.match(composer, /composeTopicQuestions/);
+  assert.match(composer, /between one and three related decisions/);
 });
