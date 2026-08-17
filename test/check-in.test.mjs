@@ -101,6 +101,23 @@ test("global mobile view prioritizes matching actions and keeps the list bounded
   assert.deepEqual(new Set([...report.actions, ...report.deferred].map((action) => action.capability)), new Set(["mobile", "computer", "local-device"]));
 });
 
+test("global check-in selects one first action per repository before a second", () => {
+  const report = buildCheckIn({
+    request: "Ya llegué",
+    now,
+    scope: { kind: "global" },
+    maxActions: 3,
+    evidence: [
+      evidence({ id: "a-1", repository: "repo-a", action: { title: "A1", reason: "Primera", capability: "computer", priority: 100 } }),
+      evidence({ id: "a-2", repository: "repo-a", subject: "A2", action: { title: "A2", reason: "Segunda", capability: "computer", priority: 90 } }),
+      evidence({ id: "b-1", repository: "repo-b", action: { title: "B1", reason: "Primera", capability: "computer", priority: 10 } }),
+      evidence({ id: "c-1", repository: "repo-c", action: { title: "C1", reason: "Primera", capability: "computer", priority: 1 } }),
+    ],
+  });
+  assert.deepEqual(report.actions.map((action) => action.repository), ["repo-a", "repo-b", "repo-c"]);
+  assert.equal(report.deferred[0].id, "a-2");
+});
+
 test("conflicting and stale evidence stay visible, and green CI cannot prove production", () => {
   const report = buildCheckIn({
     request: "Ya llegué",

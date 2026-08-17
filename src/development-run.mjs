@@ -14,6 +14,8 @@ const phases = Object.freeze([
 ]);
 const phaseSet = new Set(phases);
 const intervalKinds = new Set(["start", "end"]);
+const orchestrationModes = new Set(["direct", "sequential", "multi-agent-v2", "fallback"]);
+const laneStates = new Set(["integrated", "discarded", "blocked-with-owner", "not-started"]);
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
@@ -121,6 +123,21 @@ export function buildDevelopmentRun(input) {
   if (!Array.isArray(input.tickets) || !input.tickets.every((ticket) => typeof ticket === "string" && ticket.trim())) {
     errors.push("tickets must be an array of identifiers");
   }
+  const orchestration = isRecord(input.orchestration) ? input.orchestration : null;
+  const lanes = orchestration && Array.isArray(orchestration.lanes) ? orchestration.lanes.filter(isRecord) : [];
+  if (orchestration) {
+    if (!orchestrationModes.has(String(orchestration.mode))) errors.push("orchestration.mode is unsupported");
+    if (typeof orchestration.concurrentAgents !== "number" || !Number.isInteger(orchestration.concurrentAgents) || orchestration.concurrentAgents < 0) {
+      errors.push("orchestration.concurrentAgents must be a non-negative integer");
+    } else if (orchestration.concurrentAgents > 3 && (typeof orchestration.concurrencyException !== "string" || !orchestration.concurrencyException.trim())) {
+      errors.push("more than three concurrent agents requires orchestration.concurrencyException");
+    }
+    for (const [index, lane] of lanes.entries()) {
+      if (typeof lane.id !== "string" || !lane.id.trim()) errors.push(`orchestration.lanes[${index}].id is required`);
+      if (!laneStates.has(String(lane.status))) errors.push(`orchestration.lanes[${index}].status is not terminal`);
+      if (lane.status === "blocked-with-owner" && (typeof lane.owner !== "string" || !lane.owner.trim())) errors.push(`orchestration.lanes[${index}].owner is required`);
+    }
+  }
 
   /** @type {Map<string, {phase: string, start: number}>} */
   const open = new Map();
@@ -220,6 +237,13 @@ export function buildDevelopmentRun(input) {
       provider: measured(input.telemetryProvider),
     },
     quality: input.quality === undefined ? { status: "unproven", value: null } : { status: "observed", value: input.quality },
+    orchestration: orchestration ? {
+      status: "observed",
+      mode: orchestration.mode,
+      concurrentAgents: orchestration.concurrentAgents,
+      lanes: lanes.map((lane) => ({ id: lane.id, status: lane.status, owner: lane.owner ?? null })),
+      allLanesTerminal: lanes.every((lane) => laneStates.has(String(lane.status))),
+    } : { status: "unproven", mode: null, concurrentAgents: null, lanes: [], allLanesTerminal: null },
     consumers: ["check-in", "development-steward", "release-train"],
     externalWriteIntents: [],
     externalSideEffects: [],

@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.6";
-const skillCatalogVersion = "0.13.0";
+const contractVersion = "1.5.7";
+const skillCatalogVersion = "0.14.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -746,12 +746,12 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   contents = replaceAdapterSection(
     contents,
     `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.`,
-    `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n- \`${prefix}working-backwards\`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.`,
+    `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n- \`${prefix}working-backwards\`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.\n- \`${prefix}orchestration-pilot\`: read-only five-run-or-five-day evaluation of direct, sequential, and delegated development work.`,
   );
   contents = replaceAdapterSection(
     contents,
     "Synchronize global skill catalog `0.5.1` and verify that Codex discovers these commands plus `drive-development-flow`.",
-    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`working-backwards\`, \`parallel-work\`, and \`check-in\`. T3 Code consumes the Codex-compatible surface.`,
+    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`working-backwards\`, \`parallel-work\`, \`orchestration-pilot\`, and \`check-in\`. T3 Code consumes the Codex-compatible surface.`,
   );
   contents = replaceAdapterSection(
     contents,
@@ -856,7 +856,7 @@ function repositoryContract(audit, mode) {
         persistenceEffect: "no-scope-or-authorization-expansion",
       },
       explicitCommands: {
-        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards", "parallel-work", "check-in"],
+        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards", "parallel-work", "orchestration-pilot", "check-in"],
       },
       implementPreview: {
         command: "flow-implement",
@@ -885,6 +885,7 @@ function repositoryContract(audit, mode) {
       readinessScope: "repository-adapter-only",
       requiredSkills: [
         "drive-development-flow",
+        "coding-orchestration",
         "wayfinder",
         "grill-with-docs",
         "to-spec",
@@ -893,6 +894,7 @@ function repositoryContract(audit, mode) {
         "flow-code-review",
         "working-backwards",
         "parallel-work",
+        "orchestration-pilot",
         "check-in",
         "release-train",
         "convex-guardian",
