@@ -9,7 +9,6 @@ function metadata(catalogVersion = "0.6.0") {
   return {
     installedLock: { sourceCommit, catalogVersion },
     codexCatalog: { catalogVersion },
-    factoryCatalog: { catalogVersion },
   };
 }
 
@@ -28,9 +27,9 @@ test("skill probe metadata rejects invalid or divergent installed catalogs", () 
   assert.throws(
     () => resolveSkillProbeMetadata({
       ...metadata(),
-      factoryCatalog: { catalogVersion: "0.5.1" },
+      codexCatalog: { catalogVersion: "0.5.1" },
     }),
-    /do not match across lock, Codex, and Factory/,
+    /do not match across lock and Codex/,
   );
   assert.throws(
     () => resolveSkillProbeMetadata({

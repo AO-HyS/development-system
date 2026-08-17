@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
-} from "../artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
+  renderTechnicalReaderLibraryHtml,
+} from "../artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -29,6 +32,36 @@ The reader accepts a plain JSON input and never mutates lifecycle state.
 flowchart LR
   A[Private Markdown] --> B{Contract valid}
   B -->|Yes| C[Offline reader]
+\`\`\`
+
+\`\`\`mermaid
+gantt
+  title Release progress
+  dateFormat YYYY-MM-DD
+  section Reader
+  Visual system :done, v1, 2026-08-10, 2d
+  Offline runtime :active, v2, after v1, 3d
+\`\`\`
+
+\`\`\`mermaid
+sequenceDiagram
+  User->>Reader: Open local HTML
+  Reader-->>User: Render without a server
+\`\`\`
+
+\`\`\`mermaid
+timeline
+  title Reader delivery
+  2026-08-10 : Visual system
+  2026-08-12 : Offline runtime
+\`\`\`
+
+\`\`\`mermaid
+architecture-beta
+  group library(cloud)[Private Library]
+  service source(database)[Markdown] in library
+  service reader(server)[Reader] in library
+  source:R -- L:reader
 \`\`\`
 
 ## Evidence
@@ -67,11 +100,14 @@ function readerInput(markdown = representativePlan) {
     productName: "Working Backwards",
     workflow: {
       id: "reader-contract",
+      name: "Development System Next",
+      slug: "development-system-next",
       profile: "Standard",
       action: "Review and approve Technical Contract",
       implementationAuthorized: false,
       repository: "github.com/aohys/development-system",
       revision: "revision-1",
+      libraryHref: "../index.html",
     },
     document: {
       type: "Technical Contract",
@@ -87,6 +123,25 @@ function readerInput(markdown = representativePlan) {
   };
 }
 
+function inlineScriptIntegrity(html) {
+  const declared = /script-src 'sha256-([^']+)'/u.exec(html)?.[1] ?? "";
+  const script = /<script>([\s\S]*?)<\/script>/u.exec(html)?.[1] ?? "";
+  return {
+    declared,
+    actual: createHash("sha256").update(script).digest("base64"),
+  };
+}
+
+test("final reports keep requested prompt and handoff content reviewable with explicit known-issue dispositions", async () => {
+  const skill = await readFile(new URL("../artifacts/1.5.6/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
+
+  assert.match(skill, /full text or clearly separated Reader sections/i);
+  assert.match(skill, /product-convergence prompt or handoff/i);
+  assert.match(skill, /Known issues/);
+  for (const disposition of ["fixed", "remaining", "authorization-blocked"]) assert.match(skill, new RegExp(`\\b${disposition}\\b`));
+  assert.match(skill, /Links may support those sections but never replace their reviewable content/);
+});
+
 test("the reusable model builder turns Markdown plus JSON metadata into a serializable reader model", () => {
   const model = buildTechnicalReaderModel(readerInput());
 
@@ -95,11 +150,13 @@ test("the reusable model builder turns Markdown plus JSON metadata into a serial
   assert.equal(model.document.summary, "Review one settled plan without dashboard chrome competing with the document.");
   assert.equal(model.document.priority, "high");
   assert.equal(model.document.profile, "Standard");
+  assert.equal(model.workflow.name, "Development System Next");
+  assert.equal(model.workflow.slug, "development-system-next");
   assert.equal(model.document.readTimeMinutes >= 1, true);
   assert.deepEqual(model.outline.map((entry) => entry.id), ["architecture", "evidence", "architecture-2"]);
   assert.deepEqual(
     model.blocks.filter((block) => ["mermaid", "chart", "table", "callout", "code"].includes(block.type)).map((block) => block.type),
-    ["mermaid", "chart", "table", "callout", "code", "code"],
+    ["mermaid", "mermaid", "mermaid", "mermaid", "mermaid", "chart", "table", "callout", "code", "code"],
   );
   assert.equal(model.blocks.find((block) => block.type === "code" && block.language === "typescript")?.filename, "scripts/t3-reader.mjs");
   assert.deepEqual(model.blocks.find((block) => block.type === "code" && block.language === "typescript")?.highlightLines, [2]);
@@ -112,22 +169,28 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
 
   assert.match(html, /<meta name="robots" content="noindex,nofollow">/);
   assert.match(html, /connect-src 'none'/);
+  assert.match(html, /font-src data:/);
   assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
   assert.doesNotMatch(html, /script-src[^;]*unsafe-inline/);
+  assert.match(html, /<meta name="generator" content="development-system-technical-reader">/);
   assert.match(html, /class="reader-layout"/);
   assert.match(html, /class="document-column"/);
   assert.match(html, /class="artifacts-rail"/);
   assert.match(html, /class="toc-rail"/);
   assert.match(html, /class="mobile-reader-tools"/);
-  assert.match(html, /grid-template-columns:minmax\(12rem,1fr\) minmax\(0,56rem\) minmax\(11rem,1fr\)/);
-  assert.match(html, /@media\(max-width:70rem\)/);
+  assert.match(html, /grid-template-columns:minmax\(12rem,15\.5rem\) minmax\(0,58rem\) minmax\(11rem,14\.5rem\)/);
+  assert.match(html, /@media\(max-width:76rem\)/);
   assert.match(html, /Implementation not authorized/);
   assert.doesNotMatch(html, /class="hero"|class="score"|KPI/);
 
-  for (const action of ["zoom-out", "zoom-in", "fit", "expand", "fullscreen", "copy-source", "view-source"]) {
+  for (const action of ["zoom-out", "zoom-in", "fit", "reset", "expand", "fullscreen", "copy-source", "view-source"]) {
     assert.match(html, new RegExp(`data-action="${action}"`));
   }
-  assert.match(html, /class="diagram-fallback"/);
+  assert.match(html, /data-rendered="false"/);
+  assert.match(html, /securityLevel:"strict"/);
+  assert.match(html, /htmlLabels:false/);
+  assert.match(html, /IntersectionObserver/);
+  assert.match(html, /Panzoom\(svg/);
   assert.match(html, /<table class="chart-data-table">/);
   assert.match(html, /<table class="data-table">/);
   assert.match(html, /scripts\/t3-reader\.mjs/);
@@ -137,8 +200,9 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
   assert.match(html, /class="code-line diff-removed"/);
   assert.match(html, /aria-live="polite"/);
 
-  assert.doesNotMatch(html, /https?:\/\//iu);
-  assert.doesNotMatch(html, /\bfetch\b|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage/iu);
+  const staticMarkup = html.replace(/<style>[\s\S]*?<\/style>/u, "").replace(/<script>[\s\S]*?<\/script>/u, "");
+  assert.doesNotMatch(staticMarkup, /<script[^>]+src=|<link[^>]+href=|<iframe/iu);
+  assert.doesNotMatch(html, /XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage/iu);
 });
 
 test("inline evidence stays inside the document track while expanded evidence becomes an overlay", () => {
@@ -146,20 +210,46 @@ test("inline evidence stays inside the document track while expanded evidence be
 
   assert.match(html, /\.visual-block,\.code-block,\.table-scroll\{width:100%;/);
   assert.doesNotMatch(html, /\.visual-block,\.code-block,\.table-scroll\{width:min\(68rem/);
-  assert.match(html, /class="diagram-viewport"[^>]*><div class="diagram-canvas" data-diagram-canvas/);
+  assert.match(html, /class="diagram-viewport"[^>]*>[\s\S]*?<div class="diagram-canvas" data-diagram-canvas/);
   assert.match(html, /\.mermaid-block\.is-expanded\{position:fixed;z-index:\d+;inset:/);
-  assert.match(html, /\.mermaid-block\.is-expanded\{[^}]*width:auto;[^}]*transform:none/);
+  assert.match(html, /\.mermaid-block\.is-expanded\{[^}]*display:flex/);
+  assert.match(html, /@media print\{[\s\S]*?\.diagram-viewport\{height:auto;overflow:visible/);
 });
 
-test("Mermaid zoom sizes an inner canvas so the viewport gains real scroll geometry", () => {
+test("official Mermaid supports many diagram families and Panzoom provides direct manipulation", () => {
   const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput()));
 
-  assert.match(html, /data-natural-width="780" data-natural-height="340"/);
-  assert.match(html, /const canvas=figure\.querySelector\("\[data-diagram-canvas\]"\)/);
-  assert.match(html, /canvas\.style\.width=/);
-  assert.match(html, /canvas\.style\.height=/);
-  assert.match(html, /\.diagram-viewport\{[^}]*overscroll-behavior:contain/);
-  assert.doesNotMatch(html, /svg\.style\.transform=/);
+  assert.match(html, /Release progress/);
+  assert.match(html, /sequenceDiagram/);
+  assert.match(html, /timeline/);
+  assert.match(html, /architecture-beta/);
+  assert.match(html, /mermaid\.render\("reader-mermaid-/);
+  assert.match(html, /instance\.zoomWithWheel\(event\)/);
+  assert.match(html, /instance\.pan\(pan\.x-event\.deltaX,pan\.y-event\.deltaY/);
+  assert.match(html, /touch-action:none/);
+  assert.match(html, /minimumReadableScale=\.875/);
+  assert.match(html, /Math\.max\(minimumReadableScale,containScale\)/);
+  assert.match(html, /svg\.style\.width=naturalWidth\+"px"/);
+  assert.match(html, /figure\.dataset\.fitScale=String\(scale\)/);
+  assert.match(html, /maxScale:4,minScale:\.5/);
+  assert.match(html, /overflow:auto[^}]*scrollbar-gutter:stable/);
+  assert.match(html, /pinchAndPan:true/);
+  assert.doesNotMatch(html, /function parseMermaidNode|function mermaidModel|function layoutMermaid|Local safe render/);
+});
+
+test("the visual system uses readable embedded type, soft paper light mode, and quiet active navigation", () => {
+  const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput()));
+
+  assert.match(html, /@font-face\{font-family:"Atkinson Hyperlegible Next"/);
+  assert.match(html, /@font-face\{font-family:"Monaspace Neon"/);
+  assert.match(html, /font-size:1\.1875rem;line-height:1\.68/);
+  assert.match(html, /--page:#f2f3f0;--document:#f7f8f5/);
+  assert.match(html, /font-size:clamp\(2\.35rem,4vw,2\.75rem\)/);
+  assert.match(html, /font-size:clamp\(2\.05rem,8vw,2\.45rem\)/);
+  assert.match(html, /min-width:2\.75rem;min-height:2\.75rem/);
+  assert.match(html, /@media\(pointer:coarse\)/);
+  assert.match(html, /\.artifact-link\.is-active\{background:transparent;color:var\(--ink\)\}/);
+  assert.match(html, /\.artifact-link\.is-active::before\{background:var\(--accent\)\}/);
 });
 
 test("mobile panels expose workflow context and dismiss predictably", () => {
@@ -203,6 +293,46 @@ flowchart LR
   assert.doesNotMatch(html, /<script>alert|<img src=x/iu);
 });
 
+test("safe inline links render before CSP while active-content protocols remain text", () => {
+  const markdown = `# Evidence\n\nRead [the source](https://example.com/evidence?q=reader) and keep [unsafe](javascript:alert(1)) inert.`;
+  const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput(markdown)));
+
+  assert.match(html, /<a href="https:\/\/example\.com\/evidence\?q=reader" target="_blank" rel="noopener noreferrer">the source<\/a>/);
+  assert.match(html, /\[unsafe\]\(javascript:alert\(1\)\)/);
+  assert.doesNotMatch(html, /href="javascript:/iu);
+  const integrity = inlineScriptIntegrity(html);
+  assert.equal(integrity.declared, integrity.actual);
+});
+
+test("final-report status is modeled before serialization so CSP remains valid", () => {
+  const input = readerInput();
+  input.workflow.reportStatusLabel = "Delivery complete · follow-ups documented";
+  input.workflow.authorityLabel = "Implementation authorized";
+  input.workflow.gateLabel = "Status";
+  const model = buildTechnicalReaderModel(input);
+  const html = renderTechnicalReaderHtml(model);
+
+  assert.equal(model.workflow.reportStatusLabel, "Delivery complete · follow-ups documented");
+  assert.equal("authorityLabel" in model.workflow, false);
+  assert.match(html, /Delivery complete · follow-ups documented/);
+  assert.match(html, /<span>Status<\/span><strong>Technical Contract<\/strong>/);
+  assert.match(html, /Implementation not authorized · requires Implement Preview/);
+  assert.doesNotMatch(html, /class="authority-state is-authorized"/);
+  const integrity = inlineScriptIntegrity(html);
+  assert.equal(integrity.declared, integrity.actual);
+
+  const authorizedInput = readerInput();
+  authorizedInput.workflow.implementationAuthorized = true;
+  authorizedInput.workflow.reportStatusLabel = "Delivery complete";
+  const authorizedHtml = renderTechnicalReaderHtml(buildTechnicalReaderModel(authorizedInput));
+  assert.match(authorizedHtml, /class="authority-state is-authorized"[^>]*>Implementation authorized<\/span>/);
+  assert.doesNotMatch(authorizedHtml, /Implementation not authorized/);
+
+  const unsafePostprocessed = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput())).replaceAll("Implementation", "Delivery");
+  const brokenIntegrity = inlineScriptIntegrity(unsafePostprocessed);
+  assert.notEqual(brokenIntegrity.declared, brokenIntegrity.actual);
+});
+
 test("the same reader accepts a JSON-authored document without Working Backwards fields", () => {
   const model = buildTechnicalReaderModel({
     language: "en",
@@ -225,4 +355,42 @@ test("the same reader accepts a JSON-authored document without Working Backwards
   assert.equal(model.document.title, "Recover the queue");
   assert.equal(model.document.repository, "local/operations");
   assert.match(renderTechnicalReaderHtml(model), /Recover the queue/);
+});
+
+test("the metadata-only library is searchable, responsive, offline, and rejects remote Reader links", () => {
+  const html = renderTechnicalReaderLibraryHtml({
+    language: "en",
+    entries: [
+      {
+        id: "development-system-next-123",
+        name: "Development System Next",
+        slug: "development-system-next",
+        repository: "github.com/aohys/development-system",
+        phase: "Technical Contract",
+        status: "in-review",
+        createdAt: "2026-08-10T00:00:00.000Z",
+        updatedAt: "2026-08-14T12:00:00.000Z",
+        nextAction: "Review and approve Technical Contract",
+        readerHref: "development-system-next/index.html",
+      },
+      {
+        id: "remote-reader",
+        name: "Remote Reader",
+        slug: "remote-reader",
+        readerHref: "https://example.com/reader",
+      },
+    ],
+  });
+
+  assert.match(html, /Technical Reader Library/);
+  assert.match(html, /Development System Next/);
+  assert.match(html, /github\.com\/aohys\/development-system/);
+  assert.match(html, /Technical Contract/);
+  assert.match(html, /Review and approve Technical Contract/);
+  assert.match(html, /data-library-search/);
+  assert.match(html, /\.library-header h1\{[^}]*font-size:clamp\(2rem,5vw,2\.8rem\)/);
+  assert.match(html, /@media\(max-width:58rem\)/);
+  assert.match(html, /connect-src 'none'/);
+  assert.match(html, /script-src 'sha256-[A-Za-z0-9+/=]+'/);
+  assert.doesNotMatch(html, /https:\/\/example\.com\/reader/);
 });

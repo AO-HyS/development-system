@@ -394,9 +394,13 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
     errors.push("catalogVersion must use semantic versioning");
   }
   const harnesses = new Set((catalog.supportedHarnesses ?? []).map((harness) => harness.id));
-  for (const required of ["codex", "t3code", "factory"]) {
+  const catalogVersion = /^(\d+)\.(\d+)\.(\d+)$/.exec(catalog.catalogVersion ?? "");
+  const codexAndT3Only = catalogVersion !== null
+    && (Number(catalogVersion[1]) > 0 || Number(catalogVersion[2]) >= 9);
+  for (const required of codexAndT3Only ? ["codex", "t3code"] : ["codex", "t3code", "factory"]) {
     if (!harnesses.has(required)) errors.push(`missing supported harness: ${required}`);
   }
+  if (codexAndT3Only && harnesses.has("factory")) errors.push(`Factory is unsupported in catalog ${catalog.catalogVersion}`);
   const logicalNames = new Set();
   const ids = new Set();
   const destinations = new Set();
@@ -436,7 +440,7 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
         if (JSON.stringify(declared) !== JSON.stringify(variants)) {
           errors.push(`${skill.logicalName} physicalHarnesses does not match its variants`);
         }
-        if (declared.length === 1 && (typeof skill.availabilityReason !== "string" || skill.availabilityReason.length === 0)) {
+        if (!codexAndT3Only && declared.length === 1 && (typeof skill.availabilityReason !== "string" || skill.availabilityReason.length === 0)) {
           errors.push(`${skill.logicalName} single-harness availability needs a reason`);
         }
       }
@@ -550,7 +554,10 @@ function gitDirectoryHash(sourceRoot, sourceDirectory, commit) {
   for (const record of records) {
     hash.update(record.path);
     hash.update("\0");
-    hash.update(execFileSync("git", ["cat-file", "blob", record.objectId], { cwd: sourceRoot }));
+    hash.update(execFileSync("git", ["cat-file", "blob", record.objectId], {
+      cwd: sourceRoot,
+      maxBuffer: 64 * 1024 * 1024,
+    }));
     hash.update("\0");
   }
   return hash.digest("hex");

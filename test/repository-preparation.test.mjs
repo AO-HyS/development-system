@@ -334,7 +334,7 @@ test("monorepo preparation detects nested Convex, local preview aliases, and sup
   assert.deepEqual(audit.stack.sort(), ["convex", "react"]);
   assert.equal(audit.commands.preview.script, "cloudflare:local");
   assert.equal(audit.readiness.codex.gaps.includes("inert-skill-installation"), false);
-  assert.deepEqual(normalized.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
+  assert.deepEqual(normalized.readiness, { codex: "prepared", t3code: "prepared" });
 });
 
 test("preview discovery rejects deployment aliases and falls back to a local command", async () => {
@@ -547,7 +547,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.equal(initialized[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.4.1");
+  assert.equal(contract.contractVersion, "1.5.7");
   assert.equal(contract.product.name, "aurora-studio");
   assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
@@ -588,10 +588,11 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
   assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.8.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.14.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
   assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
     "drive-development-flow",
+    "coding-orchestration",
     "wayfinder",
     "grill-with-docs",
     "to-spec",
@@ -599,6 +600,14 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     "flow-implement",
     "flow-code-review",
     "working-backwards",
+    "parallel-work",
+    "orchestration-pilot",
+    "check-in",
+    "release-train",
+    "convex-guardian",
+    "posthog-observability",
+    "linear-hygiene",
+    "development-steward",
     "exa-search",
     "global-agent-guardrails",
   ]);
@@ -606,16 +615,17 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.lifecycle.nativeGoal.creation, "explicit-user-request-only");
   assert.match(contract.lifecycle.nativeGoal.persistenceEffect, /no-scope-or-authorization-expansion/);
   assert.ok(contract.lifecycle.explicitCommands.codex.includes("working-backwards"));
-  assert.ok(contract.lifecycle.explicitCommands.factory.includes("working-backwards"));
+  assert.ok(contract.lifecycle.explicitCommands.codex.includes("parallel-work"));
+  assert.ok(contract.lifecycle.explicitCommands.codex.includes("orchestration-pilot"));
+  assert.ok(contract.lifecycle.explicitCommands.codex.includes("check-in"));
+  assert.equal(contract.harnesses.factory, undefined);
   assert.match(initialized[".codex/development-system/repository.md"], /React.*Convex/is);
   for (const command of ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review"]) {
     assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
-    assert.match(initialized[".factory/development-system/repository.md"], new RegExp(`/${command}`));
   }
   assert.match(initialized[".codex/development-system/repository.md"], /\$working-backwards/);
-  assert.match(initialized[".factory/development-system/repository.md"], /\/working-backwards/);
-  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.4\.1`/);
-  assert.match(initialized[".factory/development-system/repository.md"], /Contract version: `1\.4\.1`/);
+  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.5\.7`/);
+  assert.equal(initialized[".factory/development-system/repository.md"], undefined);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
@@ -629,16 +639,11 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   );
   assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
   assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
-  assert.match(initialized[".factory/development-system/repository.md"], /documented equivalent/i);
   assert.match(
     initialized[".codex/development-system/repository.md"],
     /Provider readiness\s+- npm run quality:provider-readiness/i,
   );
-  assert.match(
-    initialized[".factory/development-system/repository.md"],
-    /Provider readiness\s+- npm run quality:provider-readiness/i,
-  );
-  assert.deepEqual(first.readiness, { codex: "prepared", t3code: "prepared", factory: "prepared" });
+  assert.deepEqual(first.readiness, { codex: "prepared", t3code: "prepared" });
 
   const packageJson = JSON.parse(initialized["package.json"]);
   for (const capability of Object.values(contract.commands)) {
@@ -685,7 +690,6 @@ test("repository readiness treats provider evidence as conditional instead of in
   assert.deepEqual(initialized.readiness, {
     codex: "prepared",
     t3code: "prepared",
-    factory: "prepared",
   });
   assert.equal(
     initialized.remainingGaps.codex.includes("missing-providerReadiness-command"),
@@ -738,14 +742,13 @@ test("normalization replaces only managed drift and remains deterministic", asyn
 
   const staleAudit = await auditRepository({ repository });
   assert.equal(staleAudit.status, "needs-preparation");
-  for (const harness of ["codex", "t3code", "factory"]) {
+  for (const harness of ["codex", "t3code"]) {
     assert.ok(staleAudit.readiness[harness].gaps.includes("stale-development-system-contract"));
   }
   assert.ok(staleAudit.readiness.codex.gaps.includes("stale-codex-adapter"));
   assert.ok(!staleAudit.readiness.codex.gaps.includes("stale-factory-adapter"));
   assert.ok(!staleAudit.readiness.t3code.gaps.includes("stale-factory-adapter"));
-  assert.ok(staleAudit.readiness.factory.gaps.includes("stale-factory-adapter"));
-  assert.ok(!staleAudit.readiness.factory.gaps.includes("stale-codex-adapter"));
+  assert.equal(staleAudit.readiness.factory, undefined);
 
   await assert.rejects(normalizeRepository({ repository }), /confirm.*normalize/i);
   const normalized = await normalizeRepository({ repository, confirm: "normalize" });
@@ -757,8 +760,10 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.equal(after[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(after[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.4.1");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.8.0");
+  assert.equal(contract.contractVersion, "1.5.7");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.14.0");
+  assert.equal(after[".factory/development-system/repository.md"], undefined);
+  assert.deepEqual(normalized.removedFiles, [".factory/development-system/repository.md"]);
   assert.equal(contract.preparation.mode, "normalize");
   assert.equal(contract.product.name, "lumen-console");
   assert.deepEqual(contract.preserved.releasePolicyFiles, ["RELEASE.md"]);

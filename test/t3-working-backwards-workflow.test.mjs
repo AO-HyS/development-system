@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, lstat, mkdir, mkdtemp, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
@@ -13,6 +13,9 @@ import {
   writeT3Reader,
   WORKING_BACKWARDS_PHASES,
 } from "../artifacts/1.4.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { writeT3Reader as writeT3ReaderV2 } from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { writeT3Reader as writeT3ReaderV3 } from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { classifyApproval as classifyApprovalV4 } from "../artifacts/1.5.7/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 
@@ -143,6 +146,177 @@ test("the derived HTML escapes artifact content and never becomes canonical stat
   assert.equal(rendered.artifacts[0].fileName, "01-customer-story.md");
 });
 
+test("the v2 Reader maintains one private metadata-only library across human initiatives", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-library-home-"));
+  const root = resolve(home, ".development-system", "private", "working-backwards");
+  const firstWorkspace = resolve(root, "development-system-next");
+  const secondWorkspace = resolve(root, "release-train-refresh");
+  await mkdir(firstWorkspace, { recursive: true });
+  await mkdir(secondWorkspace, { recursive: true });
+  await writeFile(resolve(firstWorkspace, "01-product-grill.md"), `---
+working_backwards_role: product-grill
+working_backwards_status: draft
+initiative_name: Development System Next
+created_at: 2026-08-01
+---
+
+# Product Grill
+
+Private canonical content must not enter the common catalog.
+`, "utf8");
+
+  const first = await writeT3ReaderV2({
+    home,
+    workspaceDir: firstWorkspace,
+    repositoryIdentity: "https://github.com/AO-HyS/development-system.git",
+    repositoryRevision: "abc123",
+    now: () => "2026-08-14T12:00:00.000Z",
+  });
+  const second = await writeT3ReaderV2({
+    home,
+    workspaceDir: secondWorkspace,
+    initiativeName: "Release Train Refresh",
+    repositoryIdentity: "https://github.com/AO-HyS/development-system.git",
+    repositoryRevision: "def456",
+    now: () => "2026-08-14T13:00:00.000Z",
+  });
+
+  const catalog = JSON.parse(await readFile(first.readerLibraryCatalogPath, "utf8"));
+  const library = await readFile(first.readerLibraryPath, "utf8");
+  const reader = await readFile(first.readerPath, "utf8");
+  assert.equal(first.readerLibraryPath, second.readerLibraryPath);
+  assert.equal(catalog.schemaVersion, 1);
+  assert.equal(catalog.entries.length, 2);
+  assert.deepEqual(catalog.entries.map((entry) => entry.name), ["Development System Next", "Release Train Refresh"]);
+  assert.equal(catalog.entries[0].slug, "development-system-next");
+  assert.equal(catalog.entries[0].repository, "https://github.com/ao-hys/development-system");
+  assert.equal(catalog.entries[0].phase, "Product Grill With Docs");
+  assert.equal(catalog.entries[0].status, "in-review");
+  assert.equal(catalog.entries[0].createdAt, "2026-08-01T00:00:00.000Z");
+  assert.equal(catalog.entries[0].updatedAt, "2026-08-14T12:00:00.000Z");
+  assert.equal(catalog.entries[0].nextAction, "Revisar y aprobar Product Grill With Docs");
+  assert.match(catalog.entries[0].readerHref, /^development-system-next\/index\.html$/u);
+  assert.doesNotMatch(JSON.stringify(catalog), /Private canonical content/);
+  assert.match(library, /Biblioteca del Technical Reader/);
+  assert.match(library, /Development System Next/);
+  assert.match(library, /Release Train Refresh/);
+  assert.doesNotMatch(library, /Private canonical content/);
+  assert.match(reader, /class="source-button library-link" href="\.\.\/index\.html"/);
+  assert.deepEqual(first.localWrites, [first.readerPath, first.readerLibraryCatalogPath, first.readerLibraryPath]);
+  assert.equal((await stat(first.readerPath)).mode & 0o777, 0o600);
+  assert.equal((await stat(first.readerLibraryCatalogPath)).mode & 0o777, 0o600);
+  assert.equal((await stat(first.readerLibraryPath)).mode & 0o777, 0o600);
+});
+
+test("the v3 Reader gives each workflow a human initiative filename", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-name-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "reader-legibility");
+  await mkdir(workspaceDir, { recursive: true });
+  const unrelatedPath = resolve(workspaceDir, "operator-notes.txt");
+  await writeFile(unrelatedPath, "preserve this file", "utf8");
+  const legacy = await writeT3ReaderV2({
+    home,
+    workspaceDir,
+    initiativeName: "Informe Técnico Legible",
+    now: () => "2026-08-14T14:00:00.000Z",
+  });
+
+  const result = await writeT3ReaderV3({
+    home,
+    workspaceDir,
+    initiativeName: "Informe Técnico Legible",
+    now: () => "2026-08-14T15:00:00.000Z",
+  });
+  const catalog = JSON.parse(await readFile(result.readerLibraryCatalogPath, "utf8"));
+
+  assert.match(result.readerPath, /\/informe-tecnico-legible\.html$/u);
+  assert.equal(legacy.readerPath, resolve(workspaceDir, "index.html"));
+  assert.equal(result.retiredReaderPath, legacy.readerPath);
+  await assert.rejects(access(legacy.readerPath), { code: "ENOENT" });
+  assert.equal(await readFile(unrelatedPath, "utf8"), "preserve this file");
+  assert.equal(catalog.entries[0].readerHref, "reader-legibility/informe-tecnico-legible.html");
+  await access(result.readerPath);
+  await access(result.readerLibraryPath);
+
+  await symlink(unrelatedPath, legacy.readerPath);
+  const repeated = await writeT3ReaderV3({
+    home,
+    workspaceDir,
+    initiativeName: "Informe Técnico Legible",
+    now: () => "2026-08-14T16:00:00.000Z",
+  });
+  assert.equal(repeated.retiredReaderPath, null);
+  assert.deepEqual(repeated.readerIndexCollision, { path: legacy.readerPath, reason: "symbolic-link" });
+  assert.equal((await lstat(legacy.readerPath)).isSymbolicLink(), true);
+  assert.equal(await readFile(legacy.readerPath, "utf8"), "preserve this file");
+});
+
+test("the v3 Reader preserves and reports a user-owned workflow index collision", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-index-collision-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "reader-index-collision");
+  const indexPath = resolve(workspaceDir, "index.html");
+  await mkdir(workspaceDir, { recursive: true });
+  await writeFile(indexPath, "<!doctype html><title>Operator-owned index</title>", "utf8");
+
+  const result = await writeT3ReaderV3({
+    home,
+    workspaceDir,
+    initiativeName: "Reader Index Collision",
+    now: () => "2026-08-14T16:30:00.000Z",
+  });
+
+  assert.equal(await readFile(indexPath, "utf8"), "<!doctype html><title>Operator-owned index</title>");
+  assert.equal(result.retiredReaderPath, null);
+  assert.deepEqual(result.readerIndexCollision, { path: indexPath, reason: "unmanaged-regular-file" });
+  await access(result.readerPath);
+  await access(result.readerLibraryPath);
+});
+
+test("the v3 Reader fails closed on a user-owned named destination", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-destination-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "reader-destination");
+  const destinationPath = resolve(workspaceDir, "operator-reader.html");
+  await mkdir(workspaceDir, { recursive: true });
+  await writeFile(destinationPath, "<!doctype html><title>Operator-owned Reader</title>", "utf8");
+
+  await assert.rejects(
+    writeT3ReaderV3({
+      home,
+      workspaceDir,
+      initiativeName: "Operator Reader",
+      now: () => "2026-08-14T16:40:00.000Z",
+    }),
+    { code: "TECHNICAL_READER_DESTINATION_COLLISION", path: destinationPath, reason: "unmanaged-regular-file" },
+  );
+
+  assert.equal(await readFile(destinationPath, "utf8"), "<!doctype html><title>Operator-owned Reader</title>");
+  assert.deepEqual(await readdir(workspaceDir), ["operator-reader.html"]);
+});
+
+test("the v3 Reader fails closed on a named destination symlink", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-destination-link-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "reader-destination-link");
+  const targetPath = resolve(workspaceDir, "operator-target.html");
+  const destinationPath = resolve(workspaceDir, "linked-reader.html");
+  await mkdir(workspaceDir, { recursive: true });
+  await writeFile(targetPath, "operator target", "utf8");
+  await symlink(targetPath, destinationPath);
+
+  await assert.rejects(
+    writeT3ReaderV3({
+      home,
+      workspaceDir,
+      initiativeName: "Linked Reader",
+      now: () => "2026-08-14T16:50:00.000Z",
+    }),
+    { code: "TECHNICAL_READER_DESTINATION_COLLISION", path: destinationPath, reason: "symbolic-link" },
+  );
+
+  assert.equal((await lstat(destinationPath)).isSymbolicLink(), true);
+  assert.equal(await readFile(targetPath, "utf8"), "operator target");
+  assert.deepEqual((await readdir(workspaceDir)).sort(), ["linked-reader.html", "operator-target.html"]);
+});
+
 test("the review surface renders local Mermaid flows, charts, and code snippets without remote scripts", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-t3-home-"));
   const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "repo-visuals");
@@ -231,6 +405,29 @@ test("negated, combined, and ambiguous language never approves", () => {
   assert.equal(classifyApproval("De acuerdo, puedes avanzar").accepted, true);
   assert.equal(classifyApproval("Claro, avanza").accepted, true);
   assert.equal(classifyApproval("Sí, pero cambia el título y continúa").accepted, false);
+});
+
+test("the 1.5.7 workflow accepts direct natural approval for only the active artifact", () => {
+  for (const message of [
+    "Está muy bien.",
+    "Me gusta",
+    "Todo lo recomendado está muy bien",
+    "Perfecto todo aquí",
+    "Suena muy bien",
+    "Excelente",
+  ]) {
+    assert.equal(classifyApprovalV4(message).accepted, true, message);
+  }
+  for (const message of [
+    "El título está bien",
+    "Me gusta el título",
+    "Está muy bien, pero cambia el título",
+    "¿Está muy bien?",
+    "El reviewer dijo que está muy bien",
+    "Todo bien con producto y técnico",
+  ]) {
+    assert.equal(classifyApprovalV4(message).accepted, false, message);
+  }
 });
 
 test("formal product approval is bound to the exact artifact and drift blocks descendants", async () => {

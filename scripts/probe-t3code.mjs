@@ -2,7 +2,7 @@
 
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, openSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync } from "node:fs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { homedir, tmpdir } from "node:os";
@@ -15,6 +15,9 @@ import {
   fetchJsonWithTimeout,
   classifyReadOnlyProbeCommand,
   isReadOnlyProbeCommand,
+  pollT3CodeThread,
+  resolveT3CodeProbeMetadata,
+  resolveT3CodeServerRuntime,
   resolveAllowedProbeFileRead,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
@@ -26,27 +29,59 @@ const repositoryIndex = process.argv.indexOf("--repository");
 const probeRepository = resolve(
   repositoryIndex >= 0 ? process.argv[repositoryIndex + 1] : repositoryRoot,
 );
+const probeHome = homedir();
+const probeMetadata = resolveT3CodeProbeMetadata({
+  installedManifest: JSON.parse(readFileSync(resolve(probeHome, ".development-system/installed-manifest.json"), "utf8")),
+  installedLock: JSON.parse(readFileSync(resolve(probeHome, ".development-system/skills-lock.json"), "utf8")),
+  installedCatalog: JSON.parse(readFileSync(resolve(probeHome, ".codex/development-system/skills.json"), "utf8")),
+});
 const evidenceIndex = process.argv.indexOf("--skill-evidence");
 const skillEvidence = resolve(
   evidenceIndex >= 0
     ? process.argv[evidenceIndex + 1]
-    : resolve(repositoryRoot, "evidence/skills-live-2026-07-23-recertification.json"),
+    : resolve(probeHome, ".development-system/private/reports/skills-live-latest.json"),
 );
-const serverCli =
-  process.env.T3CODE_SERVER_CLI ??
-  "/Applications/T3 Code (Nightly).app/Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs";
+const t3ApplicationCandidates = [
+  { app: "/Applications/T3 Code (Nightly).app", executable: "T3 Code (Nightly)" },
+  { app: "/Applications/T3 Code.app", executable: "T3 Code" },
+];
+const serverRuntime = resolveT3CodeServerRuntime({
+  explicitCli: process.env.T3CODE_SERVER_CLI,
+  explicitExecutable: process.env.T3CODE_SERVER_EXECUTABLE,
+  nodeExecutable: process.execPath,
+  candidates: t3ApplicationCandidates.flatMap(({ app, executable }) => [
+    {
+      entrypoint: resolve(app, "Contents/Resources/app.asar.unpacked/apps/server/dist/bin.mjs"),
+    },
+    {
+      entrypoint: resolve(app, "Contents/Resources/app.asar/apps/server/dist/bin.mjs"),
+      availabilityPath: resolve(app, "Contents/Resources/app.asar"),
+      executable: resolve(app, "Contents/MacOS", executable),
+      electronRunAsNode: true,
+    },
+  ]),
+  exists: existsSync,
+});
+const serverCli = serverRuntime.argsPrefix[0];
+const serverEnvironment = { ...process.env, ...serverRuntime.environment };
 
 /** @param {string} command @param {string[]} args @param {string} [cwd] */
-function run(command, args, cwd = probeRepository) {
+function run(command, args, cwd = probeRepository, env = process.env) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
     maxBuffer: 10 * 1024 * 1024,
+    env,
   });
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || `${command} failed`);
   }
   return result.stdout.trim();
+}
+
+/** @param {string[]} args @param {string} [cwd] */
+function runServer(args, cwd = probeRepository) {
+  return run(serverRuntime.executable, [...serverRuntime.argsPrefix, ...args], cwd, serverEnvironment);
 }
 
 function gitState() {
@@ -58,7 +93,7 @@ function gitState() {
 
 function managedHomeState() {
   const installation = JSON.parse(
-    run("./bin/development-system", ["audit", "--home", homedir(), "--json"], repositoryRoot),
+    run("./bin/development-system", ["audit", "--home", probeHome, "--json"], repositoryRoot),
   );
   const skills = JSON.parse(
     run(
@@ -66,9 +101,9 @@ function managedHomeState() {
       [
         "audit-skills",
         "--home",
-        homedir(),
+        probeHome,
         "--version",
-        "0.2.0",
+        probeMetadata.catalogVersion,
         "--evidence",
         skillEvidence,
         "--json",
@@ -93,6 +128,8 @@ function managedHomeState() {
     skills: {
       ok: skills.ok,
       status: skills.status,
+      catalogVersion: probeMetadata.catalogVersion,
+      sourceCommit: probeMetadata.sourceCommit,
       logicalSkillCount: skills.logicalSkillCount,
       physicalVariantCount: skills.physicalVariantCount,
       evidenceCoverage: skills.evidenceCoverage,
@@ -182,7 +219,7 @@ const hostAuditCommand = [
   "./bin/development-system",
   "audit-skills",
   "--version",
-  "0.2.0",
+  probeMetadata.catalogVersion,
   "--evidence",
   skillEvidence,
   "--json",
@@ -241,9 +278,9 @@ try {
   const logPath = resolve(baseDir, "server.log");
   const logDescriptor = openSync(logPath, "a", 0o600);
   server = spawn(
-    process.execPath,
+    serverRuntime.executable,
     [
-      serverCli,
+      ...serverRuntime.argsPrefix,
       "serve",
       "--mode",
       "desktop",
@@ -258,7 +295,7 @@ try {
     ],
     {
       cwd: probeRepository,
-      env: process.env,
+      env: serverEnvironment,
       detached: true,
       stdio: ["ignore", logDescriptor, logDescriptor],
     },
@@ -278,10 +315,9 @@ try {
   } catch (error) {
     throw new Error(`${error instanceof Error ? error.message : String(error)}\n${readServerLog()}`);
   }
-  run(process.execPath, [serverCli, "project", "add", "--base-dir", baseDir, probeRepository]);
+  runServer(["project", "add", "--base-dir", baseDir, probeRepository]);
   const pairing = JSON.parse(
-    run(process.execPath, [
-      serverCli,
+    runServer([
       "auth",
       "pairing",
       "create",
@@ -322,6 +358,7 @@ try {
   const threadId = `thread-${randomUUID()}`;
   const modelSelection = { instanceId: "codex", model: "gpt-5.6-sol" };
   const requestedRuntimeMode = "approval-required";
+  /** @type {Array<{requestId: string, requestKind: string, detail: string, decision: string, resolvedPath: string | null}>} */
   const approvalEvidence = [];
   const handledApprovals = new Set();
   /** @param {Record<string, any>} payload */
@@ -377,58 +414,80 @@ try {
     createdAt: new Date().toISOString(),
   });
 
-  let snapshot;
-  const deadline = Date.now() + 4 * 60 * 1000;
-  while (Date.now() < deadline) {
-    const result = await fetchJsonWithTimeout(
+  const turnTimeoutMs = Number(process.env.T3CODE_TURN_TIMEOUT_MS ?? String(4 * 60 * 1000));
+  if (!Number.isFinite(turnTimeoutMs) || turnTimeoutMs <= 0) {
+    throw new Error("T3CODE_TURN_TIMEOUT_MS must be positive");
+  }
+  const poll = await pollT3CodeThread({
+    timeoutMs: turnTimeoutMs,
+    fetchSnapshot: async () => (await fetchJsonWithTimeout(
       `${origin}/api/orchestration/threads/${threadId}`,
       { headers },
       5_000,
-    );
-    snapshot = result.body;
-    const currentThread = snapshot.thread ?? snapshot;
-    for (const activity of currentThread.activities ?? []) {
-      if (activity.kind !== "approval.requested" || handledApprovals.has(activity.payload?.requestId)) {
-        continue;
+    )).body,
+    inspectSnapshot: async (snapshot) => {
+      const currentThread = snapshot.thread ?? snapshot;
+      for (const activity of currentThread.activities ?? []) {
+        if (activity.kind !== "approval.requested" || handledApprovals.has(activity.payload?.requestId)) {
+          continue;
+        }
+        const requestId = activity.payload?.requestId;
+        const requestKind = activity.payload?.requestKind;
+        const detail = String(activity.payload?.detail ?? "");
+        const resolvedFileRead =
+          requestKind === "file-read"
+            ? resolveAllowedProbeFileRead(detail, allowedFileReadPaths)
+            : null;
+        const allowedFileRead = resolvedFileRead !== null;
+        const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
+        const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
+        await dispatch({
+          type: "thread.approval.respond",
+          commandId: `cmd-${randomUUID()}`,
+          threadId,
+          requestId,
+          decision,
+          createdAt: new Date().toISOString(),
+        });
+        approvalEvidence.push({
+          requestId,
+          requestKind,
+          detail,
+          decision,
+          resolvedPath: resolvedFileRead,
+        });
+        handledApprovals.add(requestId);
       }
-      const requestId = activity.payload?.requestId;
-      const requestKind = activity.payload?.requestKind;
-      const detail = String(activity.payload?.detail ?? "");
-      const resolvedFileRead =
-        requestKind === "file-read"
-          ? resolveAllowedProbeFileRead(detail, allowedFileReadPaths)
-          : null;
-      const allowedFileRead = resolvedFileRead !== null;
-      const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
-      const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
-      approvalEvidence.push({
-        requestId,
-        requestKind,
-        detail,
-        decision,
-        resolvedPath: resolvedFileRead,
-      });
-      handledApprovals.add(requestId);
-      await dispatch({
-        type: "thread.approval.respond",
-        commandId: `cmd-${randomUUID()}`,
-        threadId,
-        requestId,
-        decision,
-        createdAt: new Date().toISOString(),
-      });
+      return (currentThread.messages ?? []).some((/** @type {any} */ message) =>
+        message.role === "assistant" &&
+        message.text?.includes('"routerLoaded"') &&
+        message.text?.includes('"skillAuditHealthy"')
+      );
+    },
+  });
+  const snapshot = poll.snapshot;
+  const receivedExpectedResponse = poll.completed;
+  const thread = snapshot?.thread ?? snapshot ?? { activities: [], messages: [] };
+  let response = {};
+  let probeFailure = null;
+  if (!receivedExpectedResponse) {
+    const lastPollingFailure = poll.pollingFailures.recentKinds.at(-1) ?? null;
+    probeFailure = {
+      kind: snapshot ? "turn-timeout" : "thread-poll-failed",
+      message: snapshot
+        ? `T3Code did not return the expected read-only JSON within ${turnTimeoutMs}ms`
+        : `T3Code thread polling produced no usable snapshot within ${turnTimeoutMs}ms${lastPollingFailure ? ` (${lastPollingFailure})` : ""}`,
+    };
+  } else {
+    try {
+      response = parseFinalJson(thread.messages ?? []);
+    } catch (error) {
+      probeFailure = {
+        kind: "invalid-response",
+        message: error instanceof Error ? error.message : "T3Code returned an invalid response",
+      };
     }
-    const messages = currentThread.messages ?? [];
-    if (messages.some((/** @type {any} */ message) =>
-      message.role === "assistant" &&
-      message.text?.includes('"routerLoaded"') &&
-      message.text?.includes('"skillAuditHealthy"')
-    )) break;
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 1_000));
   }
-  if (!snapshot) throw new Error("T3Code probe produced no snapshot");
-  const thread = snapshot.thread ?? snapshot;
-  const response = parseFinalJson(thread.messages ?? []);
   const after = gitState();
   const repositoryAfter = await auditRepository({ repository: probeRepository });
   const homeAfter = managedHomeState();
@@ -440,20 +499,26 @@ try {
 
   report = {
     schemaVersion: 1,
-    contractVersion: "0.8.0",
+    contractVersion: probeMetadata.contractVersion,
+    catalogVersion: probeMetadata.catalogVersion,
     generatedAt: finishedAt.toISOString(),
     startedAt: startedAt.toISOString(),
     durationMs: finishedAt.getTime() - startedAt.getTime(),
     operation: "t3code-live-probe",
-    sourceCommit: run("git", ["rev-parse", "HEAD"], repositoryRoot),
+    sourceCommit: probeMetadata.sourceCommit,
+    probeToolCommit: run("git", ["rev-parse", "HEAD"], repositoryRoot),
     application: {
-      executable: serverCli,
+      executable: serverRuntime.executable,
+      entrypoint: serverCli,
       version: descriptor.serverVersion,
       environmentCapabilities: descriptor.capabilities,
       providerAdapter: "codex",
     },
     requestedModel: modelSelection,
     requestedRuntimeMode,
+    turnTimeoutMs,
+    failure: probeFailure,
+    pollingEvidence: poll.pollingFailures,
     approvalEvidence,
     allowedFileReads,
     observed: response,
@@ -491,9 +556,12 @@ try {
         unchanged: JSON.stringify(homeBefore) === JSON.stringify(homeAfter),
       },
     },
-    diagnostics: readServerLog().includes("Grok CLI health check failed")
-      ? ["Unrelated Grok CLI health check failed during startup"]
-      : [],
+    diagnostics: [
+      ...(readServerLog().includes("Grok CLI health check failed")
+        ? ["Unrelated Grok CLI health check failed during startup"]
+        : []),
+      ...(probeFailure ? [probeFailure.message] : []),
+    ],
     ok: false,
   };
   report.ok = evaluateT3CodeProbe(report);

@@ -12,13 +12,71 @@ import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
   isReadOnlyProbeCommand,
+  pollT3CodeThread,
   resolveAllowedProbeFileRead,
+  resolveT3CodeProbeMetadata,
+  resolveT3CodeServerRuntime,
   requiredT3CodeLifecycleSkills,
   stopDetachedProcess,
 } from "../src/t3code-probe.mjs";
 import { runBoundedProcess } from "../src/bounded-process.mjs";
 
+test("T3Code live metadata follows the exact installed contract and Codex catalog", () => {
+  const sourceCommit = "a".repeat(40);
+  assert.deepEqual(resolveT3CodeProbeMetadata({
+    installedManifest: {
+      contractVersion: "1.5.3",
+      source: { commit: sourceCommit },
+      artifacts: [{ logicalName: "skill-catalog", sourcePath: "catalog/0.11.0.json" }],
+    },
+    installedLock: { catalogVersion: "0.11.0", sourceCommit },
+    installedCatalog: { catalogVersion: "0.11.0" },
+  }), {
+    contractVersion: "1.5.3",
+    catalogVersion: "0.11.0",
+    sourceCommit,
+  });
+  assert.throws(() => resolveT3CodeProbeMetadata({
+    installedManifest: {
+      contractVersion: "1.5.3",
+      source: { commit: "b".repeat(40) },
+      artifacts: [{ logicalName: "skill-catalog", sourcePath: "catalog/0.11.0.json" }],
+    },
+    installedLock: { catalogVersion: "0.11.0", sourceCommit },
+    installedCatalog: { catalogVersion: "0.11.0" },
+  }), /source commits do not match/i);
+  assert.throws(() => resolveT3CodeProbeMetadata({
+    installedManifest: {
+      contractVersion: "1.5.3",
+      source: { commit: sourceCommit },
+      artifacts: [{ logicalName: "skill-catalog", sourcePath: "catalog/0.10.0.json" }],
+    },
+    installedLock: { catalogVersion: "0.11.0", sourceCommit },
+    installedCatalog: { catalogVersion: "0.11.0" },
+  }), /manifest and skill catalog versions do not match/i);
+});
+
+test("T3Code server selection supports packed Electron builds and fails fast when absent", () => {
+  const packed = "/Applications/T3 Code.app/Contents/Resources/app.asar/apps/server/dist/bin.mjs";
+  const executable = "/Applications/T3 Code.app/Contents/MacOS/T3 Code";
+  assert.deepEqual(resolveT3CodeServerRuntime({
+    nodeExecutable: "/usr/bin/node",
+    candidates: [{ entrypoint: packed, availabilityPath: "/Applications/T3 Code.app/Contents/Resources/app.asar", executable, electronRunAsNode: true }],
+    exists: (path) => ["/Applications/T3 Code.app/Contents/Resources/app.asar", executable].includes(path),
+  }), {
+    executable,
+    argsPrefix: [packed],
+    environment: { ELECTRON_RUN_AS_NODE: "1" },
+  });
+  assert.throws(() => resolveT3CodeServerRuntime({
+    nodeExecutable: "/usr/bin/node",
+    candidates: [{ entrypoint: "/missing" }],
+    exists: () => false,
+  }), /not installed/i);
+});
+
 function report(skillAuditHealthy = true) {
+  const sourceCommit = "a".repeat(40);
   const influenceSignatures = {
     wayfinder: "Plan decisions and resolve one ticket.",
     "grill-with-docs": "Run a grilling session with domain-modeling.",
@@ -38,6 +96,10 @@ function report(skillAuditHealthy = true) {
   const auditResult = { ok: true };
   const auditOutput = `${JSON.stringify(auditResult)}\n`;
   return {
+    contractVersion: "1.5.3",
+    catalogVersion: "0.11.0",
+    sourceCommit,
+    failure: null,
     requestedModel: { model: "gpt-5.6-sol" },
     requestedRuntimeMode: "approval-required",
     approvalEvidence: [{
@@ -79,7 +141,37 @@ function report(skillAuditHealthy = true) {
         gitStatusUnchanged: true,
         fingerprintUnchanged: true,
       },
-      managedHome: { unchanged: true },
+      managedHome: {
+        before: {
+          installation: {
+            ok: true,
+            status: "healthy",
+            contractVersion: "1.5.3",
+            source: { commit: sourceCommit },
+          },
+          skills: {
+            ok: true,
+            status: "healthy",
+            catalogVersion: "0.11.0",
+            sourceCommit,
+          },
+        },
+        after: {
+          installation: {
+            ok: true,
+            status: "healthy",
+            contractVersion: "1.5.3",
+            source: { commit: sourceCommit },
+          },
+          skills: {
+            ok: true,
+            status: "healthy",
+            catalogVersion: "0.11.0",
+            sourceCommit,
+          },
+        },
+        unchanged: true,
+      },
     },
   };
 }
@@ -131,6 +223,14 @@ test("T3Code probe fails closed when a lifecycle skill or repository invariant i
   const unknownActions = report();
   unknownActions.toolEvidence.completedCommands[0].commandActions = [{ type: "unknown" }];
   assert.equal(evaluateT3CodeProbe(unknownActions), false);
+
+  const unhealthyBaseline = report();
+  unhealthyBaseline.stateInvariants.managedHome.before.installation.status = "drifted";
+  assert.equal(evaluateT3CodeProbe(unhealthyBaseline), false);
+
+  const staleCatalog = report();
+  staleCatalog.stateInvariants.managedHome.before.skills.catalogVersion = "0.10.0";
+  assert.equal(evaluateT3CodeProbe(staleCatalog), false);
 });
 
 test("T3Code approval policy permits inspection and rejects mutation or scripting", () => {
@@ -211,6 +311,33 @@ test("bounded JSON requests abort a stalled T3Code endpoint", async () => {
   await new Promise((resolvePromise, reject) =>
     server.close((error) => error ? reject(error) : resolvePromise(undefined))
   );
+});
+
+test("T3Code thread polling returns bounded evidence for HTTP timeout and invalid JSON", async () => {
+  let clock = 0;
+  let attempt = 0;
+  const result = await pollT3CodeThread({
+    timeoutMs: 30,
+    intervalMs: 10,
+    now: () => clock,
+    sleep: async (milliseconds) => { clock += milliseconds; },
+    fetchSnapshot: async () => {
+      attempt += 1;
+      if (attempt === 1) {
+        const error = new Error("request aborted");
+        error.name = "AbortError";
+        throw error;
+      }
+      throw new SyntaxError("invalid JSON response");
+    },
+    inspectSnapshot: () => false,
+  });
+  assert.equal(result.snapshot, null);
+  assert.equal(result.completed, false);
+  assert.deepEqual(result.pollingFailures, {
+    count: 3,
+    recentKinds: ["http-timeout", "invalid-json", "invalid-json"],
+  });
 });
 
 test("detached process cleanup waits through forced termination", async () => {
