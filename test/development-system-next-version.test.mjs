@@ -154,8 +154,8 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.7");
-  assert.match(packageJson.scripts["skills:sync"], /0\.14\.0/);
+  assert.equal(packageJson.version, "1.5.8");
+  assert.match(packageJson.scripts["skills:sync"], /0\.15\.0/);
   assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
 });
 
@@ -191,4 +191,40 @@ test("contract 1.5.7 and catalog 0.14.0 compose one Topic for native questions o
   assert.match(skill, /exact `chat` fallback/i);
   assert.match(composer, /composeTopicQuestions/);
   assert.match(composer, /between one and three related decisions/);
+});
+
+test("contract 1.5.8 scopes architecture inference to convergence prompts and publishes the agreed reference pack", async () => {
+  const [manifest, contract, catalog, skill, references, aohysPrompt] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.8.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.8/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.15.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.8/skills/internal/working-backwards/SKILL.md"), "utf8"),
+    readFile(resolve(root, "docs/architecture-reference-pack.md"), "utf8"),
+    readFile(resolve(root, "docs/product-convergence/aohys.md"), "utf8"),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+
+  assert.equal(manifest.contractVersion, "1.5.8");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.8/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.15.0.json");
+  assert.equal(catalog.catalogVersion, "0.15.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.8/skills/internal/working-backwards");
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  for (const expected of [
+    "t3-oss/create-t3-turbo",
+    "Formbricks",
+    "TanStack Query",
+    "TanStack Router",
+    "A Philosophy of Software Design",
+    "Domain Modeling Made Functional",
+    "Building Evolutionary Architectures",
+  ]) {
+    assert.match(references, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"), expected);
+  }
+  assert.match(aohysPrompt, /For this convergence initiative only/i);
+  assert.match(aohysPrompt, /current state.*reference evidence.*fit.*inferred decision/is);
+  assert.match(aohysPrompt, /present inferred architecture decisions for correction or approval/i);
+  assert.match(aohysPrompt, /continue to ask.*complex product.*trade-offs/i);
+  assert.match(skill, /ordinary natural-language approval/i);
+  assert.match(contract, /does not make inference the global default/i);
 });
