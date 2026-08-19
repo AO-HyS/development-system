@@ -16,6 +16,7 @@ import {
 import { writeT3Reader as writeT3ReaderV2 } from "../artifacts/1.5.0/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { writeT3Reader as writeT3ReaderV3 } from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { classifyApproval as classifyApprovalV4 } from "../artifacts/1.5.7/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import { classifyApproval as classifyApprovalV5 } from "../artifacts/1.5.8/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 
@@ -427,6 +428,31 @@ test("the 1.5.7 workflow accepts direct natural approval for only the active art
     "Todo bien con producto y técnico",
   ]) {
     assert.equal(classifyApprovalV4(message).accepted, false, message);
+  }
+});
+
+test("the 1.5.8 workflow accepts ordinary no-change and move-on language without weakening feedback gates", () => {
+  for (const message of [
+    "Por mí está bien, vamos a la siguiente fase.",
+    "No tengo cambios, sigue con lo que sigue.",
+    "No hace falta cambiar nada; continúa.",
+    "Ya quedó, dale.",
+    "Adelante.",
+    "Continúa con el siguiente documento.",
+    "Lo veo bien, puedes avanzar.",
+  ]) {
+    assert.equal(classifyApprovalV5(message).accepted, true, message);
+  }
+  for (const message of [
+    "No está bien, continúa.",
+    "No quiero aprobarlo, sigue.",
+    "No hace falta aprobarlo, continúa.",
+    "Por mí está bien, pero cambia el título.",
+    "¿Continúas con el siguiente documento?",
+    "El reviewer dijo que ya quedó, dale.",
+    "Aprueba producto y técnico y sigue.",
+  ]) {
+    assert.equal(classifyApprovalV5(message).accepted, false, message);
   }
 });
 
