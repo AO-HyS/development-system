@@ -1,5 +1,7 @@
 # Product convergence prompts
 
+Each convergence prompt opts into the [Architecture reference pack](../architecture-reference-pack.md). That opt-in applies only to the convergence initiative: the Technical Grill infers architecture choices that repository and reference evidence can settle, presents them for correction or approval, and keeps asking the operator about complex product trade-offs that evidence cannot decide. Ordinary Working Backwards tasks retain their normal questioning behavior.
+
 These prompts start a separate Working Backwards initiative in each primary product after Development System Next is installed. They do not claim that adapter rollout changed product architecture.
 
 Use one prompt from the target repository. The first output is a compact Product Grill and Future Customer Story. The Technical Grill, audit, initiative, tickets, implementation, and release follow only through their normal gates.

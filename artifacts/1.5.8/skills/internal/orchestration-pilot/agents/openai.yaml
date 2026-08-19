@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestration Pilot"
+  short_description: "Evaluate Codex orchestration outcomes"
+  default_prompt: "Use $orchestration-pilot to evaluate the current natural-work pilot without inventing causality."

@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.14.0";
-if (version !== "0.14.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.14.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.15.0";
+if (version !== "0.15.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.15.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -213,11 +213,11 @@ const additions = await Promise.all([
 
 const workingBackwards = await sharedSkill(
   "working-backwards",
-  "artifacts/1.5.7/skills/internal/working-backwards",
+  "artifacts/1.5.8/skills/internal/working-backwards",
   {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.5.7/skills/internal/working-backwards",
+    path: "artifacts/1.5.8/skills/internal/working-backwards",
   },
   ["scripts/t3-workflow.mjs", "scripts/t3-reader.mjs", "scripts/topic-questions.mjs"],
 );
