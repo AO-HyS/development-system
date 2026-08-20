@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.8";
-const skillCatalogVersion = "0.15.0";
+const contractVersion = "1.5.9";
+const skillCatalogVersion = "0.16.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -39,6 +39,26 @@ const managedFiles = [
   ".codex/development-system/repository.md",
 ];
 const retiredManagedFiles = [".factory/development-system/repository.md"];
+const productArchitectureDimensions = Object.freeze([
+  "repository-map",
+  "module-boundaries",
+  "dependency-direction",
+  "file-placement",
+  "frontend-composition",
+  "component-design",
+  "backend-contracts",
+  "type-contracts",
+  "testing-strategy",
+  "documentation",
+  "performance-security",
+  "observability",
+  "migration-sequencing",
+]);
+const developmentSystemManagedCapabilities = Object.freeze([
+  "agent-guardrails",
+  "anti-slop-policy",
+  "release-train",
+]);
 /** @type {Array<"review" | "changedValidation" | "certification" | "qa" | "preview">} */
 const structuralCapabilities = ["review", "changedValidation", "certification", "qa", "preview"];
 const providerReadinessSurfaces = ["auth", "data", "migration", "seeds", "roles", "provider-config", "environment"];
@@ -506,7 +526,6 @@ async function managedVersionGaps(repository, files) {
   }
   for (const [path, command] of [
     [managedFiles[1], "$working-backwards"],
-    [managedFiles[2], "/working-backwards"],
   ]) {
     if (!files.includes(path)) continue;
     const contents = await readFile(resolve(repository, path), "utf8");
@@ -514,7 +533,7 @@ async function managedVersionGaps(repository, files) {
       !contents.includes(`Contract version: \`${contractVersion}\``) ||
       !contents.includes(`skill catalog \`${skillCatalogVersion}\``) ||
       !contents.includes(command)
-    ) gaps.push(`stale-${path.startsWith(".codex") ? "codex" : "factory"}-adapter`);
+    ) gaps.push("stale-codex-adapter");
   }
   return gaps;
 }
@@ -763,10 +782,15 @@ function adapterContentsWithProviderReadiness(audit, harness) {
     "Global `exa-search` is paid public-web retrieval and must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
     "Global `exa-search` is paid public-web retrieval. This adapter only declares its availability and never calls or activates it. A repository opt-in or explicit user invocation is required, and every request must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
   );
-  return replaceAdapterSection(
+  contents = replaceAdapterSection(
     contents,
     "\n\nLegacy validation alias",
     `\n\nProvider readiness\n\n${providerReadinessLine(audit.commands.providerReadiness)}\n\nLegacy validation alias`,
+  );
+  return replaceAdapterSection(
+    contents,
+    "\n\n## Stack rules",
+    "\n\n## Product architecture baseline\n\n- Map domain and capability ownership before moving files. Keep code, tests, documentation, adapters, and generated artifacts discoverable beside the boundary they explain.\n- Make dependency direction and public Interfaces explicit. Prefer cohesive deep modules over pass-through abstractions, duplicate contracts, or historical dumping grounds.\n- Define component boundaries by cohesion, responsibility, state ownership, composition, and public API—not by an arbitrary line count.\n- Keep backend contracts typed end to end. For Convex, require explicit authorization, validators, indexed bounded reads, and deliberate storage/migration boundaries.\n- Select fast checks from changed surfaces: architecture rules, strict typecheck, focused behavior tests, performance/security checks, and visual review when UI changed.\n- Use the installed architecture reference pack at `~/.codex/development-system/architecture-reference-pack.md` for product-convergence work. It is comparative evidence, not a universal folder template.\n\n## Development System-owned capabilities\n\nAgent guardrails, global anti-slop policy, and Release Train design are supplied and evolved by the Development System. A product architecture migration must not duplicate or redesign them. The repository remains responsible for exposing real changed-validation, certification, QA, preview, and provider-readiness commands that those global capabilities consume.\n\n## Stack rules",
   );
 }
 
@@ -916,6 +940,13 @@ function repositoryContract(audit, mode) {
       convex: audit.stack.includes("convex"),
       preserveProductIdentity: true,
     },
+    architectureBaseline: {
+      reference: "~/.codex/development-system/architecture-reference-pack.md",
+      productDimensions: [...productArchitectureDimensions],
+      developmentSystemManaged: [...developmentSystemManagedCapabilities],
+      componentBoundary: "cohesion-responsibility-state-ownership-public-interface-not-line-count",
+      migrationEffect: "baseline-only-no-product-refactor",
+    },
     architectureDiagnostic: audit.architectureDiagnostic,
     services: {
       paidActivation: false,
@@ -973,7 +1004,7 @@ async function prepareRepository(options, mode) {
   return {
     ok: prepared,
     operation: `${mode}-repository`,
-    status: changedFiles.length === 0 ? "unchanged" : "updated",
+    status: changedFiles.length === 0 && removedFiles.length === 0 ? "unchanged" : "updated",
     repositoryRoot: repository,
     changedFiles,
     removedFiles,
@@ -990,7 +1021,10 @@ async function prepareRepository(options, mode) {
       Object.entries(postAudit.readiness).map(([harness, result]) => [harness, result.gaps]),
     ),
     paidServicesActivated: false,
-    externalSideEffects: changedFiles.map((path) => ({ type: "managed-write", path })),
+    externalSideEffects: [
+      ...changedFiles.map((path) => ({ type: "managed-write", path })),
+      ...removedFiles.map((path) => ({ type: "managed-remove", path })),
+    ],
   };
 }
 

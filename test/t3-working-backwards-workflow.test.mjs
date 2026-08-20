@@ -17,6 +17,11 @@ import { writeT3Reader as writeT3ReaderV2 } from "../artifacts/1.5.0/skills/inte
 import { writeT3Reader as writeT3ReaderV3 } from "../artifacts/1.5.5/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { classifyApproval as classifyApprovalV4 } from "../artifacts/1.5.7/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { classifyApproval as classifyApprovalV5 } from "../artifacts/1.5.8/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+import {
+  ARCHITECTURE_CONVERGENCE_DIMENSIONS,
+  recordT3Turn as recordT3TurnV6,
+  writeT3Reader as writeT3ReaderV6,
+} from "../artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 
@@ -145,6 +150,90 @@ test("the derived HTML escapes artifact content and never becomes canonical stat
   assert.match(html, /&lt;script&gt;alert/iu);
   assert.equal(rendered.artifacts.length, 1);
   assert.equal(rendered.artifacts[0].fileName, "01-customer-story.md");
+});
+
+test("the v6 Reader renders the complete artifact history as navigable Reader pages", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-reader-history-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "whole-initiative");
+  await mkdir(workspaceDir, { recursive: true });
+  const fixtures = [
+    ["01-product-grill.md", "product-grill", "Product Grill", "The broad product intent."],
+    ["02-customer-story.md", "customer-story", "Future Customer Story", "The future experience."],
+    ["03-technical-grill.md", "technical-grill", "Technical Grill", "The technical questions."],
+    ["04-research-questions.md", "research-questions", "Research Questions", "The evidence questions."],
+    ["05-research-report.md", "research-report", "Research Report", "Residual evidence, not the whole initiative."],
+  ];
+  for (const [index, [fileName, role, title, body]] of fixtures.entries()) {
+    await writeFile(resolve(workspaceDir, fileName), `---\nworking_backwards_role: ${role}\nworking_backwards_status: draft\n${index === 0 ? "initiative_name: Whole Initiative\n" : ""}---\n\n# ${title}\n\n${body}\n`, "utf8");
+    if (index < fixtures.length - 1) await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  }
+
+  const result = await writeT3ReaderV6({ home, workspaceDir, initiativeName: "Whole Initiative" });
+  assert.equal(result.readerHistoryPaths.length, 5);
+  const mainHtml = await readFile(result.readerPath, "utf8");
+  assert.match(mainHtml, /Fase 5 de 9/);
+  assert.match(mainHtml, /Este reporte muestra la fase activa de una iniciativa más amplia/);
+  assert.match(mainHtml, /reader-history\/01-product-grill\.html/);
+  assert.doesNotMatch(mainHtml, /href="01-product-grill\.md"/);
+
+  const productPage = await readFile(resolve(workspaceDir, "reader-history", "01-product-grill.html"), "utf8");
+  const storyPage = await readFile(resolve(workspaceDir, "reader-history", "02-customer-story.html"), "utf8");
+  assert.match(productPage, /The broad product intent/);
+  assert.match(productPage, /Fase 1 de 9/);
+  assert.match(productPage, /href="\.\.\/01-product-grill\.md"/);
+  assert.match(storyPage, /The future experience/);
+  assert.match(storyPage, /reader-history\/02-customer-story\.html|02-customer-story\.html/);
+  assert.equal((await stat(result.readerHistoryPaths[0])).mode & 0o777, 0o600);
+  assert.deepEqual(result.localWrites.slice(0, 6), [result.readerPath, ...result.readerHistoryPaths]);
+});
+
+test("architecture convergence cannot approve a Technical Grill that narrows the program to a few hotspots", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-architecture-coverage-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "architecture-convergence");
+  await mkdir(workspaceDir, { recursive: true });
+  await writeFile(resolve(workspaceDir, "01-product-grill.md"), `---\nworking_backwards_role: product-grill\nworking_backwards_status: draft\n---\n\n# Product Grill\n\nA maintainable product.\n`, "utf8");
+  await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  await writeFile(resolve(workspaceDir, "02-customer-story.md"), `---\nworking_backwards_role: customer-story\nworking_backwards_status: draft\n---\n\n# Story\n\nA new contributor knows where every change belongs.\n`, "utf8");
+  await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  await writeFile(resolve(workspaceDir, "03-technical-grill.md"), `---\nworking_backwards_role: technical-grill\nworking_backwards_status: draft\nworking_backwards_program: architecture-convergence\n---\n\n# Technical Grill\n\n## Architecture coverage matrix\n\n| Dimension | Evidence | Decision | Enforcement |\n|---|---|---|---|\n| module-boundaries | apps exist | keep | review |\n| observability | PostHog exists | keep | test |\n| release-train | workflow exists | change | CI |\n`, "utf8");
+
+  await assert.rejects(
+    recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." }),
+    /Architecture convergence Technical Grill is incomplete; missing dimensions:/i,
+  );
+});
+
+test("architecture convergence approves a complete evidence-decision-enforcement matrix", async () => {
+  assert.deepEqual(ARCHITECTURE_CONVERGENCE_DIMENSIONS, [
+    "repository-map",
+    "module-boundaries",
+    "dependency-direction",
+    "file-placement",
+    "frontend-composition",
+    "component-design",
+    "backend-contracts",
+    "type-contracts",
+    "testing-strategy",
+    "documentation",
+    "performance-security",
+    "observability",
+    "migration-sequencing",
+  ]);
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-wb-complete-architecture-coverage-home-"));
+  const workspaceDir = resolve(home, ".development-system", "private", "working-backwards", "architecture-convergence");
+  await mkdir(workspaceDir, { recursive: true });
+  await writeFile(resolve(workspaceDir, "01-product-grill.md"), `---\nworking_backwards_role: product-grill\nworking_backwards_status: draft\n---\n\n# Product Grill\n\nA maintainable product.\n`, "utf8");
+  await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  await writeFile(resolve(workspaceDir, "02-customer-story.md"), `---\nworking_backwards_role: customer-story\nworking_backwards_status: draft\n---\n\n# Story\n\nA new contributor knows where every change belongs.\n`, "utf8");
+  await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  const rows = ARCHITECTURE_CONVERGENCE_DIMENSIONS.map(
+    (dimension) => `| ${dimension} | inspected representative paths | change: decision with rationale | focused fitness check |`,
+  ).join("\n");
+  await writeFile(resolve(workspaceDir, "03-technical-grill.md"), `---\nworking_backwards_role: technical-grill\nworking_backwards_status: draft\nworking_backwards_program: architecture-convergence\n---\n\n# Technical Grill\n\n## Architecture coverage matrix\n\n| Dimension | Evidence | Decision | Enforcement |\n|---|---|---|---|\n${rows}\n`, "utf8");
+
+  const result = await recordT3TurnV6({ home, workspaceDir, message: "Aprobado, sigue." });
+  assert.equal(result.approval.accepted, true);
+  assert.equal(result.currentPhase.role, "research-questions");
 });
 
 test("the v2 Reader maintains one private metadata-only library across human initiatives", async () => {
