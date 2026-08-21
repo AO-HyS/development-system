@@ -21,7 +21,7 @@ import {
   ARCHITECTURE_CONVERGENCE_DIMENSIONS,
   recordT3Turn as recordT3TurnV6,
   writeT3Reader as writeT3ReaderV6,
-} from "../artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-workflow.mjs";
+} from "../artifacts/1.5.10/skills/internal/working-backwards/scripts/t3-workflow.mjs";
 import { readWorkingBackwardsGateReceipts } from "../src/working-backwards-gates.mjs";
 import { executeLifecycleOperation, readLifecycleState, runLifecycleRequest } from "../src/lifecycle.mjs";
 

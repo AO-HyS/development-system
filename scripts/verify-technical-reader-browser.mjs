@@ -1,13 +1,13 @@
 // @ts-nocheck -- This executable drives Chrome through its runtime CDP protocol; browser behavior is its acceptance boundary.
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { once } from "node:events";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 
-const readerModulePath = join(process.cwd(), "artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-reader.mjs");
+const readerModulePath = join(process.cwd(), "artifacts/1.5.10/skills/internal/working-backwards/scripts/t3-reader.mjs");
 const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import(pathToFileURL(readerModulePath).href);
 
 const candidates = [
@@ -170,6 +170,14 @@ architecture-beta
   service reader(server)[Reader] in library
   source:R -- L:reader
 \`\`\`
+
+## Architecture evidence
+
+| Dimension | Current evidence | Direction |
+| --- | --- | --- |
+| file-placement | Dashboard uses screens, lib and global types while backend capabilities live in one large content module. | Keep capability ownership explicit and place tests beside the behavior they prove. |
+| frontend-composition | Route-level screens currently own forms, mutations, state, toasts and presentation at once. | Separate orchestration from reusable view composition without inventing a universal component layer. |
+| backend-contracts | Public Convex functions have validators but publication dispatch still needs an explicit receipt and idempotency boundary. | Preserve typed validators and add bounded capability contracts where real evidence requires them. |
 `;
   const model = buildTechnicalReaderModel({
     language: "en",
@@ -351,22 +359,92 @@ architecture-beta
       awaitPromise: true,
       returnByValue: true,
     }, sessionId);
-
-    await cdp.send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true }, sessionId);
-    const responsive = await cdp.send("Runtime.evaluate", {
-      expression: `JSON.stringify({
-        narrow: matchMedia('(max-width: 64rem)').matches,
-        mobileTools: getComputedStyle(document.querySelector('.mobile-reader-tools')).display,
-        artifactsRail: getComputedStyle(document.querySelector('.artifacts-rail')).display,
-        tocRail: getComputedStyle(document.querySelector('.toc-rail')).display,
-      })`,
+    await cdp.send("Runtime.evaluate", {
+      expression: `(() => {
+        document.querySelectorAll('.is-expanded,.is-fullscreen-fallback').forEach((node) => node.classList.remove('is-expanded', 'is-fullscreen-fallback'));
+        document.querySelectorAll('[data-action="expand"],[data-action="fullscreen"]').forEach((button) => button.setAttribute('aria-pressed', 'false'));
+        document.body.classList.remove('has-reader-overlay');
+        window.scrollTo(0, 0);
+      })()`,
       returnByValue: true,
     }, sessionId);
+
+    const measureResponsive = async (width, height, mobile) => {
+      await cdp.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile }, sessionId);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const result = await cdp.send("Runtime.evaluate", {
+        expression: `(() => {
+          const root = document.documentElement;
+          const topbar = document.querySelector('.reader-topbar').getBoundingClientRect();
+          const tableScroll = document.querySelector('.table-scroll');
+          const table = document.querySelector('.data-table');
+          const firstCell = table?.querySelector('tbody td');
+          if (tableScroll) tableScroll.scrollLeft = tableScroll.scrollWidth;
+          return JSON.stringify({
+            width: innerWidth,
+            rootClientWidth: root.clientWidth,
+            rootScrollWidth: root.scrollWidth,
+            rootScrollLeft: root.scrollLeft,
+            topbar: { left: topbar.left, right: topbar.right, width: topbar.width },
+            mobileTools: getComputedStyle(document.querySelector('.mobile-reader-tools')).display,
+            mobileToolCount: document.querySelectorAll('.mobile-reader-tools details').length,
+            artifactsRail: getComputedStyle(document.querySelector('.artifacts-rail')).display,
+            tocRail: getComputedStyle(document.querySelector('.toc-rail')).display,
+            reportState: getComputedStyle(document.querySelector('.report-state')).display,
+            authorityState: getComputedStyle(document.querySelector('.authority-state')).display,
+            tableClientWidth: tableScroll?.clientWidth ?? 0,
+            tableScrollWidth: tableScroll?.scrollWidth ?? 0,
+            tableDisplay: table ? getComputedStyle(table).display : '',
+            firstCellDisplay: firstCell ? getComputedStyle(firstCell).display : '',
+            bodyFontSize: getComputedStyle(document.body).fontSize,
+          });
+        })()`,
+        returnByValue: true,
+      }, sessionId);
+      if (process.env.DEVELOPMENT_SYSTEM_READER_RESPONSIVE_SCREENSHOT_DIR) {
+        mkdirSync(process.env.DEVELOPMENT_SYSTEM_READER_RESPONSIVE_SCREENSHOT_DIR, { recursive: true });
+        await cdp.send("Runtime.evaluate", {
+          expression: `(() => {
+            const table = document.querySelector('.table-scroll');
+            if (table) {
+              document.documentElement.style.scrollBehavior = 'auto';
+              table.scrollLeft = 0;
+              table.scrollIntoView({ behavior: 'instant', block: 'center' });
+            }
+          })()`,
+          returnByValue: true,
+        }, sessionId);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const screenshot = await cdp.send("Page.captureScreenshot", { format: "png", fromSurface: true }, sessionId);
+        writeFileSync(
+          join(process.env.DEVELOPMENT_SYSTEM_READER_RESPONSIVE_SCREENSHOT_DIR, `reader-${width}x${height}.png`),
+          Buffer.from(screenshot.data, "base64"),
+        );
+      }
+      return JSON.parse(result.result.value);
+    };
+    const tabletLandscape = await measureResponsive(1280, 800, true);
+    const tabletPortrait = await measureResponsive(820, 1180, true);
+    const phone = await measureResponsive(390, 844, true);
+    const panelInteraction = await cdp.send("Runtime.evaluate", {
+      expression: `(() => {
+        const details = [...document.querySelectorAll('.mobile-reader-tools details')];
+        details[0].querySelector('summary').click();
+        const firstOpen = details.map((item) => item.open);
+        details[1].querySelector('summary').click();
+        const secondOpen = details.map((item) => item.open);
+        details[2].querySelector('summary').click();
+        const thirdOpen = details.map((item) => item.open);
+        const panel = details[2].querySelector('.mobile-panel').getBoundingClientRect();
+        return JSON.stringify({ firstOpen, secondOpen, thirdOpen, panel: { left: panel.left, right: panel.right, bottom: panel.bottom, width: panel.width } });
+      })()`,
+      returnByValue: true,
+    }, sessionId);
+    const panelEvidence = JSON.parse(panelInteraction.result.value);
     await cdp.send("Emulation.clearDeviceMetricsOverride", {}, sessionId);
 
     const networkRequests = cdp.events.filter((event) => event.method === "Network.requestWillBeSent" && /^https?:/iu.test(event.params?.request?.url ?? ""));
     const browserErrors = cdp.events.filter((event) => event.method === "Runtime.exceptionThrown" || (event.method === "Log.entryAdded" && event.params?.entry?.level === "error"));
-    const responsiveEvidence = JSON.parse(responsive.result.value);
 
     assert.equal(observation.rendered, 5);
     assert.equal(observation.svg >= 5, true);
@@ -397,10 +475,27 @@ architecture-beta
     assert.equal(fullscreenEvidence.renderedScale >= 0.875, true);
     assert.equal(fullscreenEvidence.minimumTextHeight >= 13, true);
     assert.equal(fullscreenEvidence.fitScale >= 0.875, true);
-    assert.equal(responsiveEvidence.narrow, true);
-    assert.notEqual(responsiveEvidence.mobileTools, "none");
-    assert.equal(responsiveEvidence.artifactsRail, "none");
-    assert.equal(responsiveEvidence.tocRail, "none");
+    for (const evidence of [tabletLandscape, tabletPortrait, phone]) {
+      assert.equal(evidence.rootScrollWidth <= evidence.rootClientWidth + 1, true, `root overflow at ${evidence.width}px`);
+      assert.equal(evidence.rootScrollLeft, 0, `table scrolling moved the page at ${evidence.width}px`);
+      assert.equal(evidence.topbar.left >= 0 && evidence.topbar.right <= evidence.rootClientWidth + 1, true, `topbar overflow at ${evidence.width}px`);
+      assert.notEqual(evidence.mobileTools, "none");
+      assert.equal(evidence.mobileToolCount, 3);
+      assert.equal(evidence.artifactsRail, "none");
+      assert.equal(evidence.tocRail, "none");
+      assert.equal(evidence.reportState, "none");
+      assert.equal(evidence.authorityState, "none");
+    }
+    assert.equal(tabletLandscape.tableScrollWidth > tabletLandscape.tableClientWidth, true);
+    assert.equal(tabletPortrait.tableScrollWidth > tabletPortrait.tableClientWidth, true);
+    assert.equal(phone.tableScrollWidth <= phone.tableClientWidth + 1, true);
+    assert.equal(phone.tableDisplay, "block");
+    assert.equal(phone.firstCellDisplay, "grid");
+    assert.deepEqual(panelEvidence.firstOpen, [true, false, false]);
+    assert.deepEqual(panelEvidence.secondOpen, [false, true, false]);
+    assert.deepEqual(panelEvidence.thirdOpen, [false, false, true]);
+    assert.equal(panelEvidence.panel.left >= 0 && panelEvidence.panel.right <= 390, true);
+    assert.equal(panelEvidence.panel.bottom <= 844, true);
     assert.deepEqual(networkRequests, []);
     assert.deepEqual(browserErrors, []);
 
@@ -414,7 +509,7 @@ architecture-beta
       inline: interactionEvidence.inlineFitMetrics,
       expanded: interactionEvidence.expandedMetrics,
       fullscreen: fullscreenEvidence,
-      responsive: true,
+      responsive: { tabletLandscape, tabletPortrait, phone, panel: panelEvidence },
       networkRequests: 0,
       bodyFontSize: observation.bodyFontSize,
       source: "file://",
