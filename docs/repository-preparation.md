@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Version `0.9.1` extends the hardened repository contract with fast functional evidence, explicit-only special flows and full suites, opt-in `work-multiple`, Luna High bounded implementation, and fail-closed worktree ownership. It preserves contextual residue classification, nested Convex detection, local preview aliases, supported skill-mirror grouping, and the explicit lifecycle interface. Normal authorized implementation follows the fixed implementation flow; the system does not infer Wayfinder, grilling, specification, tickets, prototypes, multiple work, broad suites, or promotion.
+Contract `1.5.9` prepares a repository for the Codex-compatible Development System without importing another product's architecture or duplicating global capabilities. It preserves automatic lifecycle routing and explicit commands, emits the product architecture baseline used by new initiatives, and keeps agent guardrails, anti-slop policy, and Release Train ownership in the Development System.
 
 ## Audit without mutation
 
@@ -10,19 +10,7 @@ Version `0.9.1` extends the hardened repository contract with fast functional ev
   --json
 ```
 
-The report includes:
-
-- root and nested instructions with precedence and scope;
-- skills, Codex agents, Factory droids, and repository hooks;
-- `exists`, `discovered`, `catalogued`, `loadable`, `loaded`, and `influenced` independently;
-- detected React/Convex capabilities and the product's existing review, validation, QA, and preview commands;
-- foreign-product residue in governing files;
-- readiness and concrete gaps for Codex, T3Code, and Factory;
-- the manual, proposal-only architecture diagnostic.
-
-Fingerprint evidence also reports deterministic exclusions for Git metadata, dependency/build caches, generated outputs, and temporary outputs. Ordinary files are read with a 1 MiB cap; larger source files use sixteen evenly distributed 64 KiB samples plus exact size, so a multi-gigabyte file cannot cause an unbounded read while central changes remain observable. Preservation-only Impeccable references are reported under `allowedReferences`; inherited product rules remain under `residue`.
-
-Without live operational verification, `loaded` and `influenced` remain false. Schema 2 JSON supplied with `--evidence` is diagnostic and cannot elevate those states on its own. Library callers must inject a live observation verifier; its independently observed result must bind the current path hash and harness to a structured read-only command, runtime version, successful exit, empty side effects, and behavioral signature. Stale, fabricated, cross-repository, file-divergent, failed, timed-out, side-effecting, or unsigned observations remain false. A not-ready audit still exits successfully because findings are the requested result and no repair was attempted.
+The report includes repository instructions and precedence, detected stack and real commands, residue, deterministic fingerprint evidence, Codex/T3 Code readiness, and a manual proposal-only architecture diagnostic. Structural readiness does not prove that a skill was loaded or influenced behavior; those claims require current fingerprint-bound live evidence.
 
 ## Initialize a new repository
 
@@ -33,17 +21,23 @@ Without live operational verification, `loaded` and `influenced` remain false. S
   --json
 ```
 
-Initialization reads the product's current package scripts and stack, then writes only:
+Initialization reads the repository's current package scripts, stack, design, and release policy, then manages only:
 
 ```text
 .development-system/repository.json
 .codex/development-system/repository.md
-.factory/development-system/repository.md
 ```
 
-The generated contract selects existing review, validation, QA, and preview commands. It records React and Convex rules when detected, preserves design/release files, and configures Factory documentation as a behavioral equivalent when a Codex-native capability is unavailable. Repeating the same initialization returns `unchanged`.
+Any legacy `.factory/development-system/repository.md` adapter is retired because the active harnesses are Codex and T3 Code. The generated contract records:
 
-The returned `prepared` state is deliberately scoped to the repository adapter and declared commands. It is not an operational claim that lifecycle skills are loaded. Before using the explicit interface, synchronize global skill catalog `0.6.0` and verify that the active harness discovers `drive-development-flow`, `working-backwards`, and all six phase skills. The autonomous part of `flow-implement` is the bounded implementation-review-correction loop; commit, push, PR, preview, deploy, merge, release, and production remain governed by the request and repository policy.
+- the repository's real review, changed-validation, certification, QA, preview, and conditional provider-readiness commands;
+- the product architecture dimensions that future convergence work must cover;
+- component boundaries based on cohesion, responsibility, state ownership, composition, and public Interfaces rather than arbitrary line counts;
+- strict backend/type expectations, including current Convex authorization, validation, indexing, bounded-read, storage, and migration boundaries when Convex is detected;
+- the installed architecture reference pack at `~/.codex/development-system/architecture-reference-pack.md`;
+- the explicit boundary that agent guardrails, global anti-slop policy, and Release Train design remain Development System-owned.
+
+This baseline guides future work. Initialization itself never refactors product code, changes branch policy, installs a Release Train, configures hosting, activates paid services, or deploys.
 
 ## Normalize an existing repository
 
@@ -54,6 +48,8 @@ The returned `prepared` state is deliberately scoped to the repository adapter a
   --json
 ```
 
-Normalization refreshes only the managed files above. It does not delete foreign instructions, rewrite `package.json`, replace product design, change branch/release policy, or activate preview hosting. Findings outside the managed namespace remain explicit owner actions. This preserves the boundary between a reversible system adapter and product-owned decisions.
+Normalization refreshes only the two managed files and removes only the retired Factory adapter. It preserves foreign instructions, `package.json`, product design, product code, provider configuration, data, and release policy. Findings outside the managed namespace remain explicit owner actions.
 
-`improve-codebase-architecture` remains manual and proposal-only in both generated adapters. A proposal must precede any separately authorized refactor.
+The returned `prepared` state is scoped to the repository adapter and declared commands. Before relying on the interface, synchronize global skill catalog `0.16.0` and verify discovery in the active Codex/T3 Code harness. Commit, push, PR, preview, deploy, merge, release, and production remain governed by request authority and repository policy.
+
+`improve-codebase-architecture` remains manual and proposal-only. A Working Backwards Product Grill and Technical Grill must define an actual product convergence before any separately authorized refactor.

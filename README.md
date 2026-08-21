@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.8` is Development System Next: natural Product/Technical Grill routing, an offline Technical Reader library, bounded measurable Codex orchestration, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.15.0` supports Codex and T3 Code only. The patch adds prompt-scoped architecture references for product convergence and accepts ordinary natural-language approval without making silent inference the normal Working Backwards behavior.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.9` is Development System Next: natural Product/Technical Grill routing, a complete Technical Reader history, bounded local and remote review, measurable Codex orchestration, Parallel Work, stack-selective quality, Convex/PostHog guardians, Release Train v2, Check-in, Linear hygiene, and Development Steward. Skill catalog `0.16.0` supports Codex and T3 Code only.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,11 +16,11 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.8
-./bin/development-system sync-skills --version 0.15.0
+./bin/development-system install --version 1.5.9
+./bin/development-system sync-skills --version 0.16.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.15.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.16.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -88,7 +88,7 @@ parallel and integrate into one candidate. Publication remains a separate
 authorization.
 
 Install the private weekly Development Steward on macOS after installing the
-1.5.8 contract. It runs Monday at 09:00 local time for the five allowlisted
+1.5.9 contract. It runs Monday at 09:00 local time for the five allowlisted
 primary repositories and publishes one concise Check-in input without writing
 to repositories or providers:
 
@@ -162,7 +162,7 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
 
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.8 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.9 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -172,7 +172,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.8`, `sync-skills --version 0.15.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.9`, `sync-skills --version 0.16.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -203,7 +203,7 @@ The focused Reader gate opens a generated report directly from `file://` in Chro
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.1` patches the real macOS scheduler runtime; `1.5.2` removes Factory assumptions from current live evidence and guardrails; `1.5.3` binds T3 Code recertification to the exact installed contract and current evidence; `1.5.4` serializes Codex live-probe observations after a real concurrent-run failure; `1.5.5` repairs the offline Reader, enlarges its interactive/reading surfaces, and names workflow HTML from the initiative; `1.5.6` keeps wide diagrams readable, makes report details reviewable, and removes Steward selection skew; `1.5.7` adds Topic questions, natural approvals, and bounded measurable orchestration; `1.5.8` scopes architecture inference to product-convergence prompts, installs the reference pack, and accepts ordinary no-change-and-continue approvals. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history, preserves broad-workstream coverage, and adds bounded local or tokenized temporary remote review. Published manifests and artifacts are immutable.
 
 ## Release boundary
 
