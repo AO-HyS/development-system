@@ -1,6 +1,6 @@
 # Repository audit and preparation
 
-Contract `1.5.9` prepares a repository for the Codex-compatible Development System without importing another product's architecture or duplicating global capabilities. It preserves automatic lifecycle routing and explicit commands, emits the product architecture baseline used by new initiatives, and keeps agent guardrails, anti-slop policy, and Release Train ownership in the Development System.
+Contract `1.5.10` prepares a repository for the Codex-compatible Development System without importing another product's architecture or duplicating global capabilities. It preserves automatic lifecycle routing and explicit commands, emits the product architecture baseline used by new initiatives, and keeps agent guardrails, anti-slop policy, and Release Train ownership in the Development System.
 
 ## Audit without mutation
 
@@ -50,6 +50,6 @@ This baseline guides future work. Initialization itself never refactors product 
 
 Normalization refreshes only the two managed files and removes only the retired Factory adapter. It preserves foreign instructions, `package.json`, product design, product code, provider configuration, data, and release policy. Findings outside the managed namespace remain explicit owner actions.
 
-The returned `prepared` state is scoped to the repository adapter and declared commands. Before relying on the interface, synchronize global skill catalog `0.16.0` and verify discovery in the active Codex/T3 Code harness. Commit, push, PR, preview, deploy, merge, release, and production remain governed by request authority and repository policy.
+The returned `prepared` state is scoped to the repository adapter and declared commands. Before relying on the interface, synchronize global skill catalog `0.17.0` and verify discovery in the active Codex/T3 Code harness. Commit, push, PR, preview, deploy, merge, release, and production remain governed by request authority and repository policy.
 
 `improve-codebase-architecture` remains manual and proposal-only. A Working Backwards Product Grill and Technical Grill must define an actual product convergence before any separately authorized refactor.

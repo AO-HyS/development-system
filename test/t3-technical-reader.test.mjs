@@ -7,7 +7,7 @@ import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
   renderTechnicalReaderLibraryHtml,
-} from "../artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-reader.mjs";
+} from "../artifacts/1.5.10/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -133,7 +133,7 @@ function inlineScriptIntegrity(html) {
 }
 
 test("final reports keep requested prompt and handoff content reviewable with explicit known-issue dispositions", async () => {
-  const skill = await readFile(new URL("../artifacts/1.5.9/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
+  const skill = await readFile(new URL("../artifacts/1.5.10/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
 
   assert.match(skill, /full text or clearly separated Reader sections/i);
   assert.match(skill, /product-convergence prompt or handoff/i);
@@ -178,8 +178,8 @@ test("the reader HTML is offline, document-first, responsive, and exposes rich e
   assert.match(html, /class="artifacts-rail"/);
   assert.match(html, /class="toc-rail"/);
   assert.match(html, /class="mobile-reader-tools"/);
-  assert.match(html, /grid-template-columns:minmax\(12rem,15\.5rem\) minmax\(0,58rem\) minmax\(11rem,14\.5rem\)/);
-  assert.match(html, /@media\(max-width:76rem\)/);
+  assert.match(html, /grid-template-columns:minmax\(10\.5rem,14rem\) minmax\(0,56rem\) minmax\(10rem,13rem\)/);
+  assert.match(html, /@media\(max-width:82rem\)/);
   assert.match(html, /Implementation not authorized/);
   assert.doesNotMatch(html, /class="hero"|class="score"|KPI/);
 
@@ -257,15 +257,27 @@ test("mobile panels expose workflow context and dismiss predictably", () => {
   const mobileTools = /<nav class="mobile-reader-tools"[\s\S]*?<\/nav>/.exec(html)?.[0] ?? "";
 
   assert.match(mobileTools, /data-mobile-reader/);
-  assert.equal((mobileTools.match(/data-mobile-details/g) ?? []).length, 2);
+  assert.equal((mobileTools.match(/data-mobile-details/g) ?? []).length, 3);
   assert.match(mobileTools, /data-mobile-context/);
   assert.match(mobileTools, /Review and approve Technical Contract/);
   assert.match(mobileTools, /Gate[\s\S]*Technical Contract/);
   assert.match(mobileTools, /Implementation not authorized · requires Implement Preview/);
+  assert.match(mobileTools, /Details/);
   assert.match(html, /addEventListener\("toggle"/);
   assert.match(html, /closest\("\.mobile-reader-tools a"\)/);
   assert.match(html, /closest\("\.mobile-reader-tools"\)/);
   assert.match(html, /event\.key==="Escape"/);
+});
+
+test("wide evidence tables stay contained on tablet and become labeled records on phones", () => {
+  const html = renderTechnicalReaderHtml(buildTechnicalReaderModel(readerInput()));
+
+  assert.match(html, /data-label="Surface"/);
+  assert.match(html, /\.table-scroll\{[^}]*max-width:100%[^}]*overflow-x:auto/);
+  assert.match(html, /@media\(max-width:42rem\)[\s\S]*?\.data-table tbody,.data-table tr\{display:block/);
+  assert.match(html, /\.data-table td\{display:grid;grid-template-columns:/);
+  assert.match(html, /\.data-table td::before\{content:attr\(data-label\)/);
+  assert.match(html, /html,body\{[^}]*overflow-x:clip/);
 });
 
 test("canonical content is escaped and preserved instead of summarized away", () => {
