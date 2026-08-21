@@ -7,7 +7,7 @@ import {
   buildTechnicalReaderModel,
   renderTechnicalReaderHtml,
   renderTechnicalReaderLibraryHtml,
-} from "../artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs";
+} from "../artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const representativePlan = `---
 working_backwards_role: technical-contract
@@ -133,7 +133,7 @@ function inlineScriptIntegrity(html) {
 }
 
 test("final reports keep requested prompt and handoff content reviewable with explicit known-issue dispositions", async () => {
-  const skill = await readFile(new URL("../artifacts/1.5.6/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
+  const skill = await readFile(new URL("../artifacts/1.5.9/skills/internal/working-backwards/SKILL.md", import.meta.url), "utf8");
 
   assert.match(skill, /full text or clearly separated Reader sections/i);
   assert.match(skill, /product-convergence prompt or handoff/i);

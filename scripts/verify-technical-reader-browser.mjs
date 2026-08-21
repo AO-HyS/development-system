@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 
-const readerModulePath = join(process.cwd(), "artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs");
+const readerModulePath = join(process.cwd(), "artifacts/1.5.9/skills/internal/working-backwards/scripts/t3-reader.mjs");
 const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import(pathToFileURL(readerModulePath).href);
 
 const candidates = [

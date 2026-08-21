@@ -154,9 +154,60 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.8");
-  assert.match(packageJson.scripts["skills:sync"], /0\.15\.0/);
+  assert.equal(packageJson.version, "1.5.9");
+  assert.match(packageJson.scripts["skills:sync"], /0\.16\.0/);
   assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
+});
+
+test("contract 1.5.9 publishes complete Reader history, bounded live review, and complete architecture convergence", async () => {
+  const [manifest, contract, catalog, skill, references, ...prompts] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.9.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.9/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.16.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.9/skills/internal/working-backwards/SKILL.md"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.9/architecture-reference-pack.md"), "utf8"),
+    ...["aohys", "casa-roca", "the-barber-central", "eteria", "nutriplan"].map((name) =>
+      readFile(resolve(root, "docs", "product-convergence", `${name}.md`), "utf8"),
+    ),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+
+  assert.equal(manifest.contractVersion, "1.5.9");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.9/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.16.0.json");
+  assert.equal(catalog.catalogVersion, "0.16.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.9/skills/internal/working-backwards");
+  assert.ok(workingBackwards.variants[0].executableFiles.includes("scripts/reader-live.mjs"));
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  assert.match(contract, /complete Working Backwards history/i);
+  assert.match(contract, /tokenized, expiring Cloudflare quick tunnel/i);
+  assert.match(skill, /reader-history/);
+  assert.match(skill, /--tunnel/);
+  assert.match(skill, /coverage ledger/i);
+  assert.match(contract, /repository-wide/i);
+  assert.match(skill, /working_backwards_program: architecture-convergence/);
+  for (const dimension of [
+    "repository-map",
+    "module-boundaries",
+    "dependency-direction",
+    "file-placement",
+    "frontend-composition",
+    "component-design",
+    "backend-contracts",
+    "type-contracts",
+    "testing-strategy",
+    "documentation",
+    "performance-security",
+    "observability",
+    "migration-sequencing",
+  ]) {
+    assert.equal(references.includes(`| \`${dimension}\` |`), true, dimension);
+  }
+  assert.match(references, /Agent guardrails, (?:the )?global anti-slop policy, and Release Train design are Development System capabilities/i);
+  for (const prompt of prompts) {
+    assert.match(prompt, /working_backwards_program: architecture-convergence/);
+    assert.match(prompt, /every product-architecture dimension in the reference pack's coverage matrix/i);
+  }
 });
 
 test("contract 1.5.7 and catalog 0.14.0 compose one Topic for native questions or an equivalent chat fallback", async () => {

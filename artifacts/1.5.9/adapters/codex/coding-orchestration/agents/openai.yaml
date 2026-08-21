@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Orchestration"
+  short_description: "Run bounded, measurable Codex lanes"
+  default_prompt: "Use $coding-orchestration to choose the smallest effective execution mode and close every lane."

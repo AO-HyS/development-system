@@ -547,7 +547,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.equal(initialized[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(initialized[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.5.8");
+  assert.equal(contract.contractVersion, "1.5.9");
   assert.equal(contract.product.name, "aurora-studio");
   assert.equal(contract.product.packageName, "aurora-studio");
   assert.equal(contract.product.packageManager, "npm");
@@ -564,6 +564,27 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     "adapter-generation-does-not-call-or-enable-paid-services",
   );
   assert.equal(contract.architectureDiagnostic.effect, "proposal-only");
+  assert.deepEqual(contract.architectureBaseline.productDimensions, [
+    "repository-map",
+    "module-boundaries",
+    "dependency-direction",
+    "file-placement",
+    "frontend-composition",
+    "component-design",
+    "backend-contracts",
+    "type-contracts",
+    "testing-strategy",
+    "documentation",
+    "performance-security",
+    "observability",
+    "migration-sequencing",
+  ]);
+  assert.deepEqual(contract.architectureBaseline.developmentSystemManaged, [
+    "agent-guardrails",
+    "anti-slop-policy",
+    "release-train",
+  ]);
+  assert.equal(contract.architectureBaseline.reference, "~/.codex/development-system/architecture-reference-pack.md");
   assert.equal(
     contract.harnesses.t3code.operationalEvidence,
     "structural-inheritance-not-independently-probed",
@@ -588,7 +609,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.equal(contract.deliveryPolicy.qaSelection, "observable-risk");
   assert.equal(contract.deliveryPolicy.sharedPreview, "once-per-candidate");
   assert.deepEqual(contract.lifecycle.promotion.operations, ["merge", "release", "production"]);
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.15.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.16.0");
   assert.equal(contract.operatorPrerequisites.readinessScope, "repository-adapter-only");
   assert.deepEqual(contract.operatorPrerequisites.requiredSkills, [
     "drive-development-flow",
@@ -624,7 +645,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     assert.match(initialized[".codex/development-system/repository.md"], new RegExp(`\\$${command}`));
   }
   assert.match(initialized[".codex/development-system/repository.md"], /\$working-backwards/);
-  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.5\.8`/);
+  assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.5\.9`/);
   assert.equal(initialized[".factory/development-system/repository.md"], undefined);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
@@ -638,6 +659,9 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
     /only declares its availability and never calls or activates it/i,
   );
   assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
+  assert.match(initialized[".codex/development-system/repository.md"], /Product architecture baseline/i);
+  assert.match(initialized[".codex/development-system/repository.md"], /component.*cohesion.*not.*line count/is);
+  assert.match(initialized[".codex/development-system/repository.md"], /guardrails.*anti-slop.*Release Train.*Development System/is);
   assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
   assert.match(
     initialized[".codex/development-system/repository.md"],
@@ -760,8 +784,8 @@ test("normalization replaces only managed drift and remains deterministic", asyn
     assert.equal(after[path], contents, `${path} was not preserved`);
   }
   const contract = JSON.parse(after[".development-system/repository.json"]);
-  assert.equal(contract.contractVersion, "1.5.8");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.15.0");
+  assert.equal(contract.contractVersion, "1.5.9");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.16.0");
   assert.equal(after[".factory/development-system/repository.md"], undefined);
   assert.deepEqual(normalized.removedFiles, [".factory/development-system/repository.md"]);
   assert.equal(contract.preparation.mode, "normalize");
