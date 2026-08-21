@@ -277,6 +277,15 @@ This Seam tests callers and adapters through the same Interface. It should cover
 * Benchmarks: repeat identical fixtures and preserve model, harness, reasoning, timing, token, cost, correction and finding metadata.
 * Rollout: validate NutriPlan, The Barber Central and AOHYS individually before marking them ready; prove Escuela 360 remains unready.
 
+## Release surface classification
+
+Release Train adapters must classify changed repository surfaces before
+contacting runtime providers. Known metadata, documentation, and test-only
+changes select no deployment; known runtime changes select only their real
+consumers; missing or unknown diffs fail safe to the complete repository deploy
+set. Manual dispatch remains an explicit operator deployment. The canonical
+contract is [release-surface-classification.md](release-surface-classification.md).
+
 ### Good-test criteria
 
 * Assert externally observable behavior, authorization and evidence; do not snapshot prompts or implementation text.
