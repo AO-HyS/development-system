@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { startReaderLive } from "../artifacts/1.5.9/skills/internal/working-backwards/scripts/reader-live.mjs";
+import { startReaderLive } from "../artifacts/1.5.10/skills/internal/working-backwards/scripts/reader-live.mjs";
 
 test("the live Reader serves one tokenized private workspace and stops cleanly", async () => {
   const root = await mkdtemp(resolve(tmpdir(), "aohys-reader-live-"));

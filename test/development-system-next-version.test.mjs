@@ -154,8 +154,8 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.9");
-  assert.match(packageJson.scripts["skills:sync"], /0\.16\.0/);
+  assert.equal(packageJson.version, "1.5.10");
+  assert.match(packageJson.scripts["skills:sync"], /0\.17\.0/);
   assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
 });
 
@@ -208,6 +208,28 @@ test("contract 1.5.9 publishes complete Reader history, bounded live review, and
     assert.match(prompt, /working_backwards_program: architecture-convergence/);
     assert.match(prompt, /every product-architecture dimension in the reference pack's coverage matrix/i);
   }
+});
+
+test("contract 1.5.10 makes the Technical Reader usable from phones through desktop", async () => {
+  const [manifest, contract, catalog, reader] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.10.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.10/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.17.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.10/skills/internal/working-backwards/scripts/t3-reader.mjs"), "utf8"),
+  ]);
+  const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
+
+  assert.equal(manifest.contractVersion, "1.5.10");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.10/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.17.0.json");
+  assert.equal(catalog.catalogVersion, "0.17.0");
+  assert.equal(workingBackwards.source.path, "artifacts/1.5.10/skills/internal/working-backwards");
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
+  assert.match(contract, /320 px phones through tablets and desktop/i);
+  assert.match(contract, /labeled records on narrow phones/i);
+  assert.match(reader, /@media\(max-width:82rem\)/);
+  assert.match(reader, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(reader, /content:attr\(data-label\)/);
 });
 
 test("contract 1.5.7 and catalog 0.14.0 compose one Topic for native questions or an equivalent chat fallback", async () => {
