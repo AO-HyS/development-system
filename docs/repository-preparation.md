@@ -39,6 +39,11 @@ Any legacy `.factory/development-system/repository.md` adapter is retired becaus
 
 This baseline guides future work. Initialization itself never refactors product code, changes branch policy, installs a Release Train, configures hosting, activates paid services, or deploys.
 
+When a Release Train is installed later, its product-owned provider adapter
+must implement the Development System's
+[release surface classification](release-surface-classification.md) contract.
+Repository preparation does not invent that product-specific runtime map.
+
 ## Normalize an existing repository
 
 ```sh
