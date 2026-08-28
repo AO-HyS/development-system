@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 export const developmentStewardLaunchAgentLabel = "com.aohys.development-steward";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const artifactRoot = resolve(repositoryRoot, "artifacts/1.5.1/skills/internal/development-steward");
+const artifactRoot = resolve(repositoryRoot, "artifacts/1.5.11/skills/internal/development-steward");
 
 /** @param {unknown} error */
 function missing(error) {
@@ -242,7 +242,7 @@ export async function installDevelopmentStewardScheduler(options) {
   }));
   const state = Buffer.from(`${JSON.stringify({
     schemaVersion: 1,
-    contractVersion: "1.5.1",
+    contractVersion: "1.5.11",
     label: developmentStewardLaunchAgentLabel,
     domain: `gui/${uid}`,
     cadence: { weekday: 2, hour: 9, minute: 0 },
