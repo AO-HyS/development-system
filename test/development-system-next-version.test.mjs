@@ -154,8 +154,8 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.10");
-  assert.match(packageJson.scripts["skills:sync"], /0\.17\.0/);
+  assert.equal(packageJson.version, "1.5.11");
+  assert.match(packageJson.scripts["skills:sync"], /0\.18\.0/);
   assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
 });
 
@@ -300,4 +300,37 @@ test("contract 1.5.8 scopes architecture inference to convergence prompts and pu
   assert.match(aohysPrompt, /continue to ask.*complex product.*trade-offs/i);
   assert.match(skill, /ordinary natural-language approval/i);
   assert.match(contract, /does not make inference the global default/i);
+});
+
+test("contract 1.5.11 pins Matt Pocock v1.2.3 and restores whole-frontier grilling", async () => {
+  const [manifest, contract, catalog, grilling, stewardSkill, stewardPrompt, packageJson] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.11.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.11/contract.md"), "utf8"),
+    readFile(resolve(root, "catalog/0.18.0.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.11/skills/upstream/grilling/SKILL.md"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.11/skills/internal/development-steward/SKILL.md"), "utf8"),
+    readFile(resolve(root, "artifacts/1.5.11/skills/internal/development-steward/references/prompt.md"), "utf8"),
+    readFile(resolve(root, "package.json"), "utf8").then(JSON.parse),
+  ]);
+  const mattSkills = catalog.skills.filter((skill) => skill.source.repository === "https://github.com/mattpocock/skills");
+  const steward = catalog.skills.find((skill) => skill.logicalName === "development-steward");
+
+  assert.equal(manifest.contractVersion, "1.5.11");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.11/contract.md");
+  assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.18.0.json");
+  assert.equal(catalog.catalogVersion, "0.18.0");
+  assert.equal(packageJson.version, "1.5.11");
+  assert.equal(mattSkills.length, 35);
+  assert.equal(mattSkills.every((skill) => skill.source.commit === "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e"), true);
+  assert.match(grilling, /Ask the whole frontier in one round/i);
+  assert.match(grilling, /recommended answer/i);
+  assert.doesNotMatch(grilling, /Ask the questions one at a time/i);
+  for (const retired of ["batch-grill-me", "design-an-interface", "edit-article", "obsidian-vault", "qa", "request-refactor-plan", "ubiquitous-language", "writing-great-skills"]) {
+    assert.ok(catalog.cleanup.includes(`.agents/skills/${retired}`), retired);
+  }
+  assert.equal(steward.source.path, "artifacts/1.5.11/skills/internal/development-steward");
+  assert.match(stewardSkill, /four explicit upstream checks/i);
+  assert.match(stewardPrompt, /react-doctor[\s\S]*impeccable-cli[\s\S]*impeccable-skill[\s\S]*matt-pocock-skills/i);
+  assert.match(contract, /stable release `v1\.2\.3`/i);
+  assert.deepEqual(await validateSkillCatalog(catalog, root), []);
 });

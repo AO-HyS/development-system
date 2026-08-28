@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.17.0";
-if (version !== "0.17.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.17.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.18.0";
+if (version !== "0.18.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.18.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -19,22 +19,44 @@ await readFile(destination).then(
 const declaresPhysicalHarnesses = true;
 const supportsFactory = false;
 const baseSkillVersion = "0.2.0";
-const upstreamCommit = "9603c1cc8118d08bc1b3bf34cf714f62178dea3b";
+const upstreamSkillVersion = "1.5.11";
+const upstreamCommit = "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e";
 const upstreamPaths = {
+  "ask-matt": "skills/engineering/ask-matt",
+  "diagnosing-bugs": "skills/engineering/diagnosing-bugs",
   wayfinder: "skills/engineering/wayfinder",
   "grill-with-docs": "skills/engineering/grill-with-docs",
+  triage: "skills/engineering/triage",
+  "improve-codebase-architecture": "skills/engineering/improve-codebase-architecture",
+  "setup-matt-pocock-skills": "skills/engineering/setup-matt-pocock-skills",
+  tdd: "skills/engineering/tdd",
   grilling: "skills/productivity/grilling",
   "domain-modeling": "skills/engineering/domain-modeling",
+  "codebase-design": "skills/engineering/codebase-design",
   "to-spec": "skills/engineering/to-spec",
   "to-tickets": "skills/engineering/to-tickets",
   implement: "skills/engineering/implement",
   "code-review": "skills/engineering/code-review",
-  "diagnosing-bugs": "skills/engineering/diagnosing-bugs",
+  "resolving-merge-conflicts": "skills/engineering/resolving-merge-conflicts",
+  wizard: "skills/engineering/wizard",
   prototype: "skills/engineering/prototype",
-  handoff: "skills/productivity/handoff",
-  qa: "skills/deprecated/qa",
   research: "skills/engineering/research",
-  "setup-matt-pocock-skills": "skills/engineering/setup-matt-pocock-skills",
+  "grill-me": "skills/productivity/grill-me",
+  handoff: "skills/productivity/handoff",
+  teach: "skills/productivity/teach",
+  "to-questionnaire": "skills/productivity/to-questionnaire",
+  "wait-what": "skills/productivity/wait-what",
+  "writing-for-agents": "skills/productivity/writing-for-agents",
+  "claude-handoff": "skills/in-progress/claude-handoff",
+  "loop-me": "skills/in-progress/loop-me",
+  "setup-ts-deep-modules": "skills/in-progress/setup-ts-deep-modules",
+  "writing-beats": "skills/in-progress/writing-beats",
+  "writing-fragments": "skills/in-progress/writing-fragments",
+  "writing-shape": "skills/in-progress/writing-shape",
+  "git-guardrails-claude-code": "skills/misc/git-guardrails-claude-code",
+  "migrate-to-shoehorn": "skills/misc/migrate-to-shoehorn",
+  "scaffold-exercises": "skills/misc/scaffold-exercises",
+  "setup-pre-commit": "skills/misc/setup-pre-commit",
 };
 
 /** @param {string} directory */
@@ -92,7 +114,7 @@ async function sharedSkill(logicalName, sourceDirectory, source, executableFiles
 
 const upstreamSkills = await Promise.all(
   Object.entries(upstreamPaths).map(([logicalName, upstreamPath]) =>
-    sharedSkill(logicalName, `artifacts/${baseSkillVersion}/skills/upstream/${logicalName}`, {
+    sharedSkill(logicalName, `artifacts/${upstreamSkillVersion}/skills/upstream/${logicalName}`, {
       repository: "https://github.com/mattpocock/skills",
       commit: upstreamCommit,
       path: upstreamPath,
@@ -242,10 +264,10 @@ const nextInternalNames = [
   "posthog-observability",
 ];
 const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName) =>
-  sharedSkill(logicalName, `artifacts/${logicalName === "development-steward" ? "1.5.1" : "1.5.0"}/skills/internal/${logicalName}`, {
+  sharedSkill(logicalName, `artifacts/${logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`, {
         repository: "https://github.com/AO-HyS/development-system",
         commit: "$INSTALL_COMMIT",
-        path: `artifacts/${logicalName === "development-steward" ? "1.5.1" : "1.5.0"}/skills/internal/${logicalName}`,
+        path: `artifacts/${logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`,
   }),
 ));
 
@@ -279,6 +301,14 @@ const catalog = {
     ".codex/skills/find-skills",
     ".codex/skills/vercel-react-best-practices",
     ".codex/skills/work-multiple",
+    ".agents/skills/batch-grill-me",
+    ".agents/skills/design-an-interface",
+    ".agents/skills/edit-article",
+    ".agents/skills/obsidian-vault",
+    ".agents/skills/qa",
+    ".agents/skills/request-refactor-plan",
+    ".agents/skills/ubiquitous-language",
+    ".agents/skills/writing-great-skills",
     ".factory/skills/extract",
     ".factory/skills/email-best-practices-repo",
     ".factory/skills/frontend-design",
