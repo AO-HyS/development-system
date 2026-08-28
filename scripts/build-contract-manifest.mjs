@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.10";
-if (version !== "1.5.10") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.10");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.11";
+if (version !== "1.5.11") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.11");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 await readFile(destination).then(
@@ -22,8 +22,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.5.9";
-const catalogVersion = "0.17.0";
+const previousVersion = "1.5.10";
+const catalogVersion = "0.18.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
@@ -39,7 +39,7 @@ const qualityPath = "artifacts/1.5.0/quality/stack-quality-profiles.json";
 const qualityHash = sha256(await readFile(resolve(repositoryRoot, qualityPath)));
 const stewardSchedulePath = "artifacts/1.5.1/steward/schedule.json";
 const stewardScheduleHash = sha256(await readFile(resolve(repositoryRoot, stewardSchedulePath)));
-const architectureReferencePath = `artifacts/${version}/architecture-reference-pack.md`;
+const architectureReferencePath = "artifacts/1.5.10/architecture-reference-pack.md";
 const architectureReferenceHash = sha256(await readFile(resolve(repositoryRoot, architectureReferencePath)));
 const manifest = {
   ...previous,

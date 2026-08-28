@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.10";
-const skillCatalogVersion = "0.17.0";
+const contractVersion = "1.5.11";
+const skillCatalogVersion = "0.18.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
