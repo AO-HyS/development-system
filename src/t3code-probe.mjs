@@ -444,6 +444,14 @@ function hasIndependentLoadEvidence(report) {
   const acceptedCommands = (report?.approvalEvidence ?? []).filter((/** @type {any} */ approval) =>
     approval.requestKind === "command" && approval.decision === "accept"
   );
+  /** @param {string} path */
+  const canonicalPath = (path) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return path;
+    }
+  };
   const approvedTargets = new Set();
   for (const approval of acceptedCommands) {
     const actions = classifyReadOnlyProbeCommand(approval.detail);
@@ -454,7 +462,7 @@ function hasIndependentLoadEvidence(report) {
       const targets = tokens.slice(1);
       if (targets.length === 0 || targets.some((target) => target.startsWith("-"))) continue;
       for (const target of targets) {
-        if (isAbsolute(target)) approvedTargets.add(target);
+        if (isAbsolute(target)) approvedTargets.add(canonicalPath(target));
       }
     }
   }
@@ -467,13 +475,13 @@ function hasIndependentLoadEvidence(report) {
     .filter((/** @type {any} */ file) =>
       typeof file?.path === "string" && /^[a-f0-9]{64}$/.test(String(file?.sha256 ?? ""))
     )
-    .map((/** @type {any} */ file) => file.path));
+    .map((/** @type {any} */ file) => canonicalPath(file.path)));
   const requiredTargetPaths = requiredSuffixes.map((suffix) =>
     [...allowedTargets].find((path) => path.endsWith(suffix))
   );
   return commands.length === 0 && acceptedCommands.length > 0 && validHostAudit &&
     requiredTargetPaths.every((path) => typeof path === "string" && approvedTargets.has(path)) &&
-    approvedTargets.has(hostAudit.outputPath) &&
+    approvedTargets.has(canonicalPath(hostAudit.outputPath)) &&
     [...approvedTargets].every((path) => allowedTargets.has(path)) &&
     acceptedCommands.every((/** @type {any} */ approval) => isReadOnlyProbeCommand(approval.detail));
 }
