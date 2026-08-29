@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.18.0";
-if (version !== "0.18.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.18.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.19.0";
+if (version !== "0.19.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.19.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 await readFile(destination).then(
@@ -132,7 +132,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.5.0/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.5.12/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -154,16 +154,16 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = "1.5.7";
-const adapterContract = "bounded-measurable-orchestration-v4";
-const codexAdapterSource = `artifacts/${orchestrationVersion}/adapters/codex/coding-orchestration`;
+const orchestrationVersion = "1.5.12";
+const adapterContract = "fast-model-first-orchestration-v5";
+const codexAdapterSource = `artifacts/${orchestrationVersion}/skills/internal/coding-orchestration`;
 const orchestration = {
   logicalName: "coding-orchestration",
   ...(declaresPhysicalHarnesses ? { physicalHarnesses: ["codex"] } : {}),
   source: {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: `artifacts/${orchestrationVersion}/adapters`,
+    path: codexAdapterSource,
   },
   variants: [
     {
