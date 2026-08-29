@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coding Orchestration"
+  short_description: "Fast-model-first verified agent lanes"
+  default_prompt: "Use $coding-orchestration to keep ordinary work direct and route non-trivial slices through bounded Luna lanes with Sol review."

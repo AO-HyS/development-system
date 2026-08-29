@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.11";
-const skillCatalogVersion = "0.18.0";
+const contractVersion = "1.5.12";
+const skillCatalogVersion = "0.19.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -762,6 +762,8 @@ function replaceAdapterSection(contents, target, replacement) {
 function adapterContentsWithProviderReadiness(audit, harness) {
   const prefix = "$";
   let contents = adapterContents(audit, harness);
+  // Keep the generated adapter aligned with the canonical catalog version.
+  contents = contents.replaceAll("0.5.1", skillCatalogVersion);
   contents = replaceAdapterSection(
     contents,
     `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.`,
@@ -769,7 +771,7 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   );
   contents = replaceAdapterSection(
     contents,
-    "Synchronize global skill catalog `0.5.1` and verify that Codex discovers these commands plus `drive-development-flow`.",
+    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`.`,
     `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`working-backwards\`, \`parallel-work\`, \`orchestration-pilot\`, and \`check-in\`. T3 Code consumes the Codex-compatible surface.`,
   );
   contents = replaceAdapterSection(

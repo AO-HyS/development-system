@@ -12,6 +12,7 @@ const hardRiskPatterns = Object.freeze([
   ["external-provider", /\b(?:provider|proveedor|webhook)\b/iu],
 ]);
 const simpleRequestPattern = /\b(?:solo|solamente|nada mas|just|simply)\b[\s\S]{0,48}\b(?:implementa|implement|haz|make|cambia|change|corrige|fix)\b|\b(?:implementacion|implementation)\s+(?:simple|directa|direct)\b/iu;
+const workingBackwardsIntentPattern = /\b(?:working[ -]?backwards|work[ -]?backwards|future customer story|amazon working backwards|product grill|technical grill)\b|\$working-backwards\b/iu;
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
@@ -121,12 +122,20 @@ export function routeDefinition(input) {
   const selectedProfile = hasHardRisk ? "Complex" : requested === "Quick" && !quickEligible(input) ? "Standard" : requested;
   const simpleRequested = input.simpleImplementationRequested === true || simpleRequestPattern.test(semanticRequest);
   const simpleEligible = simpleRequested && quickEligible(input) && !hasHardRisk;
+  const workingBackwardsRequested = input.workingBackwardsRequested === true
+    || workingBackwardsIntentPattern.test(semanticRequest)
+    || input.productGrill !== undefined
+    || input.customerStory !== undefined
+    || input.technicalGrill !== undefined;
 
   let currentStage;
   let nextAction;
   if (simpleEligible) {
     currentStage = "simple-implementation";
     nextAction = "Request Implement Preview for the explicit simple slice";
+  } else if (!workingBackwardsRequested) {
+    currentStage = "implementation";
+    nextAction = "Implement the requested change directly; invoke a definition flow only when you want one";
   } else if (!approved(input.productGrill)) {
     currentStage = "product-grill";
     nextAction = "Run Product Grill With Docs by Topic";
@@ -165,7 +174,8 @@ export function routeDefinition(input) {
     nextAction,
     activeTopics,
     artifactCandidate: currentStage === "customer-story" ? storyCandidate(input.productGrill) : null,
-    requiredArtifacts: simpleEligible ? [] : artifactsFor(selectedProfile),
+    requiredArtifacts: simpleEligible || currentStage === "implementation" ? [] : artifactsFor(selectedProfile),
+    workingBackwardsRequested,
     implementationAuthorized: false,
     externalWriteIntents: [],
     externalSideEffects: [],

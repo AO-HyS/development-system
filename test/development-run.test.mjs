@@ -124,20 +124,54 @@ test("orchestration evidence caps normal concurrency and closes every lane", () 
   const observed = buildDevelopmentRun({
     ...identity,
     orchestration: { mode: "multi-agent-v2", concurrentAgents: 3, lanes: [
-      { id: "writer", status: "integrated" },
-      { id: "review", status: "discarded" },
-      { id: "qa", status: "blocked-with-owner", owner: "release-manager" },
+      { id: "writer", status: "integrated", role: "fast_implementer", resolvedModel: "gpt-5.3-codex-spark", depth: 1, isWriter: true, writerOwnership: "src/", correctionCount: 0 },
+      { id: "review", status: "discarded", role: "reviewer", resolvedModel: "gpt-5.6-sol", depth: 1, isWriter: false, correctionCount: 1 },
+      { id: "qa", status: "blocked-with-owner", owner: "release-manager", role: "test_runner", resolvedModel: "gpt-5.3-codex-spark", depth: 1, isWriter: false, writerOwnership: null, correctionCount: 0 },
     ] },
     events: [{ id: "implementation", phase: "implementation", kind: "functional-evidence", monotonicMs: 0 }],
   });
   assert.equal(observed.valid, true);
   assert.equal(observed.orchestration.allLanesTerminal, true);
+  assert.equal(observed.orchestration.writerCount, 1);
+  assert.equal(observed.orchestration.lanes[0].writerOwnership, "src/");
 
   const invalid = buildDevelopmentRun({
     ...identity,
-    orchestration: { mode: "multi-agent-v2", concurrentAgents: 4, lanes: [{ id: "writer", status: "running" }] },
+    orchestration: { mode: "multi-agent-v2", concurrentAgents: 4, lanes: [{ id: "writer", status: "running", role: "fast_implementer", resolvedModel: "inherit", depth: 2, isWriter: true, correctionCount: -1 }] },
     events: [{ id: "implementation", phase: "implementation", kind: "functional-evidence", monotonicMs: 0 }],
   });
   assert.equal(invalid.valid, false);
-  assert.match(invalid.errors.join("\n"), /three concurrent agents|not terminal/);
+  assert.match(invalid.errors.join("\n"), /three concurrent agents|not terminal|resolvedModel|depth|correctionCount/);
+});
+
+test("multiple writers require explicit disjoint ownership and integration order", () => {
+  const base = {
+    ...identity,
+    orchestration: {
+      mode: "multi-agent-v2",
+      concurrentAgents: 2,
+      lanes: [
+        { id: "one", status: "integrated", role: "fast_implementer", resolvedModel: "luna", depth: 1, isWriter: true, writerOwnership: "src/one", correctionCount: 0 },
+        { id: "two", status: "integrated", role: "fast_implementer", resolvedModel: "luna", depth: 1, isWriter: true, writerOwnership: "src/two", correctionCount: 0 },
+      ],
+    },
+    events: [{ id: "implementation", phase: "implementation", kind: "functional-evidence", monotonicMs: 0 }],
+  };
+  const rejected = buildDevelopmentRun(base);
+  assert.equal(rejected.valid, false);
+  assert.match(rejected.errors.join("\n"), /multiple writers/);
+  const accepted = buildDevelopmentRun({
+    ...base,
+    orchestration: {
+      ...base.orchestration,
+      parallelWriterException: {
+        disjointOwnership: true,
+        justification: "separate packages",
+        integrationOrder: ["one", "two"],
+      },
+    },
+  });
+  assert.equal(accepted.valid, true);
+  assert.equal(accepted.orchestration.writerCount, 2);
+  assert.deepEqual(accepted.orchestration.parallelWriterException.integrationOrder, ["one", "two"]);
 });

@@ -242,7 +242,7 @@ export async function installDevelopmentStewardScheduler(options) {
   }));
   const state = Buffer.from(`${JSON.stringify({
     schemaVersion: 1,
-    contractVersion: "1.5.11",
+    contractVersion: "1.5.12",
     label: developmentStewardLaunchAgentLabel,
     domain: `gui/${uid}`,
     cadence: { weekday: 2, hour: 9, minute: 0 },
