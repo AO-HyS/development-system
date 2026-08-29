@@ -453,7 +453,9 @@ function hasIndependentLoadEvidence(report) {
       if (!tokens || tokens[0].replace(/^\/usr\/bin\//, "") !== "cat") continue;
       const targets = tokens.slice(1);
       if (targets.length === 0 || targets.some((target) => target.startsWith("-"))) continue;
-      for (const target of targets) approvedTargets.add(target);
+      for (const target of targets) {
+        if (isAbsolute(target)) approvedTargets.add(target);
+      }
     }
   }
   const requiredSuffixes = [

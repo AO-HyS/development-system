@@ -212,6 +212,7 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   noActivityPublishing.approvalEvidence = [
     ...approvedSkillPaths.map((path) => ({ requestKind: "command", detail: `cat ${path}`, decision: "accept" })),
     { requestKind: "command", detail: "cat /tmp/skill-audit.json", decision: "accept" },
+    { requestKind: "command", detail: "cat docs/spec.md", decision: "accept" },
   ];
   noActivityPublishing.toolEvidence.completedCommands = [];
   assert.equal(evaluateT3CodeProbe(noActivityPublishing), true);
@@ -235,6 +236,14 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   const unboundEvidence = structuredClone(noActivityPublishing);
   unboundEvidence.hostEvidence.skillAudit.evidencePath = "/tmp/other-evidence.json";
   assert.equal(evaluateT3CodeProbe(unboundEvidence), false);
+
+  const unexpectedAbsoluteRead = structuredClone(noActivityPublishing);
+  unexpectedAbsoluteRead.approvalEvidence.push({
+    requestKind: "command",
+    detail: "cat /etc/passwd",
+    decision: "accept",
+  });
+  assert.equal(evaluateT3CodeProbe(unexpectedAbsoluteRead), false);
 });
 
 test("T3Code probe fails closed when a lifecycle skill or repository invariant is missing", () => {
