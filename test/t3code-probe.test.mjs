@@ -185,6 +185,16 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   noApprovalRequired.approvalEvidence = [];
   assert.equal(evaluateT3CodeProbe(noApprovalRequired), true);
   assert.equal(evaluateT3CodeProbe(report({ healthy: true, logicalSkills: 20 })), true);
+  const currentT3Shape = report({ value: true, status: "healthy", logicalSkills: 55 });
+  currentT3Shape.observed.routerLoaded = {
+    skill: "drive-development-flow",
+    loaded: true,
+    route: "audit-only",
+  };
+  assert.equal(evaluateT3CodeProbe(currentT3Shape), true);
+  const contradictoryT3Shape = structuredClone(currentT3Shape);
+  contradictoryT3Shape.observed.skillAuditHealthy.status = "unhealthy";
+  assert.equal(evaluateT3CodeProbe(contradictoryT3Shape), false);
   const nativeShape = report({ status: true, logicalSkills: 20 });
   nativeShape.observed.routerLoaded = ["drive-development-flow", "coding-orchestration"];
   nativeShape.observed.influenceSignatures["flow-code-review"] =

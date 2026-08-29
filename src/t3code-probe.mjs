@@ -483,6 +483,10 @@ export function evaluateT3CodeProbe(report) {
   const observed = report?.observed ?? {};
   const skillAuditHealthy =
     observed.skillAuditHealthy === true ||
+    (
+      observed.skillAuditHealthy?.value === true &&
+      observed.skillAuditHealthy?.status === "healthy"
+    ) ||
     observed.skillAuditHealthy?.healthy === true ||
     observed.skillAuditHealthy?.status === true;
   const routerLoaded =
@@ -490,6 +494,10 @@ export function evaluateT3CodeProbe(report) {
     observed.routerLoaded === "drive-development-flow" ||
     (
       observed.routerLoaded?.name === "drive-development-flow" &&
+      observed.routerLoaded?.loaded === true
+    ) ||
+    (
+      observed.routerLoaded?.skill === "drive-development-flow" &&
       observed.routerLoaded?.loaded === true
     ) ||
     (
