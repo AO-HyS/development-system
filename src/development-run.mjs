@@ -27,6 +27,11 @@ function nonNegativeNumber(value) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0;
 }
 
+/** @param {unknown} value @returns {value is number} */
+function nonNegativeInteger(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 /** @param {{start: number, end: number}[]} intervals */
 function mergedIntervals(intervals) {
   const sorted = intervals
@@ -132,10 +137,40 @@ export function buildDevelopmentRun(input) {
     } else if (orchestration.concurrentAgents > 3 && (typeof orchestration.concurrencyException !== "string" || !orchestration.concurrencyException.trim())) {
       errors.push("more than three concurrent agents requires orchestration.concurrencyException");
     }
+    /** @type {Record<string, unknown>[]} */
+    const writers = [];
     for (const [index, lane] of lanes.entries()) {
       if (typeof lane.id !== "string" || !lane.id.trim()) errors.push(`orchestration.lanes[${index}].id is required`);
       if (!laneStates.has(String(lane.status))) errors.push(`orchestration.lanes[${index}].status is not terminal`);
       if (lane.status === "blocked-with-owner" && (typeof lane.owner !== "string" || !lane.owner.trim())) errors.push(`orchestration.lanes[${index}].owner is required`);
+      if (typeof lane.role !== "string" || !lane.role.trim()) errors.push(`orchestration.lanes[${index}].role is required`);
+      if (typeof lane.resolvedModel !== "string" || !lane.resolvedModel.trim() || lane.resolvedModel === "inherit") errors.push(`orchestration.lanes[${index}].resolvedModel must be an explicit runtime model`);
+      if (!nonNegativeInteger(lane.depth) || lane.depth < 1) errors.push(`orchestration.lanes[${index}].depth must be a positive integer`);
+      if (orchestration.mode === "multi-agent-v2" && lane.depth !== 1) errors.push(`orchestration.lanes[${index}].depth must be 1 for multi-agent-v2`);
+      if (typeof lane.isWriter !== "boolean") errors.push(`orchestration.lanes[${index}].isWriter must be boolean`);
+      if (lane.isWriter === true) {
+        writers.push(lane);
+        if (typeof lane.writerOwnership !== "string" || !lane.writerOwnership.trim()) errors.push(`orchestration.lanes[${index}].writerOwnership is required for writers`);
+      } else if (lane.writerOwnership !== undefined && lane.writerOwnership !== null && (typeof lane.writerOwnership !== "string" || !lane.writerOwnership.trim())) {
+        errors.push(`orchestration.lanes[${index}].writerOwnership must be empty for non-writers`);
+      }
+      if (!nonNegativeInteger(lane.correctionCount)) errors.push(`orchestration.lanes[${index}].correctionCount must be a non-negative integer`);
+    }
+    if (writers.length > 1) {
+      const exception = isRecord(orchestration.parallelWriterException) ? orchestration.parallelWriterException : {};
+      const integrationOrder = Array.isArray(exception.integrationOrder) ? exception.integrationOrder : [];
+      const writerIds = writers.map((lane) => lane.id);
+      const completeIntegrationOrder = integrationOrder.length === writerIds.length &&
+        integrationOrder.every((id) => typeof id === "string" && writerIds.includes(id)) &&
+        new Set(integrationOrder).size === writerIds.length;
+      if (
+        exception.disjointOwnership !== true ||
+        typeof exception.justification !== "string" ||
+        !exception.justification.trim() ||
+        !completeIntegrationOrder
+      ) {
+        errors.push("multiple writers require explicit disjoint ownership, justification, and complete integrationOrder");
+      }
     }
   }
 
@@ -241,7 +276,25 @@ export function buildDevelopmentRun(input) {
       status: "observed",
       mode: orchestration.mode,
       concurrentAgents: orchestration.concurrentAgents,
-      lanes: lanes.map((lane) => ({ id: lane.id, status: lane.status, owner: lane.owner ?? null })),
+      lanes: lanes.map((lane) => ({
+        id: lane.id,
+        status: lane.status,
+        owner: lane.owner ?? null,
+        role: lane.role,
+        resolvedModel: lane.resolvedModel,
+        depth: lane.depth,
+        isWriter: lane.isWriter,
+        writerOwnership: lane.writerOwnership ?? null,
+        correctionCount: lane.correctionCount,
+      })),
+      writerCount: lanes.filter((lane) => lane.isWriter === true).length,
+      parallelWriterException: isRecord(orchestration.parallelWriterException) ? {
+        disjointOwnership: orchestration.parallelWriterException.disjointOwnership === true,
+        justification: orchestration.parallelWriterException.justification ?? null,
+        integrationOrder: Array.isArray(orchestration.parallelWriterException.integrationOrder)
+          ? [...orchestration.parallelWriterException.integrationOrder]
+          : [],
+      } : null,
       allLanesTerminal: lanes.every((lane) => laneStates.has(String(lane.status))),
     } : { status: "unproven", mode: null, concurrentAgents: null, lanes: [], allLanesTerminal: null },
     consumers: ["check-in", "development-steward", "release-train"],

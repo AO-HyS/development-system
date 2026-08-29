@@ -1,0 +1,4 @@
+interface:
+  display_name: "Drive Development Flow"
+  short_description: "Route requests directly or through opt-in definition"
+  default_prompt: "Use $drive-development-flow to choose the smallest user-requested stage and fast verified execution path."

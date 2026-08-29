@@ -131,13 +131,12 @@ test("contract 1.5.5 and catalog 0.12.0 install the offline Reader patch immutab
 });
 
 test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report details readable", async () => {
-  const [manifest, contract, catalog, reader, skill, packageJson, readme] = await Promise.all([
+  const [manifest, contract, catalog, reader, skill, readme] = await Promise.all([
     readFile(resolve(root, "manifests/1.5.6.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.6/contract.md"), "utf8"),
     readFile(resolve(root, "catalog/0.13.0.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.6/skills/internal/working-backwards/scripts/t3-reader.mjs"), "utf8"),
     readFile(resolve(root, "artifacts/1.5.6/skills/internal/working-backwards/SKILL.md"), "utf8"),
-    readFile(resolve(root, "package.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "README.md"), "utf8"),
   ]);
   const workingBackwards = catalog.skills.find((entry) => entry.logicalName === "working-backwards");
@@ -154,8 +153,6 @@ test("contract 1.5.6 and catalog 0.13.0 keep wide diagrams and final report deta
   assert.match(contract, /Product and agent architecture.*Convex backend.*Observability.*Release Train/is);
   assert.match(reader, /minimumReadableScale=\.875/);
   assert.match(skill, /Known issues/);
-  assert.equal(packageJson.version, "1.5.11");
-  assert.match(packageJson.scripts["skills:sync"], /0\.18\.0/);
   assert.match(readme, /`1\.5\.6` keeps wide diagrams readable/);
 });
 
@@ -303,14 +300,13 @@ test("contract 1.5.8 scopes architecture inference to convergence prompts and pu
 });
 
 test("contract 1.5.11 pins Matt Pocock v1.2.3 and restores whole-frontier grilling", async () => {
-  const [manifest, contract, catalog, grilling, stewardSkill, stewardPrompt, packageJson] = await Promise.all([
+  const [manifest, contract, catalog, grilling, stewardSkill, stewardPrompt] = await Promise.all([
     readFile(resolve(root, "manifests/1.5.11.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.11/contract.md"), "utf8"),
     readFile(resolve(root, "catalog/0.18.0.json"), "utf8").then(JSON.parse),
     readFile(resolve(root, "artifacts/1.5.11/skills/upstream/grilling/SKILL.md"), "utf8"),
     readFile(resolve(root, "artifacts/1.5.11/skills/internal/development-steward/SKILL.md"), "utf8"),
     readFile(resolve(root, "artifacts/1.5.11/skills/internal/development-steward/references/prompt.md"), "utf8"),
-    readFile(resolve(root, "package.json"), "utf8").then(JSON.parse),
   ]);
   const mattSkills = catalog.skills.filter((skill) => skill.source.repository === "https://github.com/mattpocock/skills");
   const steward = catalog.skills.find((skill) => skill.logicalName === "development-steward");
@@ -319,7 +315,6 @@ test("contract 1.5.11 pins Matt Pocock v1.2.3 and restores whole-frontier grilli
   assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath, "artifacts/1.5.11/contract.md");
   assert.equal(manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath, "catalog/0.18.0.json");
   assert.equal(catalog.catalogVersion, "0.18.0");
-  assert.equal(packageJson.version, "1.5.11");
   assert.equal(mattSkills.length, 35);
   assert.equal(mattSkills.every((skill) => skill.source.commit === "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e"), true);
   assert.match(grilling, /Ask the whole frontier in one round/i);

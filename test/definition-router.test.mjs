@@ -18,12 +18,18 @@ const quickEvidence = {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliPath = resolve(repositoryRoot, "bin", "development-system.mjs");
 
-test("definition begins with a non-technical Product Grill and then a story-driven Technical Grill", () => {
+test("ordinary feature language stays direct while explicit Working Backwards starts Product Grill", () => {
   const initial = routeDefinition({ request: "Quiero crear una nueva funcionalidad" });
-  assert.equal(initial.currentStage, "product-grill");
+  assert.equal(initial.currentStage, "implementation");
+  assert.deepEqual(initial.requiredArtifacts, []);
+  assert.deepEqual(initial.activeTopics, []);
+
+  const explicit = routeDefinition({ request: "Quiero usar Working Backwards para esta funcionalidad" });
+  assert.equal(explicit.currentStage, "product-grill");
+  assert.equal(explicit.workingBackwardsRequested, true);
   assert.equal(initial.selectedProfile, "Standard");
 
-  assert.deepEqual(initial.activeTopics.map((topic) => topic.id), ["actor", "problem", "outcome", "experience", "boundaries"]);
+  assert.deepEqual(explicit.activeTopics.map((topic) => topic.id), ["actor", "problem", "outcome", "experience", "boundaries"]);
 
   const story = routeDefinition({ productGrill: { status: "approved", actor: "admin", problem: "pierde contexto", outcome: "retoma el trabajo", experience: "continúa sin reconstruir nada", boundaries: ["sin implementación"] } });
   assert.equal(story.currentStage, "customer-story");
@@ -69,7 +75,7 @@ test("natural-language simple implementation fails closed without complete Quick
   assert.equal(denied.simpleImplementation.requested, true);
   assert.equal(denied.simpleImplementation.eligible, false);
   assert.equal(denied.simpleImplementation.deniedReason, "quick-evidence-incomplete");
-  assert.equal(denied.currentStage, "product-grill");
+  assert.equal(denied.currentStage, "implementation");
 
   const allowed = routeDefinition({ request: "Solo implementa este cambio", quickEvidence });
   assert.equal(allowed.simpleImplementation.eligible, true);
