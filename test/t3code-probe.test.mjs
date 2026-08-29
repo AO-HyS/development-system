@@ -227,6 +227,27 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   noActivityPublishing.toolEvidence.completedCommands = [];
   assert.equal(evaluateT3CodeProbe(noActivityPublishing), true);
 
+  const aliasDirectory = mkdtempSync(join(tmpdir(), "t3-probe-path-alias-"));
+  try {
+    const actualAuditPath = join(aliasDirectory, "skill-audit.json");
+    const aliasAuditPath = join(aliasDirectory, "skill-audit-alias.json");
+    writeFileSync(actualAuditPath, `${JSON.stringify({ ok: true })}\n`);
+    symlinkSync(actualAuditPath, aliasAuditPath);
+    const aliasedAudit = structuredClone(noActivityPublishing);
+    aliasedAudit.hostEvidence.skillAudit.outputPath = aliasAuditPath;
+    aliasedAudit.allowedFileReads = aliasedAudit.allowedFileReads
+      .filter((file) => file.path !== "/tmp/skill-audit.json")
+      .concat({ path: actualAuditPath, sha256: "c".repeat(64) });
+    aliasedAudit.approvalEvidence = aliasedAudit.approvalEvidence.map((approval) =>
+      approval.detail === "cat /tmp/skill-audit.json"
+        ? { ...approval, detail: `cat ${aliasAuditPath}` }
+        : approval
+    );
+    assert.equal(evaluateT3CodeProbe(aliasedAudit), true);
+  } finally {
+    rmSync(aliasDirectory, { recursive: true, force: true });
+  }
+
   const falselyMissingActivity = structuredClone(noActivityPublishing);
   falselyMissingActivity.application.environmentCapabilities.agentActivityPublishing = true;
   assert.equal(evaluateT3CodeProbe(falselyMissingActivity), false);
