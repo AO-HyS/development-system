@@ -383,13 +383,15 @@ export async function pollT3CodeThread(input) {
 function hasIndependentLoadEvidence(report) {
   const commands = report?.toolEvidence?.completedCommands ?? [];
   const commandText = commands.map((/** @type {any} */ entry) => entry.command).join("\n");
-  const routerRead = commandText.includes("/drive-development-flow/SKILL.md");
-  const orchestrationRead = commandText.includes("/coding-orchestration/SKILL.md");
-  const lifecycleReads = requiredT3CodeLifecycleSkills.every((skill) =>
-    commandText.includes(`/${skill}/SKILL.md`)
-  );
   const hostAudit = report?.hostEvidence?.skillAudit;
-  const skillAudit =
+  const allowedFiles = Array.isArray(report?.allowedFileReads) ? report.allowedFileReads : [];
+  const evidenceArgumentIndex = Array.isArray(hostAudit?.command)
+    ? hostAudit.command.indexOf("--evidence")
+    : -1;
+  const boundEvidence = allowedFiles.find((/** @type {any} */ file) =>
+    file.path === hostAudit?.evidencePath
+  );
+  const validHostAudit =
     hostAudit?.exitCode === 0 &&
     hostAudit?.healthy === true &&
     hostAudit?.result?.ok === true &&
@@ -400,14 +402,19 @@ function hasIndependentLoadEvidence(report) {
       .digest("hex") === hostAudit.outputSha256 &&
     typeof hostAudit?.evidenceSha256 === "string" &&
     /^[a-f0-9]{64}$/.test(hostAudit.evidenceSha256) &&
+    evidenceArgumentIndex >= 0 &&
+    hostAudit.command[evidenceArgumentIndex + 1] === hostAudit.evidencePath &&
+    boundEvidence?.sha256 === hostAudit.evidenceSha256 &&
     Array.isArray(hostAudit?.command) &&
     hostAudit.command[0] === "./bin/development-system" &&
     hostAudit.command[1] === "audit-skills" &&
-    hostAudit.command.includes("--evidence") &&
-    commands.some((/** @type {any} */ entry) =>
-      entry.exitCode === 0 &&
-      entry.command.includes(hostAudit.outputPath)
-    );
+    hostAudit.command.includes("--evidence");
+  /** @param {string} text */
+  const requiredReads = (text) =>
+    text.includes("/drive-development-flow/SKILL.md") &&
+    text.includes("/coding-orchestration/SKILL.md") &&
+    requiredT3CodeLifecycleSkills.every((skill) => text.includes(`/${skill}/SKILL.md`)) &&
+    text.includes(hostAudit?.outputPath ?? "\u0000");
   const commandsSucceeded = commands.length > 0 &&
     commands.every((/** @type {any} */ entry) => entry.exitCode === 0);
   const observedActions = commands.every((/** @type {any} */ entry) =>
@@ -429,8 +436,44 @@ function hasIndependentLoadEvidence(report) {
     return classification !== null &&
       JSON.stringify(classification) === JSON.stringify(entry.policyActions);
   });
-  return routerRead && orchestrationRead && lifecycleReads && skillAudit &&
+  const completedEvidence = requiredReads(commandText) && validHostAudit &&
     commandsSucceeded && observedActions && classifiedActions && commandsAllowed;
+  if (completedEvidence) return true;
+
+  if (report?.application?.environmentCapabilities?.agentActivityPublishing !== false) return false;
+  const acceptedCommands = (report?.approvalEvidence ?? []).filter((/** @type {any} */ approval) =>
+    approval.requestKind === "command" && approval.decision === "accept"
+  );
+  const approvedTargets = new Set();
+  for (const approval of acceptedCommands) {
+    const actions = classifyReadOnlyProbeCommand(approval.detail);
+    if (!actions) return false;
+    for (const action of actions) {
+      const tokens = tokenizeShellWords(action.command);
+      if (!tokens || tokens[0].replace(/^\/usr\/bin\//, "") !== "cat") continue;
+      const targets = tokens.slice(1);
+      if (targets.length === 0 || targets.some((target) => target.startsWith("-"))) continue;
+      for (const target of targets) approvedTargets.add(target);
+    }
+  }
+  const requiredSuffixes = [
+    "/drive-development-flow/SKILL.md",
+    "/coding-orchestration/SKILL.md",
+    ...requiredT3CodeLifecycleSkills.map((skill) => `/${skill}/SKILL.md`),
+  ];
+  const allowedTargets = new Set(allowedFiles
+    .filter((/** @type {any} */ file) =>
+      typeof file?.path === "string" && /^[a-f0-9]{64}$/.test(String(file?.sha256 ?? ""))
+    )
+    .map((/** @type {any} */ file) => file.path));
+  const requiredTargetPaths = requiredSuffixes.map((suffix) =>
+    [...allowedTargets].find((path) => path.endsWith(suffix))
+  );
+  return commands.length === 0 && acceptedCommands.length > 0 && validHostAudit &&
+    requiredTargetPaths.every((path) => typeof path === "string" && approvedTargets.has(path)) &&
+    approvedTargets.has(hostAudit.outputPath) &&
+    [...approvedTargets].every((path) => allowedTargets.has(path)) &&
+    acceptedCommands.every((/** @type {any} */ approval) => isReadOnlyProbeCommand(approval.detail));
 }
 
 /** @param {any} report */
@@ -442,6 +485,7 @@ export function evaluateT3CodeProbe(report) {
     observed.skillAuditHealthy?.status === true;
   const routerLoaded =
     observed.routerLoaded === true ||
+    observed.routerLoaded === "drive-development-flow" ||
     (
       observed.routerLoaded?.name === "drive-development-flow" &&
       observed.routerLoaded?.loaded === true

@@ -95,6 +95,8 @@ function report(skillAuditHealthy = true) {
     "cat /tmp/skill-audit.json";
   const auditResult = { ok: true };
   const auditOutput = `${JSON.stringify(auditResult)}\n`;
+  const evidencePath = "/tmp/evidence.json";
+  const evidenceSha256 = "a".repeat(64);
   return {
     contractVersion: "1.5.3",
     catalogVersion: "0.11.0",
@@ -107,7 +109,7 @@ function report(skillAuditHealthy = true) {
       detail: "cat /Users/test/.agents/skills/wayfinder/SKILL.md",
       decision: "accept",
     }],
-    allowedFileReads: [],
+    allowedFileReads: [{ path: evidencePath, sha256: evidenceSha256 }],
     observedThreadModel: { model: "gpt-5.6-sol" },
     observed: {
       routerLoaded: true,
@@ -126,11 +128,12 @@ function report(skillAuditHealthy = true) {
     },
     hostEvidence: {
       skillAudit: {
-        command: ["./bin/development-system", "audit-skills", "--evidence", "evidence/current.json", "--json"],
+        command: ["./bin/development-system", "audit-skills", "--evidence", evidencePath, "--json"],
         exitCode: 0,
         outputPath: "/tmp/skill-audit.json",
         outputSha256: createHash("sha256").update(auditOutput).digest("hex"),
-        evidenceSha256: "a".repeat(64),
+        evidencePath,
+        evidenceSha256,
         healthy: true,
         result: auditResult,
       },
@@ -193,6 +196,45 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
   nativeShape.observed.influenceSignatures["flow-implement"] =
     "Pin one binary done condition and preserve stop boundaries.";
   assert.equal(evaluateT3CodeProbe(nativeShape), true);
+
+  const noActivityPublishing = report(true);
+  noActivityPublishing.application = { environmentCapabilities: { agentActivityPublishing: false } };
+  noActivityPublishing.observed.routerLoaded = "drive-development-flow";
+  const approvedSkillPaths = [
+    "/Users/test/.agents/skills/drive-development-flow/SKILL.md",
+    "/Users/test/.agents/skills/coding-orchestration/SKILL.md",
+    ...requiredT3CodeLifecycleSkills.map((skill) => `/Users/test/.agents/skills/${skill}/SKILL.md`),
+  ];
+  noActivityPublishing.allowedFileReads.push(
+    ...approvedSkillPaths.map((path) => ({ path, sha256: "b".repeat(64) })),
+    { path: "/tmp/skill-audit.json", sha256: "c".repeat(64) },
+  );
+  noActivityPublishing.approvalEvidence = [
+    ...approvedSkillPaths.map((path) => ({ requestKind: "command", detail: `cat ${path}`, decision: "accept" })),
+    { requestKind: "command", detail: "cat /tmp/skill-audit.json", decision: "accept" },
+  ];
+  noActivityPublishing.toolEvidence.completedCommands = [];
+  assert.equal(evaluateT3CodeProbe(noActivityPublishing), true);
+
+  const falselyMissingActivity = structuredClone(noActivityPublishing);
+  falselyMissingActivity.application.environmentCapabilities.agentActivityPublishing = true;
+  assert.equal(evaluateT3CodeProbe(falselyMissingActivity), false);
+
+  const unsafeApproval = structuredClone(noActivityPublishing);
+  unsafeApproval.approvalEvidence[0].detail += "; git push origin main";
+  assert.equal(evaluateT3CodeProbe(unsafeApproval), false);
+
+  const pathsWithoutReads = structuredClone(noActivityPublishing);
+  pathsWithoutReads.approvalEvidence = [{
+    requestKind: "command",
+    detail: `test ${approvedSkillPaths.join(" ")} /tmp/skill-audit.json`,
+    decision: "accept",
+  }];
+  assert.equal(evaluateT3CodeProbe(pathsWithoutReads), false);
+
+  const unboundEvidence = structuredClone(noActivityPublishing);
+  unboundEvidence.hostEvidence.skillAudit.evidencePath = "/tmp/other-evidence.json";
+  assert.equal(evaluateT3CodeProbe(unboundEvidence), false);
 });
 
 test("T3Code probe fails closed when a lifecycle skill or repository invariant is missing", () => {
