@@ -232,6 +232,7 @@ const hostSkillAuditEvidence = {
   exitCode: 0,
   outputPath: hostAuditPath,
   outputSha256: createHash("sha256").update(hostAuditOutput).digest("hex"),
+  evidencePath: skillEvidence,
   evidenceSha256: createHash("sha256").update(readFileSync(skillEvidence)).digest("hex"),
   healthy: hostAudit.ok === true,
   result: hostAudit,
