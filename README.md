@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.12` keeps ordinary development direct, makes definition ceremonies opt-in, and uses fast-model-first bounded orchestration for non-trivial work. Skill catalog `0.19.0` supports Codex and T3 Code only and pins Matt Pocock's stable `v1.2.3` bundle.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.13` keeps ordinary development direct, adds deterministic hybrid orchestration, bounded Code Mode selection, and optional simplification review for non-trivial work. Skill catalog `0.20.0` supports Codex and T3 Code only and pins Matt Pocock's stable `v1.2.3` bundle.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,11 +16,11 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.12
-./bin/development-system sync-skills --version 0.19.0
+./bin/development-system install --version 1.5.13
+./bin/development-system sync-skills --version 0.20.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.19.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.20.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -162,7 +162,7 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
 
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.12 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.13 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -172,7 +172,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.12`, `sync-skills --version 0.19.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.13`, `sync-skills --version 0.20.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -203,7 +203,7 @@ The focused Reader gate opens a generated report directly from `file://` in Chro
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. Published manifests and artifacts are immutable.
 
 ## Release boundary
 
