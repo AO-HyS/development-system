@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.20.0";
-if (version !== "0.20.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.20.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.21.0";
+if (version !== "0.21.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.21.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -133,7 +133,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.5.13/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.5.14/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -155,7 +155,7 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = "1.5.13";
+const orchestrationVersion = "1.5.14";
 const adapterContract = "deterministic-hybrid-orchestration-v1";
 const codexAdapterSource = `artifacts/${orchestrationVersion}/skills/internal/coding-orchestration`;
 const orchestration = {
@@ -282,6 +282,19 @@ const simplifyCode = await sharedSkill(
   },
 );
 
+const productVerificationSkills = await Promise.all([
+  sharedSkill("create-product-verification", "artifacts/1.5.14/skills/internal/create-product-verification", {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: "artifacts/1.5.14/skills/internal/create-product-verification",
+  }),
+  sharedSkill("maintain-product-verification", "artifacts/1.5.14/skills/internal/maintain-product-verification", {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: "artifacts/1.5.14/skills/internal/maintain-product-verification",
+  }),
+]);
+
 const previousCatalog = /** @type {{skills: Array<{variants: Array<{harness: string, destination: string}>}>}} */ (
   JSON.parse(await readFile(resolve(repositoryRoot, "catalog", "0.8.0.json"), "utf8"))
 );
@@ -340,6 +353,7 @@ const catalog = {
     workingBackwards,
     ...nextInternalSkills,
     simplifyCode,
+    ...productVerificationSkills,
     ...additions,
   ],
 };
