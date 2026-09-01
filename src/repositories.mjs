@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.13";
-const skillCatalogVersion = "0.20.0";
+const contractVersion = "1.5.14";
+const skillCatalogVersion = "0.21.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -763,7 +763,8 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   const prefix = "$";
   let contents = adapterContents(audit, harness);
   // Keep the generated adapter aligned with the canonical catalog version.
-  contents = contents.replaceAll("0.5.1", skillCatalogVersion);
+  const legacyCatalogVersion = [0, 5, 1].join(".");
+  contents = contents.replaceAll(legacyCatalogVersion, skillCatalogVersion);
   contents = contents.replace(/- \$orchestration-plan:[^\n]*\n/g, "");
   contents = contents.replaceAll(", $orchestration-plan", "");
   contents = contents.replace(

@@ -1,0 +1,1318 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.21.0",
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    }
+  ],
+  "supportedRoots": [
+    ".agents/skills",
+    ".codex/skills",
+    ".factory/skills"
+  ],
+  "maxCatalogEntries": 512,
+  "operationalEvidenceSkills": [
+    "research"
+  ],
+  "operationalEvidenceContracts": {
+    "research": {
+      "behaviorSignature": [
+        "background agent",
+        "primary sources",
+        "markdown file"
+      ]
+    }
+  },
+  "cleanup": [
+    ".factory/skills/wayfinder",
+    ".factory/skills/grill-with-docs",
+    ".factory/skills/grilling",
+    ".factory/skills/domain-modeling",
+    ".factory/skills/to-spec",
+    ".factory/skills/to-tickets",
+    ".factory/skills/implement",
+    ".factory/skills/code-review",
+    ".factory/skills/diagnosing-bugs",
+    ".factory/skills/prototype",
+    ".factory/skills/handoff",
+    ".factory/skills/qa",
+    ".factory/skills/research",
+    ".factory/skills/setup-matt-pocock-skills",
+    ".factory/skills/flow-code-review",
+    ".factory/skills/flow-implement",
+    ".factory/skills/flow-qa",
+    ".factory/skills/flow-research",
+    ".factory/skills/drive-development-flow",
+    ".factory/skills/coding-orchestration",
+    ".factory/skills/work-multiple",
+    ".factory/skills/working-backwards",
+    ".factory/skills/exa-search",
+    ".factory/skills/global-agent-guardrails",
+    ".factory/skills/decisions",
+    ".factory/skills/setup-help",
+    ".agents/skills/grill-me-workspace",
+    ".agents/skills/email-best-practices-repo",
+    ".codex/skills/agent-browser",
+    ".codex/skills/convex",
+    ".codex/skills/find-skills",
+    ".codex/skills/vercel-react-best-practices",
+    ".codex/skills/work-multiple",
+    ".agents/skills/batch-grill-me",
+    ".agents/skills/design-an-interface",
+    ".agents/skills/edit-article",
+    ".agents/skills/obsidian-vault",
+    ".agents/skills/qa",
+    ".agents/skills/request-refactor-plan",
+    ".agents/skills/ubiquitous-language",
+    ".agents/skills/writing-great-skills",
+    ".factory/skills/extract",
+    ".factory/skills/email-best-practices-repo",
+    ".factory/skills/frontend-design",
+    ".factory/skills/firecrawl-cli",
+    ".factory/skills/harden",
+    ".factory/skills/normalize",
+    ".factory/skills/onboard",
+    ".factory/skills/teach-impeccable",
+    ".factory/skills/vercel-deploy-claimable"
+  ],
+  "skills": [
+    {
+      "logicalName": "ask-matt",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/ask-matt"
+      },
+      "variants": [
+        {
+          "id": "ask-matt.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/ask-matt",
+          "destination": ".agents/skills/ask-matt",
+          "folderSha256": "274dda1f5c8b105595a8906102e45f08eca92598ffeca76769d38d3bb45c2571",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "diagnosing-bugs",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/diagnosing-bugs"
+      },
+      "variants": [
+        {
+          "id": "diagnosing-bugs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/diagnosing-bugs",
+          "destination": ".agents/skills/diagnosing-bugs",
+          "folderSha256": "7cce376c32380dcc16c8f91cf249b5a317575cf464273b85bde762b9278f63ce",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "wayfinder",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/wayfinder"
+      },
+      "variants": [
+        {
+          "id": "wayfinder.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/wayfinder",
+          "destination": ".agents/skills/wayfinder",
+          "folderSha256": "462158ee37389454d44fd1b5e3d8ae5f75650fd621ae843a1d22a53082814b44",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "grill-with-docs",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/grill-with-docs"
+      },
+      "variants": [
+        {
+          "id": "grill-with-docs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/grill-with-docs",
+          "destination": ".agents/skills/grill-with-docs",
+          "folderSha256": "84554e18aac963e26214159bfb522ddbd72dab710f43176727ca14f432033567",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "triage",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/triage"
+      },
+      "variants": [
+        {
+          "id": "triage.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/triage",
+          "destination": ".agents/skills/triage",
+          "folderSha256": "71bf2eed918085d4f6912a2b37369993b2b268b1557e4354e2ef1ba5954eafd6",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "improve-codebase-architecture",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/improve-codebase-architecture"
+      },
+      "variants": [
+        {
+          "id": "improve-codebase-architecture.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/improve-codebase-architecture",
+          "destination": ".agents/skills/improve-codebase-architecture",
+          "folderSha256": "98ca22a0717a1e659e9f4714d2c7fa27afdd3497243cd2290fe5a4e04e111e78",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-matt-pocock-skills",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/setup-matt-pocock-skills"
+      },
+      "variants": [
+        {
+          "id": "setup-matt-pocock-skills.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/setup-matt-pocock-skills",
+          "destination": ".agents/skills/setup-matt-pocock-skills",
+          "folderSha256": "132cfdc077fd448b262f2185ef5152f5d4a2c7ad637f0a7183da2d6880deb5e2",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "tdd",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/tdd"
+      },
+      "variants": [
+        {
+          "id": "tdd.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/tdd",
+          "destination": ".agents/skills/tdd",
+          "folderSha256": "020e48193f19c303f462ac6c6bf16548f10e3b1f706df562f8fb8f6b3efb43a6",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "grilling",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/grilling"
+      },
+      "variants": [
+        {
+          "id": "grilling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/grilling",
+          "destination": ".agents/skills/grilling",
+          "folderSha256": "f82bb664166568b1d7e0323ea13b45b5df4a096bb6b25de7a946e0e58de0529d",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "domain-modeling",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/domain-modeling"
+      },
+      "variants": [
+        {
+          "id": "domain-modeling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/domain-modeling",
+          "destination": ".agents/skills/domain-modeling",
+          "folderSha256": "40afc20cd49261811d7fe377fff53c1804f5e27644b42adb65469c7fc305a3a2",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "codebase-design",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/codebase-design"
+      },
+      "variants": [
+        {
+          "id": "codebase-design.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/codebase-design",
+          "destination": ".agents/skills/codebase-design",
+          "folderSha256": "d2c52f5938ce4f570f16bd8b1c194b07524b57da046a86be1617b390f14f6409",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "to-spec",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/to-spec"
+      },
+      "variants": [
+        {
+          "id": "to-spec.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/to-spec",
+          "destination": ".agents/skills/to-spec",
+          "folderSha256": "14211cd48167ee7fd243fbb5a6ca380ec5641253298a3fbe779888ff93867f65",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "to-tickets",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/to-tickets"
+      },
+      "variants": [
+        {
+          "id": "to-tickets.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/to-tickets",
+          "destination": ".agents/skills/to-tickets",
+          "folderSha256": "b9eb31fb1c671feb6ba56dc8afc86f5da9992aa307e9e0e0449aee2d4d55f1f2",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "implement",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/implement"
+      },
+      "variants": [
+        {
+          "id": "implement.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/implement",
+          "destination": ".agents/skills/implement",
+          "folderSha256": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "code-review",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/code-review"
+      },
+      "variants": [
+        {
+          "id": "code-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/code-review",
+          "destination": ".agents/skills/code-review",
+          "folderSha256": "45b9d5e7742f65efda4f5fc53d377f50b451da3687ded48f41b7ae565f8742c8",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "resolving-merge-conflicts",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/resolving-merge-conflicts"
+      },
+      "variants": [
+        {
+          "id": "resolving-merge-conflicts.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/resolving-merge-conflicts",
+          "destination": ".agents/skills/resolving-merge-conflicts",
+          "folderSha256": "2c01ba50b0c9707fed7c9080add996caa5e14f05c9f910ad19198b426e645986",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "wizard",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/wizard"
+      },
+      "variants": [
+        {
+          "id": "wizard.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/wizard",
+          "destination": ".agents/skills/wizard",
+          "folderSha256": "c8bee82bf582b9889d08187819b273bafc700b3dbb2fcc00b2880225d43c22a8",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "prototype",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/prototype"
+      },
+      "variants": [
+        {
+          "id": "prototype.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/prototype",
+          "destination": ".agents/skills/prototype",
+          "folderSha256": "20996d9c591eff86c5f20b8db594ef728c8688b9605bc9543d9d65886523e3b2",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "research",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/engineering/research"
+      },
+      "variants": [
+        {
+          "id": "research.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/research",
+          "destination": ".agents/skills/research",
+          "folderSha256": "6d02c11a6a7192f3e6058533e1cc310060cfceddd118623ea53e6d1da605d659",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "grill-me",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/grill-me"
+      },
+      "variants": [
+        {
+          "id": "grill-me.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/grill-me",
+          "destination": ".agents/skills/grill-me",
+          "folderSha256": "000514e9633b1a2df8bef98549e99b6eaf1a8c3fabfad0e3b328440b3b226c90",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "handoff",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/handoff"
+      },
+      "variants": [
+        {
+          "id": "handoff.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/handoff",
+          "destination": ".agents/skills/handoff",
+          "folderSha256": "c97a305f5ca0b6fa21ca82a009ac5a553acd02aab63cf59de939f75ac7797393",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "teach",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/teach"
+      },
+      "variants": [
+        {
+          "id": "teach.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/teach",
+          "destination": ".agents/skills/teach",
+          "folderSha256": "d646b14188296c5a2658360ac13e7236f1ec564ca4674052ad1c3d3c4fbba058",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "to-questionnaire",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/to-questionnaire"
+      },
+      "variants": [
+        {
+          "id": "to-questionnaire.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/to-questionnaire",
+          "destination": ".agents/skills/to-questionnaire",
+          "folderSha256": "3d3e99445e02a976bca6107ff081eda1fd05c2d509224f57cdb5ae73de5075ce",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "wait-what",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/wait-what"
+      },
+      "variants": [
+        {
+          "id": "wait-what.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/wait-what",
+          "destination": ".agents/skills/wait-what",
+          "folderSha256": "89ae282bf3d8ef45ef22aec9610261d466c32e1e4cfb27b27d40e5f3cd197533",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "writing-for-agents",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/productivity/writing-for-agents"
+      },
+      "variants": [
+        {
+          "id": "writing-for-agents.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/writing-for-agents",
+          "destination": ".agents/skills/writing-for-agents",
+          "folderSha256": "ab9bd0b8194e79b371583548024d57781eda0f6797d39d64f0bdd81ba585b705",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "claude-handoff",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/claude-handoff"
+      },
+      "variants": [
+        {
+          "id": "claude-handoff.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/claude-handoff",
+          "destination": ".agents/skills/claude-handoff",
+          "folderSha256": "8a952fc5e03a81fd3767f20c04d22a604154f6ecd43da7eb1f046989346c2bd6",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "loop-me",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/loop-me"
+      },
+      "variants": [
+        {
+          "id": "loop-me.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/loop-me",
+          "destination": ".agents/skills/loop-me",
+          "folderSha256": "345f6ac36d702c8190f487931770f12f9e5349f24dd7b4b238689a325b455e04",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-ts-deep-modules",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/setup-ts-deep-modules"
+      },
+      "variants": [
+        {
+          "id": "setup-ts-deep-modules.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/setup-ts-deep-modules",
+          "destination": ".agents/skills/setup-ts-deep-modules",
+          "folderSha256": "6502306a758ac25596550c7645d0a95b32c3f377959968f68ae43fafd448cf55",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "writing-beats",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/writing-beats"
+      },
+      "variants": [
+        {
+          "id": "writing-beats.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/writing-beats",
+          "destination": ".agents/skills/writing-beats",
+          "folderSha256": "9ce8e35b980128cee069da05b7213b1a223bdeed8c5478a4d8dd2fb318a9b6dd",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "writing-fragments",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/writing-fragments"
+      },
+      "variants": [
+        {
+          "id": "writing-fragments.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/writing-fragments",
+          "destination": ".agents/skills/writing-fragments",
+          "folderSha256": "3be76523ce90b6ea60f884220ea250d898d438e7813f0907d7cc1016aab1e190",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "writing-shape",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/in-progress/writing-shape"
+      },
+      "variants": [
+        {
+          "id": "writing-shape.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/writing-shape",
+          "destination": ".agents/skills/writing-shape",
+          "folderSha256": "d2036087f7b91f97d5b9a01b5d2e71017530030af878b3da6a9c7fc9b0190b15",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "git-guardrails-claude-code",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/misc/git-guardrails-claude-code"
+      },
+      "variants": [
+        {
+          "id": "git-guardrails-claude-code.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/git-guardrails-claude-code",
+          "destination": ".agents/skills/git-guardrails-claude-code",
+          "folderSha256": "6f9d49e1517d156d90b9ad084470adb946ad5aabddf0f6782d11e5221a3c6b00",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "migrate-to-shoehorn",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/misc/migrate-to-shoehorn"
+      },
+      "variants": [
+        {
+          "id": "migrate-to-shoehorn.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/migrate-to-shoehorn",
+          "destination": ".agents/skills/migrate-to-shoehorn",
+          "folderSha256": "292b384215d803b52e07a7f463586a4a4e9d1ad89ac0019600ec80af258a648d",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "scaffold-exercises",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/misc/scaffold-exercises"
+      },
+      "variants": [
+        {
+          "id": "scaffold-exercises.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/scaffold-exercises",
+          "destination": ".agents/skills/scaffold-exercises",
+          "folderSha256": "30b24d603cdb7e0c82263f264e0a9b52f01188683f7083df88512457b5a9ecb6",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-pre-commit",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e",
+        "path": "skills/misc/setup-pre-commit"
+      },
+      "variants": [
+        {
+          "id": "setup-pre-commit.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/upstream/setup-pre-commit",
+          "destination": ".agents/skills/setup-pre-commit",
+          "folderSha256": "de068adf75caf27aae0e80f201c5f4f7eda4f279388120ffb8e6b58533acf34a",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-code-review",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-code-review"
+      },
+      "variants": [
+        {
+          "id": "flow-code-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-code-review",
+          "destination": ".agents/skills/flow-code-review",
+          "folderSha256": "25eb9962560212e6709a0c9370365e92c55c0918026888ca2ffcebee33fa53ff",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-implement",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.0/skills/internal/flow-implement"
+      },
+      "variants": [
+        {
+          "id": "flow-implement.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.0/skills/internal/flow-implement",
+          "destination": ".agents/skills/flow-implement",
+          "folderSha256": "37e47bcaf8a93f560ac9296b7c55c5564fff747d2cb62e5d442f9da24fa7c933",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-qa",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-qa"
+      },
+      "variants": [
+        {
+          "id": "flow-qa.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
+          "destination": ".agents/skills/flow-qa",
+          "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-research",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-research"
+      },
+      "variants": [
+        {
+          "id": "flow-research.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
+          "destination": ".agents/skills/flow-research",
+          "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "drive-development-flow",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.14/skills/internal/drive-development-flow"
+      },
+      "variants": [
+        {
+          "id": "drive-development-flow.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.14/skills/internal/drive-development-flow",
+          "destination": ".codex/skills/drive-development-flow",
+          "folderSha256": "f654efedb5e51c1376fa5dbaeb6c6ceb1b279aab1a1e0c7b311a37c834e47540",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "coding-orchestration",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.14/skills/internal/coding-orchestration"
+      },
+      "variants": [
+        {
+          "id": "coding-orchestration.codex-adapter",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.14/skills/internal/coding-orchestration",
+          "destination": ".codex/skills/coding-orchestration",
+          "folderSha256": "476f3bcfef9a30e75f818a37c3156ee9239923629bc117d1aea3ee076005c8ba",
+          "expectedMirrorOf": null,
+          "adapterContract": "deterministic-hybrid-orchestration-v1"
+        }
+      ]
+    },
+    {
+      "logicalName": "measure-development-run",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "availabilityReason": "Codex session JSONL and CODEX_THREAD_ID are required; Factory is intentionally out of scope.",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.0.0/skills/internal/measure-development-run"
+      },
+      "variants": [
+        {
+          "id": "measure-development-run.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.0.0/skills/internal/measure-development-run",
+          "destination": ".codex/skills/measure-development-run",
+          "folderSha256": "c3392ac798091deb111d5a4e14bc5de23f54be99934ebcb20072f3176d57d6be",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "orchestration-pilot",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.7/skills/internal/orchestration-pilot"
+      },
+      "variants": [
+        {
+          "id": "orchestration-pilot.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.7/skills/internal/orchestration-pilot",
+          "destination": ".agents/skills/orchestration-pilot",
+          "folderSha256": "dfbb5ffb541415606f528f4bbfa80e598a4cd9e4c2526d15d4dc4eff97bdab40",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "working-backwards",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.10/skills/internal/working-backwards"
+      },
+      "variants": [
+        {
+          "id": "working-backwards.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.10/skills/internal/working-backwards",
+          "destination": ".agents/skills/working-backwards",
+          "folderSha256": "8ceb8f34f43c1b34f4057b4c621337ed6cee78b06eef0b29b146cc02c38986be",
+          "executableFiles": [
+            "scripts/t3-workflow.mjs",
+            "scripts/t3-reader.mjs",
+            "scripts/topic-questions.mjs",
+            "scripts/reader-live.mjs"
+          ],
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "parallel-work",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/parallel-work"
+      },
+      "variants": [
+        {
+          "id": "parallel-work.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/parallel-work",
+          "destination": ".agents/skills/parallel-work",
+          "folderSha256": "ce293690fdf70e0f2697254e702901611ea94faa6902ea9bb4515fefcd68a472",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "release-train",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/release-train"
+      },
+      "variants": [
+        {
+          "id": "release-train.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/release-train",
+          "destination": ".agents/skills/release-train",
+          "folderSha256": "7e73ade85112d1cf40b15745d48522653df44d72825fdcd92449364106462f9a",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "check-in",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/check-in"
+      },
+      "variants": [
+        {
+          "id": "check-in.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/check-in",
+          "destination": ".agents/skills/check-in",
+          "folderSha256": "7b7eabac9da4ab9ce8a0b9e4f658abc369b69daa28943b47f2f322ed718d75f0",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "linear-hygiene",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/linear-hygiene"
+      },
+      "variants": [
+        {
+          "id": "linear-hygiene.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/linear-hygiene",
+          "destination": ".agents/skills/linear-hygiene",
+          "folderSha256": "1040fd6c67e0ba1959d6aafb6be1e0981d9d187389b7cdf3f3c1a36c4df2edae",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "development-steward",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.11/skills/internal/development-steward"
+      },
+      "variants": [
+        {
+          "id": "development-steward.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.11/skills/internal/development-steward",
+          "destination": ".agents/skills/development-steward",
+          "folderSha256": "24e72cad59217d41b848f28df5ecba7fc16407520330c7acda956ed3443efe00",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "convex-guardian",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/convex-guardian"
+      },
+      "variants": [
+        {
+          "id": "convex-guardian.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/convex-guardian",
+          "destination": ".agents/skills/convex-guardian",
+          "folderSha256": "08f9cc36ca7489f6bfc4f596702a70b6c93cf29eec8adb5a0c8fc9f8db7bf05a",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "posthog-observability",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/posthog-observability"
+      },
+      "variants": [
+        {
+          "id": "posthog-observability.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/posthog-observability",
+          "destination": ".agents/skills/posthog-observability",
+          "folderSha256": "cdc99ea49bc79d6298bfc3ec3ec5749f53a370a257ddfd331f5e1e514d33cbf3",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "simplify-code",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.13/skills/internal/simplify-code"
+      },
+      "variants": [
+        {
+          "id": "simplify-code.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.13/skills/internal/simplify-code",
+          "destination": ".agents/skills/simplify-code",
+          "folderSha256": "4e806099fc50ec80c6c97509cfb6fa8ced2db262ab4afe7c5159ae2ef2f6b386",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "create-product-verification",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.14/skills/internal/create-product-verification"
+      },
+      "variants": [
+        {
+          "id": "create-product-verification.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.14/skills/internal/create-product-verification",
+          "destination": ".agents/skills/create-product-verification",
+          "folderSha256": "5438dab663a78eebc949be4b6e9e3e4ca2e451dbef033033fcb3fd19d1986e93",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "maintain-product-verification",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.14/skills/internal/maintain-product-verification"
+      },
+      "variants": [
+        {
+          "id": "maintain-product-verification.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.14/skills/internal/maintain-product-verification",
+          "destination": ".agents/skills/maintain-product-verification",
+          "folderSha256": "d2f21f835d6a3c34229cb6fe82e1b0d0625ee47ff91de3a995c64c17b21fae50",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "exa-search",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.1/skills/internal/exa-search"
+      },
+      "variants": [
+        {
+          "id": "exa-search.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.1/skills/internal/exa-search",
+          "destination": ".agents/skills/exa-search",
+          "folderSha256": "980af8c0d136ce9d261c214a35b4840af0fffe0c9e0c2a3d85e022e4cfee7fbb",
+          "executableFiles": [
+            "scripts/exa-search.mjs"
+          ],
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "global-agent-guardrails",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.2/skills/internal/global-agent-guardrails"
+      },
+      "variants": [
+        {
+          "id": "global-agent-guardrails.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.2/skills/internal/global-agent-guardrails",
+          "destination": ".agents/skills/global-agent-guardrails",
+          "folderSha256": "0b8c7f2d92507417cc042ff6e299922c1b01ef7ce3fc06effb704068939bafc7",
+          "executableFiles": [
+            "scripts/command-guard.mjs"
+          ],
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "decisions",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.0/skills/internal/decisions"
+      },
+      "variants": [
+        {
+          "id": "decisions.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.0/skills/internal/decisions",
+          "destination": ".agents/skills/decisions",
+          "folderSha256": "5faf8ac351f87752084523fe8ecbec5778aeb1776f1ed55b1bd22ef869fa30f1",
+          "expectedMirrorOf": null
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-help",
+      "physicalHarnesses": [
+        "codex"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.0/skills/internal/setup-help"
+      },
+      "variants": [
+        {
+          "id": "setup-help.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
+          "destination": ".agents/skills/setup-help",
+          "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
+          "expectedMirrorOf": null
+        }
+      ]
+    }
+  ]
+}

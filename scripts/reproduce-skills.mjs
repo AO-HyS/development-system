@@ -82,6 +82,11 @@ await cp(
   resolve(sourceRoot, "artifacts", "1.5.13"),
   { recursive: true },
 );
+await cp(
+  resolve(repositoryRoot, "artifacts", "1.5.14"),
+  resolve(sourceRoot, "artifacts", "1.5.14"),
+  { recursive: true },
+);
 for (const args of [
   ["init"],
   ["add", "."],
@@ -123,8 +128,8 @@ step(["sync-skills", "--source-root", sourceRoot, "--source-commit", sourceCommi
 const structurallyHealthy = step(["audit-skills"], 1);
 assert.equal(structurallyHealthy.status, "invalid");
 assert.match(structurallyHealthy.problems.join("\n"), /operational evidence/i);
-assert.equal(structurallyHealthy.logicalSkillCount, 56);
-assert.equal(structurallyHealthy.physicalVariantCount, 56);
+assert.equal(structurallyHealthy.logicalSkillCount, 58);
+assert.equal(structurallyHealthy.physicalVariantCount, 58);
 assert.ok(structurallyHealthy.skills.every(/** @param {{states: Record<string, boolean>}} skill */ (skill) => skill.states.exists && skill.states.discovered && skill.states.loadable));
 assert.ok(structurallyHealthy.mirrors.every(/** @param {{status: string}} mirror */ (mirror) => mirror.status === "identical"));
 assert.equal(
