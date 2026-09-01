@@ -7,13 +7,14 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.19.0";
-if (version !== "0.19.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.19.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.20.0";
+if (version !== "0.20.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.20.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
+const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
 await readFile(destination).then(
-  () => { throw new Error(`Refusing to overwrite immutable catalog ${version}; add a new semantic version`); },
+  () => { if (!allowUnpublishedRewrite) throw new Error(`Refusing to overwrite immutable catalog ${version}; add a new semantic version`); },
   (error) => { if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error; },
 );
 const declaresPhysicalHarnesses = true;
@@ -132,7 +133,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.5.12/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.5.13/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -154,8 +155,8 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = "1.5.12";
-const adapterContract = "fast-model-first-orchestration-v5";
+const orchestrationVersion = "1.5.13";
+const adapterContract = "deterministic-hybrid-orchestration-v1";
 const codexAdapterSource = `artifacts/${orchestrationVersion}/skills/internal/coding-orchestration`;
 const orchestration = {
   logicalName: "coding-orchestration",
@@ -271,6 +272,16 @@ const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName)
   }),
 ));
 
+const simplifyCode = await sharedSkill(
+  "simplify-code",
+  "artifacts/1.5.13/skills/internal/simplify-code",
+  {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: "artifacts/1.5.13/skills/internal/simplify-code",
+  },
+);
+
 const previousCatalog = /** @type {{skills: Array<{variants: Array<{harness: string, destination: string}>}>}} */ (
   JSON.parse(await readFile(resolve(repositoryRoot, "catalog", "0.8.0.json"), "utf8"))
 );
@@ -328,6 +339,7 @@ const catalog = {
     orchestrationPilot,
     workingBackwards,
     ...nextInternalSkills,
+    simplifyCode,
     ...additions,
   ],
 };

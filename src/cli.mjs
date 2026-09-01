@@ -47,6 +47,7 @@ import {
 import { auditPostHogObservability } from "./posthog-observability.mjs";
 import { auditConvexGuardian } from "./convex-guardian.mjs";
 import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
+import { planOrchestration } from "./orchestration-plan.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -141,6 +142,7 @@ function formatHuman(result) {
     return `Development run ${"runId" in identity ? identity.runId : "unknown"}: ${result.valid ? "valid" : "invalid"}; functional evidence ${"status" in functionalEvidence ? functionalEvidence.status : "unproven"}.`;
   }
   if (result.operation === "orchestrator-pilot") return `Orchestrator pilot: ${String(result.decision ?? "unproven")}; read-only evidence.`;
+  if (result.operation === "orchestration-plan") return `Orchestration plan: ${result.valid ? String(result.mode) : "blocked"}; no side effects.`;
   if (result.operation === "parallel-work") {
     const activeLaneCount = Array.isArray(result.activeLanes) ? result.activeLanes.length : 0;
     const frontierCount = Array.isArray(result.frontier) ? result.frontier.length : 0;
@@ -202,7 +204,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.19.0";
+    const version = options.version ?? "0.20.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -220,7 +222,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.19.0";
+    const version = options.version ?? "0.20.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -301,6 +303,10 @@ export async function run(argv) {
     if (!options.input) throw new Error("orchestrator-pilot requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = evaluateOrchestrationPilot(input);
+  } else if (command === "orchestration-plan") {
+    if (!options.input) throw new Error("orchestration-plan requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = planOrchestration(input);
   } else if (command === "parallel-work" || command === "work-multiple") {
     if (!options.input) throw new Error(`${command} requires --input <json-path>`);
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -395,7 +401,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
