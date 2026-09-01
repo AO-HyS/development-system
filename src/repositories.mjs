@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.12";
-const skillCatalogVersion = "0.19.0";
+const contractVersion = "1.5.13";
+const skillCatalogVersion = "0.20.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -764,36 +764,40 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   let contents = adapterContents(audit, harness);
   // Keep the generated adapter aligned with the canonical catalog version.
   contents = contents.replaceAll("0.5.1", skillCatalogVersion);
+  contents = contents.replace(/- \$orchestration-plan:[^\n]*\n/g, "");
+  contents = contents.replaceAll(", $orchestration-plan", "");
+  contents = contents.replace(
+    "Recommendation-only requests remain read-only.",
+    "Recommendation-only requests remain read-only. Non-trivial implementation follows the pure `orchestration-plan` output; trivial edits stay direct.",
+  );
   contents = replaceAdapterSection(
     contents,
     `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.`,
-    `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n- \`${prefix}working-backwards\`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.\n- \`${prefix}orchestration-pilot\`: read-only five-run-or-five-day evaluation of direct, sequential, and delegated development work.`,
+    `- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n- \`${prefix}simplify-code\`: optional read-only review for safe deletion and reuse.\n- \`${prefix}working-backwards\`: customer-first feature definition through the three persisted approval gates; it produces an implementation map but never authorizes implementation.\n- \`${prefix}orchestration-pilot\`: read-only five-run-or-five-day evaluation of direct, sequential, and delegated development work.`,
   );
   contents = replaceAdapterSection(
     contents,
     `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`.`,
-    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`working-backwards\`, \`parallel-work\`, \`orchestration-pilot\`, and \`check-in\`. T3 Code consumes the Codex-compatible surface.`,
-  );
-  contents = replaceAdapterSection(
-    contents,
-    "Do not import another product's vocabulary or activate paid services.",
-    "Do not import another product's vocabulary. Generating or normalizing this adapter never activates a paid service; later use of declared paid agent tooling still requires repository opt-in or an explicit user invocation.",
+    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`working-backwards\`, \`parallel-work\`, \`simplify-code\`, \`orchestration-pilot\`, and \`check-in\`. The internal \`orchestration-plan\` CLI operation is consumed by \`coding-orchestration\`; it is not a \`$\` skill. T3 Code consumes the Codex-compatible surface.`,
   );
   contents = replaceAdapterSection(
     contents,
     "Global `exa-search` is paid public-web retrieval and must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
-    "Global `exa-search` is paid public-web retrieval. This adapter only declares its availability and never calls or activates it. A repository opt-in or explicit user invocation is required, and every request must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
+    "Global `exa-search` is paid public-web retrieval. This adapter never activates a paid service; it only declares its availability and never calls or activates it. A repository opt-in or explicit user invocation is required, and every request must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers.",
   );
   contents = replaceAdapterSection(
     contents,
     "\n\nLegacy validation alias",
     `\n\nProvider readiness\n\n${providerReadinessLine(audit.commands.providerReadiness)}\n\nLegacy validation alias`,
   );
-  return replaceAdapterSection(
+  const adapted = replaceAdapterSection(
     contents,
     "\n\n## Stack rules",
     "\n\n## Product architecture baseline\n\n- Map domain and capability ownership before moving files. Keep code, tests, documentation, adapters, and generated artifacts discoverable beside the boundary they explain.\n- Make dependency direction and public Interfaces explicit. Prefer cohesive deep modules over pass-through abstractions, duplicate contracts, or historical dumping grounds.\n- Define component boundaries by cohesion, responsibility, state ownership, composition, and public API—not by an arbitrary line count.\n- Keep backend contracts typed end to end. For Convex, require explicit authorization, validators, indexed bounded reads, and deliberate storage/migration boundaries.\n- Select fast checks from changed surfaces: architecture rules, strict typecheck, focused behavior tests, performance/security checks, and visual review when UI changed.\n- Use the installed architecture reference pack at `~/.codex/development-system/architecture-reference-pack.md` for product-convergence work. It is comparative evidence, not a universal folder template.\n\n## Development System-owned capabilities\n\nAgent guardrails, global anti-slop policy, and Release Train design are supplied and evolved by the Development System. A product architecture migration must not duplicate or redesign them. The repository remains responsible for exposing real changed-validation, certification, QA, preview, and provider-readiness commands that those global capabilities consume.\n\n## Stack rules",
   );
+  return adapted
+    .replace(/- \$orchestration-plan:[^\n]*\n/g, "")
+    .replaceAll(", $orchestration-plan", "");
 }
 
 /** @param {unknown} contract */
@@ -882,7 +886,7 @@ function repositoryContract(audit, mode) {
         persistenceEffect: "no-scope-or-authorization-expansion",
       },
       explicitCommands: {
-        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards", "parallel-work", "orchestration-pilot", "check-in"],
+        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards", "parallel-work", "simplify-code", "orchestration-pilot", "check-in"],
       },
       implementPreview: {
         command: "flow-implement",
@@ -912,6 +916,7 @@ function repositoryContract(audit, mode) {
       requiredSkills: [
         "drive-development-flow",
         "coding-orchestration",
+        "simplify-code",
         "wayfinder",
         "grill-with-docs",
         "to-spec",
