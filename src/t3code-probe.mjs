@@ -104,7 +104,7 @@ const influencePatterns = {
   "grill-with-docs": [/\bgrill(?:ing)?\b/i, /\bdomain[- ]model/i],
   "to-spec": [/\bsynthesi[sz]e\b/i, /\bwithout\b.*\binterview/i],
   "to-tickets": [/\b(?:tracer[- ]bullet|vertical slices?)\b/i, /\bblock(?:er|ing)s?\b/i],
-  "flow-implement": [/\b(?:terminal slice|binary done condition)\b/i, /\b(?:stop|boundar)/i],
+  "flow-implement": [/\b(?:terminal slice|binary (?:done condition|completion))\b/i, /\b(?:stop|boundar)/i],
   "flow-code-review": [/\bstandards\b/i, /\bspec\b/i, /\b(?:blind|separate|independent(?:ly)?)\b/i],
 };
 
