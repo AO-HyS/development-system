@@ -11,6 +11,7 @@ import {
   classifyReadOnlyProbeCommand,
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
+  isAllowedReadOnlyProbeCommand,
   isReadOnlyProbeCommand,
   pollT3CodeThread,
   resolveAllowedProbeFileRead,
@@ -356,6 +357,22 @@ test("T3Code file reads require an exact canonical allowlisted file", () => {
   assert.equal(resolveAllowedProbeFileRead(`${allowed}.suffix`, [allowed]), null);
   assert.equal(resolveAllowedProbeFileRead(secret, [allowed]), null);
   assert.equal(resolveAllowedProbeFileRead(escape, [allowed]), null);
+  rmSync(directory, { recursive: true, force: true });
+});
+
+test("T3Code command approvals reject absolute reads outside the host allowlist", () => {
+  const directory = mkdtempSync(join(tmpdir(), "t3code-command-read-"));
+  const allowed = join(directory, "allowed.md");
+  const secret = join(directory, "secret.txt");
+  writeFileSync(allowed, "allowed");
+  writeFileSync(secret, "secret");
+
+  assert.equal(isAllowedReadOnlyProbeCommand(`cat ${allowed}`, [allowed]), true);
+  assert.equal(isAllowedReadOnlyProbeCommand(`sed -n '1,2p' ${allowed}`, [allowed]), true);
+  assert.equal(isAllowedReadOnlyProbeCommand(`cat ${secret}`, [allowed]), false);
+  assert.equal(isAllowedReadOnlyProbeCommand(`rg -n contract ${secret}`, [allowed]), false);
+  assert.equal(isAllowedReadOnlyProbeCommand("rg -n contract docs", [allowed]), true);
+
   rmSync(directory, { recursive: true, force: true });
 });
 

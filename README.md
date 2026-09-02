@@ -125,7 +125,7 @@ HOME/
 
 The installed manifests record contract/catalog version, source repository, exact source commit, file/folder SHA-256 hashes, logical name, harness, destination, expected mirror, and explicit adapter contract. Direct edits under HOME are drift, not a new source of truth.
 
-`sync-skills` manages 33 logical skills across 33 physical Codex variants. T3 Code consumes the same Codex-compatible installation. Factory paths from previously installed catalogs are retired managed outputs: synchronization removes them and snapshots every replaced entry for `rollback-skills`. Historical immutable manifests still describe the harnesses supported by those old releases; they do not expand the current 1.5.x runtime surface.
+`sync-skills` manages 58 logical skills across 58 physical Codex variants. T3 Code consumes the same Codex-compatible installation. Factory paths from previously installed catalogs are retired managed outputs: synchronization removes them and snapshots every replaced entry for `rollback-skills`. Historical immutable manifests still describe the harnesses supported by those old releases; they do not expand the current 1.5.x runtime surface.
 
 ## Real development-run measurement
 

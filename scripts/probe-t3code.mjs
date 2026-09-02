@@ -14,7 +14,7 @@ import {
   evaluateT3CodeProbe,
   fetchJsonWithTimeout,
   classifyReadOnlyProbeCommand,
-  isReadOnlyProbeCommand,
+  isAllowedReadOnlyProbeCommand,
   pollT3CodeThread,
   resolveT3CodeProbeMetadata,
   resolveT3CodeServerRuntime,
@@ -440,7 +440,8 @@ try {
             ? resolveAllowedProbeFileRead(detail, allowedFileReadPaths)
             : null;
         const allowedFileRead = resolvedFileRead !== null;
-        const allowedCommand = requestKind === "command" && isReadOnlyProbeCommand(detail);
+        const allowedCommand = requestKind === "command" &&
+          isAllowedReadOnlyProbeCommand(detail, allowedFileReadPaths);
         const decision = allowedFileRead || allowedCommand ? "accept" : "decline";
         await dispatch({
           type: "thread.approval.respond",
