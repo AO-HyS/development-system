@@ -405,6 +405,7 @@ try {
         "do not use redirects, command substitution, scripting runtimes, network clients, or mutation commands. " +
         "Do not change files or external state. Return only one compact JSON object with keys harness, routerLoaded, " +
         "lifecycleSkills, influenceSignatures, instructionSources, skillAuditHealthy, model, reasoning, externalState. " +
+        "skillAuditHealthy must be the literal JSON boolean true or false, never an object and never a string. " +
         "List only skills actually loaded in this turn. influenceSignatures must map every listed lifecycle skill to one " +
         "concise operational rule learned from that skill's own instructions.",
       attachments: [],
