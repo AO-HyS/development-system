@@ -29,7 +29,7 @@ function ticket(id, surfaces, dependencies = [], status = "pending") {
   };
 }
 
-test("shared surfaces and dependencies serialize while disjoint work forms parallel lanes", () => {
+test("dependencies gate readiness without permanently unioning lanes", () => {
   const plan = planParallelWork({
     explicitlyInvoked: true,
     repository: { identity: "AO-HyS/development-system", revision: "a".repeat(40) },
@@ -44,12 +44,84 @@ test("shared surfaces and dependencies serialize while disjoint work forms paral
 
   assert.equal(plan.valid, true);
   assert.deepEqual(plan.frontier, ["T1", "T3"]);
+  assert.deepEqual(plan.executableFrontier, ["T1", "T3"]);
   assert.deepEqual(plan.activeLanes.map((lane) => lane.currentTicket), ["T1", "T3"]);
-  assert.deepEqual(plan.lanes.map((lane) => lane.tickets), [["T1", "T2"], ["T3", "T4"]]);
+  assert.deepEqual(plan.lanes.map((lane) => lane.tickets), [["T1"], ["T2"], ["T3"], ["T4"]]);
+  assert.deepEqual(plan.waitingTickets, [
+    { id: "T2", reason: "dependencies-incomplete:T1" },
+    { id: "T4", reason: "dependencies-incomplete:T3" },
+  ]);
   assert.equal(plan.lanes.every((lane) => lane.writerCount === 1), true);
   assert.deepEqual(plan.delivery, { strategy: "single-integrated-candidate", branchCount: 1, pullRequestCount: 1, separationReason: null });
   assert.equal(plan.candidate.status, "in-progress");
   assert.deepEqual(plan.externalSideEffects, []);
+});
+
+test("capacity and overlapping ready work produce a deterministic executable frontier", () => {
+  const plan = planParallelWork({
+    initiativeAuthorized: true,
+    maxConcurrentWriters: 2,
+    repository: { identity: "repo", revision: "a".repeat(40) },
+    tickets: [
+      ticket("T1", ["src/shared"]),
+      ticket("T2", ["src/shared/child"]),
+      ticket("T3", ["src/independent"]),
+      ticket("T4", ["src/another"]),
+    ],
+    integrationChecks: ["pnpm test"],
+    integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+
+  assert.equal(plan.valid, true);
+  assert.deepEqual(plan.frontier, ["T1", "T2", "T3", "T4"]);
+  assert.deepEqual(plan.executableFrontier, ["T1", "T3"]);
+  assert.deepEqual(plan.waitingTickets, [
+    { id: "T2", reason: "surface-conflict:T1" },
+    { id: "T4", reason: "capacity:2" },
+  ]);
+  assert.deepEqual(plan.integrationChecks, ["pnpm test"]);
+});
+
+test("transitive surface bridges never hide an executable disjoint lane", () => {
+  const plan = planParallelWork({
+    initiativeAuthorized: true,
+    maxConcurrentWriters: 2,
+    repository: { identity: "repo", revision: "a".repeat(40) },
+    tickets: [
+      ticket("T1", ["src/a"]),
+      ticket("T2", ["src/a/child", "src/b/child"]),
+      ticket("T3", ["src/b"]),
+    ],
+    integrationChecks: ["pnpm test"],
+    integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+  assert.deepEqual(plan.executableFrontier, ["T1", "T3"]);
+  assert.deepEqual(plan.activeLanes.map((lane) => lane.currentTicket), ["T1", "T3"]);
+});
+
+test("running work reserves capacity before pending tickets", () => {
+  const plan = planParallelWork({
+    initiativeAuthorized: true,
+    maxConcurrentWriters: 1,
+    repository: { identity: "repo", revision: "a".repeat(40) },
+    tickets: [ticket("T1", ["src/a"]), ticket("T2", ["src/b"], [], "running")],
+    integrationChecks: ["pnpm test"],
+    integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+  assert.deepEqual(plan.executableFrontier, ["T2"]);
+  assert.deepEqual(plan.waitingTickets, [{ id: "T1", reason: "capacity:1" }]);
+});
+
+test("running work with incomplete dependencies fails closed", () => {
+  const plan = planParallelWork({
+    initiativeAuthorized: true,
+    repository: { identity: "repo", revision: "a".repeat(40) },
+    tickets: [ticket("T1", ["src/a"]), ticket("T2", ["src/b"], ["T1"], "running")],
+    integrationChecks: ["pnpm test"],
+    integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+  assert.equal(plan.valid, false);
+  assert.match(plan.errors.join("\n"), /running ticket T2 has incomplete dependencies:T1/);
 });
 
 test("a local failure blocks descendants but independent lanes continue", () => {

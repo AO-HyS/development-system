@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.14";
-const skillCatalogVersion = "0.21.0";
+const contractVersion = "1.5.15";
+const skillCatalogVersion = "0.22.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -755,7 +755,7 @@ function replaceAdapterSection(contents, target, replacement) {
   if (contents.split(target).length !== 2) {
     throw new Error(`Repository adapter template section is missing or duplicated: ${target}`);
   }
-  return contents.replace(target, replacement);
+  return contents.replace(target, () => replacement);
 }
 
 /** @param {any} audit @param {"codex"} harness */
@@ -769,7 +769,7 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   contents = contents.replaceAll(", $orchestration-plan", "");
   contents = contents.replace(
     "Recommendation-only requests remain read-only.",
-    "Recommendation-only requests remain read-only. Non-trivial implementation follows the pure `orchestration-plan` output; trivial edits stay direct.",
+    "Recommendation-only requests remain read-only. Non-trivial implementation follows the pure `orchestration-plan` output; trivial edits stay direct. An exact authorized multi-ticket work graph routes automatically to dependency-aware parallel lanes; ticket count alone never activates work.",
   );
   contents = replaceAdapterSection(
     contents,
@@ -779,7 +779,7 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   contents = replaceAdapterSection(
     contents,
     `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`.`,
-    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`working-backwards\`, \`parallel-work\`, \`simplify-code\`, \`orchestration-pilot\`, and \`check-in\`. The internal \`orchestration-plan\` CLI operation is consumed by \`coding-orchestration\`; it is not a \`$\` skill. T3 Code consumes the Codex-compatible surface.`,
+    `Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`, \`coding-orchestration\`, \`pstack-engineering\`, \`working-backwards\`, \`parallel-work\`, \`simplify-code\`, \`orchestration-pilot\`, and \`check-in\`. The internal \`orchestration-plan\` CLI operation is consumed by \`coding-orchestration\`; it is not a \`$\` skill. T3 Code consumes the Codex-compatible surface.`,
   );
   contents = replaceAdapterSection(
     contents,
