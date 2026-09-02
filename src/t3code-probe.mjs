@@ -167,6 +167,33 @@ export function classifyReadOnlyProbeCommand(command) {
   return actions;
 }
 
+/**
+ * Limit a read-only probe command to the exact absolute files bound by the
+ * host. Relative paths remain scoped to the probe repository by its cwd;
+ * absolute paths must match the allowlist after resolving symlinks.
+ *
+ * @param {string} command
+ * @param {string[]} allowedPaths
+ */
+export function isAllowedReadOnlyProbeCommand(command, allowedPaths) {
+  const actions = classifyReadOnlyProbeCommand(command);
+  if (!actions) return false;
+  for (const action of actions) {
+    const tokens = tokenizeShellWords(action.command);
+    if (!tokens) return false;
+    for (const token of tokens.slice(1)) {
+      const equalsIndex = token.indexOf("=/");
+      const candidate = token.startsWith("/")
+        ? token
+        : equalsIndex >= 0
+          ? token.slice(equalsIndex + 1)
+          : null;
+      if (candidate && resolveAllowedProbeFileRead(candidate, allowedPaths) === null) return false;
+    }
+  }
+  return true;
+}
+
 /** @param {string} command @returns {string[] | null} */
 function splitShellSegments(command) {
   const segments = [];
