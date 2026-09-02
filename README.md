@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.14` keeps ordinary development direct, adds opt-in product verification with independent Computer Use execution and judgment, and retains deterministic hybrid orchestration and bounded Code Mode selection. Skill catalog `0.21.0` supports Codex and T3 Code only and pins Matt Pocock's stable `v1.2.3` bundle.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.15` keeps ordinary development direct, automatically routes exact authorized multi-ticket initiatives, adds deterministic engineering bundles, and retains opt-in product verification. Skill catalog `0.22.0` supports Codex and T3 Code, preserves Matt Pocock's current 37-skill snapshot while installing an authorization-safe `implement-spec` adapter, and includes a bounded PStack-inspired tactics adapter without installing `poteto-mode`.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,11 +16,11 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.14
-./bin/development-system sync-skills --version 0.21.0
+./bin/development-system install --version 1.5.15
+./bin/development-system sync-skills --version 0.22.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.21.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.22.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -80,12 +80,14 @@ After `Implement Preview` is authorized, execute a private structured plan with:
 
 The command runs one writer, independent intent/standards reviews, proportional TDD/QA, commit, push, PR, and preview commands. It creates a private Local Visual Plan and Recap and stops at `ready-for-human`; see `docs/implement-preview.md`. It rejects promotion operations.
 
-Invoke `$parallel-work` when several authorized tickets should be worked
-together. The deprecated `$work-multiple` spelling remains only as a migration
-alias. Merely supplying several tickets does not activate worktrees. Shared
-surfaces and dependencies remain sequential; disjoint lanes may run in
-parallel and integrate into one candidate. Publication remains a separate
-authorization.
+When an authorized task contract names at least two exact work-item IDs and a
+complete matching work graph, `orchestration-plan` automatically selects
+dependency-aware parallel mode; the operator does not need to remember a
+skill name. Ticket count alone never activates it. `$parallel-work` remains a
+compatibility entry point and `$work-multiple` remains a deprecated alias.
+Dependency completion controls readiness; capacity and overlapping surfaces
+control the executable frontier. Focused checks run per lane and integration
+checks run once on one candidate. Publication remains separately authorized.
 
 Install the private weekly Development Steward on macOS after installing the
 1.5.12 contract. It runs Monday at 09:00 local time for the five allowlisted
@@ -162,7 +164,7 @@ pnpm run scenario
 
 The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
 
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.14 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
+Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.15 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -172,7 +174,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.14`, `sync-skills --version 0.21.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.15`, `sync-skills --version 0.22.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -203,7 +205,7 @@ The focused Reader gate opens a generated report directly from `file://` in Chro
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

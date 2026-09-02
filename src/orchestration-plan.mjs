@@ -1,6 +1,8 @@
 // @ts-check
 
 import { createHash } from "node:crypto";
+import { buildOrchestrationBundle } from "./orchestration-bundles.mjs";
+import { planParallelWork } from "./parallel-work.mjs";
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) {
@@ -12,6 +14,30 @@ function strings(value) {
   return Array.isArray(value)
     ? value.filter((entry) => typeof entry === "string" && entry.trim()).map((entry) => entry.trim())
     : [];
+}
+
+/** @param {string} value */
+function safeSurface(value) {
+  return value.length > 0 &&
+    value !== "." &&
+    !value.startsWith("/") &&
+    !value.startsWith("~") &&
+    !value.includes("\\") &&
+    !value.split("/").some((part) => part === "" || part === "." || part === "..");
+}
+/** @param {string} value */
+function looksPathShaped(value) {
+  return value.includes("/") || value.includes("\\") || value.startsWith(".") || value.startsWith("~");
+}
+
+/** @param {string} surface @param {string} scope */
+function containedBy(surface, scope) {
+  return surface === scope || surface.startsWith(`${scope}/`);
+}
+
+/** @param {string} left @param {string} right */
+function surfacesOverlap(left, right) {
+  return containedBy(left, right) || containedBy(right, left);
 }
 
 /** @param {Record<string, unknown>} contract @param {string} name @param {string[]} errors @param {boolean} required */
@@ -69,6 +95,8 @@ function validateContract(contract, errors) {
   const protectedBoundaries = contractStrings(contract, "protectedBoundaries", errors);
   const authorizationBoundaries = contractStrings(contract, "authorizationBoundaries", errors, true);
   const stopCondition = typeof contract.stopCondition === "string" ? contract.stopCondition.trim() : "";
+  const requestedWorkItemIds = contractStrings(contract, "requestedWorkItemIds", errors);
+  if (requestedWorkItemIds.length > 0 && new Set(requestedWorkItemIds).size !== requestedWorkItemIds.length) errors.push("taskContract.requestedWorkItemIds must be unique");
   if (!objective) errors.push("taskContract.objective is required");
   if (scope.length === 0) errors.push("taskContract.scope requires at least one owned surface");
   if (acceptance.length === 0) errors.push("taskContract.acceptance requires observable criteria");
@@ -88,6 +116,7 @@ function validateContract(contract, errors) {
     protectedBoundaries,
     authorizationBoundaries,
     stopCondition,
+    requestedWorkItemIds,
   };
 }
 
@@ -98,12 +127,120 @@ function validateSignals(signals, errors) {
   if (signals.structuredToolHeavy !== undefined && typeof signals.structuredToolHeavy !== "boolean") errors.push("signals.structuredToolHeavy must be boolean");
   if (signals.codeModeEvidence !== undefined && !isRecord(signals.codeModeEvidence)) errors.push("signals.codeModeEvidence must be an object");
   if (signals.specialistRisk !== undefined && typeof signals.specialistRisk !== "string") errors.push("signals.specialistRisk must be a string");
+  if (signals.specialistRisks !== undefined && !Array.isArray(signals.specialistRisks)) errors.push("signals.specialistRisks must be an array");
+  if (signals.maxConcurrentWriters !== undefined && (!Number.isInteger(signals.maxConcurrentWriters) || Number(signals.maxConcurrentWriters) < 1)) errors.push("signals.maxConcurrentWriters must be a positive integer");
   if (signals.diffRisk !== undefined && !isRecord(signals.diffRisk)) errors.push("signals.diffRisk must be an object");
   if (signals.computerUse !== undefined && typeof signals.computerUse !== "boolean") errors.push("signals.computerUse must be boolean");
   if (signals.browserAcceptance !== undefined && typeof signals.browserAcceptance !== "boolean") errors.push("signals.browserAcceptance must be boolean");
   if (signals.qaOnly !== undefined && typeof signals.qaOnly !== "boolean") errors.push("signals.qaOnly must be boolean");
   if (signals.verificationOnly !== undefined && typeof signals.verificationOnly !== "boolean") errors.push("signals.verificationOnly must be boolean");
   return errors.length === 0;
+}
+
+/** @param {Record<string, unknown>} signals @param {string[]} errors */
+function specialistRisks(signals, errors) {
+  const risks = [];
+  if (typeof signals.specialistRisk === "string") {
+    const id = signals.specialistRisk.trim().toLowerCase();
+    if (!specialistMap[id]) errors.push(`signals.specialistRisk is unsupported: ${id}`);
+    else risks.push({ id, evidence: ["legacy explicit specialist risk"], surfaces: [] });
+  }
+  if (Array.isArray(signals.specialistRisks)) {
+    for (const value of signals.specialistRisks) {
+      if (!isRecord(value)) { errors.push("signals.specialistRisks entries must be objects"); continue; }
+      const id = typeof value.id === "string" ? value.id.trim().toLowerCase() : "";
+      const evidence = strings(value.evidence);
+      const surfaces = strings(value.surfaces);
+      if (!id || !specialistMap[id] || evidence.length === 0 || surfaces.length === 0) {
+        errors.push("signals.specialistRisks entries require a supported id plus non-empty evidence and surfaces");
+        continue;
+      }
+      risks.push({ id, evidence, surfaces });
+    }
+  }
+  /** @type {Map<string, {id: string, evidence: string[], surfaces: string[]}>} */
+  const merged = new Map();
+  for (const risk of risks) {
+    const role = specialistMap[risk.id]?.role ?? risk.id;
+    const current = merged.get(role);
+    if (!current) {
+      merged.set(role, { id: risk.id, evidence: [...risk.evidence], surfaces: [...risk.surfaces] });
+      continue;
+    }
+    current.evidence = [...new Set([...current.evidence, ...risk.evidence])];
+    current.surfaces = [...new Set([...current.surfaces, ...risk.surfaces])];
+  }
+  return [...merged.values()];
+}
+
+/** @param {unknown} workGraph @param {Record<string, unknown>} contract @param {Record<string, unknown>} signals @param {Array<{id: string, evidence: string[], surfaces: string[]}>} risks @param {string[]} errors */
+function authorizedParallelPlan(workGraph, contract, signals, risks, errors) {
+  const requestedIds = /** @type {string[]} */ (contract.requestedWorkItemIds);
+  if (requestedIds.length < 2) return null;
+  if (!isRecord(workGraph)) { errors.push("workGraph is required when two or more work items are requested"); return null; }
+  const tickets = Array.isArray(workGraph.tickets) ? workGraph.tickets : [];
+  const graphIds = tickets.filter(isRecord).map((ticket) => typeof ticket.id === "string" ? ticket.id.trim() : "");
+  if (graphIds.length !== requestedIds.length || [...requestedIds].sort().join("\n") !== [...graphIds].sort().join("\n")) {
+    errors.push("workGraph ticket ids must exactly match taskContract.requestedWorkItemIds");
+    return null;
+  }
+  const scope = /** @type {string[]} */ (contract.scope);
+  const protectedBoundaries = /** @type {string[]} */ (contract.protectedBoundaries);
+  if (scope.some((surface) => !safeSurface(surface))) errors.push("parallel taskContract.scope requires safe repository-relative surfaces");
+  const safeProtected = protectedBoundaries.filter(safeSurface);
+  if (protectedBoundaries.some((boundary) => looksPathShaped(boundary) && !safeSurface(boundary))) {
+    errors.push("path-shaped protected boundaries must be safe repository-relative surfaces");
+  }
+  for (const value of tickets) {
+    if (!isRecord(value)) continue;
+    const id = typeof value.id === "string" ? value.id : "ticket";
+    const surfaces = strings(value.surfaces);
+    if (surfaces.some((surface) => !safeSurface(surface))) errors.push(`${id}: surfaces must be safe repository-relative paths`);
+    if (surfaces.some((surface) => !scope.some((owned) => containedBy(surface, owned)))) errors.push(`${id}: surfaces must stay inside taskContract.scope`);
+    if (surfaces.some((surface) => safeProtected.some((boundary) => surfacesOverlap(surface, boundary)))) errors.push(`${id}: surfaces overlap a protected boundary`);
+  }
+  for (const risk of risks) {
+    if (risk.surfaces.some((surface) => !safeSurface(surface) || !scope.some((owned) => containedBy(surface, owned)))) {
+      errors.push(`specialist ${risk.id}: surfaces must stay inside taskContract.scope`);
+    }
+    if (risk.surfaces.some((surface) => safeProtected.some((boundary) => surfacesOverlap(surface, boundary)))) {
+      errors.push(`specialist ${risk.id}: surfaces overlap a protected boundary`);
+    }
+  }
+  const integrationChecks = strings(workGraph.integrationChecks);
+  const bundledTickets = tickets.map((value) => {
+    if (!isRecord(value)) return value;
+    if (typeof value.kind !== "string" || !value.kind.trim()) errors.push(`${typeof value.id === "string" ? value.id : "ticket"}: kind is required`);
+    const bundle = buildOrchestrationBundle(value, { integrationChecks, runtimeEvidence: workGraph.runtimeEvidence });
+    if (!bundle.valid) errors.push(...bundle.errors.map((error) => `${typeof value.id === "string" ? value.id : "ticket"}: ${error}`));
+    return {
+      ...value,
+      // Automatic initiative planning describes topology only. The trusted
+      // host allocates a fresh branch and worktree after verifying authority.
+      branch: null,
+      worktree: null,
+      agent: {
+        role: "fast_implementer",
+        harness: "codex",
+        resolvedModel: models.writer.resolved,
+        reasoning: models.writer.reasoning,
+      },
+      bundle,
+    };
+  });
+  if (errors.length > 0) return null;
+  const result = planParallelWork({
+    initiativeAuthorized: true,
+    repository: workGraph.repository,
+    tickets: bundledTickets,
+    integration: workGraph.integration,
+    integrationChecks,
+    delivery: workGraph.delivery,
+    sharedBaseHealthy: workGraph.sharedBaseHealthy,
+    maxConcurrentWriters: signals.maxConcurrentWriters,
+  });
+  if (!result.valid) errors.push(...result.errors.map((error) => `workGraph: ${error}`));
+  return result;
 }
 
 /** @param {unknown} value @returns {string[]} */
@@ -384,41 +521,95 @@ export function planOrchestration(input) {
   const contract = validateContract(contractInput, errors);
   validateSignals(signals, errors);
   const executionPlan = validateExecutionPlanInput(signals, errors);
+  const risks = specialistRisks(signals, errors);
+  const parallelWork = authorizedParallelPlan(input.workGraph, contract, signals, risks, errors);
   if (errors.length > 0) return blockedPlan(errors, contract);
 
   const computerUse = computerUseDecision(signals, executionPlan);
-  const mode = computerUse.qaOnly
+  const mode = parallelWork
+    ? "parallel"
+    : computerUse.qaOnly
     ? "verification"
-    : signals.trivial === true ? "direct" : typeof signals.specialistRisk === "string" && specialistMap[signals.specialistRisk.toLowerCase()] ? "specialist" : "sequential";
+    : signals.trivial === true ? "direct" : risks.length > 0 ? "specialist" : "sequential";
   const codeMode = mode === "direct" || mode === "verification"
     ? { eligible: false, selected: false, selectionAuthority: "host-runtime", preference: null, executor: null, fallback: "direct", reason: "Direct work does not use a Code Mode analysis lane." }
     : codeModeDecision(signals);
   const simplifyCode = simplifyDecision(signals);
   /** @type {Array<Record<string, unknown>>} */
   const lanes = [];
-  if (computerUse.requested && computerUse.qaOnly) {
+  if (parallelWork) {
+    const writerLanes = parallelWork.lanes;
+    const integrationLane = lane({
+      id: "integration",
+      role: "orchestrator",
+      type: "integration-barrier",
+      execution: "sequential-after-writers",
+      model: models.parent,
+      ownership: contract.scope,
+      contract,
+      checks: parallelWork.integrationChecks,
+      stopCondition: "Integrate every terminal writer lane, verify ancestry and conflicts, then run the declared integration checks exactly once.",
+      phase: "integration",
+      dependsOn: writerLanes.map((entry) => entry.id),
+      writerCount: 0,
+      integrationChecksRunCount: 1,
+    });
+    lanes.push(...writerLanes, integrationLane);
+    lanes.push(lane({
+      id: "review-standards",
+      role: "reviewer",
+      type: "independent-review",
+      execution: "sequential-after-integration",
+      model: models.reviewer,
+      ownership: contract.scope,
+      contract,
+      checks: contract.checks,
+      stopCondition: "Review the integrated diff against repository standards, architecture, correctness, regressions, maintainability, and missing tests; do not edit.",
+      independent: true,
+      readOnly: true,
+      reviewFocus: "standards",
+      phase: "post-integration-review",
+      dependsOn: ["integration"],
+    }));
+    lanes.push(lane({
+      id: "review-objective",
+      role: "reviewer",
+      type: "independent-review",
+      execution: "sequential-after-integration",
+      model: models.reviewer,
+      ownership: contract.scope,
+      contract,
+      checks: contract.checks,
+      stopCondition: "Review the integrated diff only against the requested objective, acceptance criteria, and forbidden scope expansion; do not edit.",
+      independent: true,
+      readOnly: true,
+      reviewFocus: "objective",
+      phase: "post-integration-review",
+      dependsOn: ["integration"],
+    }));
+    lanes.push(...specialistLanes(risks, contract).map((specialist) => ({ ...specialist, phase: "post-integration-review", dependsOn: ["integration"] })));
+  } else if (computerUse.requested && computerUse.qaOnly) {
     lanes.push(computerUseRunnerLane(contract.authorizationBoundaries, executionPlan));
     lanes.push(verificationJudgmentLane(contract));
   } else if (mode === "direct") {
     lanes.push(lane({ id: "direct", role: "orchestrator", type: "direct", model: models.parent, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition }));
   } else if (codeMode.eligible) {
     lanes.push(lane({ id: "analysis", role: "docs_researcher", type: "analysis", execution: "code-mode-attempt", executionPreference: "code-mode", executionFallback: "sequential-read-only-tools", model: models.research, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: true }));
-    const specialist = typeof signals.specialistRisk === "string" ? specialistMap[signals.specialistRisk.toLowerCase()] : undefined;
-    if (specialist) lanes.push(lane({ id: "specialist", role: specialist.role, type: "specialist-review", execution: "sequential", model: specialist.model, ownership: contract.scope, contract, checks: contract.checks, stopCondition: `Review the observed ${signals.specialistRisk} risk and return evidence-backed findings.`, independent: true, readOnly: true }));
+    lanes.push(...specialistLanes(risks, contract));
   } else if (analysisKinds.has(typeof signals.kind === "string" ? signals.kind.trim().toLowerCase() : "") && signals.readOnly === true) {
     lanes.push(lane({ id: "analysis", role: "docs_researcher", type: "analysis", execution: "sequential", model: models.research, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: true }));
-    const specialist = typeof signals.specialistRisk === "string" ? specialistMap[signals.specialistRisk.toLowerCase()] : undefined;
-    if (specialist) lanes.push(lane({ id: "specialist", role: specialist.role, type: "specialist-review", execution: "sequential", model: specialist.model, ownership: contract.scope, contract, checks: contract.checks, stopCondition: `Review the observed ${signals.specialistRisk} risk and return evidence-backed findings.`, independent: true, readOnly: true }));
+    lanes.push(...specialistLanes(risks, contract));
   } else {
     lanes.push(lane({ id: "writer", role: "fast_implementer", type: "writer", execution: "sequential", model: models.writer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: false }));
     lanes.push(lane({ id: "review", role: "reviewer", type: "independent-review", execution: "sequential", model: models.reviewer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: "Report actionable correctness and regression findings; do not edit.", independent: true, readOnly: true }));
-    const specialist = typeof signals.specialistRisk === "string" ? specialistMap[signals.specialistRisk.toLowerCase()] : undefined;
-    if (specialist) lanes.push(lane({ id: "specialist", role: specialist.role, type: "specialist-review", execution: "sequential", model: specialist.model, ownership: contract.scope, contract, checks: contract.checks, stopCondition: `Review the observed ${signals.specialistRisk} risk and return evidence-backed findings.`, independent: true, readOnly: true }));
+    lanes.push(...specialistLanes(risks, contract));
   }
-  if (simplifyCode.selected && mode !== "direct" && !computerUse.qaOnly) lanes.push(lane({ id: "simplify-code", role: "simplify-code", type: "simplification-review", execution: "sequential", model: models.reviewer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: "Return safe deletion, reuse, native, or installed-dependency suggestions without editing.", readOnly: true }));
+  if (simplifyCode.selected && mode !== "direct" && mode !== "parallel" && !computerUse.qaOnly) lanes.push(lane({ id: "simplify-code", role: "simplify-code", type: "simplification-review", execution: "sequential", model: models.reviewer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: "Return safe deletion, reuse, native, or installed-dependency suggestions without editing.", readOnly: true }));
   if (computerUse.requested && !computerUse.qaOnly) {
-    lanes.push(computerUseRunnerLane(contract.authorizationBoundaries, executionPlan));
-    lanes.push(verificationJudgmentLane(contract));
+    const execution = computerUseRunnerLane(contract.authorizationBoundaries, executionPlan);
+    const judgment = verificationJudgmentLane(contract);
+    lanes.push(mode === "parallel" ? { ...execution, phase: "post-integration-verification", dependsOn: ["integration"] } : execution);
+    lanes.push({ ...judgment, dependsOn: ["computer-use-execution"] });
   }
   return {
     schemaVersion: 1,
@@ -431,6 +622,7 @@ export function planOrchestration(input) {
     codeMode,
     simplifyCode,
     computerUse,
+    parallelWork,
     authority: {
       launchesAgents: false,
       writesFiles: false,
@@ -441,6 +633,27 @@ export function planOrchestration(input) {
     possibleExternalSideEffects: computerUse.possibleExternalSideEffects,
     externalSideEffects: [],
   };
+}
+
+/** @param {Array<{id: string, evidence: string[], surfaces: string[]}>} risks @param {Record<string, unknown>} contract */
+function specialistLanes(risks, contract) {
+  return risks.map((risk) => {
+    const specialist = specialistMap[risk.id];
+    return lane({
+      id: `specialist-${risk.id}`,
+      role: specialist.role,
+      type: "specialist-review",
+      execution: "sequential",
+      model: specialist.model,
+      ownership: risk.surfaces.length > 0 ? risk.surfaces : contract.scope,
+      contract,
+      checks: contract.checks,
+      evidence: risk.evidence,
+      stopCondition: `Review the observed ${risk.id} risk and return evidence-backed findings.`,
+      independent: true,
+      readOnly: true,
+    });
+  });
 }
 
 /** @param {string[]} authorizationBoundaries @param {ReturnType<typeof validateExecutionPlanInput>} executionPlan */
