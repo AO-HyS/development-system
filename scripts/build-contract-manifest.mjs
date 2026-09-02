@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.14";
-if (version !== "1.5.14") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.14");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.15";
+if (version !== "1.5.15") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.15");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -23,8 +23,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.5.13";
-const catalogVersion = "0.21.0";
+const previousVersion = "1.5.14";
+const catalogVersion = "0.22.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
@@ -34,7 +34,7 @@ const operatorInterfacePath = "artifacts/1.5.0/operator-interface.md";
 const operatorInterfaceHash = sha256(await readFile(resolve(repositoryRoot, operatorInterfacePath)));
 const harnessAdaptersPath = "config/1.5.0/harness-adapters.json";
 const harnessAdaptersHash = sha256(await readFile(resolve(repositoryRoot, harnessAdaptersPath)));
-const capabilityRosterPath = "config/1.5.14/capability-roster.json";
+const capabilityRosterPath = "config/1.5.15/capability-roster.json";
 const capabilityRosterHash = sha256(await readFile(resolve(repositoryRoot, capabilityRosterPath)));
 const qualityPath = "artifacts/1.5.0/quality/stack-quality-profiles.json";
 const qualityHash = sha256(await readFile(resolve(repositoryRoot, qualityPath)));
@@ -49,7 +49,7 @@ const manifest = {
     { id: "codex", adapter: "native" },
     { id: "t3code", adapter: "codex" },
   ],
-  artifacts: [...previous.artifacts.filter((/** @type {any} */ artifact) => artifact.harness !== "factory" && artifact.logicalName !== "architecture-reference-pack").map((/** @type {any} */ artifact) => {
+  artifacts: [...previous.artifacts.filter((/** @type {any} */ artifact) => artifact.harness !== "factory" && artifact.logicalName !== "architecture-reference-pack" && artifact.logicalName !== "codex-agent-computer-use-runner").map((/** @type {any} */ artifact) => {
     if (["dual-interface-contract", "development-contract"].includes(artifact.logicalName)) {
       return {
         ...artifact,

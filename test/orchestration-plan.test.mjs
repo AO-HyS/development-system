@@ -86,6 +86,182 @@ test("observed specialist risk adds the matching specialist lane", () => {
   assert.equal(result.lanes.find((lane) => lane.role === "security_reviewer").model.reasoning, "xhigh");
 });
 
+test("multiple specialist risks are validated and routed independently", () => {
+  const result = plan({
+    trivial: false,
+    specialistRisks: [
+      { id: "security", evidence: ["auth boundary changed"], surfaces: ["src/feature"] },
+      { id: "performance", evidence: ["hot query changed"], surfaces: ["src/feature"] },
+    ],
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.mode, "specialist");
+  assert.deepEqual(result.lanes.filter((lane) => lane.type === "specialist-review").map((lane) => lane.role), ["security_reviewer", "performance_auditor"]);
+
+  const invalid = plan({ trivial: false, specialistRisks: [{ id: "unknown", evidence: [], surfaces: [] }] });
+  assert.equal(invalid.valid, false);
+  assert.match(invalid.errors.join("\n"), /specialistRisks/);
+});
+
+test("authorized requested work graph activates automatic parallel orchestration", () => {
+  const workItem = (id, surfaces, dependencies = [], capabilities = ["typescript"]) => ({
+    id,
+    kind: "implementation",
+    surfaces,
+    dependencies,
+    capabilities,
+    acceptance: `${id} observable`,
+    checks: [`test:${id}`],
+    stopCondition: `${id} verified`,
+    status: "pending",
+    agent: { role: "fast_implementer", harness: "codex", resolvedModel: "gpt-5.6-luna", reasoning: "high" },
+  });
+  const contract = { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2", "T3"] };
+  const result = planOrchestration({
+    taskContract: contract,
+    signals: { trivial: false, maxConcurrentWriters: 2 },
+    workGraph: {
+      repository: { identity: "repo", revision: "a".repeat(40) },
+      tickets: [workItem("T1", ["src/a"]), workItem("T2", ["src/b"], ["T1"]), workItem("T3", ["src/c"])],
+      integrationChecks: ["pnpm test"],
+      integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+    },
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.mode, "parallel");
+  assert.deepEqual(result.parallelWork.executableFrontier, ["T1", "T3"]);
+  assert.deepEqual(result.parallelWork.waitingTickets, [{ id: "T2", reason: "dependencies-incomplete:T1" }]);
+  assert.equal(result.lanes.filter((lane) => lane.writerCount === 1).every((lane) => lane.bundle.focusedChecks.length > 0), true);
+  assert.deepEqual(result.parallelWork.integrationChecks, ["pnpm test"]);
+  const integration = result.lanes.find((lane) => lane.type === "integration-barrier");
+  assert.deepEqual(integration.dependsOn, ["lane-1", "lane-2", "lane-3"]);
+  assert.deepEqual(integration.checks, ["pnpm test"]);
+  assert.equal(integration.integrationChecksRunCount, 1);
+  const reviews = result.lanes.filter((lane) => lane.type === "independent-review");
+  assert.equal(reviews.length, 2);
+  assert.deepEqual(reviews.map((lane) => lane.reviewFocus), ["standards", "objective"]);
+  assert.equal(reviews.every((lane) => lane.role === "reviewer"), true);
+  assert.equal(reviews.every((lane) => JSON.stringify(lane.dependsOn) === JSON.stringify(["integration"])), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.branch === null && lane.worktree === null), true);
+  assert.equal(result.parallelWork.authorization.dispatchAuthorized, false);
+  assert.deepEqual(result.authority, { launchesAgents: false, writesFiles: false, externalWrites: false, promotion: false });
+});
+
+test("parallel orchestration retains typed specialist reviews after integration", () => {
+  const item = (id, surface) => ({
+    id, kind: "implementation", surfaces: [surface], dependencies: [], capabilities: ["typescript"],
+    acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending",
+    agent: { role: "fast_implementer", harness: "codex", resolvedModel: "gpt-5.6-luna", reasoning: "high" },
+  });
+  const result = planOrchestration({
+    taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2"] },
+    signals: { trivial: false, specialistRisks: [{ id: "security", evidence: ["auth changed"], surfaces: ["src/a"] }] },
+    workGraph: {
+      repository: { identity: "repo", revision: "a".repeat(40) }, tickets: [item("T1", "src/a"), item("T2", "src/b")],
+      integrationChecks: ["pnpm test"], integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+    },
+  });
+  const review = result.lanes.find((lane) => lane.role === "security_reviewer");
+  assert.equal(review.phase, "post-integration-review");
+  assert.deepEqual(review.dependsOn, ["integration"]);
+});
+
+test("specialist risks sharing a role merge evidence and surfaces", () => {
+  const result = plan({
+    trivial: false,
+    specialistRisks: [
+      { id: "ui", evidence: ["layout changed"], surfaces: ["src/feature/a"] },
+      { id: "visual", evidence: ["responsive state changed"], surfaces: ["src/feature/b"] },
+    ],
+  });
+  const reviews = result.lanes.filter((lane) => lane.role === "visual_reviewer");
+  assert.equal(reviews.length, 1);
+  assert.deepEqual(reviews[0].evidence, ["layout changed", "responsive state changed"]);
+  assert.deepEqual(reviews[0].ownership, ["src/feature/a", "src/feature/b"]);
+});
+
+test("parallel browser verification waits for integration and judgment waits for execution", () => {
+  const item = (id, surface) => ({
+    id, kind: "implementation", surfaces: [surface], dependencies: [], capabilities: ["typescript"],
+    acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending",
+  });
+  const result = planOrchestration({
+    taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2"] },
+    signals: { trivial: false, computerUse: true, executionPlan: neutralExecutionPlan },
+    workGraph: {
+      repository: { identity: "repo", revision: "a".repeat(40) }, tickets: [item("T1", "src/a"), item("T2", "src/b")],
+      integrationChecks: ["pnpm test"], integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+    },
+  });
+  assert.deepEqual(result.lanes.find((lane) => lane.id === "computer-use-execution").dependsOn, ["integration"]);
+  assert.deepEqual(result.lanes.find((lane) => lane.id === "verification-judgment").dependsOn, ["computer-use-execution"]);
+});
+
+test("ticket count alone does not activate parallelism and graph mismatches fail closed", () => {
+  const ordinary = planOrchestration({
+    taskContract: { ...baseContract, ticketCount: 8 },
+    signals: { trivial: false },
+  });
+  assert.equal(ordinary.mode, "sequential");
+
+  const mismatch = planOrchestration({
+    taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2"] },
+    signals: { trivial: false },
+    workGraph: {
+      repository: { identity: "repo", revision: "a".repeat(40) },
+      tickets: [{ id: "T1" }],
+      integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+    },
+  });
+  assert.equal(mismatch.valid, false);
+  assert.match(mismatch.errors.join("\n"), /exactly match|T2/i);
+});
+
+test("authorized graphs cannot escape task scope or choose their own writer route", () => {
+  const item = (id, surface, agent = {}) => ({
+    id, kind: "implementation", surfaces: [surface], dependencies: [], capabilities: ["typescript"],
+    acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending", agent,
+  });
+  const base = {
+    taskContract: { ...baseContract, scope: ["src/allowed"], protectedBoundaries: ["src/allowed/secrets"], requestedWorkItemIds: ["T1", "T2"] },
+    signals: { trivial: false },
+  };
+  const graph = (tickets) => ({
+    repository: { identity: "repo", revision: "a".repeat(40) }, tickets,
+    integrationChecks: ["pnpm test"], integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+  for (const surface of ["../outside", "/absolute", "src/outside", "src/allowed/secrets/token"] ) {
+    const result = planOrchestration({ ...base, workGraph: graph([item("T1", surface), item("T2", "src/allowed/safe")]) });
+    assert.equal(result.valid, false);
+  }
+  const routed = planOrchestration({
+    ...base,
+    workGraph: graph([
+      item("T1", "src/allowed/a", { role: "attacker", harness: "other", resolvedModel: "inherit", reasoning: "none" }),
+      item("T2", "src/allowed/b"),
+    ]),
+  });
+  assert.equal(routed.valid, true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.role === "fast_implementer"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === "gpt-5.6-luna"), true);
+
+  const specialistProtected = planOrchestration({
+    ...base,
+    signals: { trivial: false, specialistRisks: [{ id: "security", evidence: ["risk"], surfaces: ["src/allowed/secrets"] }] },
+    workGraph: graph([item("T1", "src/allowed/a"), item("T2", "src/allowed/b")]),
+  });
+  assert.equal(specialistProtected.valid, false);
+  assert.match(specialistProtected.errors.join("\n"), /specialist security.*protected boundary/);
+
+  const malformedProtected = planOrchestration({
+    ...base,
+    taskContract: { ...base.taskContract, protectedBoundaries: ["../secrets"] },
+    workGraph: graph([item("T1", "src/allowed/a"), item("T2", "src/allowed/b")]),
+  });
+  assert.equal(malformedProtected.valid, false);
+  assert.match(malformedProtected.errors.join("\n"), /path-shaped protected boundaries/);
+});
+
 test("Code Mode eligibility is deterministic and selection remains with the host runtime", () => {
   const eligible = plan({
     trivial: false,

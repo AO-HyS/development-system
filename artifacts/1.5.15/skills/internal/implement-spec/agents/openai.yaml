@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Spec"
+  short_description: "Execute an approved ticket graph within exact authority"
+  default_prompt: "Implement the approved specification through the Development System work graph and stop at every ungranted delivery boundary."

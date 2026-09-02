@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.21.0";
-if (version !== "0.21.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.21.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.22.0";
+if (version !== "0.22.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.22.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -20,13 +20,12 @@ await readFile(destination).then(
 const declaresPhysicalHarnesses = true;
 const supportsFactory = false;
 const baseSkillVersion = "0.2.0";
-const upstreamSkillVersion = "1.5.11";
-const upstreamCommit = "6acc160e4e0cd062dbbbd7a1b26ae92855edf07e";
+const upstreamSkillVersion = "1.5.15";
+const upstreamCommit = "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76";
 const upstreamPaths = {
   "ask-matt": "skills/engineering/ask-matt",
   "diagnosing-bugs": "skills/engineering/diagnosing-bugs",
   wayfinder: "skills/engineering/wayfinder",
-  "grill-with-docs": "skills/engineering/grill-with-docs",
   triage: "skills/engineering/triage",
   "improve-codebase-architecture": "skills/engineering/improve-codebase-architecture",
   "setup-matt-pocock-skills": "skills/engineering/setup-matt-pocock-skills",
@@ -50,6 +49,7 @@ const upstreamPaths = {
   "writing-for-agents": "skills/productivity/writing-for-agents",
   "claude-handoff": "skills/in-progress/claude-handoff",
   "loop-me": "skills/in-progress/loop-me",
+  retro: "skills/in-progress/retro",
   "setup-ts-deep-modules": "skills/in-progress/setup-ts-deep-modules",
   "writing-beats": "skills/in-progress/writing-beats",
   "writing-fragments": "skills/in-progress/writing-fragments",
@@ -133,7 +133,7 @@ const internalSkills = await Promise.all(
   ),
 );
 
-const driveSource = "artifacts/1.5.14/skills/internal/drive-development-flow";
+const driveSource = "artifacts/1.5.15/skills/internal/drive-development-flow";
 const driveHash = await folderHash(resolve(repositoryRoot, driveSource));
 const drive = {
   logicalName: "drive-development-flow",
@@ -155,8 +155,8 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = "1.5.14";
-const adapterContract = "deterministic-hybrid-orchestration-v1";
+const orchestrationVersion = "1.5.15";
+const adapterContract = "authorized-initiative-orchestration-v2";
 const codexAdapterSource = `artifacts/${orchestrationVersion}/skills/internal/coding-orchestration`;
 const orchestration = {
   logicalName: "coding-orchestration",
@@ -265,10 +265,10 @@ const nextInternalNames = [
   "posthog-observability",
 ];
 const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName) =>
-  sharedSkill(logicalName, `artifacts/${logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`, {
+  sharedSkill(logicalName, `artifacts/${logicalName === "parallel-work" ? "1.5.15" : logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`, {
         repository: "https://github.com/AO-HyS/development-system",
         commit: "$INSTALL_COMMIT",
-        path: `artifacts/${logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`,
+        path: `artifacts/${logicalName === "parallel-work" ? "1.5.15" : logicalName === "development-steward" ? "1.5.11" : "1.5.0"}/skills/internal/${logicalName}`,
   }),
 ));
 
@@ -283,17 +283,41 @@ const simplifyCode = await sharedSkill(
 );
 
 const productVerificationSkills = await Promise.all([
-  sharedSkill("create-product-verification", "artifacts/1.5.14/skills/internal/create-product-verification", {
+  sharedSkill("create-product-verification", "artifacts/1.5.15/skills/internal/create-product-verification", {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.5.14/skills/internal/create-product-verification",
+    path: "artifacts/1.5.15/skills/internal/create-product-verification",
   }),
-  sharedSkill("maintain-product-verification", "artifacts/1.5.14/skills/internal/maintain-product-verification", {
+  sharedSkill("maintain-product-verification", "artifacts/1.5.15/skills/internal/maintain-product-verification", {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.5.14/skills/internal/maintain-product-verification",
+    path: "artifacts/1.5.15/skills/internal/maintain-product-verification",
   }),
 ]);
+
+const orchestrationTactics = await sharedSkill("pstack-engineering", "artifacts/1.5.15/skills/internal/pstack-engineering", {
+  repository: "https://github.com/AO-HyS/development-system",
+  commit: "$INSTALL_COMMIT",
+  path: "artifacts/1.5.15/skills/internal/pstack-engineering",
+  inspiration: {
+    repository: "https://github.com/cursor/plugins",
+    commit: "82f1d4f49ba8f21e3315a89c97e82f7c02a48fba",
+    path: "pstack",
+    license: "MIT",
+  },
+});
+const implementSpec = await sharedSkill("implement-spec", "artifacts/1.5.15/skills/internal/implement-spec", {
+  repository: "https://github.com/AO-HyS/development-system",
+  commit: "$INSTALL_COMMIT",
+  path: "artifacts/1.5.15/skills/internal/implement-spec",
+  upstreamReference: { repository: "https://github.com/mattpocock/skills", commit: upstreamCommit, path: "skills/in-progress/implement-spec" },
+});
+const grillWithDocs = await sharedSkill("grill-with-docs", "artifacts/1.5.15/skills/internal/grill-with-docs", {
+  repository: "https://github.com/AO-HyS/development-system",
+  commit: "$INSTALL_COMMIT",
+  path: "artifacts/1.5.15/skills/internal/grill-with-docs",
+  upstreamReference: { repository: "https://github.com/mattpocock/skills", commit: upstreamCommit, path: "skills/engineering/grill-with-docs" },
+});
 
 const previousCatalog = /** @type {{skills: Array<{variants: Array<{harness: string, destination: string}>}>}} */ (
   JSON.parse(await readFile(resolve(repositoryRoot, "catalog", "0.8.0.json"), "utf8"))
@@ -345,9 +369,12 @@ const catalog = {
   ],
   skills: [
     ...upstreamSkills,
+    implementSpec,
     ...internalSkills,
     drive,
     orchestration,
+    orchestrationTactics,
+    grillWithDocs,
     measurement,
     orchestrationPilot,
     workingBackwards,

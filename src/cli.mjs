@@ -48,6 +48,7 @@ import { auditPostHogObservability } from "./posthog-observability.mjs";
 import { auditConvexGuardian } from "./convex-guardian.mjs";
 import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
+import { verifyPathConfinement } from "./path-confinement.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -204,7 +205,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.21.0";
+    const version = options.version ?? "0.22.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -222,7 +223,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.21.0";
+    const version = options.version ?? "0.22.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -307,6 +308,10 @@ export async function run(argv) {
     if (!options.input) throw new Error("orchestration-plan requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = planOrchestration(input);
+  } else if (command === "verify-path-confinement") {
+    if (!options.input) throw new Error("verify-path-confinement requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = await verifyPathConfinement(input);
   } else if (command === "parallel-work" || command === "work-multiple") {
     if (!options.input) throw new Error(`${command} requires --input <json-path>`);
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -401,7 +406,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
