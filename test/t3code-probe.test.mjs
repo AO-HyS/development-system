@@ -208,6 +208,11 @@ test("T3Code probe accepts concise and detailed healthy skill audit evidence", (
     "Pin one binary done condition and preserve stop boundaries.";
   assert.equal(evaluateT3CodeProbe(nativeShape), true);
 
+  const equivalentCompletion = report(true);
+  equivalentCompletion.observed.influenceSignatures["flow-implement"] =
+    "Pin one objective with binary completion, checks, stop condition, and authorization boundaries.";
+  assert.equal(evaluateT3CodeProbe(equivalentCompletion), true);
+
   const noActivityPublishing = report(true);
   noActivityPublishing.application = { environmentCapabilities: { agentActivityPublishing: false } };
   noActivityPublishing.observed.routerLoaded = "drive-development-flow";
