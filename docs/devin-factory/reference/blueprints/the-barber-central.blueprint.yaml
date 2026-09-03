@@ -1,0 +1,32 @@
+# DRAFT - no enviado. Verificar los comandos en una sesion con the-barber-central clonado
+# antes de llamar update_environment_config.
+# https://docs.devin.ai/onboard-devin/environment-yaml
+initialize: |
+  # Node exigido por engines del repo, corepack actualizado (el bundled falla al
+  # firmar) y pnpm fijado por packageManager.
+  export NVM_DIR="$HOME/.nvm"
+  . "$NVM_DIR/nvm.sh"
+  nvm install 22.12.0
+  nvm alias default 22.12.0
+  npm i -g corepack@latest
+  corepack enable
+  corepack prepare pnpm@9.15.0 --activate
+  echo "COREPACK_ENABLE_DOWNLOAD_PROMPT=0" >> $ENVRC
+maintenance: |
+  pnpm install --frozen-lockfile
+knowledge:
+  - name: lint
+    contents: |
+      pnpm lint
+  - name: test
+    contents: |
+      pnpm test:unit
+  - name: typecheck
+    contents: |
+      pnpm typecheck
+  - name: quality
+    contents: |
+      # Check rapido por lane (obligatorio antes de push)
+      pnpm quality:changed
+      # Barrera unica del candidato integrado, una sola vez
+      pnpm quality:certify
