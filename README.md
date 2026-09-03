@@ -183,6 +183,12 @@ correctness without changing the user-declared order; the Sol parent retains
 deliberation and integration judgment.
 See [`docs/model-routing.md`](docs/model-routing.md).
 
+An unshipped cloud-first Devin factory is retained only as a design proposal in
+[`docs/devin-factory/`](docs/devin-factory/README.md) and
+[ADR 0019](docs/adr/0019-cloud-first-devin-software-factory.md). It does not
+publish 1.6.0 artifacts, install skills, create provider blueprints, or change
+the executable 1.5.16 routing contract.
+
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
 [`docs/changed-validation-benchmark-2026-07-28.md`](docs/changed-validation-benchmark-2026-07-28.md).
