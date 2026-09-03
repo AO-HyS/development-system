@@ -51,7 +51,9 @@ export function planParallelWork(input) {
     if (typeof ticket.stopCondition !== "string" || !ticket.stopCondition.trim()) errors.push(`${ticket.id || "ticket"} requires a stop condition`);
     if (!ticket.dependencies.every((dependency) => byId.has(dependency))) errors.push(`${ticket.id || "ticket"} has an unknown dependency`);
     if (!["pending", "running", "completed", "failed"].includes(ticket.status)) errors.push(`${ticket.id || "ticket"} has an unsupported status`);
-    if (typeof ticket.agent.resolvedModel !== "string" || !ticket.agent.resolvedModel.trim() || ticket.agent.resolvedModel === "inherit") errors.push(`${ticket.id || "ticket"} requires an explicit resolved model`);
+    const modelRoute = isRecord(ticket.agent.modelRoute) ? ticket.agent.modelRoute : null;
+    const hasExplicitRoute = modelRoute !== null && Array.isArray(modelRoute.chain) && modelRoute.chain.length > 0 && modelRoute.subordinate === true;
+    if (!hasExplicitRoute && (typeof ticket.agent.resolvedModel !== "string" || !ticket.agent.resolvedModel.trim() || ticket.agent.resolvedModel === "inherit")) errors.push(`${ticket.id || "ticket"} requires an explicit resolved model or subordinate model route`);
     for (const field of ["role", "harness", "reasoning"]) if (typeof ticket.agent[field] !== "string" || !ticket.agent[field].trim()) errors.push(`${ticket.id || "ticket"} agent.${field} is required`);
   }
   for (const ticket of tickets.filter((entry) => entry.status === "running")) {
@@ -128,7 +130,7 @@ export function planParallelWork(input) {
       status: currentTicket ? "active" : current?.status === "completed" ? "completed" : "blocked-or-waiting",
       ownership: [...(current?.surfaces ?? [])].sort(), writerCount: 1, terminalStateRequired: true,
       branch: current?.branch ?? null, worktree: current?.worktree ?? null,
-      agent: { role: agent.role ?? null, harness: agent.harness ?? null, resolvedModel: agent.resolvedModel ?? null, reasoning: agent.reasoning ?? null },
+      agent: { role: agent.role ?? null, harness: agent.harness ?? null, requestedModel: agent.requestedModel ?? null, modelRoute: agent.modelRoute ?? null, resolvedModel: agent.resolvedModel ?? null, reasoning: agent.reasoning ?? null },
       capabilities: current?.capabilities ?? [], checks: current?.checks ?? [], stopCondition: current?.stopCondition ?? null,
       bundle: isRecord(current?.bundle) ? current.bundle : null,
     };

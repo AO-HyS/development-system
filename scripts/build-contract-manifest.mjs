@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.15";
-if (version !== "1.5.15") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.15");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.16";
+if (version !== "1.5.16") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.16");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -23,8 +23,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.5.14";
-const catalogVersion = "0.22.0";
+const previousVersion = "1.5.15";
+const catalogVersion = "0.23.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
@@ -34,14 +34,18 @@ const operatorInterfacePath = "artifacts/1.5.0/operator-interface.md";
 const operatorInterfaceHash = sha256(await readFile(resolve(repositoryRoot, operatorInterfacePath)));
 const harnessAdaptersPath = "config/1.5.0/harness-adapters.json";
 const harnessAdaptersHash = sha256(await readFile(resolve(repositoryRoot, harnessAdaptersPath)));
-const capabilityRosterPath = "config/1.5.15/capability-roster.json";
+const capabilityRosterPath = "config/1.5.16/capability-roster.json";
 const capabilityRosterHash = sha256(await readFile(resolve(repositoryRoot, capabilityRosterPath)));
+const modelRoutingPath = `artifacts/${version}/model-routing.md`;
+const modelRoutingHash = sha256(await readFile(resolve(repositoryRoot, modelRoutingPath)));
 const qualityPath = "artifacts/1.5.0/quality/stack-quality-profiles.json";
 const qualityHash = sha256(await readFile(resolve(repositoryRoot, qualityPath)));
 const stewardSchedulePath = "artifacts/1.5.1/steward/schedule.json";
 const stewardScheduleHash = sha256(await readFile(resolve(repositoryRoot, stewardSchedulePath)));
 const architectureReferencePath = "artifacts/1.5.10/architecture-reference-pack.md";
 const architectureReferenceHash = sha256(await readFile(resolve(repositoryRoot, architectureReferencePath)));
+const fastImplementerPath = "artifacts/1.5.16/agents/codex/fast-implementer.toml";
+const fastImplementerHash = sha256(await readFile(resolve(repositoryRoot, fastImplementerPath)));
 const manifest = {
   ...previous,
   contractVersion: version,
@@ -59,6 +63,9 @@ const manifest = {
         sha256: contractHash,
         expectedMirrorOf: null,
       };
+    }
+    if (artifact.logicalName === "codex-agent-fast-implementer") {
+      return { ...artifact, sourcePath: fastImplementerPath, sha256: fastImplementerHash };
     }
     if (artifact.logicalName === "skill-catalog") {
       return {
@@ -93,7 +100,7 @@ const manifest = {
     expectedMirrorOf: null,
   }],
 };
-const computerUseRunnerPath = `artifacts/${version}/agents/codex/computer-use-runner.toml`;
+const computerUseRunnerPath = "artifacts/1.5.15/agents/codex/computer-use-runner.toml";
 const computerUseRunnerHash = sha256(await readFile(resolve(repositoryRoot, computerUseRunnerPath)));
 manifest.artifacts.push({
   id: "codex-agent.computer-use-runner",
@@ -102,6 +109,15 @@ manifest.artifacts.push({
   destination: ".codex/agents/computer-use-runner.toml",
   harness: "codex",
   sha256: computerUseRunnerHash,
+  expectedMirrorOf: null,
+});
+manifest.artifacts.push({
+  id: "model-routing.codex",
+  logicalName: "model-routing",
+  sourcePath: modelRoutingPath,
+  destination: ".codex/development-system/model-routing.md",
+  harness: "codex",
+  sha256: modelRoutingHash,
   expectedMirrorOf: null,
 });
 await writeFile(

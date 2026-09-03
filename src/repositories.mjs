@@ -6,8 +6,8 @@ import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
 
-const contractVersion = "1.5.15";
-const skillCatalogVersion = "0.22.0";
+const contractVersion = "1.5.16";
+const skillCatalogVersion = "0.23.0";
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -33,7 +33,7 @@ const fingerprintSampleBytes = 64 * 1024;
 const fingerprintSampleCount = maximumFingerprintFileBytes / fingerprintSampleBytes;
 const maximumGovernedTextBytes = 1024 * 1024;
 const instructionNames = new Set(["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules"]);
-const foreignProductMarkers = ["NutriPlan", "The Barber Central", "AOHYS", "Escuela 360", "Impeccable"];
+const foreignProductMarkers = ["NutriPlan", "The Barber Central", "Casa Roca", "ETERIA", "AOHYS", "Escuela 360", "Impeccable"];
 const managedFiles = [
   ".development-system/repository.json",
   ".codex/development-system/repository.md",
@@ -769,7 +769,7 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   contents = contents.replaceAll(", $orchestration-plan", "");
   contents = contents.replace(
     "Recommendation-only requests remain read-only.",
-    "Recommendation-only requests remain read-only. Non-trivial implementation follows the pure `orchestration-plan` output; trivial edits stay direct. An exact authorized multi-ticket work graph routes automatically to dependency-aware parallel lanes; ticket count alone never activates work.",
+    "Recommendation-only requests remain read-only. Mechanical execution, including trivial edits, code/file search, file creation, code generation, evidence collection, and focused tests, follows the ordered fast route; the Sol parent retains deliberation and integration judgment. An exact authorized multi-ticket work graph routes automatically to dependency-aware parallel lanes; ticket count alone never activates work.",
   );
   contents = replaceAdapterSection(
     contents,

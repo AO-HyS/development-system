@@ -15,7 +15,7 @@ const projectsRoot = resolve(
 );
 const outputIndex = process.argv.indexOf("--output");
 const outputPath = outputIndex >= 0 ? resolve(process.argv[outputIndex + 1]) : null;
-const targets = ["nutri-plan", "the-barber-central", "aohys", "eteria"];
+const targets = ["nutri-plan", "the-barber-central", "aohys", "eteria", "casa-roca"];
 
 /** @param {string} repository */
 function gitStatus(repository) {
@@ -72,7 +72,7 @@ for (const name of targets) {
 
 const report = {
   schemaVersion: 1,
-  contractVersion: "1.5.15",
+  contractVersion: "1.5.16",
   generatedAt: new Date().toISOString(),
   operation: "repository-audit-smoke",
   mode: "read-only-compatibility-evidence",
