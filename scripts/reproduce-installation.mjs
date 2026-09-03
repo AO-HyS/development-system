@@ -60,13 +60,14 @@ await writeFile(unrelated, "user-owned\n", "utf8");
 
 step(["install", "--version", "1.5.14", "--source-commit", sourceCommit]);
 step(["install", "--version", "1.5.15", "--source-commit", sourceCommit]);
+step(["install", "--version", "1.5.16", "--source-commit", sourceCommit]);
 const codexContract = resolve(home, ".codex", "development-system", "contract.md");
 await writeFile(codexContract, "scenario drift\n", "utf8");
 assert.equal(step(["audit"]).status, "drifted");
 step(["validate"], 1);
-step(["install", "--version", "1.5.15", "--source-commit", sourceCommit]);
+step(["install", "--version", "1.5.16", "--source-commit", sourceCommit]);
 assert.equal(step(["validate"]).status, "healthy");
-assert.equal(step(["rollback"]).toVersion, "1.5.14");
+assert.equal(step(["rollback"]).toVersion, "1.5.15");
 assert.equal(await readFile(unrelated, "utf8"), "user-owned\n");
 
 process.stdout.write(`Scenario complete. Isolated HOME: ${home}\n`);

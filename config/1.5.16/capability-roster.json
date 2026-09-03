@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 4,
+  "contractVersion": "1.5.16",
+  "policy": "explicit-evidence-first-cross-harness-fallback-fail-closed",
+  "executionRoles": {
+    "codex": {
+      "orchestrator": { "role": "orchestrator", "agent": "parent", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required" },
+      "discovery": { "role": "code_mapper", "agent": "fast_implementer", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "modelRoute": { "routeSlot": "fast-execution", "chain": "fast", "subordinate": true, "receiptRequired": true, "attemptBeforeDispatch": true } },
+      "implementation": { "role": "fast_implementer", "agent": "fast_implementer", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "modelRoute": { "routeSlot": "implementation-default", "chain": "fast", "subordinate": true, "receiptRequired": true, "attemptBeforeDispatch": true } },
+      "verification": { "role": "test_runner", "agent": "fast_implementer", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "modelRoute": { "routeSlot": "fast-execution", "chain": "fast", "subordinate": true, "receiptRequired": true, "attemptBeforeDispatch": true } },
+      "computerUseRunner": { "role": "computer_use_runner", "agent": "computer_use_runner", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "semanticJudgment": false },
+      "browserQa": { "role": "browser_qa", "agent": "browser_qa", "harness": "codex", "model": "gpt-5.6-terra", "reasoning": "max", "evidenceStatus": "runtime-required" },
+      "review": { "role": "reviewer", "agent": "reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required" },
+      "visualReview": { "role": "visual_reviewer", "agent": "visual_reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required" },
+      "securityReview": { "role": "security_reviewer", "agent": "security_reviewer", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "xhigh", "evidenceStatus": "runtime-required" },
+      "performanceReview": { "role": "performance_auditor", "agent": "performance_auditor", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required" },
+      "backend": { "role": "backend_specialist", "agent": "backend_specialist", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required" }
+    }
+  },
+  "chains": {
+    "fast": [
+      { "id": "devin-swe-1-7", "harness": "devin", "model": "swe-1-7", "requestedModel": "swe-1-7", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:devin" },
+      { "id": "factory-glm-5.3-flash", "harness": "factory", "model": "glm-5.3-flash", "requestedModel": "glm-5.3-flash", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:factory" },
+      { "id": "devin-gemini-3.8-flash", "harness": "devin", "model": "gemini-3.8-flash", "requestedModel": "gemini-3.8-flash", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "requiresVerifiedRuntimeAvailability": true, "independenceBoundary": "provider:devin" },
+      { "id": "codex-luna-priority", "harness": "codex", "model": "gpt-5.6-luna", "requestedModel": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "fallbackOnly": true, "independenceBoundary": "provider:openai-priority", "serviceTier": { "tier": "priority", "label": "fast", "status": "runtime-required" } }
+    ]
+  },
+  "routes": [
+    {
+      "routeSlot": "adversarial-review",
+      "capability": "review",
+      "selectionPriority": "speed-to-verified-result",
+      "candidates": [
+        { "id": "factory-fable-5.1", "harness": "factory", "model": "claude-fable-5.1", "requestedModel": "claude-fable-5.1", "reasoning": "xhigh", "evidenceStatus": "provisional", "mappingStatus": "mapped", "independenceBoundary": "provider:factory" },
+        { "id": "devin-fable-5.1", "harness": "devin", "model": "claude-fable-5.1", "requestedModel": "claude-fable-5.1", "reasoning": "xhigh", "evidenceStatus": "provisional", "mappingStatus": "mapped", "independenceBoundary": "provider:devin" },
+        { "id": "codex-sol-review", "harness": "codex", "model": "gpt-5.6-sol", "requestedModel": "gpt-5.6-sol", "reasoning": "xhigh", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "routeSlot": "implementation-default",
+      "capability": "implementation",
+      "selectionPriority": "fastest-verified-available",
+      "chain": "fast"
+    },
+    {
+      "routeSlot": "fast-execution",
+      "capability": "mechanical-execution",
+      "selectionPriority": "fastest-verified-available",
+      "chain": "fast"
+    }
+  ],
+  "clientSurfaces": { "t3code": { "adapter": "codex" } }
+}

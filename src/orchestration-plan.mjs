@@ -53,7 +53,7 @@ function contractStrings(contract, name, errors, required = false) {
 
 const models = Object.freeze({
   parent: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "high" },
-  writer: { requested: "gpt-5.6-luna", resolved: "gpt-5.6-luna", reasoning: "high" },
+  writer: { requested: "swe-1-7", resolved: null, reasoning: "max" },
   reviewer: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "medium" },
   security: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "xhigh" },
   performance: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "medium" },
@@ -74,6 +74,36 @@ const specialistMap = Object.freeze({
 });
 
 const analysisKinds = new Set(["research", "audit", "operations-analysis", "operations_analysis"]);
+
+/**
+ * Shared ordered runtime attempt chain for writer and mechanical lanes: Devin
+ * `swe-1-7`, Factory `glm-5.3-flash`, Devin `gemini-3.8-flash` only when
+ * current runtime availability is verified, then Codex `gpt-5.6-luna` with
+ * reasoning `max` on the priority/fast service path.
+ */
+const fastModelChain = Object.freeze([
+  { harness: "devin", model: "swe-1-7", reasoning: "max" },
+  { harness: "factory", model: "glm-5.3-flash", reasoning: "high" },
+  { harness: "devin", model: "gemini-3.8-flash", reasoning: "high", requiresVerifiedRuntimeAvailability: true },
+  { harness: "codex", model: "gpt-5.6-luna", reasoning: "max", fallbackOnly: true, serviceTier: { tier: "priority", label: "fast", status: "runtime-required" } },
+]);
+
+/**
+ * Explicit subordinate runtime-routing requirement for a lane. The parent
+ * resolves and attempts the route before dispatch; a lane never claims a
+ * resolved model without a provider/runtime receipt.
+ * @param {string} routeSlot
+ */
+function fastChainRoute(routeSlot) {
+  return Object.freeze({
+    routeSlot,
+    chain: fastModelChain,
+    subordinate: true,
+    runtimeRouting: true,
+    receiptRequired: true,
+    attemptBeforeDispatch: true,
+  });
+}
 const simplifySignals = [
   "explicitlyRequested",
   "newAbstractions",
@@ -222,7 +252,8 @@ function authorizedParallelPlan(workGraph, contract, signals, risks, errors) {
       agent: {
         role: "fast_implementer",
         harness: "codex",
-        resolvedModel: models.writer.resolved,
+        requestedModel: models.writer.requested,
+        modelRoute: fastChainRoute("fast-execution"),
         reasoning: models.writer.reasoning,
       },
       bundle,
@@ -592,7 +623,7 @@ export function planOrchestration(input) {
     lanes.push(computerUseRunnerLane(contract.authorizationBoundaries, executionPlan));
     lanes.push(verificationJudgmentLane(contract));
   } else if (mode === "direct") {
-    lanes.push(lane({ id: "direct", role: "orchestrator", type: "direct", model: models.parent, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition }));
+    lanes.push(lane({ id: "direct", role: "fast_implementer", type: "direct-fast-execution", model: models.writer, modelRoute: fastChainRoute("fast-execution"), ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition }));
   } else if (codeMode.eligible) {
     lanes.push(lane({ id: "analysis", role: "docs_researcher", type: "analysis", execution: "code-mode-attempt", executionPreference: "code-mode", executionFallback: "sequential-read-only-tools", model: models.research, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: true }));
     lanes.push(...specialistLanes(risks, contract));
@@ -600,7 +631,7 @@ export function planOrchestration(input) {
     lanes.push(lane({ id: "analysis", role: "docs_researcher", type: "analysis", execution: "sequential", model: models.research, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: true }));
     lanes.push(...specialistLanes(risks, contract));
   } else {
-    lanes.push(lane({ id: "writer", role: "fast_implementer", type: "writer", execution: "sequential", model: models.writer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: false }));
+    lanes.push(lane({ id: "writer", role: "fast_implementer", type: "writer", execution: "sequential", model: models.writer, modelRoute: fastChainRoute("implementation-default"), ownership: contract.scope, contract, checks: contract.checks, stopCondition: contract.stopCondition, readOnly: false }));
     lanes.push(lane({ id: "review", role: "reviewer", type: "independent-review", execution: "sequential", model: models.reviewer, ownership: contract.scope, contract, checks: contract.checks, stopCondition: "Report actionable correctness and regression findings; do not edit.", independent: true, readOnly: true }));
     lanes.push(...specialistLanes(risks, contract));
   }

@@ -10,8 +10,20 @@ import { planParallelWork } from "../src/parallel-work.mjs";
 const agent = {
   role: "fast_implementer",
   harness: "codex",
-  resolvedModel: "gpt-5.6-luna",
-  reasoning: "high",
+  requestedModel: "swe-1-7",
+  modelRoute: {
+    routeSlot: "fast-execution",
+    chain: [
+      { harness: "devin", model: "swe-1-7", reasoning: "max" },
+      { harness: "factory", model: "glm-5.3-flash", reasoning: "high" },
+      { harness: "devin", model: "gemini-3.8-flash", reasoning: "high", requiresVerifiedRuntimeAvailability: true },
+      { harness: "codex", model: "gpt-5.6-luna", reasoning: "max", fallbackOnly: true },
+    ],
+    subordinate: true,
+    receiptRequired: true,
+    attemptBeforeDispatch: true,
+  },
+  reasoning: "max",
 };
 
 function ticket(id, surfaces, dependencies = [], status = "pending") {

@@ -49,6 +49,7 @@ import { auditConvexGuardian } from "./convex-guardian.mjs";
 import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
+import { resolveModelRoute } from "./model-routing.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -67,7 +68,10 @@ function parseArguments(argv) {
     const value = tokens[index + 1];
     if (!value || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
     if (token === "--home") options.home = value;
-    else if (token === "--version") options.version = value;
+    else if (token === "--version") {
+      if (!/^\d+\.\d+\.\d+$/u.test(value)) throw new Error("--version must use semantic versioning (major.minor.patch)");
+      options.version = value;
+    }
     else if (token === "--source-commit") options.sourceCommit = value;
     else if (token === "--source-root") options.sourceRoot = value;
     else if (token === "--evidence") options.evidence = value;
@@ -205,7 +209,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.22.0";
+    const version = options.version ?? "0.23.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -223,7 +227,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.22.0";
+    const version = options.version ?? "0.23.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -312,6 +316,13 @@ export async function run(argv) {
     if (!options.input) throw new Error("verify-path-confinement requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = await verifyPathConfinement(input);
+  } else if (command === "model-route") {
+    if (!options.input) throw new Error("model-route requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    const roster = input && typeof input === "object" && input.roster
+      ? input.roster
+      : JSON.parse(await readFile(resolve(repositoryRoot, "config", options.version ?? "1.5.16", "capability-roster.json"), "utf8"));
+    result = resolveModelRoute({ ...input, roster });
   } else if (command === "parallel-work" || command === "work-multiple") {
     if (!options.input) throw new Error(`${command} requires --input <json-path>`);
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -406,7 +417,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
