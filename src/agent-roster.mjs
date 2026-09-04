@@ -91,7 +91,7 @@ export function rosterModel(routeSlot) {
   const candidate = /** @type {Array<Record<string, unknown>>} */ (route.candidates)[0];
   return Object.freeze({
     requested: /** @type {string} */ (candidate.model),
-    resolved: candidate.harness === "codex" ? /** @type {string} */ (candidate.model) : null,
+    resolved: null,
     reasoning: /** @type {string} */ (candidate.reasoning),
   });
 }

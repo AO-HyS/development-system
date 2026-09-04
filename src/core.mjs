@@ -15,6 +15,7 @@ import {
 } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loadPackageSource, packageFileBytes, verifyPackageFile } from "./package-source.mjs";
 import { validateSkillCatalog } from "./skills.mjs";
 
 /**
@@ -289,10 +290,15 @@ async function loadVersionManifest(version) {
 
 /** @param {string | undefined} requestedCommit */
 function resolveSourceCommit(requestedCommit) {
-  if (requestedCommit) {
-    if (!commitPattern.test(requestedCommit)) {
-      throw new Error("--source-commit must be an exact lowercase 40-character Git commit");
+  const packageSource = loadPackageSource(repositoryRoot);
+  if (packageSource) {
+    if (requestedCommit && requestedCommit !== packageSource.commit) {
+      throw new Error(`--source-commit cannot override the packaged commit ${packageSource.commit}`);
     }
+    return packageSource.commit;
+  }
+  if (requestedCommit) {
+    if (!commitPattern.test(requestedCommit)) throw new Error("--source-commit must be an exact lowercase 40-character Git commit");
     return requestedCommit;
   }
   try {
@@ -324,6 +330,29 @@ function readFileAtCommit(commit, path) {
 
 /** @param {ContractManifest} manifest @param {string} commit */
 function verifySourceCommit(manifest, commit) {
+  const packageSource = loadPackageSource(repositoryRoot);
+  if (packageSource) {
+    if (commit !== packageSource.commit) {
+      throw new Error(`Installed source commit ${commit} is not the packaged commit ${packageSource.commit}`);
+    }
+    const manifestPath = `manifests/${manifest.contractVersion}.json`;
+    let committedManifest;
+    try {
+      committedManifest = JSON.parse(packageFileBytes(packageSource, manifestPath).toString("utf8"));
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(`Package provenance contains an invalid ${manifestPath}`);
+      }
+      throw error;
+    }
+    if (JSON.stringify(committedManifest) !== JSON.stringify(manifest)) {
+      throw new Error("Package provenance does not contain the selected canonical manifest bytes");
+    }
+    for (const artifact of manifest.artifacts) {
+      verifyPackageFile(packageSource, artifact.sourcePath, artifact.sha256);
+    }
+    return;
+  }
   try {
     execFileSync("git", ["cat-file", "-e", `${commit}^{commit}`], {
       cwd: repositoryRoot,

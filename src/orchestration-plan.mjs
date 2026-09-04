@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import {
   antiSlopAdversarialRoute,
+  antiSlopGeneralReviewRoute,
   antiSlopPhases,
   antiSlopSpecialistFingerprint,
   antiSlopWriterFingerprint,
@@ -152,10 +153,13 @@ const specialistMap = Object.freeze({
 const analysisKinds = new Set(["research", "audit", "operations-analysis", "operations_analysis"]);
 
 /**
- * Shared ordered runtime attempt chain for writer and mechanical lanes: Devin
- * `swe-1-7`, Factory `glm-5.3-flash`, Devin `gemini-3.8-flash` only when
- * current runtime availability is verified, then Codex `gpt-5.6-luna` with
- * reasoning `max` on the priority/fast service path.
+ * Shared ordered runtime attempt chain for writer and mechanical lanes:
+ * OpenCode Go `opencode-go/glm-5.3-flash` with reasoning `high` first, then
+ * OpenCode Go `opencode-go/qwen3.8-flash` only when current runtime
+ * availability is verified, Devin `swe-1-7-lightning` with reasoning
+ * `medium`, Factory `glm-5.3-flash`, and finally Codex `gpt-5.6-luna` with
+ * reasoning `high` on the priority/fast service path as the declared
+ * fallback-only candidate.
  */
 const fastModelChain = rosterChain("fast-execution");
 
@@ -177,12 +181,22 @@ function fastChainRoute(routeSlot) {
 }
 
 /**
- * Evidence-bound adversarial fallback route for independent anti-slop review
- * lanes: Factory Fable 5.1 xhigh, Devin Fable 5.1 xhigh, then Codex GPT-5.6
- * Sol xhigh. The resolved model stays null until a matching runtime receipt.
+ * Evidence-bound adversarial fallback route kept for complex independent
+ * review lanes: Factory Fable 5.1 medium, Devin Fable 5.1 medium, then Astra
+ * `gpt-6-astra` high as the declared fallback. The resolved model stays null
+ * until a matching runtime receipt.
  */
 function adversarialReviewRoute() {
   return antiSlopAdversarialRoute();
+}
+
+/**
+ * Ordinary review lanes stay parent logical phases: the general-review route
+ * carries the real matching roster chain, and no lane claims a resolved
+ * model without runtime proof.
+ */
+function generalReviewRoute() {
+  return antiSlopGeneralReviewRoute();
 }
 
 /**
@@ -194,12 +208,13 @@ const writerIdentity = Object.freeze({ role: "fast_implementer", type: "writer" 
 /**
  * Canonical agent descriptor embedded in every parallel ticket writer lane.
  * A fresh object per call: the model route must never be shared by reference
- * across lanes.
+ * across lanes. The harness reflects the first declared fast-route candidate,
+ * so a requested OpenCode Go model never advertises a codex harness.
  */
 function parallelWriterAgent() {
   return {
     role: writerIdentity.role,
-    harness: "codex",
+    harness: /** @type {string} */ (fastModelChain[0].harness),
     requestedModel: models.writer.requested,
     modelRoute: fastChainRoute("fast-execution"),
     resolvedModel: null,
@@ -215,13 +230,15 @@ function antiSlopReviewLanes(contract, { reviewDependsOn, correctionDependsOn, c
       role: "reviewer",
       type: "independent-review",
       execution: "sequential-after-writer",
-      model: models.adversarialReviewer,
-      modelRoute: adversarialReviewRoute(),
+      model: models.reviewer,
+      modelRoute: generalReviewRoute(),
+      executionOwner: "parent",
+      agentSpawnRequired: false,
+      independent: false,
       ownership: contract.scope,
       contract,
       checks: contract.checks,
       stopCondition: `${testValuePhaseContract.requirement} ${testValuePhaseContract.completion} Do not edit.`,
-      independent: true,
       readOnly: true,
       antiSlopPhases: [{ ...testValuePhaseContract }],
       dependsOn: [...reviewDependsOn],
@@ -247,13 +264,15 @@ function antiSlopReviewLanes(contract, { reviewDependsOn, correctionDependsOn, c
       role: "reviewer",
       type: "independent-review",
       execution: "sequential-after-correction",
-      model: models.adversarialReviewer,
-      modelRoute: adversarialReviewRoute(),
+      model: models.reviewer,
+      modelRoute: generalReviewRoute(),
+      executionOwner: "parent",
+      agentSpawnRequired: false,
+      independent: false,
       ownership: contract.scope,
       contract,
       checks: contract.checks,
       stopCondition: `Report actionable correctness and regression findings; ${verificationPhaseContract.requirement} ${verificationPhaseContract.completion} Do not edit.`,
-      independent: true,
       readOnly: true,
       antiSlopPhases: [{ ...verificationPhaseContract }],
       dependsOn: ["correction"],
@@ -272,7 +291,7 @@ const simplifySignals = [
 /**
  * Canonical executable anti-slop phase contracts, copied whole into every
  * owning lane so each lane is a self-contained, model-independent prompt
- * surface (Factory writers never depend on installed skills).
+ * surface (writers never depend on installed skills).
  */
 const writerPhaseContracts = Object.freeze(
   antiSlopPhases.filter((phase) => phase.order <= 3).map((phase) => ({ ...phase, dependsOn: [...phase.dependsOn] })),
@@ -1324,11 +1343,13 @@ export function planOrchestration(input) {
       type: "independent-review",
       execution: "sequential-after-integration",
       model: models.reviewer,
+      executionOwner: "parent",
+      agentSpawnRequired: false,
+      independent: false,
       ownership: contract.scope,
       contract,
       checks: contract.checks,
       stopCondition: "Review the integrated diff against repository standards, architecture, correctness, regressions, maintainability, and missing tests; do not edit.",
-      independent: true,
       readOnly: true,
       reviewFocus: "standards",
       phase: "post-integration-review",

@@ -1,6 +1,7 @@
 // @ts-check
 
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -50,6 +51,7 @@ import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { resolveModelRoute } from "./model-routing.mjs";
+import { readProviderFailures, recordProviderFailure } from "./provider-availability.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -96,6 +98,8 @@ function parseArguments(argv) {
 
 /** @param {Record<string, unknown>} result */
 function formatHuman(result) {
+  if (result.operation === "record-provider-failure") return `Provider failure cached for ${result.candidateId} until ${result.expiresAt}.`;
+  if (result.operation === "setup") return `Development System ${result.version} and skill catalog ${result.catalogVersion} installed. Run audit and audit-skills to inspect installation state.`;
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
   }
@@ -195,7 +199,23 @@ export async function run(argv) {
   const { command, options } = parseArguments(argv);
   let result;
 
-  if (command === "install") {
+  if (command === "setup") {
+    const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+    const version = options.version ?? metadata.version;
+    const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${version}.json`), "utf8"));
+    const catalogArtifact = manifest.artifacts.find((/** @type {{logicalName: string}} */ artifact) => artifact.logicalName === "skill-catalog");
+    if (!catalogArtifact) throw new Error(`Contract ${version} has no skill catalog`);
+    const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogArtifact.sourcePath), "utf8"));
+    const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
+    try {
+      const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
+      result = { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills };
+    } catch (error) {
+      if (!installation.reinstalled) await rollbackInstallation({ home: options.home });
+      const recovery = installation.reinstalled ? "existing contract reinstalled; skill sync restored its prior state" : "contract installation rolled back";
+      throw new Error(`Setup skill synchronization failed; ${recovery}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");
     result = await installVersion({
       home: options.home,
@@ -209,7 +229,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.26.0";
+    const version = options.version ?? "0.27.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -227,7 +247,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.26.0";
+    const version = options.version ?? "0.27.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -316,15 +336,21 @@ export async function run(argv) {
     if (!options.input) throw new Error("verify-path-confinement requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = await verifyPathConfinement(input);
+  } else if (command === "record-provider-failure") {
+    if (!options.input) throw new Error("record-provider-failure requires --input <json-path>");
+    result = await recordProviderFailure({ home: options.home, observation: JSON.parse(await readFile(resolve(options.input), "utf8")) });
   } else if (command === "model-route") {
     if (!options.input) throw new Error("model-route requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     const roster = input && typeof input === "object" && input.roster
       ? input.roster
       : options.version
-        ? JSON.parse(await readFile(resolve(repositoryRoot, "config", options.version, options.version === "1.5.19" ? "agent-roster.json" : "capability-roster.json"), "utf8"))
+        ? JSON.parse(await readFile(resolve(repositoryRoot, "config", options.version, existsSync(resolve(repositoryRoot, "config", options.version, "agent-roster.json")) ? "agent-roster.json" : "capability-roster.json"), "utf8"))
         : JSON.parse(await readFile(resolve(repositoryRoot, "config", "agent-roster.json"), "utf8"));
-    result = resolveModelRoute({ ...input, roster });
+    // An explicit observation packet is authoritative for a reproducible route
+    // decision. Otherwise reuse unexpired negative observations from this host.
+    const unavailable = input.unavailable ?? await readProviderFailures(options.home);
+    result = resolveModelRoute({ ...input, unavailable, roster });
   } else if (command === "parallel-work" || command === "work-multiple") {
     if (!options.input) throw new Error(`${command} requires --input <json-path>`);
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -419,7 +445,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

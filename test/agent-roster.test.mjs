@@ -24,7 +24,23 @@ test("editable roster is valid and covers every planner route", () => {
 
 test("aliases share one ordered candidate list without duplicating policy", () => {
   assert.deepEqual(rosterChain("implementation-default"), rosterChain("fast-execution"));
-  assert.equal(rosterModel("implementation-default").requested, "swe-1-7");
+  assert.equal(rosterModel("implementation-default").requested, "opencode-go/glm-5.3-flash");
+});
+
+test("rosterModel never reports a runtime-resolved model from config alone", () => {
+  for (const route of agentRoster.routes) {
+    assert.equal(rosterModel(/** @type {string} */ (route.routeSlot)).resolved, null, route.id);
+  }
+});
+
+test("no active route still references retired Sol", () => {
+  assert.equal(JSON.stringify(agentRoster).includes("gpt-5.6-sol"), false);
+});
+
+test("fast-execution wording keeps deterministic work out of the model route", () => {
+  const route = rosterRoute("fast-execution");
+  assert.equal(route.does.some((entry) => /buscar|evidencia|pruebas/i.test(entry)), false);
+  assert.match(/** @type {string} */ (route.when), /no requieren un worker de modelo/);
 });
 
 test("invalid manual edits fail closed with actionable errors", () => {

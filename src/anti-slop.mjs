@@ -100,23 +100,26 @@ export const antiSlopDiagnosticOnlyMetrics = Object.freeze([
   "halstead-complexity",
 ]);
 
-/** Route slot in the capability roster for independent anti-slop review lanes. */
+/** Route slot in the capability roster for complex independent anti-slop review lanes. */
 export const antiSlopAdversarialRouteSlot = "adversarial-review";
 
+/** Route slot in the capability roster for ordinary parent-executed anti-slop review lanes. */
+export const antiSlopGeneralReviewRouteSlot = "general-review";
+
 /**
- * Deliberate Factory coverage choice: Factory writers never depend on Codex
- * skill discovery. Every lane contract embeds the complete anti-slop
- * requirements as model-independent prompt fields, so Factory execution is
- * requirement-complete by construction.
+ * Deliberate coverage choice: writers never depend on harness skill
+ * discovery. Every lane contract embeds the complete anti-slop requirements
+ * as model-independent prompt fields, so execution is requirement-complete
+ * by construction.
  */
 export const antiSlopFactoryCoverage = Object.freeze({
   policy: "requirements-embedded-in-lane-contracts",
   installedSkillsRequired: false,
   statement:
-    "Factory writers do not require installed skills. Every lane contract embeds the complete anti-slop requirements in model-independent prompt fields, so Factory execution never depends on Codex skill discovery.",
+    "Writers do not require installed skills. Every lane contract embeds the complete anti-slop requirements in model-independent prompt fields, so execution never depends on harness skill discovery.",
 });
 
-/** Ordered evidence-bound adversarial fallback route for independent anti-slop review lanes. */
+/** Ordered evidence-bound adversarial fallback route for complex independent anti-slop review lanes. */
 export const antiSlopAdversarialChain = rosterChain(antiSlopAdversarialRouteSlot);
 
 /** @param {string} routeSlot */
@@ -124,6 +127,21 @@ export function antiSlopAdversarialRoute(routeSlot = antiSlopAdversarialRouteSlo
   return Object.freeze({
     routeSlot,
     chain: antiSlopAdversarialChain,
+    subordinate: true,
+    runtimeRouting: true,
+    receiptRequired: true,
+    attemptBeforeDispatch: true,
+  });
+}
+
+/** General-review route for ordinary parent-executed review lanes, carrying the real matching roster chain. */
+export const antiSlopGeneralReviewChain = rosterChain(antiSlopGeneralReviewRouteSlot);
+
+/** @param {string} routeSlot */
+export function antiSlopGeneralReviewRoute(routeSlot = antiSlopGeneralReviewRouteSlot) {
+  return Object.freeze({
+    routeSlot,
+    chain: antiSlopGeneralReviewChain,
     subordinate: true,
     runtimeRouting: true,
     receiptRequired: true,

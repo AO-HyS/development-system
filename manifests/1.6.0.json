@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.6.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "development-contract.codex",
+      "logicalName": "development-contract",
+      "sourcePath": "artifacts/1.6.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "676e878305a316e7cbdae458065c2f50584b0a1e0d7d185879b04f32dbd2e621",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "operator-interface.codex",
+      "logicalName": "operator-interface",
+      "sourcePath": "artifacts/1.5.0/operator-interface.md",
+      "destination": ".codex/development-system/operator-interface.md",
+      "harness": "codex",
+      "sha256": "21ee99f305722e76948193939dbb7bc44bc41c8a28dcd6026c2f2a9dfaa4d50d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "harness-adapters.codex",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/1.5.0/harness-adapters.json",
+      "destination": ".codex/development-system/harness-adapters.json",
+      "harness": "codex",
+      "sha256": "a1e7b7d03945eb75f3675b02275474189456ab00d3aa7b425c3a14fe9597f72d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "agent-roster.codex",
+      "logicalName": "agent-roster",
+      "sourcePath": "config/1.6.0/agent-roster.json",
+      "destination": ".codex/development-system/agent-roster.json",
+      "harness": "codex",
+      "sha256": "e4302b4bd04259e9d151f239b7a00212185f90d911a6efd0c5b7cb75a4ead7f1",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "benchmark-suite.codex",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".codex/development-system/benchmark-suite.json",
+      "harness": "codex",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "skill-catalog.codex",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.27.0.json",
+      "destination": ".codex/development-system/skills.json",
+      "harness": "codex",
+      "sha256": "cfe6d54326a5c729b6be91ffcd36887af2407cd212402306d14b880fe3bf8215",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "global-validator.shared",
+      "logicalName": "global-validator",
+      "sourcePath": "artifacts/0.6.0/validate-development-system.py",
+      "destination": ".agents/scripts/validate-development-system.py",
+      "harness": "codex",
+      "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.architecture-planner",
+      "logicalName": "codex-agent-architecture-planner",
+      "sourcePath": "artifacts/1.6.0/agents/codex/architecture-planner.toml",
+      "destination": ".codex/agents/architecture-planner.toml",
+      "harness": "codex",
+      "sha256": "6d2128f7d3964b4c1e8e83354d8307eb859785c8c8cb2954ab4c04b85d70eadf",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.backend-specialist",
+      "logicalName": "codex-agent-backend-specialist",
+      "sourcePath": "artifacts/1.6.0/agents/codex/backend-specialist.toml",
+      "destination": ".codex/agents/backend-specialist.toml",
+      "harness": "codex",
+      "sha256": "107003f98084c924d2f046cb57250db99757bfe219cd28f549d2889d72687dd2",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.code-mapper",
+      "logicalName": "codex-agent-code-mapper",
+      "sourcePath": "artifacts/1.6.0/agents/codex/code-mapper.toml",
+      "destination": ".codex/agents/code-mapper.toml",
+      "harness": "codex",
+      "sha256": "de56bd98cd10a35c4c4e643916fc70e5690cfe0b9c245860daf8a8b39f76385a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.docs-researcher",
+      "logicalName": "codex-agent-docs-researcher",
+      "sourcePath": "artifacts/1.6.0/agents/codex/docs-researcher.toml",
+      "destination": ".codex/agents/docs-researcher.toml",
+      "harness": "codex",
+      "sha256": "720e943d9489de0a8864954530d6383ad674bed0e5192e533f45b7442a9aa6d1",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.qa-planner",
+      "logicalName": "codex-agent-qa-planner",
+      "sourcePath": "artifacts/1.6.0/agents/codex/qa-planner.toml",
+      "destination": ".codex/agents/qa-planner.toml",
+      "harness": "codex",
+      "sha256": "c303acdcdbc75bc8de4647a26b514a1fd4e9e37d6d2b3f19a36cd4acec828287",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.test-runner",
+      "logicalName": "codex-agent-test-runner",
+      "sourcePath": "artifacts/1.6.0/agents/codex/test-runner.toml",
+      "destination": ".codex/agents/test-runner.toml",
+      "harness": "codex",
+      "sha256": "4b81a41cbade42778f38d459ec06b8a53d6ce474c1c6df22d5c6ecd7b2b4c56e",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.fast-implementer",
+      "logicalName": "codex-agent-fast-implementer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/fast-implementer.toml",
+      "destination": ".codex/agents/fast-implementer.toml",
+      "harness": "codex",
+      "sha256": "5f549cb2241b7d8a71b055acd02a97fd0547ea7640798a706f9c956d3a41f77f",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.implementer",
+      "logicalName": "codex-agent-implementer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/implementer.toml",
+      "destination": ".codex/agents/implementer.toml",
+      "harness": "codex",
+      "sha256": "7fb75f525d6aab86db5f1d911282b7daeeb1d277659510caea198ae7590cf919",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.mechanical-worker",
+      "logicalName": "codex-agent-mechanical-worker",
+      "sourcePath": "artifacts/1.6.0/agents/codex/mechanical-worker.toml",
+      "destination": ".codex/agents/mechanical-worker.toml",
+      "harness": "codex",
+      "sha256": "eac323f25e91c52ba030b79ea3d982a3161bb71a9c2e4255e3c31b988dc0f6b9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.performance-auditor",
+      "logicalName": "codex-agent-performance-auditor",
+      "sourcePath": "artifacts/1.6.0/agents/codex/performance-auditor.toml",
+      "destination": ".codex/agents/performance-auditor.toml",
+      "harness": "codex",
+      "sha256": "cbb617262d89fdfb16c99f9b65142142e849ae083fefa6b295ec2cdf9e8dcf0b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.release-manager",
+      "logicalName": "codex-agent-release-manager",
+      "sourcePath": "artifacts/1.6.0/agents/codex/release-manager.toml",
+      "destination": ".codex/agents/release-manager.toml",
+      "harness": "codex",
+      "sha256": "cded2166355f4390ccb3eace4dadd474b7ffc6cc64948b7cbe9dd2805f83f57f",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.browser-qa",
+      "logicalName": "codex-agent-browser-qa",
+      "sourcePath": "artifacts/1.6.0/agents/codex/browser-qa.toml",
+      "destination": ".codex/agents/browser-qa.toml",
+      "harness": "codex",
+      "sha256": "7e687248207ffcf3fb5366c3bcdd3a5632764755ca43bcd6b3628922f33e1b7d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.reviewer",
+      "logicalName": "codex-agent-reviewer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/reviewer.toml",
+      "destination": ".codex/agents/reviewer.toml",
+      "harness": "codex",
+      "sha256": "f2b83b27c1eae18340811539eb963f4eef702595215ad2abab7a0d6c6be1bd73",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.security-reviewer",
+      "logicalName": "codex-agent-security-reviewer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/security-reviewer.toml",
+      "destination": ".codex/agents/security-reviewer.toml",
+      "harness": "codex",
+      "sha256": "219c1c03e862c364de79116b9fd89d8325e84e73ba1b6057043e51c09f3fe6a5",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.ui-designer",
+      "logicalName": "codex-agent-ui-designer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/ui-designer.toml",
+      "destination": ".codex/agents/ui-designer.toml",
+      "harness": "codex",
+      "sha256": "3f0af058ad81526670ffe46220abe3806c156b3474f2897b341fd4f7a1feb52b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.visual-reviewer",
+      "logicalName": "codex-agent-visual-reviewer",
+      "sourcePath": "artifacts/1.6.0/agents/codex/visual-reviewer.toml",
+      "destination": ".codex/agents/visual-reviewer.toml",
+      "harness": "codex",
+      "sha256": "48b1b2dc77d75319e65dca29be00239e3325288dd3c6393358171f5688be82e0",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "stack-quality-profiles.codex",
+      "logicalName": "stack-quality-profiles",
+      "sourcePath": "artifacts/1.5.0/quality/stack-quality-profiles.json",
+      "destination": ".codex/development-system/stack-quality-profiles.json",
+      "harness": "codex",
+      "sha256": "3301d0bef68aa5754065b1b280ae41bcffb5998d6a4a886c0294ad11bde0c774",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "development-steward-schedule.codex",
+      "logicalName": "development-steward-schedule",
+      "sourcePath": "artifacts/1.5.1/steward/schedule.json",
+      "destination": ".codex/development-system/development-steward-schedule.json",
+      "harness": "codex",
+      "sha256": "cca06a803351a850b7a3e753d0363b0e1a697697c0c75292eb80a79a948d7823",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "model-routing.codex",
+      "logicalName": "model-routing",
+      "sourcePath": "artifacts/1.6.0/model-routing.md",
+      "destination": ".codex/development-system/model-routing.md",
+      "harness": "codex",
+      "sha256": "54f191182be9a2cbd432d04cb9f762c82d76f09cba1c369c4f51ab410bd68e4b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "architecture-reference-pack.codex",
+      "logicalName": "architecture-reference-pack",
+      "sourcePath": "artifacts/1.5.10/architecture-reference-pack.md",
+      "destination": ".codex/development-system/architecture-reference-pack.md",
+      "harness": "codex",
+      "sha256": "6fc71793eb776668ceda2ffeff343654c8593c92004e0d246341867153602dee",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.computer-use-runner",
+      "logicalName": "codex-agent-computer-use-runner",
+      "sourcePath": "artifacts/1.6.0/agents/codex/computer-use-runner.toml",
+      "destination": ".codex/agents/computer-use-runner.toml",
+      "harness": "codex",
+      "sha256": "b9a988eaf5bfda41e0200f66bca9e54bfc11cac600e51415c5e534b0c7a19ef9",
+      "expectedMirrorOf": null
+    }
+  ]
+}

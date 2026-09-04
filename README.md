@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.19` preserves the executable anti-slop protocol from 1.5.17 and makes its live capability probes reliable with catalog `0.26.0`: canonical behavior signatures now match equivalent terms actually produced from the installed instructions, while prompts still contain none of their own signatures and exact installed-file read proof, catalog discovery, and substantive skill-specific answers remain mandatory. The catalog keeps Dillon Mulroy's upstream `dmmulroy/anti-slop` install skill at exact commit `e8c4880471b23ab7f216fba7b27d173a6ef07d4c` with MIT provenance behind the contained Development System installer; it preserves the fast chain, evidence-bound adversarial review fallback, and opt-in product verification. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.6.0` makes Astra the orchestrator, designer, reviewer and Computer Use owner, puts OpenCode Go first for bounded implementation, reserves Fable for complex independent review, and keeps Luna as the final fast fallback. Catalog `0.27.0` adds 14 pinned design and visualization skills while preserving Impeccable. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -18,19 +18,28 @@ immutable release snapshots.
 
 - Node.js 22 or newer
 - pnpm 11
-- A Git checkout when `--source-commit` is omitted
+- A canonical Git checkout **or** the pinned GitHub release package; no Git checkout is needed for package installation.
 
 ## Interface
 
-Run commands from a checkout of this repository:
+Install a single tooling dependency in a product repository:
+
+```sh
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.6.0/aohys-development-system-1.6.0.tgz
+pnpm exec aohys-development-system setup
+```
+
+Commit the lockfile, which pins the tarball integrity. A `ds` package script can alias `aohys-development-system`. Normal dependency installation never writes HOME; `setup` is an explicit local operation. See [package distribution and recovery](docs/package-distribution.md).
+
+From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.19
-./bin/development-system sync-skills --version 0.26.0
+./bin/development-system install --version 1.6.0
+./bin/development-system sync-skills --version 0.27.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.26.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.27.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -176,28 +185,18 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.16 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
-`model-route` is a pure resolver. For adversarial review it tries Factory Fable
-5.1, Devin Fable 5.1, then Codex Sol, recording every quota/provider boundary;
-it never calls a provider. Fable and Sol use `xhigh` by default, while `max`
-requires explicit escalation. The ordinary implementation route and all
-mechanical, non-deliberative work follow one shared ordered runtime attempt
-chain: Devin `swe-1-7`, Factory `glm-5.3-flash`, Devin `gemini-3.8-flash` only
-with current runtime evidence, then Codex `gpt-5.6-luna` with reasoning `max`
-on the priority/fast service path. The parent resolves and attempts the route
-before dispatch and requires a provider/runtime receipt before claiming the
-resolved model; the Codex `fast_implementer` runs only when the Luna fallback
-is selected. Everyday implementation is never Codex Luna High. The same route
-owns trivial edits, code/file search, file creation, code generation, evidence
-collection, and focused tests. Runtime receipts measure actual latency and
-correctness without changing the user-declared order; the Sol parent retains
-deliberation and integration judgment.
-See [`docs/model-routing.md`](docs/model-routing.md).
+`model-route` resolves the declared chain without contacting providers. Astra runs
+in Codex. OpenCode Go GLM 5.3 Flash High is the first worker, followed by
+runtime-verified Go Qwen3.8 Flash, Devin SWE-1.7 Lightning Medium, Factory GLM,
+and Codex Luna High. Factory/Devin Fable Medium assist complex review. Exact
+requested and observed model IDs remain separate until runtime evidence matches.
+Astra executes ordinary review phases in the parent; deterministic Git, search,
+and checks use tools directly. See [current routing policy](artifacts/1.6.0/model-routing.md).
 
 An unshipped cloud-first Devin factory is retained only as a design proposal in
 [`docs/devin-factory/`](docs/devin-factory/README.md) and
 [ADR 0019](docs/adr/0019-cloud-first-devin-software-factory.md). It does not
-publish 1.6.0 artifacts, install skills, create provider blueprints, or change
-the executable 1.5.16 routing contract.
+create provider blueprints or govern the executable 1.6.0 routing contract.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -207,7 +206,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.19`, `sync-skills --version 0.26.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.6.0`, `sync-skills --version 0.27.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -238,7 +237,7 @@ The focused Reader gate opens a generated report directly from `file://` in Chro
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. `1.5.16` adds explicit cross-harness model fallback with honest evidence/mapping status, fail-closed exhaustion, and receipt-bound resolution while shipping catalog `0.23.0` with the new immutable `coding-orchestration` skill and `fast_implementer` agent copies. `1.5.17` makes the ordered anti-slop protocol executable and publishes catalog `0.24.0`. `1.5.18` makes live skill probes reliable with catalog `0.25.0`. `1.5.19` publishes the editable agent roster and roster-driven orchestration with catalog `0.26.0`. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. `1.5.16` adds explicit cross-harness model fallback with honest evidence/mapping status, fail-closed exhaustion, and receipt-bound resolution while shipping catalog `0.23.0` with the new immutable `coding-orchestration` skill and `fast_implementer` agent copies. `1.5.17` makes the ordered anti-slop protocol executable and publishes catalog `0.24.0`. `1.5.18` makes live skill probes reliable with catalog `0.25.0`. `1.5.19` publishes the editable agent roster and roster-driven orchestration with catalog `0.26.0`. `1.6.0` adds Astra/Go routing, the package distribution path and catalog `0.27.0`. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

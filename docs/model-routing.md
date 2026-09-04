@@ -1,66 +1,51 @@
-# Model routing operator contract (1.5.16)
+# Model routing operator contract (1.6.0)
 
-`model-route` is a pure, read-only policy operation. It consumes the versioned
-capability roster plus host-observed candidate availability and returns a
-selection, ordered attempts, and a fallback trace. It does not invoke Factory,
-Devin, Codex, or any provider.
+The editable source is `config/agent-roster.json`; released snapshots under
+`config/<version>` are immutable. Astra runs in Codex and owns orchestration,
+decisions, design, ordinary review and Computer Use. Deterministic commands use
+tools directly. Six evidence phases do not require six model conversations.
 
-For adversarial review the declared order is:
+Bounded implementation follows this order:
 
-1. Factory Droid `claude-fable-5.1` (`xhigh`)
-2. Devin `claude-fable-5.1` (`xhigh`)
-3. Codex `gpt-5.6-sol` (`xhigh`)
+1. OpenCode Go `opencode-go/glm-5.3-flash`, High.
+2. Go `opencode-go/qwen3.8-flash`, High, after matching runtime availability.
+3. Devin `swe-1-7-lightning-medium`, Medium.
+4. Factory `glm-5.3-flash`, High.
+5. Codex `gpt-5.6-luna`, High, priority-tier fallback only.
 
-For the ordinary implementation route and all mechanical, non-deliberative
-work the declared order is Devin `swe-1-7`, Factory `glm-5.3-flash`, Devin
-`gemini-3.8-flash` only with current runtime evidence, then Codex Luna with
-reasoning `max` on the priority/fast service path. The parent resolves and
-attempts the route before dispatch, verifies exact path confinement and
-authorization, and treats quota, unavailable, unsupported, policy,
-model-mismatch, and latency-budget evidence as typed fallback. A
-provider/runtime receipt is required before the parent claims the resolved
-model. The Codex `fast_implementer` runs only when the Luna fallback is
-selected. Everyday implementation is never Codex Luna High. The declared
-order is operational; receipts measure actual latency and correctness without
-silently reordering it. Trivial mechanical edits use the same route, while the
-Sol parent retains deliberation and integration judgment.
+Complex independent review follows Factory Fable 5.1 Medium, Devin Fable 5.1
+Medium, then Astra High. Ordinary review stays with Astra. Escalation may
+increase Astra effort to Max when observed risk justifies it. Effort is a
+task setting; a provider/model name alone does not establish speed or quality.
 
-`escalation: true` changes the selected Codex Sol reasoning level to `max`;
-Fable remains `xhigh`. Escalation is for explicit security/authorization risk,
-transversal architecture, measured non-convergence, or critical release
-review. It is not a default cost setting.
+`model-route --input route.json --json` is pure apart from reading local
+availability observations: it never calls providers or grants dispatch.
+It accepts `capability`, `routeSlot`, optional `roster`, `unavailable` and
+`escalation`. Without a supplied roster or version it uses the active roster.
+The host supplies exact worktree, ownership, prompt and authorized permissions
+separately. Never add automatic permissions to the pure invocation descriptor.
 
-`quota-exhausted`, `unavailable`, `unsupported`, `policy-blocked`,
-`latency-budget-exceeded`, and `timeout` are the unavailable reasons. A quota
-failure advances only to the next declared candidate and records the provider
-boundary. Exhaustion returns `valid: false` and `blocked: true`. No provider
-is silently substituted. Bare model-only availability facts that match
-multiple provider candidates fail closed instead of being arbitrarily consumed
-once; a receipt-named observation on the selected candidate is the only state
-that may report the actual resolved model.
+Requested and resolved models are distinct. Only a matching runtime receipt
+may populate `resolvedModel`; an installed configuration or model listing is
+not proof of execution. Record quota, unavailable, unsupported, policy,
+timeout, latency or model-mismatch evidence before advancing. Exhaustion and
+unknown harnesses fail closed. Reuse useful worker context across corrections.
 
-Every result includes `requestedModel`, `resolvedModel`, `resolvedModelStatus`,
-`reasoning`, `evidenceStatus`, `mappingStatus`, `attempts`, `fallbackTrace`,
-and `authority.dispatchAuthorized: false`. `resolvedModelStatus` is
-`receipt-required` until a matching observed-model receipt exists, then
-`receipt-matched` with the actual resolved model. `provisional` and
-`runtime-required` are honest states, not validation claims. A runtime receipt
-is required before declaring a route operationally validated.
+OpenCode invokes `opencode run --pure --model <provider/model> --variant <effort>
+--format json`. Devin effort-specific UIDs are resolved from its live model
+catalog. Factory invokes `droid exec --model ... --reasoning-effort ...`.
+Astra and Luna use Codex. Do not confuse the Astra model with a provider.
 
-Invocation descriptors use the current CLI shapes: `droid exec --model ...
---reasoning-effort ...`, `devin --model <exact-model-uid> --print`, and `codex
-exec --strict-config --model ... --config model_reasoning_effort=... --config
-service_tier=\"priority\"`. The runtime adds only task-authorized
-permission, sandbox, worktree, and prompt arguments. A Codex response receipt
-must report the effective priority tier before the route calls the fallback
-"Fast".
+Muse Spark Contributor remains outside automatic private-code routes. The
+provider currently requires an explicit training-data opt-in; the synthetic
+probe on 2026-09-04 returned DataPolicyError before generating a response.
+No account privacy setting was changed.
 
-Example:
-
-```sh
-./bin/development-system model-route --input route.json --json
-```
-
-The input may include `roster`, `capability`, `routeSlot`, `unavailable`, and
-the optional boolean `escalation`. The repository's 1.5.16 roster is used when
-`roster` is omitted by the CLI.
+Record a real failure with `record-provider-failure --input observation.json`.
+The observation has exactly `candidateId`, typed `reason`, ISO `observedAt`,
+ISO `expiresAt` (maximum seven days later), and a private `evidenceRef`.
+Use a short backoff when the provider gives no exact reset time. The host stores
+only negative observations under `.development-system/private/runtime/`;
+expired failures stop affecting selection. An explicit `unavailable` packet
+overrides the cache for reproducible decisions. Cache entries never establish
+successful execution or model resolution.
