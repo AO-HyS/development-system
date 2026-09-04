@@ -624,19 +624,23 @@ test("prompt echo without a successful read stays unloaded and uninfluential", (
   }
 });
 
-test("no catalog or skill prompt contains any of its own behavior-signature phrases", () => {
-  for (const contract of skillProbeContracts) {
-    assert.ok(contract.behaviorSignature.length > 0, contract.logicalName);
-    for (const promptField of ["catalogPrompt", "skillPrompt"]) {
-      for (const requirement of contract.behaviorSignature) {
-        assert.equal(
-          hasBehaviorSignature(contract[promptField], [requirement]),
-          false,
-          `${contract.logicalName} ${promptField} leaks ${JSON.stringify(requirement)}`,
-        );
+test("no catalog or skill prompt contains behavior signatures from supported installed catalogs", async () => {
+  const catalog24 = JSON.parse(await readFile(new URL("../catalog/0.24.0.json", import.meta.url), "utf8"));
+  const catalog25 = JSON.parse(await readFile(new URL("../catalog/0.25.0.json", import.meta.url), "utf8"));
+  for (const contracts of [bindSkillProbeContracts(catalog24), bindSkillProbeContracts(catalog25)]) {
+    for (const contract of contracts) {
+      assert.ok(contract.behaviorSignature.length > 0, contract.logicalName);
+      for (const promptField of ["catalogPrompt", "skillPrompt"]) {
+        for (const requirement of contract.behaviorSignature) {
+          assert.equal(
+            hasBehaviorSignature(contract[promptField], [requirement]),
+            false,
+            `${contract.logicalName} ${promptField} leaks ${JSON.stringify(requirement)}`,
+          );
+        }
       }
+      assert.notEqual(contract.skillPrompt, contract.catalogPrompt);
     }
-    assert.notEqual(contract.skillPrompt, contract.catalogPrompt);
   }
 });
 

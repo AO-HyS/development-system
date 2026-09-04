@@ -45,7 +45,7 @@ export const skillProbeContracts = [
   {
     logicalName: "behavioral-evidence",
     catalogPrompt:
-      "Without opening or activating a skill, name the exact available skill whose catalog description covers auditing changed and new tests for behavioral value and rejecting weakened assertions or snapshots. Reply with only its skill name.",
+      "Without opening or activating a skill, name the exact available skill whose catalog description covers auditing changed and new tests for behavioral value and rejecting checks or snapshots relaxed merely to turn a run green. Reply with only its skill name.",
     skillPrompt:
       "$behavioral-evidence Read the full skill instructions from the exact installed file .agents/skills/behavioral-evidence/SKILL.md. Then, according only to them: how should tests be treated relative to the product behavior they observe, what is the disposition for an assertion loosened or a snapshot updated merely to turn a run green, and what must an independent verifier derive its oracle from? Include the exact phrase 'justifies nothing'; do not perform any audit.",
     catalogPattern: /^behavioral-evidence\s*$/iu,
