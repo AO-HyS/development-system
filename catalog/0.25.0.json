@@ -50,7 +50,12 @@
         "install.mjs",
         "absolute destinations",
         "nested traversal",
-        "symlink ancestor"
+        [
+          "symlink ancestor",
+          "symlink ancestors",
+          "symbolic link ancestor",
+          "symbolic link ancestors"
+        ]
       ]
     }
   },

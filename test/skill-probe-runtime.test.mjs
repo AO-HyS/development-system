@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
   buildCodexSkillProbeEvidence,
   buildCodexSkillProbeInvocations,
+  bindSkillProbeContracts,
   invocationDigest,
   observedSkillReadEvent,
   runCodexSkillProbeSequence,
   runSkillProbeProcess,
   skillProbeContracts,
 } from "../src/skill-probe-runtime.mjs";
+import { hasBehaviorSignature } from "../src/skills.mjs";
 
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -621,17 +624,37 @@ test("prompt echo without a successful read stays unloaded and uninfluential", (
   }
 });
 
-test("no skill prompt contains any of its own behavior-signature phrases", () => {
+test("no catalog or skill prompt contains any of its own behavior-signature phrases", () => {
   for (const contract of skillProbeContracts) {
     assert.ok(contract.behaviorSignature.length > 0, contract.logicalName);
-    for (const phrase of contract.behaviorSignature) {
-      assert.equal(
-        contract.skillPrompt.toLowerCase().includes(phrase.toLowerCase()),
-        false,
-        `${contract.logicalName} skillPrompt leaks the signature phrase "${phrase}"`,
-      );
+    for (const promptField of ["catalogPrompt", "skillPrompt"]) {
+      for (const requirement of contract.behaviorSignature) {
+        assert.equal(
+          hasBehaviorSignature(contract[promptField], [requirement]),
+          false,
+          `${contract.logicalName} ${promptField} leaks ${JSON.stringify(requirement)}`,
+        );
+      }
     }
-    // Catalog prompts stay a separate surface.
     assert.notEqual(contract.skillPrompt, contract.catalogPrompt);
   }
+});
+
+test("installed catalogs bind the probe to their exact immutable behavior contracts", async () => {
+  const catalog24 = JSON.parse(await readFile(new URL("../catalog/0.24.0.json", import.meta.url), "utf8"));
+  const catalog25 = JSON.parse(await readFile(new URL("../catalog/0.25.0.json", import.meta.url), "utf8"));
+  const contracts24 = bindSkillProbeContracts(catalog24);
+  const contracts25 = bindSkillProbeContracts(catalog25);
+  assert.deepEqual(
+    contracts24.find((contract) => contract.logicalName === "behavioral-evidence").behaviorSignature,
+    catalog24.operationalEvidenceContracts["behavioral-evidence"].behaviorSignature,
+  );
+  assert.deepEqual(
+    contracts25.find((contract) => contract.logicalName === "install-anti-slop").behaviorSignature,
+    catalog25.operationalEvidenceContracts["install-anti-slop"].behaviorSignature,
+  );
+  assert.notDeepEqual(
+    contracts24.find((contract) => contract.logicalName === "install-anti-slop").behaviorSignature,
+    contracts25.find((contract) => contract.logicalName === "install-anti-slop").behaviorSignature,
+  );
 });

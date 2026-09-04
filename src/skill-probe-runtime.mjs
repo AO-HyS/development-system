@@ -34,7 +34,7 @@ export const skillProbeContracts = [
   {
     logicalName: "research",
     catalogPrompt:
-      "Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against high-trust primary sources. Reply with only its skill name.",
+      "Without opening or activating a skill, name the exact available skill whose catalog description covers investigating questions against authoritative first-party evidence. Reply with only its skill name.",
     skillPrompt:
       "$research Read the full skill instructions from the exact installed file .agents/skills/research/SKILL.md. Then, according only to them: what kind of worker should do the job, what source class is mandatory, what single artifact must it create, and what exact fallback applies when the repository has no convention for those notes? Include the exact fallback phrases 'somewhere sensible' and 'say where' in one short sentence; do not perform the research.",
     catalogPattern: /^research\s*$/iu,
@@ -56,7 +56,7 @@ export const skillProbeContracts = [
   {
     logicalName: "simplify-code",
     catalogPrompt:
-      "Without opening or activating a skill, name the exact available skill whose catalog description covers reviewing a diff for safe deletion and reuse plus a mandatory deletion pass. Reply with only its skill name.",
+      "Without opening or activating a skill, name the exact available skill whose catalog description covers reviewing a diff for safe removal and reuse plus a mandatory final simplification audit. Reply with only its skill name.",
     skillPrompt:
       "$simplify-code Read the full skill instructions from the exact installed file .agents/skills/simplify-code/SKILL.md. Then, according only to them: which mandatory pass must run before independent verification, which code must it cover, and what must it report about removals, retentions, and the remainder? Include the exact phrase 'why it must remain'; do not perform any review.",
     catalogPattern: /^simplify-code\s*$/iu,
@@ -73,9 +73,56 @@ export const skillProbeContracts = [
     catalogPattern: /^install-anti-slop\s*$/iu,
     loadPathMarkers: [".agents/skills/install-anti-slop/SKILL.md"],
     loadSignature: ["install.mjs"],
-    behaviorSignature: ["install.mjs", "absolute destinations", "nested traversal", "symlink ancestor"],
+    behaviorSignature: [
+      "install.mjs",
+      "absolute destinations",
+      "nested traversal",
+      ["symlink ancestor", "symlink ancestors", "symbolic link ancestor", "symbolic link ancestors"],
+    ],
   },
 ];
+
+/**
+ * Bind prompt templates to the exact immutable behavior contracts selected by
+ * the installed catalog. Unknown, duplicate, or malformed contracts fail
+ * before any harness process is launched.
+ * @param {unknown} installedCatalog
+ */
+export function bindSkillProbeContracts(installedCatalog) {
+  if (installedCatalog === null || typeof installedCatalog !== "object" || Array.isArray(installedCatalog)) {
+    throw new Error("Installed skill catalog is malformed");
+  }
+  const catalog = /** @type {Record<string, any>} */ (installedCatalog);
+  if (!Array.isArray(catalog.operationalEvidenceSkills)) {
+    throw new Error("Installed skill catalog has no operational evidence skill list");
+  }
+  const names = catalog.operationalEvidenceSkills;
+  if (
+    names.some((name) => typeof name !== "string" || name.length === 0) ||
+    new Set(names).size !== names.length
+  ) {
+    throw new Error("Installed skill catalog has invalid operational evidence skill names");
+  }
+  const templates = new Map(skillProbeContracts.map((contract) => [contract.logicalName, contract]));
+  const unknown = names.filter((name) => !templates.has(name));
+  if (unknown.length > 0) throw new Error(`Installed skill catalog has no probe template for: ${unknown.join(", ")}`);
+  const contracts = catalog.operationalEvidenceContracts;
+  if (contracts === null || typeof contracts !== "object" || Array.isArray(contracts)) {
+    throw new Error("Installed skill catalog has no operational evidence contracts");
+  }
+  return skillProbeContracts.filter((template) => names.includes(template.logicalName)).map((template) => {
+    const signature = contracts[template.logicalName]?.behaviorSignature;
+    const validRequirement = (/** @type {unknown} */ requirement) =>
+      typeof requirement === "string"
+        ? requirement.trim().length > 0
+        : Array.isArray(requirement) && requirement.length > 0 &&
+          requirement.every((alternative) => typeof alternative === "string" && alternative.trim().length > 0);
+    if (!Array.isArray(signature) || signature.length === 0 || !signature.every(validRequirement)) {
+      throw new Error(`Installed skill catalog has an invalid behavior contract for ${template.logicalName}`);
+    }
+    return { ...template, behaviorSignature: structuredClone(signature) };
+  });
+}
 
 /** Kept for compatibility: the research skill's live behavior signature. */
 export const skillBehaviorSignature = skillProbeContracts[0].behaviorSignature;
@@ -95,12 +142,13 @@ export function installedSkillPath(home, logicalName) {
   return resolve(resolvedHome, ".agents", "skills", logicalName, "SKILL.md");
 }
 
-/** @param {{codexPath: string, repositoryRoot: string, home: string}} input */
+/** @param {{codexPath: string, repositoryRoot: string, home: string, contracts?: typeof skillProbeContracts}} input */
 export function buildCodexSkillProbeInvocations(input) {
+  const contracts = input.contracts ?? skillProbeContracts;
   const common = ["-a", "never", "exec", "--ephemeral", "--sandbox", "read-only", "--skip-git-repo-check", "--json", "-C", input.repositoryRoot];
   return {
     version: { executable: input.codexPath, args: ["--version"] },
-    skills: Object.fromEntries(skillProbeContracts.map((contract) => [
+    skills: Object.fromEntries(contracts.map((contract) => [
       contract.logicalName,
       {
         catalog: { executable: input.codexPath, args: [...common, contract.catalogPrompt] },
@@ -282,13 +330,15 @@ export function observedSkillReadEvent(contract, result, expectedInstalledPath) 
  *   invocations: ReturnType<typeof buildCodexSkillProbeInvocations>,
  *   home: string,
  *   execute: (invocation: {executable: string, args: string[]}) => Promise<any>,
+ *   contracts?: typeof skillProbeContracts,
  * }} input
  */
 export async function runCodexSkillProbeSequence(input) {
+  const contracts = input.contracts ?? skillProbeContracts;
   const codexVersion = await input.execute(input.invocations.version);
   /** @type {Record<string, {catalog: any, skill: any, attempts: {version: number, catalog: number, skill: number, retriedFailedAssertions: number}}>} */
   const observations = {};
-  for (const contract of skillProbeContracts) {
+  for (const contract of contracts) {
     const pair = input.invocations.skills[contract.logicalName];
     const observe = async (
       /** @type {{executable: string, args: string[]}} */ invocation,
@@ -408,9 +458,10 @@ function processFailure(result, harness) {
  * entry per probe contract, bound to installed folder hashes; every field a
  * fail-closed audit reads is derived from the observed subprocess results.
  *
- * @param {{catalogVersion: string, sourceCommit: string, home: string, structuralCatalogLogicalSkills: number, installedHashes: Record<string, string>, generatedAt: string, codexVersion: any, observations: Record<string, {catalog: any, skill: any, attempts: {version: number, catalog: number, skill: number, retriedFailedAssertions: number}}>, authenticationKey?: Buffer | Uint8Array}} input
+ * @param {{catalogVersion: string, sourceCommit: string, home: string, structuralCatalogLogicalSkills: number, installedHashes: Record<string, string>, generatedAt: string, codexVersion: any, observations: Record<string, {catalog: any, skill: any, attempts: {version: number, catalog: number, skill: number, retriedFailedAssertions: number}}>, authenticationKey?: Buffer | Uint8Array, contracts?: typeof skillProbeContracts}} input
  */
 export function buildCodexSkillProbeEvidence(input) {
+  const contracts = input.contracts ?? skillProbeContracts;
   const processSucceeded = (/** @type {any} */ result) =>
     result.exitCode === 0 &&
     result.timedOut !== true &&
@@ -436,7 +487,7 @@ export function buildCodexSkillProbeEvidence(input) {
   const codex = {};
   /** @type {boolean[]} */
   const skillSuccess = [];
-  for (const contract of skillProbeContracts) {
+  for (const contract of contracts) {
     const observation = input.observations[contract.logicalName];
     const catalogResult = observation?.catalog ?? { exitCode: null, stdout: "", stderr: "", command: "", structuredInvocation: null, errorCode: "MISSING" };
     const skillResult = observation?.skill ?? { exitCode: null, stdout: "", stderr: "", command: "", structuredInvocation: null, errorCode: "MISSING" };
@@ -538,14 +589,14 @@ export function buildCodexSkillProbeEvidence(input) {
     evidenceScope: {
       kind: "critical-capability-live-probe",
       structuralCatalogLogicalSkills: input.structuralCatalogLogicalSkills,
-      liveInfluenceSkills: skillProbeContracts.map((contract) => contract.logicalName),
+      liveInfluenceSkills: contracts.map((contract) => contract.logicalName),
       exhaustive: false,
       claim: "Live influence is proven only for the named skills and harness observations.",
     },
     generatedAt: input.generatedAt,
     sourceCommit: input.sourceCommit,
     home: input.home,
-    behaviorSignatures: Object.fromEntries(skillProbeContracts.map((contract) => [
+    behaviorSignatures: Object.fromEntries(contracts.map((contract) => [
       contract.logicalName,
       contract.behaviorSignature,
     ])),

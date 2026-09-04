@@ -31,6 +31,27 @@ test("behavior signatures tolerate descriptive words between required terms", ()
   );
 });
 
+test("behavior signatures support explicit alternatives without weakening other requirements", () => {
+  const signature = [
+    "install.mjs",
+    "absolute destinations",
+    "nested traversal",
+    ["symlink ancestor", "symlink ancestors", "symbolic link ancestor", "symbolic link ancestors"],
+  ];
+  for (const wording of ["a symlink ancestor", "symlink ancestors", "a symbolic link ancestor", "symbolic link ancestors"]) {
+    assert.equal(
+      hasBehaviorSignature(`Use install.mjs; refuse absolute destinations, nested traversal, and ${wording}.`, signature),
+      true,
+      wording,
+    );
+  }
+  assert.equal(
+    hasBehaviorSignature("Use install.mjs; refuse absolute destinations and a symbolic link ancestor.", signature),
+    false,
+    "an alternative does not replace another mandatory requirement",
+  );
+});
+
 const skillBody = `---
 name: tracer-skill
 description: Emits the catalog tracer marker.

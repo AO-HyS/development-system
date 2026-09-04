@@ -415,7 +415,12 @@ const catalog = {
       behaviorSignature: ["deletion pass", "production code and test code", "what was deleted"],
     },
     "install-anti-slop": {
-      behaviorSignature: ["install.mjs", "absolute destinations", "nested traversal", "symlink ancestor"],
+      behaviorSignature: [
+        "install.mjs",
+        "absolute destinations",
+        "nested traversal",
+        ["symlink ancestor", "symlink ancestors", "symbolic link ancestor", "symbolic link ancestors"],
+      ],
     },
   },
   cleanup: [

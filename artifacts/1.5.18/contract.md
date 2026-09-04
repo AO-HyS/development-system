@@ -122,11 +122,15 @@ It changes only the canonical response signatures for `behavioral-evidence`
 and `install-anti-slop` so they describe the same required behavior using
 terms produced by the installed instructions: a loosened assertion or
 snapshot is a `weakened test`, and the contained installer refuses absolute
-destinations, nested traversal, and a symlink ancestor. These signature
-phrases remain absent from their prompts, so prompt echo cannot satisfy the
-influence check. Exact installed-file read receipts, signed invocation
-digests, catalog discovery, installed folder hashes, successful process state,
-and the complete per-skill signature set remain fail-closed prerequisites.
+destinations, nested traversal, and a symlink or symbolic-link ancestor,
+whether expressed in singular or plural form. These alternative signature
+phrases remain absent from both catalog and skill prompts, so prompt echo
+cannot satisfy the influence check. The live harness binds its contracts to
+the exact installed catalog, and the auditor rejects persisted signatures
+that differ from that catalog. Exact installed-file read receipts, signed
+invocation digests, catalog discovery, installed folder hashes, successful
+process state, and the complete per-skill signature set remain fail-closed
+prerequisites.
 
 ## Repository preparation
 
