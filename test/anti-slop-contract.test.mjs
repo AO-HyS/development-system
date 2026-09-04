@@ -1055,7 +1055,7 @@ test("behavioral-evidence and simplify-code skills carry the executable review a
 });
 
 test("catalog sync plus operational evidence contract: signatures, hashes, and probe contracts agree", async () => {
-  const catalog = JSON.parse(await readFile(resolve(root, "catalog/0.24.0.json"), "utf8"));
+  const catalog = JSON.parse(await readFile(resolve(root, "catalog/0.25.0.json"), "utf8"));
   assert.deepEqual(await validateSkillCatalog(catalog, root), []);
   const evidenceSkills = catalog.operationalEvidenceSkills ?? [];
   for (const name of ["research", "behavioral-evidence", "simplify-code", "install-anti-slop"]) {
@@ -1076,7 +1076,7 @@ test("catalog sync plus operational evidence contract: signatures, hashes, and p
 
 test("operational evidence validation is fail-closed per skill", async () => {
   const { auditSkillCatalog } = await import("../src/skills.mjs");
-  const catalog = JSON.parse(await readFile(resolve(root, "catalog/0.24.0.json"), "utf8"));
+  const catalog = JSON.parse(await readFile(resolve(root, "catalog/0.25.0.json"), "utf8"));
   const home = await mkdtemp(resolve(tmpdir(), "aohys-evidence-home-"));
   const audit = await auditSkillCatalog({ home, catalog });
   assert.equal(audit.ok, false);
@@ -1155,8 +1155,8 @@ test("repository preparation records the executable lane contract and adapter su
   const result = await initializeRepository({ repository, confirm: "initialize" });
   assert.equal(result.status, "updated");
   const contract = JSON.parse(await readFile(resolve(repository, ".development-system/repository.json"), "utf8"));
-  assert.equal(contract.contractVersion, "1.5.17");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.24.0");
+  assert.equal(contract.contractVersion, "1.5.18");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.25.0");
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("install-anti-slop"));
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("behavioral-evidence"));
   assert.equal(contract.antiSlop.schema, "executable-lane-contract-v1");
@@ -1190,7 +1190,7 @@ test("repository preparation records the executable lane contract and adapter su
   assert.equal(contract.antiSlop.upstream.treeSha256, "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55");
   assert.equal(contract.antiSlop.factoryCoverage.installedSkillsRequired, false);
   const adapter = await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8");
-  assert.match(adapter, /Contract version: `1\.5\.17`/);
+  assert.match(adapter, /Contract version: `1\.5\.18`/);
   assert.match(adapter, /executable lane contract/);
   assert.match(adapter, /test-value review/);
   assert.match(adapter, /writable fast-writer correction lane/);
@@ -1199,4 +1199,27 @@ test("repository preparation records the executable lane contract and adapter su
   assert.match(adapter, /scripts\/install\.mjs/);
   assert.match(adapter, /never depend on installed skills/);
   await rm(repository, { recursive: true, force: true });
+});
+
+test("contract 1.5.18 publishes reliable live probes without rewriting the 1.5.17 contract or catalog", async () => {
+  const [manifest, contract, previousManifest, previousContract] = await Promise.all([
+    readFile(resolve(root, "manifests/1.5.18.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.18/contract.md"), "utf8"),
+    readFile(resolve(root, "manifests/1.5.17.json"), "utf8").then(JSON.parse),
+    readFile(resolve(root, "artifacts/1.5.17/contract.md"), "utf8"),
+  ]);
+
+  assert.equal(manifest.contractVersion, "1.5.18");
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.logicalName === "development-contract").sourcePath,
+    "artifacts/1.5.18/contract.md",
+  );
+  assert.equal(
+    manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog").sourcePath,
+    "catalog/0.25.0.json",
+  );
+  assert.equal(previousManifest.contractVersion, "1.5.17");
+  assert.match(previousContract, /^# Development System Contract 1\.5\.17/m);
+  assert.match(contract, /Probe prompts still contain none of their own\s+behavior signatures/i);
+  assert.match(contract, /real read of the exact installed `SKILL\.md`/i);
 });

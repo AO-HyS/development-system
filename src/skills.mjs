@@ -45,11 +45,12 @@ function isDirectChildPath(root, candidate) {
  * "markdown file".
  *
  * @param {string} text
- * @param {string[]} signature
+ * @param {Array<string | string[]>} signature
  */
 export function hasBehaviorSignature(text, signature) {
   const observed = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-  return signature.every((term) => {
+  if (!Array.isArray(signature) || signature.length === 0) return false;
+  const matchesPhrase = (/** @type {string} */ term) => {
     const required = term.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
     if (required.length === 0) return false;
     for (let start = 0; start < observed.length; start += 1) {
@@ -67,6 +68,12 @@ export function hasBehaviorSignature(text, signature) {
       if (matched) return true;
     }
     return false;
+  };
+  return signature.every((requirement) => {
+    const alternatives = Array.isArray(requirement) ? requirement : [requirement];
+    return alternatives.length > 0 &&
+      alternatives.every((term) => typeof term === "string" && term.trim().length > 0) &&
+      alternatives.some((term) => matchesPhrase(term));
   });
 }
 
@@ -314,7 +321,7 @@ async function entryIntegrityHash(root) {
 /**
  * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, executableFiles?: string[], expectedMirrorOf: string | null, adapterContract?: string}} SkillVariant
  * @typedef {{logicalName: string, physicalHarnesses?: string[], availabilityReason?: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
- * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: string[]}>}} SkillCatalog
+ * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: Array<string | string[]>}>}} SkillCatalog
  * @typedef {{catalogued?: boolean, loaded?: boolean, influenced?: boolean, catalogWarning?: boolean, catalogOverflow?: boolean, scannerErrors?: string[], command?: string, version?: string}} HarnessEvidence
  */
 
@@ -403,6 +410,19 @@ export async function auditSkillCatalog(options) {
     (catalogVersionParts[0] === 0 && catalogVersionParts[1] >= 24);
   const evidenceGated = authenticationRequired || evidenceRequired;
 
+  const expectedEvidenceSignatures = catalog.operationalEvidenceContracts ?? {};
+  const observedEvidenceSignatures = isRecord(evidence.behaviorSignatures)
+    ? evidence.behaviorSignatures
+    : {};
+  const expectedEvidenceSkillNames = [...(catalog.operationalEvidenceSkills ?? [])].sort();
+  const observedEvidenceSkillNames = Object.keys(observedEvidenceSignatures).sort();
+  const behaviorSignaturesBound =
+    JSON.stringify(observedEvidenceSkillNames) === JSON.stringify(expectedEvidenceSkillNames) &&
+    expectedEvidenceSkillNames.every((logicalName) =>
+      JSON.stringify(observedEvidenceSignatures[logicalName]) ===
+        JSON.stringify(expectedEvidenceSignatures[logicalName]?.behaviorSignature),
+    );
+
   const authentication = authenticationRequired
     ? await verifySkillProbeEvidenceAuthentication({ home, evidence })
     : { valid: true, reason: null };
@@ -468,6 +488,7 @@ export async function auditSkillCatalog(options) {
     if (!sourceBound) return false;
     if (evidence.schemaVersion !== 2) return false;
     if (evidence.catalogVersion !== catalog.catalogVersion) return false;
+    if (!behaviorSignaturesBound) return false;
     if (resolve(evidence.home ?? "") !== home) return false;
     if (evidence.probeSucceeded !== true) return false;
     if (!isRecord(evidence.installedHashes)) return false;
@@ -485,6 +506,9 @@ export async function auditSkillCatalog(options) {
 
   if (evidenceGated && !evidenceTrusted) {
     problems.push("Operational evidence is missing, stale, unsuccessful, or not bound to this catalog and HOME");
+  }
+  if (evidenceGated && !behaviorSignaturesBound) {
+    problems.push("Operational evidence behavior signatures do not match the selected catalog contract");
   }
   if (authenticationRequired && !evidenceAuthenticated) {
     problems.push(`Operational evidence lacks valid host authentication: ${authentication.reason ?? "unknown authentication failure"}`);
@@ -675,6 +699,24 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
   const destinations = new Set();
   const variantsById = new Map();
   const evidenceSkills = new Set(catalog.operationalEvidenceSkills ?? []);
+
+  for (const logicalName of evidenceSkills) {
+    const signature = catalog.operationalEvidenceContracts?.[logicalName]?.behaviorSignature;
+    const validRequirement = (/** @type {unknown} */ requirement) =>
+      typeof requirement === "string"
+        ? requirement.trim().length > 0
+        : Array.isArray(requirement) && requirement.length > 0 &&
+          requirement.every((alternative) => typeof alternative === "string" && alternative.trim().length > 0) &&
+          new Set(requirement).size === requirement.length;
+    if (!Array.isArray(signature) || signature.length === 0 || !signature.every(validRequirement)) {
+      errors.push(`${logicalName} has an invalid operational behavior signature`);
+    }
+  }
+  for (const logicalName of Object.keys(catalog.operationalEvidenceContracts ?? {})) {
+    if (!evidenceSkills.has(logicalName)) {
+      errors.push(`${logicalName} has an operational contract but does not require evidence`);
+    }
+  }
 
   for (const skill of catalog.skills ?? []) {
     if (logicalNames.has(skill.logicalName)) errors.push(`duplicate logical skill: ${skill.logicalName}`);

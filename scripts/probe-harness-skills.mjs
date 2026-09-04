@@ -8,9 +8,9 @@ import { fileURLToPath } from "node:url";
 import {
   buildCodexSkillProbeEvidence,
   buildCodexSkillProbeInvocations,
+  bindSkillProbeContracts,
   runCodexSkillProbeSequence,
   runSkillProbeProcess,
-  skillProbeContracts,
 } from "../src/skill-probe-runtime.mjs";
 import { resolveSkillProbeMetadata } from "../src/skill-probe-metadata.mjs";
 import { writePrivateEvidence } from "../src/private-evidence.mjs";
@@ -37,6 +37,7 @@ const { sourceCommit, catalogVersion } = resolveSkillProbeMetadata({
   installedLock,
   codexCatalog: installedCatalog,
 });
+const probeContracts = bindSkillProbeContracts(installedCatalog);
 
 /** @param {string} directory */
 async function directoryHash(directory) {
@@ -62,7 +63,12 @@ async function directoryHash(directory) {
   return hash.digest("hex");
 }
 
-const invocations = buildCodexSkillProbeInvocations({ codexPath, repositoryRoot, home: probeHome });
+const invocations = buildCodexSkillProbeInvocations({
+  codexPath,
+  repositoryRoot,
+  home: probeHome,
+  contracts: probeContracts,
+});
 /** @param {{executable: string, args: string[]}} invocation */
 const execute = (invocation) => runSkillProbeProcess({
   ...invocation,
@@ -74,10 +80,11 @@ const { codexVersion, observations } = await runCodexSkillProbeSequence({
   invocations,
   home: probeHome,
   execute,
+  contracts: probeContracts,
 });
 /** @type {Record<string, string>} */
 const installedHashes = {};
-for (const contract of skillProbeContracts) {
+for (const contract of probeContracts) {
   installedHashes[`${contract.logicalName}.codex`] = await directoryHash(
     resolve(probeHome, ".agents", "skills", contract.logicalName),
   );
@@ -92,6 +99,7 @@ const evidence = buildCodexSkillProbeEvidence({
   codexVersion,
   observations,
   authenticationKey,
+  contracts: probeContracts,
 });
 
 const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;

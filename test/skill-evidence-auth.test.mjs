@@ -93,6 +93,7 @@ async function fixture() {
     sourceCommit: "a".repeat(40),
     home,
     probeSucceeded: true,
+    behaviorSignatures: { "tracer-skill": ["tracer behavior"] },
     installedHashes: { "tracer-skill.codex": installedFolderHash() },
     codex: {
       "tracer-skill": {
@@ -132,7 +133,11 @@ test("catalog 0.24 accepts only host-authenticated evidence and stores no raw pr
   const verification = await verifySkillProbeEvidenceAuthentication({ home, evidence });
   assert.deepEqual(verification, { valid: true, reason: null });
   assert.equal(JSON.stringify(evidence).includes("exact skill invocation"), false);
-  assert.equal(JSON.stringify(evidence).includes("tracer behavior"), false);
+  assert.equal(Object.hasOwn(evidence.codex["tracer-skill"], "response"), false);
+  assert.equal(Object.hasOwn(evidence.codex["tracer-skill"], "catalogResponse"), false);
+  assert.deepEqual(evidence.behaviorSignatures, {
+    "tracer-skill": catalog.operationalEvidenceContracts["tracer-skill"].behaviorSignature,
+  });
   const audit = await auditSkillCatalog({ home, catalog, evidence });
   assert.equal(audit.ok, true, audit.problems.join("; "));
   assert.equal(audit.skills[0].states.loaded, true);
@@ -199,6 +204,22 @@ test("authenticated evidence must match separately retained installation provena
   assert.equal(missingAudit.ok, false);
   assert.equal(missingAudit.skills[0].states.influenced, false);
   assert.match(missingAudit.problems.join("\n"), /sourceCommit does not match/);
+});
+
+test("authenticated evidence with signatures from another catalog fails closed", async () => {
+  const fixtureValue = await fixture();
+  const wrongContract = structuredClone(fixtureValue.baseEvidence);
+  wrongContract.behaviorSignatures["tracer-skill"] = ["different catalog behavior"];
+  const audit = await auditSkillCatalog({
+    home: fixtureValue.home,
+    catalog: fixtureValue.catalog,
+    evidence: authenticateSkillProbeEvidence(wrongContract, fixtureValue.key),
+  });
+  assert.equal(audit.ok, false);
+  assert.equal(audit.skills[0].states.catalogued, false);
+  assert.equal(audit.skills[0].states.loaded, false);
+  assert.equal(audit.skills[0].states.influenced, false);
+  assert.match(audit.problems.join("\n"), /behavior signatures do not match the selected catalog/i);
 });
 
 test("read-only audit never creates missing authentication parents", async () => {
