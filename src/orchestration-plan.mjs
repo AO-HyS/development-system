@@ -10,6 +10,7 @@ import {
   validateAntiSlopLanes,
 } from "./anti-slop.mjs";
 import { buildOrchestrationBundle } from "./orchestration-bundles.mjs";
+import { rosterChain, rosterModel } from "./agent-roster.mjs";
 import { planParallelWork } from "./parallel-work.mjs";
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
@@ -126,19 +127,19 @@ function contractStrings(contract, name, errors, required = false) {
 }
 
 const models = Object.freeze({
-  parent: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "high" },
-  writer: { requested: "swe-1-7", resolved: null, reasoning: "max" },
-  reviewer: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "medium" },
-  adversarialReviewer: { requested: "claude-fable-5.1", resolved: null, reasoning: "xhigh" },
-  security: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "xhigh" },
-  performance: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "medium" },
-  visual: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "high" },
-  backend: { requested: "gpt-5.6-sol", resolved: "gpt-5.6-sol", reasoning: "medium" },
-  research: { requested: "gpt-5.6-luna", resolved: "gpt-5.6-luna", reasoning: "xhigh" },
-  computerUseRunner: { requested: "gpt-5.6-luna", resolved: "gpt-5.6-luna", reasoning: "max" },
+  parent: rosterModel("orchestration"),
+  writer: rosterModel("fast-execution"),
+  reviewer: rosterModel("general-review"),
+  adversarialReviewer: rosterModel("adversarial-review"),
+  security: rosterModel("security-review"),
+  performance: rosterModel("performance-review"),
+  visual: rosterModel("visual-review"),
+  backend: rosterModel("backend-review"),
+  research: rosterModel("research"),
+  computerUseRunner: rosterModel("computer-use"),
 });
 
-/** @type {Record<string, {role: string, model: {requested: string, resolved: string, reasoning: string}}>} */
+/** @type {Record<string, {role: string, model: {requested: string, resolved: string | null, reasoning: string}}>} */
 const specialistMap = Object.freeze({
   security: { role: "security_reviewer", model: models.security },
   performance: { role: "performance_auditor", model: models.performance },
@@ -156,12 +157,7 @@ const analysisKinds = new Set(["research", "audit", "operations-analysis", "oper
  * current runtime availability is verified, then Codex `gpt-5.6-luna` with
  * reasoning `max` on the priority/fast service path.
  */
-const fastModelChain = Object.freeze([
-  { harness: "devin", model: "swe-1-7", reasoning: "max" },
-  { harness: "factory", model: "glm-5.3-flash", reasoning: "high" },
-  { harness: "devin", model: "gemini-3.8-flash", reasoning: "high", requiresVerifiedRuntimeAvailability: true },
-  { harness: "codex", model: "gpt-5.6-luna", reasoning: "max", fallbackOnly: true, serviceTier: { tier: "priority", label: "fast", status: "runtime-required" } },
-]);
+const fastModelChain = rosterChain("fast-execution");
 
 /**
  * Explicit subordinate runtime-routing requirement for a lane. The parent
