@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.24.0";
-if (version !== "0.24.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.24.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.25.0";
+if (version !== "0.25.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.25.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -409,13 +409,13 @@ const catalog = {
   operationalEvidenceContracts: {
     research: { behaviorSignature: ["background agent", "primary sources", "markdown file"] },
     "behavioral-evidence": {
-      behaviorSignature: ["subordinate evidence", "weakened assertions", "accepted objective"],
+      behaviorSignature: ["subordinate evidence", "weakened test", "accepted objective"],
     },
     "simplify-code": {
       behaviorSignature: ["deletion pass", "production code and test code", "what was deleted"],
     },
     "install-anti-slop": {
-      behaviorSignature: ["install.mjs", "absolute paths", "parent traversal", "symlink escape"],
+      behaviorSignature: ["install.mjs", "absolute destinations", "nested traversal", "symlink ancestor"],
     },
   },
   cleanup: [

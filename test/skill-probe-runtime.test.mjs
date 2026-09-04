@@ -57,11 +57,11 @@ const liveResponses = {
   research:
     "A background agent uses primary sources and creates one markdown file somewhere sensible and will say where.",
   "behavioral-evidence":
-    "Tests are subordinate evidence; weakened assertions or updated snapshots that only make the run green justify nothing, and independent verification derives its oracle from the accepted objective. A green result alone justifies nothing.",
+    "Tests are subordinate evidence; a loosened assertion or snapshot is a weakened test that must be rejected, and independent verification derives its oracle from the accepted objective. A green result alone justifies nothing.",
   "simplify-code":
     "The mandatory deletion pass covers production code and test code and reports what was deleted, kept, and for what remains, why it must remain.",
   "install-anti-slop":
-    "Use scripts/install.mjs; it refuses absolute paths, parent traversal, and symlink escape targets before copying.",
+    "Use scripts/install.mjs; it refuses absolute rooted destinations, nested traversal, and any symlink ancestor before copying.",
 };
 
 test("probe contracts cover research and the three anti-slop capabilities", () => {

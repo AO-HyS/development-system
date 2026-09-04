@@ -51,7 +51,7 @@ export const skillProbeContracts = [
     catalogPattern: /^behavioral-evidence\s*$/iu,
     loadPathMarkers: [".agents/skills/behavioral-evidence/SKILL.md"],
     loadSignature: ["justifies nothing"],
-    behaviorSignature: ["subordinate evidence", "weakened assertions", "accepted objective"],
+    behaviorSignature: ["subordinate evidence", "weakened test", "accepted objective"],
   },
   {
     logicalName: "simplify-code",
@@ -73,7 +73,7 @@ export const skillProbeContracts = [
     catalogPattern: /^install-anti-slop\s*$/iu,
     loadPathMarkers: [".agents/skills/install-anti-slop/SKILL.md"],
     loadSignature: ["install.mjs"],
-    behaviorSignature: ["install.mjs", "absolute paths", "parent traversal", "symlink escape"],
+    behaviorSignature: ["install.mjs", "absolute destinations", "nested traversal", "symlink ancestor"],
   },
 ];
 
