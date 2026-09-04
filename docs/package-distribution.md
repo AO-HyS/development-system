@@ -45,3 +45,11 @@ Maintainers prepare new immutable versions, commit reviewed changes, then run
 runtime source, stages Git HEAD, validates a real npm tarball extraction and
 reports its SHA-256 and SHA-512 integrity. Upload that exact archive to the
 release tag for its canonical commit; never replace a published asset in place.
+
+## Runtime patch releases
+
+The package version identifies CLI/runtime code. The explicit `contractVersion`
+package field selects the immutable default contract for `setup`; `--version`
+continues to select an explicitly requested contract. A runtime-only patch can
+therefore ship without copying unchanged artifacts or catalogs. Provenance still
+binds the package archive to its own new source commit.
