@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.16` keeps the lifecycle lightweight, routes mechanical work through an explicit cross-harness fast chain, adds evidence-bound fallback for high-value adversarial review, and retains opt-in product verification. Skill catalog `0.23.0` ships a new immutable 1.5.16 `coding-orchestration` skill copy and a new immutable 1.5.16 `fast_implementer` agent artifact, supports Codex and T3 Code, preserves Matt Pocock's current 37-skill snapshot while installing an authorization-safe `implement-spec` adapter, and includes a bounded PStack-inspired tactics adapter without installing `poteto-mode`. The five core repositories for this program are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.5.17` makes the anti-slop practices executable: every non-trivial write plan exposes an ordered protocol of pre-implementation simplification, behavior-first evidence design, implementation, test-value review, a writable deletion-pass correction lane, and independent objective-derived verification, with lines of code and related proxy metrics excluded as quality gates. Skill catalog `0.24.0` vendors Dillon Mulroy's upstream `dmmulroy/anti-slop` install skill at exact upstream commit `e8c4880471b23ab7f216fba7b27d173a6ef07d4c` with MIT provenance behind a Development System safe installer that refuses path traversal and symlink escapes, adds the internal `behavioral-evidence` skill, and ships an updated immutable `simplify-code` copy; it preserves the 1.5.16 fast chain, evidence-bound adversarial review fallback, and opt-in product verification, and supports Codex and T3 Code. The five core repositories for this program are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -16,11 +16,11 @@ Run commands from a checkout of this repository:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.5.16
-./bin/development-system sync-skills --version 0.23.0
+./bin/development-system install --version 1.5.17
+./bin/development-system sync-skills --version 0.24.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.23.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.24.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -197,7 +197,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.16`, `sync-skills --version 0.23.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.5.17`, `sync-skills --version 0.24.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -228,7 +228,7 @@ The focused Reader gate opens a generated report directly from `file://` in Chro
 
 ## Versioning
 
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. `1.5.16` adds explicit cross-harness model fallback with honest evidence/mapping status, fail-closed exhaustion, and receipt-bound resolution while shipping catalog `0.23.0` with the new immutable `coding-orchestration` skill and `fast_implementer` agent copies. Published manifests and artifacts are immutable.
+Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. `1.5.16` adds explicit cross-harness model fallback with honest evidence/mapping status, fail-closed exhaustion, and receipt-bound resolution while shipping catalog `0.23.0` with the new immutable `coding-orchestration` skill and `fast_implementer` agent copies. `1.5.17` makes the ordered anti-slop protocol executable on every non-trivial write plan, excludes lines of code and proxy metrics as gates, and ships catalog `0.24.0` with the vendored `install-anti-slop` capability (upstream commit `e8c4880471b23ab7f216fba7b27d173a6ef07d4c`, MIT) behind a path-containment safe installer, the internal `behavioral-evidence` skill, and an updated `simplify-code` deletion pass. Published manifests and artifacts are immutable.
 
 ## Release boundary
 

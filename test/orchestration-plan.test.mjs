@@ -6,7 +6,12 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { planOrchestration } from "../src/orchestration-plan.mjs";
+import {
+  buildCorrectionContract,
+  buildTerminalReviewResult,
+  planOrchestration,
+  validateRuntimeCorrectionReceipt,
+} from "../src/orchestration-plan.mjs";
 
 const baseContract = {
   objective: "Ship the bounded change",
@@ -68,11 +73,12 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.deepEqual(result.externalSideEffects, []);
 });
 
-test("normal non-trivial work follows the fast chain then independent Sol review", () => {
+test("normal non-trivial work follows the fast chain then the executable anti-slop review chain", () => {
   const result = plan({ trivial: false });
   assert.equal(result.valid, true);
   assert.equal(result.mode, "sequential");
-  assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer"]);
+  assert.deepEqual(result.lanes.map((lane) => lane.id), ["writer", "review-test-value", "correction", "review-objective-verification"]);
+  assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer"]);
   assert.equal(result.lanes[0].model.requested, "swe-1-7");
   assert.equal(result.lanes[0].model.resolved, null);
   assert.equal(result.lanes[0].modelRoute.chain[0].model, "swe-1-7");
@@ -85,9 +91,14 @@ test("normal non-trivial work follows the fast chain then independent Sol review
   assert.equal(result.lanes[0].modelRoute.receiptRequired, true);
   assert.equal(result.lanes[0].modelRoute.attemptBeforeDispatch, true);
   assert.equal(result.lanes[0].modelRoute.routeSlot, "implementation-default");
-  assert.equal(result.lanes[1].model.resolved, "gpt-5.6-sol");
-  assert.equal(result.lanes[1].model.reasoning, "medium");
+  assert.equal(result.lanes[1].model.resolved, null);
+  assert.equal(result.lanes[1].modelRoute.routeSlot, "adversarial-review");
   assert.equal(result.lanes[1].independent, true);
+  assert.equal(result.lanes[1].readOnly, true);
+  assert.equal(result.lanes[2].readOnly, false);
+  assert.equal(result.lanes[2].modelRoute.routeSlot, "fast-execution");
+  assert.equal(result.lanes[3].model.resolved, null);
+  assert.equal(result.lanes[3].modelRoute.routeSlot, "adversarial-review");
   assert.equal(result.lanes[0].ownership[0], "src/feature");
   assert.deepEqual(result.lanes[1].constraints, baseContract.constraints);
   assert.deepEqual(result.lanes[1].protectedBoundaries, baseContract.protectedBoundaries);
@@ -167,10 +178,17 @@ test("authorized requested work graph activates automatic parallel orchestration
   assert.deepEqual(integration.checks, ["pnpm test"]);
   assert.equal(integration.integrationChecksRunCount, 1);
   const reviews = result.lanes.filter((lane) => lane.type === "independent-review");
-  assert.equal(reviews.length, 2);
-  assert.deepEqual(reviews.map((lane) => lane.reviewFocus), ["standards", "objective"]);
+  assert.deepEqual(reviews.map((lane) => lane.id), ["review-standards", "review-test-value", "review-objective-verification"]);
+  assert.deepEqual(reviews.map((lane) => lane.reviewFocus), ["standards", undefined, undefined]);
   assert.equal(reviews.every((lane) => lane.role === "reviewer"), true);
-  assert.equal(reviews.every((lane) => JSON.stringify(lane.dependsOn) === JSON.stringify(["integration"])), true);
+  assert.equal(reviews.every((lane) => lane.readOnly), true);
+  const byId = new Map(reviews.map((review) => [review.id, review]));
+  assert.deepEqual(byId.get("review-standards").dependsOn, ["integration"]);
+  assert.deepEqual(byId.get("review-test-value").dependsOn, ["integration"]);
+  assert.deepEqual(byId.get("review-objective-verification").dependsOn, ["correction"]);
+  const correction = result.lanes.find((lane) => lane.id === "correction");
+  assert.equal(correction.readOnly, false);
+  assert.deepEqual(correction.dependsOn, ["review-standards", "review-test-value"]);
   assert.equal(result.parallelWork.lanes.every((lane) => lane.branch === null && lane.worktree === null), true);
   assert.equal(result.parallelWork.authorization.dispatchAuthorized, false);
   assert.deepEqual(result.authority, { launchesAgents: false, writesFiles: false, externalWrites: false, promotion: false });
@@ -209,7 +227,7 @@ test("specialist risks sharing a role merge evidence and surfaces", () => {
   assert.deepEqual(reviews[0].ownership, ["src/feature/a", "src/feature/b"]);
 });
 
-test("parallel browser verification waits for integration and judgment waits for execution", () => {
+test("parallel browser verification waits for corrected objective verification and judgment waits for execution", () => {
   const item = (id, surface) => ({
     id, kind: "implementation", surfaces: [surface], dependencies: [], capabilities: ["typescript"],
     acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending",
@@ -222,8 +240,56 @@ test("parallel browser verification waits for integration and judgment waits for
       integrationChecks: ["pnpm test"], integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
     },
   });
-  assert.deepEqual(result.lanes.find((lane) => lane.id === "computer-use-execution").dependsOn, ["integration"]);
+  assert.deepEqual(result.lanes.find((lane) => lane.id === "computer-use-execution").dependsOn, ["review-objective-verification"]);
   assert.deepEqual(result.lanes.find((lane) => lane.id === "verification-judgment").dependsOn, ["computer-use-execution"]);
+});
+
+test("read-only runs fail closed on any supplied workGraph the planner would otherwise ignore", () => {
+  const ticket = (id, surface) => ({
+    id, kind: "implementation", surfaces: [surface], dependencies: [], capabilities: ["typescript"],
+    acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending",
+  });
+  const readOnlyWith = (workGraph, requestedIds = ["T1"]) => planOrchestration({
+    taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: requestedIds },
+    signals: { trivial: false, readOnly: true },
+    workGraph,
+  });
+  const expectedError = /read-only runs cannot authorize a writable or parallel work graph/;
+
+  // One requested ticket with a well-formed single-ticket graph is still refused.
+  const oneTicket = readOnlyWith({
+    repository: { identity: "repo", revision: "a".repeat(40) },
+    tickets: [ticket("T1", "src/a")],
+    integrationChecks: ["pnpm test"],
+    integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+  });
+  assert.equal(oneTicket.valid, false);
+  assert.match(oneTicket.errors.join("\n"), expectedError);
+  assert.equal(oneTicket.mode, "blocked");
+  assert.equal(oneTicket.lanes.length, 0);
+
+  // Empty requested ids plus a supplied (even malformed) graph is refused.
+  const emptyIds = readOnlyWith({ tickets: "not-a-list" }, []);
+  assert.equal(emptyIds.valid, false);
+  assert.match(emptyIds.errors.join("\n"), expectedError);
+  assert.equal(emptyIds.lanes.length, 0);
+
+  // Malformed and partial graphs with two requested ids are refused.
+  for (const workGraph of [{ tickets: "not-a-list" }, {}, { tickets: [{ id: "T1" }] }]) {
+    const malformed = readOnlyWith(workGraph, ["T1", "T2"]);
+    assert.equal(malformed.valid, false, JSON.stringify(workGraph));
+    assert.match(malformed.errors.join("\n"), expectedError, JSON.stringify(workGraph));
+    assert.equal(malformed.lanes.length, 0);
+  }
+
+  // An ordinary non-trivial read-only plan without a workGraph still routes
+  // to exactly read-only lanes.
+  const ordinary = planOrchestration({ taskContract: baseContract, signals: { trivial: false, readOnly: true } });
+  assert.equal(ordinary.valid, true);
+  assert.notEqual(ordinary.mode, "parallel");
+  assert.equal(ordinary.lanes.length > 0, true);
+  assert.equal(ordinary.lanes.every((lane) => lane.readOnly === true), true);
+  assert.equal(ordinary.antiSlop.required, false);
 });
 
 test("ticket count alone does not activate parallelism and graph mismatches fail closed", () => {
@@ -454,6 +520,7 @@ test("required lane contract fields are validated and Code Mode is not selected 
   assert.equal(direct.codeMode.selected, false);
   assert.equal(direct.codeMode.selectionAuthority, "host-runtime");
   assert.equal(direct.codeMode.fallback, "direct");
+  assert.equal(direct.lanes[0].readOnly, true);
   assert.deepEqual(direct.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
 });
 
@@ -461,7 +528,8 @@ test("Computer Use verification separates Luna execution from Sol judgment", () 
   const result = plan({ trivial: false, computerUse: true, executionPlan: neutralExecutionPlan });
   assert.equal(result.valid, true);
   assert.equal(result.mode, "sequential");
-  assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "computer_use_runner", "verification_judge"]);
+  assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer", "computer_use_runner", "verification_judge"]);
+  assert.equal(result.lanes[3].modelRoute.routeSlot, "adversarial-review");
   const runner = result.lanes.find((lane) => lane.role === "computer_use_runner");
   assert.equal(runner.model.resolved, "gpt-5.6-luna");
   assert.equal(runner.model.reasoning, "max");
@@ -471,7 +539,9 @@ test("Computer Use verification separates Luna execution from Sol judgment", () 
   assert.equal(Object.hasOwn(runner, "checks"), false);
   assert.equal(Object.hasOwn(runner, "expectedOutputs"), false);
   assert.equal(runner.executionPlanBinding.sideEffectMode, "none");
+  assert.equal(runner.readOnly, true);
   assert.equal(runner.evidenceRoot, "host-private");
+  assert.deepEqual(runner.dependsOn, ["review-objective-verification"]);
   const judge = result.lanes.find((lane) => lane.role === "verification_judge");
   assert.equal(judge.model.resolved, "gpt-5.6-sol");
   assert.equal(judge.privateAcceptanceRubric, true);
@@ -491,7 +561,103 @@ test("QA-only Computer Use uses runner and judgment without an implementation wr
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["computer_use_runner", "verification_judge"]);
   assert.equal(result.lanes.some((lane) => lane.role === "fast_implementer"), false);
   assert.equal(Object.hasOwn(result.lanes[0], "privateAcceptanceRubric"), false);
+  assert.equal(result.lanes[0].readOnly, true);
   assert.equal(result.lanes[1].privateAcceptanceRubric, true);
+});
+
+test("runtime correction validation binds exact trusted findings and the host-retained plan", () => {
+  const planned = plan({ trivial: false });
+  const reviewId = planned.correctionContract.gatingReviewIds[0];
+  const trustedReview = buildTerminalReviewResult({
+    reviewId,
+    findings: [{ id: "TEST-001", severity: "high" }],
+  });
+  const receipt = {
+    schemaVersion: planned.correctionContract.schemaVersion,
+    contractId: planned.correctionContract.contractId,
+    gatingReviewIds: [...planned.correctionContract.gatingReviewIds],
+    acceptedSeverityVocabulary: [...planned.correctionContract.acceptedSeverityVocabulary],
+    terminal: true,
+    unresolvedCriticalFindings: [],
+    hostValidationBinding: {
+      planningInputSha256: planned.hostValidation.expectedPlanningInputSha256,
+      completePlanSha256: planned.hostValidation.expectedCompletePlanSha256,
+    },
+    reviews: [{
+      reviewId,
+      reviewDigestSha256: trustedReview.sha256,
+      unresolvedCriticalFindings: [],
+      findings: [{
+        id: "TEST-001",
+        severity: "high",
+        disposition: "resolved",
+        verificationEvidence: ["focused behavioral test passed"],
+      }],
+    }],
+  };
+
+  const valid = validateRuntimeCorrectionReceipt(
+    receipt,
+    planned.correctionContract,
+    [trustedReview],
+    planned.hostValidation,
+  );
+  assert.deepEqual(valid, { valid: true, errors: [], dispatchAuthorized: true });
+
+  const empty = structuredClone(receipt);
+  empty.reviews[0].findings = [];
+  const emptyResult = validateRuntimeCorrectionReceipt(empty, planned.correctionContract, [trustedReview], planned.hostValidation);
+  assert.equal(emptyResult.valid, false);
+  assert.equal(emptyResult.dispatchAuthorized, false);
+  assert.match(emptyResult.errors.join("\n"), /exact trusted finding list|omits trusted finding/);
+
+  const downgraded = structuredClone(receipt);
+  downgraded.reviews[0].findings[0].severity = "low";
+  const downgradeResult = validateRuntimeCorrectionReceipt(downgraded, planned.correctionContract, [trustedReview], planned.hostValidation);
+  assert.equal(downgradeResult.valid, false);
+  assert.match(downgradeResult.errors.join("\n"), /changes the trusted severity/);
+
+  const specialistPlan = plan({
+    trivial: false,
+    specialistRisks: [{ id: "security", evidence: ["authorization changed"], surfaces: ["src"] }],
+  });
+  const reducedContract = buildCorrectionContract(["review-test-value"]);
+  const reducedTrustedReview = buildTerminalReviewResult({ reviewId: "review-test-value", findings: [] });
+  const reducedReceipt = {
+    schemaVersion: 1,
+    contractId: reducedContract.contractId,
+    gatingReviewIds: [...reducedContract.gatingReviewIds],
+    acceptedSeverityVocabulary: [...reducedContract.acceptedSeverityVocabulary],
+    terminal: true,
+    unresolvedCriticalFindings: [],
+    hostValidationBinding: {
+      planningInputSha256: specialistPlan.hostValidation.expectedPlanningInputSha256,
+      completePlanSha256: specialistPlan.hostValidation.expectedCompletePlanSha256,
+    },
+    reviews: [{
+      reviewId: "review-test-value",
+      reviewDigestSha256: reducedTrustedReview.sha256,
+      findings: [],
+      unresolvedCriticalFindings: [],
+    }],
+  };
+  const substitutedContract = validateRuntimeCorrectionReceipt(
+    reducedReceipt,
+    reducedContract,
+    [reducedTrustedReview],
+    specialistPlan.hostValidation,
+  );
+  assert.equal(substitutedContract.valid, false);
+  assert.equal(substitutedContract.dispatchAuthorized, false);
+  assert.match(substitutedContract.errors.join("\n"), /correction contract does not match/);
+
+  const plannerInjection = planOrchestration({
+    taskContract: baseContract,
+    signals: { trivial: false },
+    correctionReceipt: receipt,
+  });
+  assert.equal(plannerInjection.valid, false);
+  assert.match(plannerInjection.errors.join("\n"), /pure planner rejects runtime correction evidence/);
 });
 
 test("runner receives no acceptance or checks even when they contain discriminating text", () => {
