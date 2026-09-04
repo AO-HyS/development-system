@@ -12,7 +12,7 @@ import {
   planOrchestration,
   validateRuntimeCorrectionReceipt,
 } from "../src/orchestration-plan.mjs";
-import { rosterModel } from "../src/agent-roster.mjs";
+import { rosterChain, rosterModel } from "../src/agent-roster.mjs";
 
 const baseContract = {
   objective: "Ship the bounded change",
@@ -63,11 +63,13 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.equal(result.valid, true);
   assert.equal(result.mode, "direct");
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer"]);
-  assert.equal(result.lanes[0].model.requested, "swe-1-7");
+  assert.equal(result.lanes[0].model.requested, "opencode-go/glm-5.3-flash");
   assert.equal(result.lanes[0].model.resolved, null);
   assert.equal(result.lanes[0].modelRoute.routeSlot, "fast-execution");
-  assert.equal(result.lanes[0].modelRoute.chain[0].model, "swe-1-7");
-  assert.equal(result.lanes[0].modelRoute.chain[3].model, "gpt-5.6-luna");
+  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain[4].model, "gpt-5.6-luna");
+  assert.equal(result.lanes[0].modelRoute.chain[4].reasoning, "high");
   assert.deepEqual(result.lanes[0].expectedOutputs, baseContract.expectedOutputs);
   assert.deepEqual(result.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
   assert.deepEqual(result.externalWriteIntents, []);
@@ -80,26 +82,30 @@ test("normal non-trivial work follows the fast chain then the executable anti-sl
   assert.equal(result.mode, "sequential");
   assert.deepEqual(result.lanes.map((lane) => lane.id), ["writer", "review-test-value", "correction", "review-objective-verification"]);
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer"]);
-  assert.equal(result.lanes[0].model.requested, "swe-1-7");
+  assert.equal(result.lanes[0].model.requested, "opencode-go/glm-5.3-flash");
   assert.equal(result.lanes[0].model.resolved, null);
-  assert.equal(result.lanes[0].modelRoute.chain[0].model, "swe-1-7");
-  assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "max");
-  assert.equal(result.lanes[0].modelRoute.chain[3].model, "gpt-5.6-luna");
-  assert.equal(result.lanes[0].modelRoute.chain[3].reasoning, "max");
-  assert.equal(result.lanes[0].modelRoute.chain[2].requiresVerifiedRuntimeAvailability, true);
+  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain[4].model, "gpt-5.6-luna");
+  assert.equal(result.lanes[0].modelRoute.chain[4].reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain[1].requiresVerifiedRuntimeAvailability, true);
   assert.equal(result.lanes[0].modelRoute.subordinate, true);
   assert.equal(result.lanes[0].modelRoute.runtimeRouting, true);
   assert.equal(result.lanes[0].modelRoute.receiptRequired, true);
   assert.equal(result.lanes[0].modelRoute.attemptBeforeDispatch, true);
   assert.equal(result.lanes[0].modelRoute.routeSlot, "implementation-default");
   assert.equal(result.lanes[1].model.resolved, null);
-  assert.equal(result.lanes[1].modelRoute.routeSlot, "adversarial-review");
-  assert.equal(result.lanes[1].independent, true);
+  assert.equal(result.lanes[1].modelRoute.routeSlot, "general-review");
+  assert.equal(result.lanes[1].executionOwner, "parent");
+  assert.equal(result.lanes[1].agentSpawnRequired, false);
+  assert.equal(result.lanes[1].independent, false);
   assert.equal(result.lanes[1].readOnly, true);
   assert.equal(result.lanes[2].readOnly, false);
   assert.equal(result.lanes[2].modelRoute.routeSlot, "fast-execution");
   assert.equal(result.lanes[3].model.resolved, null);
-  assert.equal(result.lanes[3].modelRoute.routeSlot, "adversarial-review");
+  assert.equal(result.lanes[3].modelRoute.routeSlot, "general-review");
+  assert.equal(result.lanes[3].executionOwner, "parent");
+  assert.equal(result.lanes[3].agentSpawnRequired, false);
   assert.equal(result.lanes[0].ownership[0], "src/feature");
   assert.deepEqual(result.lanes[1].constraints, baseContract.constraints);
   assert.deepEqual(result.lanes[1].protectedBoundaries, baseContract.protectedBoundaries);
@@ -340,8 +346,9 @@ test("authorized graphs cannot escape task scope or choose their own writer rout
   });
   assert.equal(routed.valid, true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.role === "fast_implementer"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "swe-1-7"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain[3].model === "gpt-5.6-luna" && lane.agent.modelRoute.chain[3].reasoning === "max"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/glm-5.3-flash"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain[4].model === "gpt-5.6-luna" && lane.agent.modelRoute.chain[4].reasoning === "high"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 
   const specialistProtected = planOrchestration({
@@ -526,15 +533,16 @@ test("required lane contract fields are validated and Code Mode is not selected 
   assert.deepEqual(direct.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
 });
 
-test("Computer Use verification separates Luna execution from Sol judgment", () => {
+test("Computer Use verification separates neutral execution from Astra judgment", () => {
   const result = plan({ trivial: false, computerUse: true, executionPlan: neutralExecutionPlan });
   assert.equal(result.valid, true);
   assert.equal(result.mode, "sequential");
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer", "computer_use_runner", "verification_judge"]);
-  assert.equal(result.lanes[3].modelRoute.routeSlot, "adversarial-review");
+  assert.equal(result.lanes[3].modelRoute.routeSlot, "general-review");
   const runner = result.lanes.find((lane) => lane.role === "computer_use_runner");
-  assert.equal(runner.model.resolved, "gpt-5.6-luna");
-  assert.equal(runner.model.reasoning, "max");
+  assert.equal(runner.model.resolved, null);
+  assert.equal(runner.model.requested, "gpt-6-astra");
+  assert.equal(runner.model.reasoning, rosterModel("computer-use").reasoning);
   assert.equal(runner.semanticJudgment, false);
   assert.deepEqual(runner.probeRequirements, ["before-execution", "after-execution"]);
   assert.equal(Object.hasOwn(runner, "acceptance"), false);
@@ -545,7 +553,9 @@ test("Computer Use verification separates Luna execution from Sol judgment", () 
   assert.equal(runner.evidenceRoot, "host-private");
   assert.deepEqual(runner.dependsOn, ["review-objective-verification"]);
   const judge = result.lanes.find((lane) => lane.role === "verification_judge");
-  assert.equal(judge.model.resolved, "gpt-5.6-sol");
+  assert.equal(judge.model.resolved, null);
+  assert.equal(judge.model.requested, rosterModel("orchestration").requested);
+  assert.equal(judge.model.reasoning, rosterModel("orchestration").reasoning);
   assert.equal(judge.privateAcceptanceRubric, true);
   assert.deepEqual(judge.judgmentValues, ["PASS", "FAIL", "BLOCKED", "INCONCLUSIVE"]);
   assert.equal(result.computerUse.judgmentOwner, "orchestrator");
@@ -826,6 +836,53 @@ test("Computer Use remains opt-in and invalid signal types fail closed", () => {
   const invalid = planOrchestration({ taskContract: baseContract, signals: { trivial: false, computerUse: "yes" } });
   assert.equal(invalid.valid, false);
   assert.match(invalid.errors.join("\n"), /computerUse must be boolean/);
+});
+
+test("ordinary anti-slop reviews execute in the parent on the real general-review chain", () => {
+  const result = plan({ trivial: false, specialistRisk: "security" });
+  assert.equal(result.valid, true);
+  for (const laneId of ["review-test-value", "review-objective-verification"]) {
+    const lane = result.lanes.find((entry) => entry.id === laneId);
+    assert.ok(lane, laneId);
+    assert.equal(lane.executionOwner, "parent", laneId);
+    assert.equal(lane.agentSpawnRequired, false, laneId);
+    assert.equal(lane.independent, false, laneId);
+    assert.equal(lane.modelRoute.routeSlot, "general-review", laneId);
+    assert.deepEqual(lane.modelRoute.chain, rosterChain("general-review"), laneId);
+    assert.equal(lane.modelRoute.chain[0].model, "gpt-6-astra", laneId);
+    assert.equal(lane.modelRoute.receiptRequired, true, laneId);
+    assert.equal(lane.modelRoute.attemptBeforeDispatch, true, laneId);
+    assert.equal(lane.modelRoute.subordinate, true, laneId);
+  }
+});
+
+test("no planner lane claims a runtime-resolved model before provider evidence", () => {
+  const result = plan({ trivial: false, computerUse: true, executionPlan: neutralExecutionPlan });
+  assert.equal(result.valid, true);
+  assert.equal(result.lanes.length > 0, true);
+  for (const lane of result.lanes) {
+    assert.equal(lane.model.resolved, null, `${lane.id} must not claim a resolved model from config`);
+  }
+});
+
+test("parallel writers advertise the first fast-route candidate harness, not codex", () => {
+  const result = planOrchestration({
+    taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2"] },
+    signals: { trivial: false },
+    workGraph: {
+      repository: { identity: "repo", revision: "a".repeat(40) },
+      tickets: ["T1", "T2"].map((id) => ({
+        id, kind: "implementation", surfaces: [`src/${id.toLowerCase()}`], dependencies: [], capabilities: ["typescript"],
+        acceptance: `${id} observable`, checks: [`test:${id}`], stopCondition: `${id} verified`, status: "pending",
+      })),
+      integrationChecks: ["pnpm test"],
+      integration: { baseRevision: "a".repeat(40), currentRevision: "a".repeat(40), conflicts: [] },
+    },
+  });
+  assert.equal(result.valid, true, result.errors?.join("; "));
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/glm-5.3-flash"), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 });
 
 test("CLI exposes the pure planner as JSON", async () => {

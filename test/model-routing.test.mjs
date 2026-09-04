@@ -7,6 +7,7 @@ import { resolveModelRoute } from "../src/model-routing.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const roster = JSON.parse(await readFile(resolve(root, "config/1.5.16/capability-roster.json"), "utf8"));
+const agentRoster = JSON.parse(await readFile(resolve(root, "config/agent-roster.json"), "utf8"));
 
 test("adversarial review uses Fable xhigh by default and reports explicit evidence", () => {
   const result = resolveModelRoute({ roster, capability: "review", routeSlot: "adversarial-review" });
@@ -146,17 +147,132 @@ test("Codex Luna fallback uses exec, max reasoning, and the priority tier", () =
   assert.equal(result.attempts[2].reason, "unavailable");
 });
 
-test("escalation elevates only the selected route to max", () => {
-  const result = resolveModelRoute({
-    roster,
+test("escalation elevates only the Astra route to max", () => {
+  const base = {
+    roster: agentRoster,
     capability: "review",
     routeSlot: "adversarial-review",
-    escalation: true,
-    unavailable: [{ candidateId: "factory-fable-5.1", reason: "quota-exhausted" }, { candidateId: "devin-fable-5.1", reason: "quota-exhausted" }],
+    unavailable: [
+      { candidateId: "factory-fable-5.1", reason: "quota-exhausted" },
+      { candidateId: "devin-fable-5.1", reason: "quota-exhausted" },
+    ],
+  };
+  const plain = resolveModelRoute(base);
+  assert.equal(plain.valid, true);
+  assert.equal(plain.selected.harness, "codex");
+  assert.equal(plain.selected.model, "gpt-6-astra");
+  assert.equal(plain.selected.reasoning, "high");
+  assert.equal(plain.selected.escalationApplied, false);
+  const escalated = resolveModelRoute({ ...base, escalation: true });
+  assert.equal(escalated.valid, true);
+  assert.equal(escalated.selected.reasoning, "max");
+  assert.equal(escalated.selected.escalationApplied, true);
+});
+
+test("OpenCode candidates invoke opencode run with pure, model, variant and json format", () => {
+  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+  const first = resolveModelRoute(base);
+  assert.equal(first.valid, true);
+  assert.deepEqual(first.selected.invocation, {
+    command: "opencode",
+    args: ["run", "--pure", "--model", "opencode-go/glm-5.3-flash", "--variant", "high", "--format", "json"],
   });
-  assert.equal(result.valid, true);
-  assert.equal(result.selected.reasoning, "max");
-  assert.equal(result.selected.escalationApplied, true);
+  assert.equal(first.selected.invocation.args.includes("--auto"), false);
+  const qwen = resolveModelRoute({
+    ...base,
+    unavailable: [
+      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
+      { candidateId: "opencode-qwen3.8-flash", observedModel: "opencode-go/qwen3.8-flash" },
+    ],
+  });
+  assert.deepEqual(qwen.selected.invocation, {
+    command: "opencode",
+    args: ["run", "--pure", "--model", "opencode-go/qwen3.8-flash", "--variant", "high", "--format", "json"],
+  });
+});
+
+test("fast-execution follows the declared OpenCode-first route order", () => {
+  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+  const first = resolveModelRoute(base);
+  assert.equal(first.selected.model, "opencode-go/glm-5.3-flash");
+  const second = resolveModelRoute({
+    ...base,
+    unavailable: [
+      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
+      { candidateId: "opencode-qwen3.8-flash", observedModel: "opencode-go/qwen3.8-flash" },
+    ],
+  });
+  assert.equal(second.selected.model, "opencode-go/qwen3.8-flash");
+  const third = resolveModelRoute({
+    ...base,
+    unavailable: [{ candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" }],
+  });
+  assert.equal(third.selected.model, "swe-1-7-lightning");
+  assert.equal(third.selected.reasoning, "medium");
+  assert.deepEqual(third.selected.invocation, { command: "devin", args: ["--model", "swe-1-7-lightning-medium", "--print"] });
+  const fourth = resolveModelRoute({
+    ...base,
+    unavailable: [
+      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
+      { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
+    ],
+  });
+  assert.equal(fourth.selected.model, "glm-5.3-flash");
+  assert.equal(fourth.selected.harness, "factory");
+  const fifth = resolveModelRoute({
+    ...base,
+    unavailable: [
+      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
+      { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
+      { candidateId: "factory-glm-5.3-flash", reason: "quota-exhausted" },
+    ],
+  });
+  assert.equal(fifth.selected.model, "gpt-5.6-luna");
+  assert.equal(fifth.selected.reasoning, "high");
+  assert.equal(fifth.selected.fallbackOnly, true);
+  assert.deepEqual(fifth.selected.invocation, {
+    command: "codex",
+    args: [
+      "exec",
+      "--strict-config",
+      "--model",
+      "gpt-5.6-luna",
+      "--config",
+      'model_reasoning_effort="high"',
+      "--config",
+      'service_tier="priority"',
+    ],
+  });
+});
+
+test("new mappings stay provisional and resolution stays receipt-required without evidence", () => {
+  const result = resolveModelRoute({ roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" });
+  assert.equal(result.selected.evidenceStatus, "runtime-required");
+  assert.equal(result.selected.mappingStatus, "provisional");
+  assert.equal(result.selected.resolvedModel, null);
+  assert.equal(result.selected.resolvedModelStatus, "receipt-required");
+  assert.equal(result.authority.dispatchAuthorized, false);
+});
+
+test("resolveModelRoute accepts installed aliases for the matching capability slot", () => {
+  const direct = resolveModelRoute({ roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" });
+  const viaAlias = resolveModelRoute({ roster: agentRoster, capability: "mechanical-execution", routeSlot: "implementation-default" });
+  assert.equal(viaAlias.valid, true);
+  assert.deepEqual(viaAlias.selected, direct.selected);
+  const wrongCapability = resolveModelRoute({ roster: agentRoster, capability: "review", routeSlot: "implementation-default" });
+  assert.equal(wrongCapability.valid, false);
+  assert.match(wrongCapability.errors.join("\n"), /no declared route matches capability and routeSlot/);
+});
+
+test("unsupported harnesses fail closed instead of routing to Codex", () => {
+  const malformed = structuredClone(agentRoster);
+  malformed.routes[1].candidates[0].harness = "magiccli";
+  const result = resolveModelRoute({ roster: malformed, capability: "mechanical-execution", routeSlot: "fast-execution" });
+  assert.equal(result.valid, false);
+  assert.equal(result.blocked, true);
+  assert.equal(result.selected, null);
+  assert.equal(result.attempts.length, 0);
+  assert.match(result.errors.join("\n"), /harness is unsupported: magiccli/);
 });
 
 test("malformed candidate blocks the whole route before fallback", () => {

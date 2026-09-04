@@ -1,18 +1,18 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.5.19",
+  "version": "1.6.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
   "bin": {
-    "aohys-development-system": "./bin/development-system"
+    "aohys-development-system": "./bin/development-system.mjs"
   },
   "scripts": {
     "audit": "./bin/development-system audit",
     "legacy:benchmark": "node ./scripts/run-benchmarks.mjs",
     "benchmark:architecture": "node ./scripts/architecture-benchmark.mjs",
     "benchmark:codex": "node ./scripts/codex-benchmark-runtime.mjs",
-    "install:local": "./bin/development-system install --version 1.5.19",
+    "install:local": "./bin/development-system setup",
     "measure:v2": "node ./scripts/measure-v2.mjs",
     "legacy:operator:probe": "node ./scripts/probe-lifecycle-interface.mjs",
     "t3code:probe": "node ./scripts/probe-t3code.mjs",
@@ -23,9 +23,9 @@
     "roster:check": "node ./scripts/validate-agent-roster.mjs",
     "reader:browser": "node ./scripts/verify-technical-reader-browser.mjs",
     "implement-preview": "./bin/development-system implement-preview",
-    "skills:audit": "./bin/development-system audit-skills --version 0.26.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
+    "skills:audit": "./bin/development-system audit-skills --version 0.27.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",
-    "skills:sync": "./bin/development-system sync-skills --version 0.26.0",
+    "skills:sync": "./bin/development-system sync-skills --version 0.27.0",
     "measure:test": "node --test test/measure-development-run.test.mjs",
     "smoke:repositories": "node ./scripts/smoke-repository-audits.mjs",
     "scenario": "node ./scripts/reproduce-installation.mjs && node ./scripts/reproduce-skills.mjs && node ./scripts/reproduce-lifecycle.mjs && node ./scripts/reproduce-repository-preparation.mjs && node --test test/development-system-next-scenario.test.mjs test/harness-scenario.test.mjs test/benchmark-scenario.test.mjs test/delivery-preview.test.mjs",
@@ -34,7 +34,9 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
-    "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate"
+    "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate",
+    "release:prepare": "node ./scripts/build-release-160.mjs",
+    "release:pack": "node ./scripts/pack-distribution.mjs"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -43,5 +45,17 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.9.3"
-  }
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "config/",
+    "artifacts/",
+    "manifests/",
+    "catalog/",
+    "scripts/",
+    ".development-system-package.json",
+    "README.md",
+    "LICENSE"
+  ]
 }

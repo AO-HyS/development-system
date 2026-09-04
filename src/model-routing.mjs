@@ -3,6 +3,7 @@
 const unavailableReasons = new Set(["quota-exhausted", "unavailable", "unsupported", "policy-blocked", "latency-budget-exceeded", "timeout"]);
 const evidenceStatuses = new Set(["validated", "provisional", "runtime-required", "unproven"]);
 const mappingStatuses = new Set(["mapped", "provisional", "benchmark-required", "runtime-required", "unmapped"]);
+const supportedHarnesses = new Set(["opencode", "factory", "devin", "codex"]);
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */
 function isRecord(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
@@ -93,7 +94,8 @@ export function resolveModelRoute(input) {
       fallbackTrace.push({ ...attempt, action: boundaryCrossed ? "advance-to-declared-fallback" : "exhausted" });
       continue;
     }
-    const reasoning = escalation && normalized.harness === "codex" && normalized.model === "gpt-5.6-sol" ? "max" : normalized.reasoning;
+    const astraEscalation = escalation && normalized.harness === "codex" && normalized.model === "gpt-6-astra";
+    const reasoning = astraEscalation ? "max" : normalized.reasoning;
     const receiptModel = unavailableAttempt && unavailableAttempt.observedModel ? unavailableAttempt.observedModel : null;
     const resolvedModel = receiptModel !== null && receiptModel === normalized.model ? receiptModel : null;
     const selected = {
@@ -102,7 +104,7 @@ export function resolveModelRoute(input) {
       requestedModel: normalized.requestedModel,
       resolvedModel,
       resolvedModelStatus: resolvedModel !== null ? "receipt-matched" : "receipt-required",
-      escalationApplied: escalation && normalized.harness === "codex" && normalized.model === "gpt-5.6-sol",
+      escalationApplied: astraEscalation,
       invocation: invocationFor(normalized.harness, normalized.model, reasoning),
     };
     const attempt = { candidateId: normalized.id, harness: normalized.harness, model: normalized.model, status: "selected", reason: null, boundaryCrossed: false, boundary: normalized.independenceBoundary };
@@ -133,7 +135,12 @@ export function resolveModelRoute(input) {
 /** @param {Record<string, unknown>} roster @param {string} capability @param {string} routeSlot */
 function findRoute(roster, capability, routeSlot) {
   const routes = Array.isArray(roster.routes) ? roster.routes : [];
-  const route = routes.find((entry) => isRecord(entry) && entry.capability === capability && entry.routeSlot === routeSlot);
+  const route = routes.find(
+    (entry) =>
+      isRecord(entry) &&
+      entry.capability === capability &&
+      (entry.routeSlot === routeSlot || (Array.isArray(entry.aliases) && entry.aliases.includes(routeSlot))),
+  );
   if (!route) return null;
   if (typeof route.chain === "string") {
     const chains = isRecord(roster.chains) ? roster.chains : {};
@@ -209,14 +216,17 @@ function availabilityFor(unavailable, candidate) {
 
 /** @param {string} harness @param {string} model @param {string} reasoning */
 function invocationFor(harness, model, reasoning) {
+  if (harness === "opencode") {
+    return { command: "opencode", args: ["run", "--pure", "--model", model, "--variant", reasoning, "--format", "json"] };
+  }
   if (harness === "factory") return { command: "droid", args: ["exec", "--model", model, "--reasoning-effort", reasoning] };
   if (harness === "devin") {
     const modelUid = model === "claude-fable-5.1"
       ? `claude-fable-5-1-${reasoning}`
       : model === "gemini-3.8-flash"
         ? `gemini-3-8-flash-${reasoning}`
-        : model === "swe-1-7" && reasoning === "medium"
-          ? "swe-1-7-medium"
+        : (model === "swe-1-7" || model === "swe-1-7-lightning") && reasoning === "medium"
+          ? `${model}-medium`
           : model;
     return { command: "devin", args: ["--model", modelUid, "--print"] };
   }
@@ -260,6 +270,9 @@ function normalizeCandidate(value, index, errors) {
     errors.push(`candidates[${index}].serviceTier requires tier and status`);
   }
   if (candidate.model === "inherit" || candidate.requestedModel === "inherit") errors.push(`candidates[${index}] requires an explicit model`);
+  if (candidate.harness && !supportedHarnesses.has(candidate.harness)) {
+    errors.push(`candidates[${index}].harness is unsupported: ${candidate.harness}`);
+  }
   if (candidate.evidenceStatus && !evidenceStatuses.has(candidate.evidenceStatus)) errors.push(`candidates[${index}].evidenceStatus is unsupported`);
   if (candidate.mappingStatus && !mappingStatuses.has(candidate.mappingStatus)) errors.push(`candidates[${index}].mappingStatus is unsupported`);
   return errors.length && errors[errors.length - 1].startsWith(`candidates[${index}]`) ? null : candidate;

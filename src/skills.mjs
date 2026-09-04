@@ -5,8 +5,15 @@ import { execFileSync } from "node:child_process";
 import { constants } from "node:fs";
 import { cp, lstat, mkdir, open, readFile, readdir, readlink, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { verifySkillProbeEvidenceAuthentication } from "./skill-evidence-auth.mjs";
 import { invocationDigestSchema } from "./invocation-digest.mjs";
+import {
+  loadPackageSource,
+  packageDirectoryHash,
+  packageFileBytes,
+  packageFileIsExecutable,
+} from "./package-source.mjs";
 
 /** @param {unknown} error */
 function isMissing(error) {
@@ -843,6 +850,32 @@ function resolveInsideRoot(candidate, root) {
 }
 
 /**
+ * Bind the supplied catalog to its packaged provenance bytes: the packaged
+ * `catalog/<version>.json` must exist in provenance and deep-equal the
+ * supplied catalog object.
+ * @param {import("./package-source.mjs").PackageSource} source
+ * @param {SkillCatalog & {catalogVersion?: string}} catalog
+ */
+function assertCatalogBoundToPackageSource(source, catalog) {
+  if (typeof catalog.catalogVersion !== "string") {
+    throw new Error("Cannot bind a catalog without a version to package provenance");
+  }
+  const catalogPath = `catalog/${catalog.catalogVersion}.json`;
+  let packaged;
+  try {
+    packaged = JSON.parse(packageFileBytes(source, catalogPath).toString("utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Package provenance contains an invalid ${catalogPath}`);
+    }
+    throw error;
+  }
+  if (!isDeepStrictEqual(packaged, catalog)) {
+    throw new Error(`Supplied catalog ${catalogPath} does not match its packaged provenance bytes`);
+  }
+}
+
+/**
  * Hash a source directory from Git's committed tree, never from working-tree bytes.
  * @param {string} sourceRoot @param {string} sourceDirectory @param {string} commit
  */
@@ -911,24 +944,35 @@ export async function synchronizeSkillCatalog(options) {
 
   let repositoryCommit = null;
   let repositoryDirty = null;
-  try {
-    repositoryCommit = execFileSync("git", ["rev-parse", "HEAD"], {
-      cwd: sourceRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    repositoryDirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
-      cwd: sourceRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    throw new Error("Canonical skill source must be a Git checkout with a resolvable HEAD");
-  }
-  if (repositoryDirty && !options.sourceCommit) throw new Error("Canonical skill source checkout must be clean before synchronization unless an exact --source-commit is provided");
-  const installCommit = options.sourceCommit ?? repositoryCommit;
-  if (!installCommit || !/^[a-f0-9]{40}$/.test(installCommit)) {
-    throw new Error("Skill source commit must be an exact lowercase 40-character Git commit");
+  const packageSource = loadPackageSource(sourceRoot);
+  /** @type {string} */
+  let installCommit;
+  if (packageSource) {
+    if (options.sourceCommit && options.sourceCommit !== packageSource.commit) {
+      throw new Error(`--source-commit cannot override the packaged commit ${packageSource.commit}`);
+    }
+    installCommit = packageSource.commit;
+    assertCatalogBoundToPackageSource(packageSource, options.catalog);
+  } else {
+    try {
+      repositoryCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: sourceRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+      repositoryDirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], {
+        cwd: sourceRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim();
+    } catch {
+      throw new Error("Canonical skill source must be a Git checkout with a resolvable HEAD");
+    }
+    if (repositoryDirty && !options.sourceCommit) throw new Error("Canonical skill source checkout must be clean before synchronization unless an exact --source-commit is provided");
+    installCommit = options.sourceCommit ?? repositoryCommit;
+    if (!installCommit || !/^[a-f0-9]{40}$/.test(installCommit)) {
+      throw new Error("Skill source commit must be an exact lowercase 40-character Git commit");
+    }
   }
   const committedHashes = new Map();
   for (const skill of options.catalog.skills) {
@@ -936,159 +980,223 @@ export async function synchronizeSkillCatalog(options) {
       if (!variant.sourceDirectory) throw new Error(`${variant.id} is missing sourceDirectory`);
       let committedHash = committedHashes.get(variant.sourceDirectory);
       if (!committedHash) {
-        committedHash = gitDirectoryHash(sourceRoot, variant.sourceDirectory, installCommit);
+        committedHash = packageSource
+          ? packageDirectoryHash(packageSource, variant.sourceDirectory)
+          : gitDirectoryHash(sourceRoot, variant.sourceDirectory, installCommit);
         committedHashes.set(variant.sourceDirectory, committedHash);
       }
       if (committedHash !== variant.folderSha256) {
-        throw new Error(`${variant.id} canonical folder hash does not match Git ${installCommit}`);
+        throw new Error(packageSource
+          ? `${variant.id} canonical folder hash does not match package provenance ${installCommit}`
+          : `${variant.id} canonical folder hash does not match Git ${installCommit}`);
       }
       for (const file of variant.executableFiles ?? []) {
-        if (!gitFileIsExecutable(sourceRoot, variant.sourceDirectory, file, installCommit)) {
+        const executable = packageSource
+          ? packageFileIsExecutable(packageSource, `${variant.sourceDirectory}/${file}`)
+          : gitFileIsExecutable(sourceRoot, variant.sourceDirectory, file, installCommit);
+        if (!executable) {
           throw new Error(`${variant.id} executable mode is not committed for ${file}`);
         }
       }
     }
   }
 
-  const existingStatePath = resolveInsideHome(home, ".development-system/skill-sync-state.json");
-  if ((await entryMetadata(existingStatePath)).exists) await rollbackSkillSync({ home, catalog: options.catalog });
-
-  const snapshotId = `${Date.now()}-${randomUUID()}`;
-  const snapshotRoot = resolveInsideHome(home, `.development-system/skill-snapshots/${snapshotId}`);
-  const statePath = resolveInsideHome(home, ".development-system/skill-sync-state.json");
-  const lockPath = resolveInsideHome(home, ".development-system/skills-lock.json");
-  const agentLockPath = resolveInsideHome(home, ".agents/.skill-lock.json");
-  /** @type {{version?: number, skills: Record<string, Record<string, unknown>>, [key: string]: unknown}} */
-  let agentLock = { version: 3, skills: {} };
+  const recovery = await checkpointExistingSkillSync(home, options.catalog);
   try {
-    agentLock = JSON.parse(await readFile(agentLockPath, "utf8"));
-  } catch (error) {
-    if (!isMissing(error)) throw error;
-  }
-  const variants = options.catalog.skills.flatMap((skill) =>
-    skill.variants.map((variant) => ({ ...variant, logicalName: skill.logicalName })),
-  );
-  const managedPaths = catalogManagedPaths(options.catalog);
-  if (new Set(managedPaths).size !== managedPaths.length) {
-    throw new Error("Skill catalog contains duplicate managed destinations");
-  }
-  /** @type {Array<{path: string, existed: boolean, kind: string, backup: string | null, linkTarget: string | null, integritySha256: string | null}>} */
-  const entries = [];
+    if (recovery) await rollbackSkillSync({ home, catalog: options.catalog });
 
-  for (const [index, managedPath] of managedPaths.entries()) {
-    await assertSafeManagedParent(home, managedPath);
-    const destination = resolveInsideHome(home, managedPath);
-    const metadata = await entryMetadata(destination);
-    entries.push({
-      path: managedPath,
-      existed: metadata.exists,
-      kind: metadata.kind,
-      backup: metadata.exists ? `entries/${index}` : null,
-      linkTarget: metadata.linkTarget,
-      integritySha256: metadata.exists ? await entryIntegrityHash(destination) : null,
-    });
-  }
-  await mkdir(resolve(snapshotRoot, "entries"), { recursive: true });
-  const state = {
-    schemaVersion: 1,
-    catalogVersion: options.catalog.catalogVersion ?? null,
-    snapshotId,
-    sourceRoot,
-    entries,
-  };
-  await atomicWriteJson(statePath, state);
-
-  try {
-    for (const entry of entries) {
-      await assertSafeManagedParent(home, entry.path);
-      if (entry.existed && entry.backup) {
-        const destination = resolveInsideHome(home, entry.path);
-        const backup = resolve(snapshotRoot, entry.backup);
-        await rename(destination, backup);
-      }
+    const snapshotId = `${Date.now()}-${randomUUID()}`;
+    const snapshotRoot = resolveInsideHome(home, `.development-system/skill-snapshots/${snapshotId}`);
+    const statePath = resolveInsideHome(home, ".development-system/skill-sync-state.json");
+    const lockPath = resolveInsideHome(home, ".development-system/skills-lock.json");
+    const agentLockPath = resolveInsideHome(home, ".agents/.skill-lock.json");
+    /** @type {{version?: number, skills: Record<string, Record<string, unknown>>, [key: string]: unknown}} */
+    let agentLock = { version: 3, skills: {} };
+    try {
+      agentLock = JSON.parse(await readFile(agentLockPath, "utf8"));
+    } catch (error) {
+      if (!isMissing(error)) throw error;
     }
-
-    for (const variant of variants) {
-      if (!variant.sourceDirectory) throw new Error(`${variant.id} is missing sourceDirectory`);
-      const source = resolveInsideRoot(variant.sourceDirectory, sourceRoot);
-      if ((await lstat(source)).isSymbolicLink()) {
-        throw new Error(`Canonical skill source cannot be a symbolic link: ${variant.sourceDirectory}`);
-      }
-      const destination = resolveInsideHome(home, variant.destination);
-      await mkdir(dirname(destination), { recursive: true });
-      await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+    const variants = options.catalog.skills.flatMap((skill) =>
+      skill.variants.map((variant) => ({ ...variant, logicalName: skill.logicalName })),
+    );
+    const managedPaths = catalogManagedPaths(options.catalog);
+    if (new Set(managedPaths).size !== managedPaths.length) {
+      throw new Error("Skill catalog contains duplicate managed destinations");
     }
+    /** @type {Array<{path: string, existed: boolean, kind: string, backup: string | null, linkTarget: string | null, integritySha256: string | null}>} */
+    const entries = [];
 
-    const lock = {
+    for (const [index, managedPath] of managedPaths.entries()) {
+      await assertSafeManagedParent(home, managedPath);
+      const destination = resolveInsideHome(home, managedPath);
+      const metadata = await entryMetadata(destination);
+      entries.push({
+        path: managedPath,
+        existed: metadata.exists,
+        kind: metadata.kind,
+        backup: metadata.exists ? `entries/${index}` : null,
+        linkTarget: metadata.linkTarget,
+        integritySha256: metadata.exists ? await entryIntegrityHash(destination) : null,
+      });
+    }
+    await mkdir(resolve(snapshotRoot, "entries"), { recursive: true });
+    const state = {
       schemaVersion: 1,
       catalogVersion: options.catalog.catalogVersion ?? null,
-      sourceCommit: installCommit,
-      installedAt: new Date().toISOString(),
-      logicalSkills: options.catalog.skills.map((skill) => ({
-        logicalName: skill.logicalName,
-        source: skill.source
-          ? {
-              ...skill.source,
-              commit: skill.source.commit === "$INSTALL_COMMIT" ? installCommit : skill.source.commit,
-            }
-          : null,
-        variants: skill.variants.map((variant) => ({
-          id: variant.id,
-          harness: variant.harness,
-          sourceDirectory: variant.sourceDirectory,
-          destination: variant.destination,
-          folderSha256: variant.folderSha256,
-          executableFiles: variant.executableFiles ?? [],
-          expectedMirrorOf: variant.expectedMirrorOf,
-          adapterContract: variant.adapterContract ?? null,
-        })),
-      })),
-      cleanup: options.catalog.cleanup ?? [],
+      snapshotId,
+      sourceRoot,
+      entries,
     };
-    await atomicWriteJson(lockPath, lock);
+    await atomicWriteJson(statePath, state);
 
-    const nextAgentLock = {
-      ...agentLock,
-      version: agentLock.version ?? 3,
-      skills: { ...(agentLock.skills ?? {}) },
-    };
-    for (const cleanup of options.catalog.cleanup ?? []) {
-      const prefix = ".agents/skills/";
-      if (cleanup.startsWith(prefix)) delete nextAgentLock.skills[cleanup.slice(prefix.length)];
-    }
-    for (const skill of options.catalog.skills) {
-      const shared = skill.variants.find((variant) => variant.destination === `.agents/skills/${skill.logicalName}`);
-      if (!shared || !skill.source) continue;
-      if (!skill.source.repository || !skill.source.path) throw new Error(`${skill.logicalName} has incomplete provenance`);
-      const sourceCommit = skill.source.commit === "$INSTALL_COMMIT" ? installCommit : skill.source.commit;
-      if (!sourceCommit) throw new Error(`${skill.logicalName} cannot resolve its canonical source commit`);
-      nextAgentLock.skills[skill.logicalName] = {
-        source: skill.source.repository.replace(/^https:\/\/github\.com\//, ""),
-        sourceType: "github",
-        sourceUrl: `${skill.source.repository}.git`,
-        sourceCommit,
-        skillPath: `${skill.source.path}/SKILL.md`,
-        skillFolderHash: shared.folderSha256,
+    try {
+      for (const entry of entries) {
+        await assertSafeManagedParent(home, entry.path);
+        if (entry.existed && entry.backup) {
+          const destination = resolveInsideHome(home, entry.path);
+          const backup = resolve(snapshotRoot, entry.backup);
+          await rename(destination, backup);
+        }
+      }
+
+      for (const variant of variants) {
+        if (!variant.sourceDirectory) throw new Error(`${variant.id} is missing sourceDirectory`);
+        const source = resolveInsideRoot(variant.sourceDirectory, sourceRoot);
+        if ((await lstat(source)).isSymbolicLink()) {
+          throw new Error(`Canonical skill source cannot be a symbolic link: ${variant.sourceDirectory}`);
+        }
+        const destination = resolveInsideHome(home, variant.destination);
+        await mkdir(dirname(destination), { recursive: true });
+        await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+      }
+
+      const lock = {
+        schemaVersion: 1,
+        catalogVersion: options.catalog.catalogVersion ?? null,
+        sourceCommit: installCommit,
         installedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        logicalSkills: options.catalog.skills.map((skill) => ({
+          logicalName: skill.logicalName,
+          source: skill.source
+            ? {
+                ...skill.source,
+                commit: skill.source.commit === "$INSTALL_COMMIT" ? installCommit : skill.source.commit,
+              }
+            : null,
+          variants: skill.variants.map((variant) => ({
+            id: variant.id,
+            harness: variant.harness,
+            sourceDirectory: variant.sourceDirectory,
+            destination: variant.destination,
+            folderSha256: variant.folderSha256,
+            executableFiles: variant.executableFiles ?? [],
+            expectedMirrorOf: variant.expectedMirrorOf,
+            adapterContract: variant.adapterContract ?? null,
+          })),
+        })),
+        cleanup: options.catalog.cleanup ?? [],
       };
+      await atomicWriteJson(lockPath, lock);
+
+      const nextAgentLock = {
+        ...agentLock,
+        version: agentLock.version ?? 3,
+        skills: { ...(agentLock.skills ?? {}) },
+      };
+      for (const cleanup of options.catalog.cleanup ?? []) {
+        const prefix = ".agents/skills/";
+        if (cleanup.startsWith(prefix)) delete nextAgentLock.skills[cleanup.slice(prefix.length)];
+      }
+      for (const skill of options.catalog.skills) {
+        const shared = skill.variants.find((variant) => variant.destination === `.agents/skills/${skill.logicalName}`);
+        if (!shared || !skill.source) continue;
+        if (!skill.source.repository || !skill.source.path) throw new Error(`${skill.logicalName} has incomplete provenance`);
+        const sourceCommit = skill.source.commit === "$INSTALL_COMMIT" ? installCommit : skill.source.commit;
+        if (!sourceCommit) throw new Error(`${skill.logicalName} cannot resolve its canonical source commit`);
+        nextAgentLock.skills[skill.logicalName] = {
+          source: skill.source.repository.replace(/^https:\/\/github\.com\//, ""),
+          sourceType: "github",
+          sourceUrl: `${skill.source.repository}.git`,
+          sourceCommit,
+          skillPath: `${skill.source.path}/SKILL.md`,
+          skillFolderHash: shared.folderSha256,
+          installedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      await atomicWriteJson(agentLockPath, nextAgentLock);
+    } catch (error) {
+      await restoreSkillSnapshot({ home, snapshotRoot, entries });
+      await rm(statePath, { force: true });
+      await rm(snapshotRoot, { recursive: true, force: true });
+      throw error;
     }
-    await atomicWriteJson(agentLockPath, nextAgentLock);
+
+    if (recovery) await rm(recovery.snapshotRoot, { recursive: true, force: true });
+    return {
+      ok: true,
+      operation: "sync-skills",
+      snapshotId,
+      logicalSkillCount: options.catalog.skills.length,
+      physicalVariantCount: variants.length,
+      cleaned: options.catalog.cleanup ?? [],
+    };
   } catch (error) {
-    await restoreSkillSnapshot({ home, snapshotRoot, entries });
-    await rm(statePath, { force: true });
+    if (recovery) {
+      for (const entry of recovery.entries) await assertSafeManagedParent(home, entry.path);
+      try {
+        await restoreSkillSnapshot({ home, ...recovery });
+      } catch (restoreError) {
+        throw new AggregateError([error, restoreError], `Skill recovery failed; checkpoint retained at ${recovery.snapshotRoot}`);
+      }
+      await rm(recovery.snapshotRoot, { recursive: true, force: true });
+    }
+    throw error;
+  }
+}
+
+/** Preserve the last working installation while repeated sync retains its
+ * established rollback-to-original-baseline semantics.
+ * @param {string} home @param {SkillCatalog} catalog
+ */
+async function checkpointExistingSkillSync(home, catalog) {
+  const stateRelative = ".development-system/skill-sync-state.json";
+  await assertSafeManagedParent(home, stateRelative);
+  const statePath = resolveInsideHome(home, stateRelative);
+  const metadata = await entryMetadata(statePath);
+  if (!metadata.exists) return null;
+  if (metadata.kind !== "file") throw new Error("Skill synchronization state must be a regular file");
+  const state = JSON.parse(await readFile(statePath, "utf8"));
+  const allowed = new Set(catalogManagedPaths(catalog));
+  if (state.schemaVersion !== 1 || !/^\d{10,16}-[0-9a-f-]{36}$/.test(state.snapshotId ?? "") ||
+      !Array.isArray(state.entries) || state.entries.some((/** @type {{path?: string}} */ entry) => !entry || !allowed.has(entry.path ?? ""))) {
+    throw new Error("Cannot checkpoint an invalid or unauthorized skill synchronization state");
+  }
+  const paths = [...allowed, stateRelative, `.development-system/skill-snapshots/${state.snapshotId}`];
+  const recoveryRelative = `.development-system/skill-sync-recovery/${randomUUID()}`;
+  await assertSafeManagedParent(home, `${recoveryRelative}/entry`);
+  const snapshotRoot = resolveInsideHome(home, recoveryRelative);
+  /** @type {Array<{path: string, existed: boolean, backup: string | null, integritySha256: string | null}>} */
+  const entries = [];
+  try {
+    for (const [index, path] of paths.entries()) {
+      await assertSafeManagedParent(home, path);
+      const destination = resolveInsideHome(home, path);
+      const current = await entryMetadata(destination);
+      const backup = current.exists ? `entries/${index}` : null;
+      const integritySha256 = current.exists ? await entryIntegrityHash(destination) : null;
+      entries.push({ path, existed: current.exists, backup, integritySha256 });
+      if (backup) {
+        await mkdir(dirname(resolve(snapshotRoot, backup)), { recursive: true });
+        await cp(destination, resolve(snapshotRoot, backup), { recursive: true, dereference: false, verbatimSymlinks: true });
+      }
+    }
+    return { snapshotRoot, entries };
+  } catch (error) {
     await rm(snapshotRoot, { recursive: true, force: true });
     throw error;
   }
-
-  return {
-    ok: true,
-    operation: "sync-skills",
-    snapshotId,
-    logicalSkillCount: options.catalog.skills.length,
-    physicalVariantCount: variants.length,
-    cleaned: options.catalog.cleanup ?? [],
-  };
 }
 
 /** @param {{home: string, snapshotRoot: string, entries: Array<{path: string, existed: boolean, backup: string | null, integritySha256?: string | null}>}} options */

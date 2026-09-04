@@ -357,7 +357,7 @@ try {
   if (!project) throw new Error("T3Code probe project was not registered");
 
   const threadId = `thread-${randomUUID()}`;
-  const modelSelection = { instanceId: "codex", model: "gpt-5.6-sol" };
+  const modelSelection = { instanceId: "codex", model: "gpt-6-astra" };
   const requestedRuntimeMode = "approval-required";
   /** @type {Array<{requestId: string, requestKind: string, detail: string, decision: string, resolvedPath: string | null}>} */
   const approvalEvidence = [];

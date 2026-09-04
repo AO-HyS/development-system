@@ -196,7 +196,7 @@ test("sequential and specialist plans chain writer, review, correction, and fina
 
   assert.deepEqual(lanePhaseIds(review), ["test-value-review"]);
   assert.equal(review.readOnly, true);
-  assert.equal(review.independent, true);
+  assert.equal(review.independent, false);
   assert.deepEqual(review.dependsOn, ["writer"]);
   assert.match(review.stopCondition, /weakened assertions/);
   assert.match(review.stopCondition, /refuse green-only acceptance/i);
@@ -215,7 +215,7 @@ test("sequential and specialist plans chain writer, review, correction, and fina
 
   assert.deepEqual(lanePhaseIds(verification), ["independent-objective-verification"]);
   assert.equal(verification.readOnly, true);
-  assert.equal(verification.independent, true);
+  assert.equal(verification.independent, false);
   assert.deepEqual(verification.dependsOn, ["correction"]);
   assert.match(verification.stopCondition, /accepted objective and the public interface/);
   assert.match(verification.stopCondition, /isolated from implementation conclusions/);
@@ -599,7 +599,7 @@ test("same-ID writer substitutes fail the trusted canonical writer fingerprint",
     ["agent role", (lane) => ({ ...lane, agent: { ...lane.agent, role: "reviewer" } })],
     ["agent harness", (lane) => ({ ...lane, agent: { ...lane.agent, harness: "factory" } })],
     ["agent requested model", (lane) => ({ ...lane, agent: { ...lane.agent, requestedModel: "other-model" } })],
-    ["agent reasoning", (lane) => ({ ...lane, agent: { ...lane.agent, reasoning: "high" } })],
+    ["agent reasoning", (lane) => ({ ...lane, agent: { ...lane.agent, reasoning: "low" } })],
     ["agent resolved model", (lane) => ({ ...lane, agent: { ...lane.agent, resolvedModel: "other-model" } })],
     ["agent route slot", (lane) => ({ ...lane, agent: { ...lane.agent, modelRoute: { ...lane.agent.modelRoute, routeSlot: "implementation-default" } } })],
     ["agent route removed", (lane) => ({ ...lane, agent: { ...lane.agent, modelRoute: null } })],
@@ -643,7 +643,7 @@ test("same-ID specialist substitutes fail the trusted canonical specialist finge
     ["agent minimal added", (lane) => ({ ...lane, agent: { role: "rogue" } })],
     ["model removed", (lane) => ({ ...lane, model: null })],
     ["model requested", (lane) => ({ ...lane, model: { ...lane.model, requested: "other-model" } })],
-    ["model resolved", (lane) => ({ ...lane, model: { ...lane.model, resolved: null } })],
+    ["model resolved", (lane) => ({ ...lane, model: { ...lane.model, resolved: "other-model" } })],
     ["model reasoning", (lane) => ({ ...lane, model: { ...lane.model, reasoning: "low" } })],
     ["route added", (lane) => ({ ...lane, modelRoute: { routeSlot: "adversarial-review" } })],
   ];
@@ -824,24 +824,37 @@ test("non-trivial read-only runs own no writable lane for every kind and fail cl
   assert.equal(conflict.antiSlop.required, false);
 });
 
-test("independent anti-slop review lanes use the evidence-bound Fable to Sol adversarial route", () => {
-  const expectedModel = rosterModel("adversarial-review");
-  const expectedChain = rosterChain("adversarial-review");
+test("ordinary anti-slop review lanes use the parent-executed general-review route", () => {
+  const expectedModel = rosterModel("general-review");
+  const expectedChain = rosterChain("general-review");
   for (const result of [plan({ trivial: false }), plan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
     for (const laneId of ["review-test-value", "review-objective-verification"]) {
       const lane = laneById(result.lanes, laneId);
       assert.equal(lane.model.resolved, null, `${laneId} resolved model stays null before a runtime receipt`);
       assert.equal(lane.model.requested, expectedModel.requested);
       assert.equal(lane.model.reasoning, expectedModel.reasoning);
-      assert.equal(lane.modelRoute.routeSlot, "adversarial-review");
+      assert.equal(lane.executionOwner, "parent");
+      assert.equal(lane.agentSpawnRequired, false);
+      assert.equal(lane.independent, false);
+      assert.equal(lane.modelRoute.routeSlot, "general-review");
       assert.equal(lane.modelRoute.receiptRequired, true);
       assert.equal(lane.modelRoute.attemptBeforeDispatch, true);
       assert.deepEqual(lane.modelRoute.chain, expectedChain);
+    }
+    // The parent-executed standards review stays a logical phase too.
+    const standards = result.lanes.find((lane) => lane.id === "review-standards");
+    if (standards) {
+      assert.equal(standards.executionOwner, "parent");
+      assert.equal(standards.agentSpawnRequired, false);
     }
     // Specialist routing is unchanged.
     const specialists = result.lanes.filter((lane) => lane.type === "specialist-review");
     assert.ok(specialists.every((lane) => lane.modelRoute === undefined));
   }
+  // The complex independent adversarial route remains available with the real
+  // declared chain: Fable medium, Fable medium, Astra high fallback.
+  const adversarialChain = rosterChain("adversarial-review");
+  assert.deepEqual(adversarialChain.map((candidate) => candidate.model), ["claude-fable-5.1", "claude-fable-5.1", "gpt-6-astra"]);
 });
 
 test("non-trivial read-only analysis and verification-only runs never receive writer-owned phases", () => {
@@ -911,8 +924,8 @@ test("lane contracts embed the complete anti-slop requirements for harnesses wit
   const result = plan({ trivial: false });
   assert.equal(result.antiSlop.factoryCoverage.policy, "requirements-embedded-in-lane-contracts");
   assert.equal(result.antiSlop.factoryCoverage.installedSkillsRequired, false);
-  assert.match(result.antiSlop.factoryCoverage.statement, /Factory writers do not require installed skills/);
-  assert.match(result.antiSlop.factoryCoverage.statement, /never depends on Codex skill discovery/);
+  assert.match(result.antiSlop.factoryCoverage.statement, /Writers do not require installed skills/);
+  assert.match(result.antiSlop.factoryCoverage.statement, /never depends on harness skill discovery/);
   // The writer lane is self-contained: each writer-owned phase carries its
   // full model-independent requirement and completion text.
   const writer = laneById(result.lanes, "writer");
@@ -1154,8 +1167,8 @@ test("repository preparation records the executable lane contract and adapter su
   const result = await initializeRepository({ repository, confirm: "initialize" });
   assert.equal(result.status, "updated");
   const contract = JSON.parse(await readFile(resolve(repository, ".development-system/repository.json"), "utf8"));
-  assert.equal(contract.contractVersion, "1.5.19");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.26.0");
+  assert.equal(contract.contractVersion, "1.6.0");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.27.0");
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("install-anti-slop"));
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("behavioral-evidence"));
   assert.equal(contract.antiSlop.schema, "executable-lane-contract-v1");
@@ -1189,7 +1202,7 @@ test("repository preparation records the executable lane contract and adapter su
   assert.equal(contract.antiSlop.upstream.treeSha256, "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55");
   assert.equal(contract.antiSlop.factoryCoverage.installedSkillsRequired, false);
   const adapter = await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8");
-  assert.match(adapter, /Contract version: `1\.5\.19`/);
+  assert.match(adapter, /Contract version: `1\.6\.0`/);
   assert.match(adapter, /executable lane contract/);
   assert.match(adapter, /test-value review/);
   assert.match(adapter, /writable fast-writer correction lane/);
