@@ -59,7 +59,7 @@ const groups = [
   { repository: "humanlayer/skills", commit: "3c2629142c5d437428269b1b722b08c0b87f574d", license: "show-me", names: ["show-me"] },
   { repository: "coldteadotai/pr-lens", commit: "d3a72e50895c58e62b2a7a5ef7cc588f7700657c", license: "pr-lens", names: ["pr-lens"] },
 ];
-const adapted = new Set(["better-interface", "make-interfaces-feel-better", "pr-lens"]);
+const adapted = new Set(["better-interface", "make-interfaces-feel-better", "pr-lens", "explain-interface", "interface-review", "variant", "break"]);
 for (const group of groups) {
   for (const name of group.names) {
     const upstreamDirectory = "artifacts/" + version + "/skills/upstream/" + name;

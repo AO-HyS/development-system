@@ -1655,20 +1655,25 @@
         "codex"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/break",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "treeSha256": "1a7a7273786c66597936317e88d6e7f5301e1fa9c23be9108a3ca3a590e89724"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.6.0/skills/internal/break",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
+          "path": "skills/break",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "treeSha256": "1a7a7273786c66597936317e88d6e7f5301e1fa9c23be9108a3ca3a590e89724"
+        }
       },
       "variants": [
         {
           "id": "break.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/break",
+          "sourceDirectory": "artifacts/1.6.0/skills/internal/break",
           "destination": ".agents/skills/break",
-          "folderSha256": "1a7a7273786c66597936317e88d6e7f5301e1fa9c23be9108a3ca3a590e89724",
+          "folderSha256": "f04529e15a1e8fb4a1676b2682edd888cff7de527f4d5ac9dcffe5958ede5b00",
           "expectedMirrorOf": null
         }
       ]
@@ -1679,20 +1684,25 @@
         "codex"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/explain-interface",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "treeSha256": "13e3fadca4688d5a0ed65f91e2947804c991b5b8dcd541e47dd85c2a920aeaf2"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.6.0/skills/internal/explain-interface",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
+          "path": "skills/explain-interface",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "treeSha256": "13e3fadca4688d5a0ed65f91e2947804c991b5b8dcd541e47dd85c2a920aeaf2"
+        }
       },
       "variants": [
         {
           "id": "explain-interface.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/explain-interface",
+          "sourceDirectory": "artifacts/1.6.0/skills/internal/explain-interface",
           "destination": ".agents/skills/explain-interface",
-          "folderSha256": "13e3fadca4688d5a0ed65f91e2947804c991b5b8dcd541e47dd85c2a920aeaf2",
+          "folderSha256": "7db028a0037c1418883772d0850cdb1c9f7e4e7c25ff0f70bd8bca216417fcfa",
           "expectedMirrorOf": null
         }
       ]
@@ -1703,20 +1713,25 @@
         "codex"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/interface-review",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "treeSha256": "42026a97e6fa20b2c31ef9863330c6e48278aa49db243247e6793b65eec07314"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.6.0/skills/internal/interface-review",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
+          "path": "skills/interface-review",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "treeSha256": "42026a97e6fa20b2c31ef9863330c6e48278aa49db243247e6793b65eec07314"
+        }
       },
       "variants": [
         {
           "id": "interface-review.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/interface-review",
+          "sourceDirectory": "artifacts/1.6.0/skills/internal/interface-review",
           "destination": ".agents/skills/interface-review",
-          "folderSha256": "42026a97e6fa20b2c31ef9863330c6e48278aa49db243247e6793b65eec07314",
+          "folderSha256": "f8b9f61c806dd12fe8c61676ccf323d04114ead8058454284e0600030a62329b",
           "expectedMirrorOf": null
         }
       ]
@@ -1727,20 +1742,25 @@
         "codex"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/variant",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "treeSha256": "d5af8a3721cb59cb12f484faa3a527c83e044dde6cb03fa44b3e3c44ab205bf1"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.6.0/skills/internal/variant",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
+          "path": "skills/variant",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "treeSha256": "d5af8a3721cb59cb12f484faa3a527c83e044dde6cb03fa44b3e3c44ab205bf1"
+        }
       },
       "variants": [
         {
           "id": "variant.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/variant",
+          "sourceDirectory": "artifacts/1.6.0/skills/internal/variant",
           "destination": ".agents/skills/variant",
-          "folderSha256": "d5af8a3721cb59cb12f484faa3a527c83e044dde6cb03fa44b3e3c44ab205bf1",
+          "folderSha256": "3dd288e9be67a6e2043255bce4b0bdd5181b70431d6f5ccf5e213e9a1a1a56c1",
           "expectedMirrorOf": null
         }
       ]
