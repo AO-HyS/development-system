@@ -209,7 +209,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.25.0";
+    const version = options.version ?? "0.26.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -227,7 +227,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.25.0";
+    const version = options.version ?? "0.26.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -321,7 +321,9 @@ export async function run(argv) {
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     const roster = input && typeof input === "object" && input.roster
       ? input.roster
-      : JSON.parse(await readFile(resolve(repositoryRoot, "config", options.version ?? "1.5.16", "capability-roster.json"), "utf8"));
+      : options.version
+        ? JSON.parse(await readFile(resolve(repositoryRoot, "config", options.version, options.version === "1.5.19" ? "agent-roster.json" : "capability-roster.json"), "utf8"))
+        : JSON.parse(await readFile(resolve(repositoryRoot, "config", "agent-roster.json"), "utf8"));
     result = resolveModelRoute({ ...input, roster });
   } else if (command === "parallel-work" || command === "work-multiple") {
     if (!options.input) throw new Error(`${command} requires --input <json-path>`);

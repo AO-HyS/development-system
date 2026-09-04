@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const versionIndex = process.argv.indexOf("--version");
-const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.18";
-if (version !== "1.5.18") {
-  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.18");
+const version = versionIndex >= 0 ? process.argv[versionIndex + 1] : "1.5.19";
+if (version !== "1.5.19") {
+  throw new Error("Published manifests are immutable; generator supports only unpublished version 1.5.19");
 }
 const destination = resolve(repositoryRoot, "manifests", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -23,8 +23,8 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
-const previousVersion = "1.5.17";
-const catalogVersion = "0.25.0";
+const previousVersion = "1.5.18";
+const catalogVersion = "0.26.0";
 const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${previousVersion}.json`), "utf8"));
 const contractPath = `artifacts/${version}/contract.md`;
 const catalogPath = `catalog/${catalogVersion}.json`;
@@ -34,10 +34,10 @@ const operatorInterfacePath = "artifacts/1.5.0/operator-interface.md";
 const operatorInterfaceHash = sha256(await readFile(resolve(repositoryRoot, operatorInterfacePath)));
 const harnessAdaptersPath = "config/1.5.0/harness-adapters.json";
 const harnessAdaptersHash = sha256(await readFile(resolve(repositoryRoot, harnessAdaptersPath)));
-const capabilityRosterPath = "config/1.5.16/capability-roster.json";
+const capabilityRosterPath = "config/1.5.19/agent-roster.json";
 const capabilityRosterHash = sha256(await readFile(resolve(repositoryRoot, capabilityRosterPath)));
-// Model routing, the fast implementer agent, and the capability roster are
-// unchanged in 1.5.18, so the manifest keeps their published 1.5.16 sources.
+// The executable roster changes in 1.5.19; other stable artifacts retain their
+// earlier immutable sources.
 const modelRoutingPath = "artifacts/1.5.16/model-routing.md";
 const modelRoutingHash = sha256(await readFile(resolve(repositoryRoot, modelRoutingPath)));
 const qualityPath = "artifacts/1.5.0/quality/stack-quality-profiles.json";
@@ -83,7 +83,14 @@ const manifest = {
       return { ...artifact, sourcePath: harnessAdaptersPath, sha256: harnessAdaptersHash };
     }
     if (artifact.logicalName === "capability-roster") {
-      return { ...artifact, sourcePath: capabilityRosterPath, sha256: capabilityRosterHash };
+      return {
+        ...artifact,
+        id: "agent-roster.codex",
+        logicalName: "agent-roster",
+        sourcePath: capabilityRosterPath,
+        destination: ".codex/development-system/agent-roster.json",
+        sha256: capabilityRosterHash,
+      };
     }
     if (artifact.logicalName === "stack-quality-profiles") {
       return { ...artifact, sourcePath: qualityPath, sha256: qualityHash };

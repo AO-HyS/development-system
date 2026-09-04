@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import test from "node:test";
 
 import { agentRoster, rosterChain, rosterModel, rosterRoute, validateAgentRoster } from "../src/agent-roster.mjs";
@@ -33,4 +35,15 @@ test("invalid manual edits fail closed with actionable errors", () => {
   assert.equal(result.valid, false);
   assert.match(result.errors.join("\n"), /unsupported: magic/);
   assert.match(result.errors.join("\n"), /duplicate route slot/);
+});
+
+test("1.5.19 installs the roster and roster-driven orchestration skill", async () => {
+  const root = resolve(import.meta.dirname, "..");
+  const manifest = JSON.parse(await readFile(resolve(root, "manifests/1.5.19.json"), "utf8"));
+  const catalog = JSON.parse(await readFile(resolve(root, "catalog/0.26.0.json"), "utf8"));
+  const installedRoster = manifest.artifacts.find((artifact) => artifact.logicalName === "agent-roster");
+  assert.equal(installedRoster.sourcePath, "config/1.5.19/agent-roster.json");
+  assert.equal(installedRoster.destination, ".codex/development-system/agent-roster.json");
+  const orchestration = catalog.skills.find((skill) => skill.logicalName === "coding-orchestration");
+  assert.equal(orchestration.source.path, "artifacts/1.5.19/skills/internal/coding-orchestration");
 });

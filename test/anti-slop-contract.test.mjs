@@ -1154,8 +1154,8 @@ test("repository preparation records the executable lane contract and adapter su
   const result = await initializeRepository({ repository, confirm: "initialize" });
   assert.equal(result.status, "updated");
   const contract = JSON.parse(await readFile(resolve(repository, ".development-system/repository.json"), "utf8"));
-  assert.equal(contract.contractVersion, "1.5.18");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.25.0");
+  assert.equal(contract.contractVersion, "1.5.19");
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.26.0");
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("install-anti-slop"));
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("behavioral-evidence"));
   assert.equal(contract.antiSlop.schema, "executable-lane-contract-v1");
@@ -1189,7 +1189,7 @@ test("repository preparation records the executable lane contract and adapter su
   assert.equal(contract.antiSlop.upstream.treeSha256, "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55");
   assert.equal(contract.antiSlop.factoryCoverage.installedSkillsRequired, false);
   const adapter = await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8");
-  assert.match(adapter, /Contract version: `1\.5\.18`/);
+  assert.match(adapter, /Contract version: `1\.5\.19`/);
   assert.match(adapter, /executable lane contract/);
   assert.match(adapter, /test-value review/);
   assert.match(adapter, /writable fast-writer correction lane/);

@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.25.0";
-if (version !== "0.25.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.25.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.26.0";
+if (version !== "0.26.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.26.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -155,7 +155,7 @@ const drive = {
   ],
 };
 
-const orchestrationVersion = "1.5.16";
+const orchestrationVersion = "1.5.19";
 const adapterContract = "authorized-initiative-orchestration-v2";
 const codexAdapterSource = `artifacts/${orchestrationVersion}/skills/internal/coding-orchestration`;
 const orchestration = {
