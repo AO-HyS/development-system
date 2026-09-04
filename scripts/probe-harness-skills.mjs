@@ -10,9 +10,11 @@ import {
   buildCodexSkillProbeInvocations,
   runCodexSkillProbeSequence,
   runSkillProbeProcess,
+  skillProbeContracts,
 } from "../src/skill-probe-runtime.mjs";
 import { resolveSkillProbeMetadata } from "../src/skill-probe-metadata.mjs";
 import { writePrivateEvidence } from "../src/private-evidence.mjs";
+import { ensureSkillEvidenceKey } from "../src/skill-evidence-auth.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const codexPath = process.env.AOHYS_CODEX_PATH ?? "/Applications/ChatGPT.app/Contents/Resources/codex";
@@ -30,6 +32,7 @@ const latestOutputPath = resolve(
 );
 const installedLock = JSON.parse(await readFile(resolve(probeHome, ".development-system", "skills-lock.json"), "utf8"));
 const installedCatalog = JSON.parse(await readFile(resolve(probeHome, ".codex", "development-system", "skills.json"), "utf8"));
+const authenticationKey = await ensureSkillEvidenceKey(probeHome);
 const { sourceCommit, catalogVersion } = resolveSkillProbeMetadata({
   installedLock,
   codexCatalog: installedCatalog,
@@ -59,24 +62,36 @@ async function directoryHash(directory) {
   return hash.digest("hex");
 }
 
-const invocations = buildCodexSkillProbeInvocations({ codexPath, repositoryRoot });
+const invocations = buildCodexSkillProbeInvocations({ codexPath, repositoryRoot, home: probeHome });
 /** @param {{executable: string, args: string[]}} invocation */
-const execute = (invocation) => runSkillProbeProcess({ ...invocation, cwd: repositoryRoot, timeoutMs });
-const { codexVersion, codexCatalog, codex, observationAttempts } = await runCodexSkillProbeSequence({
+const execute = (invocation) => runSkillProbeProcess({
+  ...invocation,
+  cwd: repositoryRoot,
+  timeoutMs,
+  env: { ...process.env, HOME: probeHome },
+});
+const { codexVersion, observations } = await runCodexSkillProbeSequence({
   invocations,
+  home: probeHome,
   execute,
 });
+/** @type {Record<string, string>} */
+const installedHashes = {};
+for (const contract of skillProbeContracts) {
+  installedHashes[`${contract.logicalName}.codex`] = await directoryHash(
+    resolve(probeHome, ".agents", "skills", contract.logicalName),
+  );
+}
 const evidence = buildCodexSkillProbeEvidence({
   catalogVersion,
   sourceCommit,
   home: probeHome,
   structuralCatalogLogicalSkills: installedCatalog.skills.length,
-  installedHash: await directoryHash(resolve(probeHome, ".agents", "skills", "research")),
+  installedHashes,
   generatedAt: new Date().toISOString(),
   codexVersion,
-  catalogResult: codexCatalog,
-  skillResult: codex,
-  observationAttempts,
+  observations,
+  authenticationKey,
 });
 
 const serializedEvidence = `${JSON.stringify(evidence, null, 2)}\n`;

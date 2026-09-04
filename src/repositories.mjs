@@ -5,9 +5,22 @@ import { lstat, mkdir, open, readFile, readdir, readlink, rename, stat, unlink, 
 import { basename, dirname, relative, resolve, sep } from "node:path";
 
 import { hasBehaviorSignature } from "./skills.mjs";
+import {
+  antiSlopDiagnosticOnlyMetrics,
+  antiSlopExcludedMetrics,
+  antiSlopFactoryCoverage,
+  antiSlopPhases,
+} from "./anti-slop.mjs";
 
-const contractVersion = "1.5.16";
-const skillCatalogVersion = "0.23.0";
+const contractVersion = "1.5.17";
+const skillCatalogVersion = "0.24.0";
+const antiSlopUpstream = Object.freeze({
+  catalogSkill: "install-anti-slop",
+  repository: "https://github.com/dmmulroy/anti-slop",
+  commit: "e8c4880471b23ab7f216fba7b27d173a6ef07d4c",
+  treeSha256: "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55",
+  license: "MIT",
+});
 const ignoredDirectories = new Map([
   [".git", "source-control-metadata"],
   ["node_modules", "dependency-cache"],
@@ -747,7 +760,7 @@ function adapterContents(audit, harness) {
   if (rules.length === 0) rules.push("- Apply only the detected repository stack and its own validated commands.");
   const equivalence = "Codex uses the native repository adapter; T3 Code shares this Codex contract and state namespace.";
   const prefix = "$";
-  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. In T3 Code, an explicit skill invocation routes to \`working-backwards\`; future customer story, Amazon Working Backwards, PRFAQ, and progressive planning requests route there. Direct implementation, review, diagnosis, research, and QA route to their matching flows. \`drive-development-flow\` never expands authority. Recommendation-only requests remain read-only.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; explicit invocation only and stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; explicit invocation only and stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; explicit invocation only and stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous development loop only inside the request's existing authority and stop at the pinned human boundary. Tests, validation, review, correction, and proportional QA are development substeps and grant no external-state authority.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nBefore implementation, pin one objective, constraints, exact scope, required evidence and validation, a verifiable stop condition, and every human or external-state boundary. A native goal is created only on explicit request; its persistence never expands authority or scope.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Delivery policy\n\n- Ordinary implementation and pre-push feedback use the changed-validation command. A full repository suite is never implicit.\n- Full certification runs once for the integrated change when explicitly requested or required by the repository release policy.\n- QA is selected by observable risk. Documentation, labels, copy, icons, and internal-only changes do not inherit browser or E2E work without a mapped surface.\n- Parallel or sequential implementation lanes converge before \`develop\`; Git carries their history, and \`develop\` produces one shared branch preview without manual SHA bookkeeping.\n- Provider readiness for auth, data migrations, seeds, roles, and environment contracts is proven before the shared preview merge when those surfaces changed.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`0.5.1\` and verify that Codex discovers these commands plus \`drive-development-flow\`. T3 Code shares the Codex adapter structurally but has no independent live command proof in this release.\n\nGlobal \`exa-search\` is paid public-web retrieval and must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers. Global \`global-agent-guardrails\` must be enabled and audited separately; it is defense in depth, not authorization or a sandbox.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nChanged validation\n\n${commandLine(audit.commands.changedValidation)}\n\nFull certification\n\n${commandLine(audit.commands.certification)}\n\nLegacy validation alias\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
+  return `# Development System repository adapter\n\nContract version: \`${contractVersion}\`\nProduct: \`${audit.product.name}\`\nHarness: \`${harness}\`\n\n${equivalence}\n\nPreserve this product's domain language, stack, commands, release policy, and visual design. Do not import another product's vocabulary or activate paid services.\n\n## Lifecycle interface\n\nBoth operator styles are supported:\n\n- Automatic routing: describe the software goal normally. In T3 Code, an explicit skill invocation routes to \`working-backwards\`; future customer story, Amazon Working Backwards, PRFAQ, and progressive planning requests route there. Direct implementation, review, diagnosis, research, and QA route to their matching flows. \`drive-development-flow\` never expands authority. Recommendation-only requests remain read-only.\n- Explicit routing: invoke the exact phase command when you want direct control.\n\nExplicit phase commands:\n\n- \`${prefix}wayfinder\`: optional discovery outside the normal lifecycle; explicit invocation only.\n- \`${prefix}grill-with-docs\`: requirements; explicit invocation only and stop for human approval.\n- \`${prefix}to-spec\`: spec plus Local Visual Plan; explicit invocation only and stop for human approval.\n- \`${prefix}to-tickets\`: executable slices; explicit invocation only and stop for human approval.\n- \`${prefix}flow-implement\`: one named terminal slice; run the autonomous development loop only inside the request's existing authority and stop at the pinned human boundary. Tests, validation, review, correction, and proportional QA are development substeps and grant no external-state authority.\n- \`${prefix}flow-code-review\`: independent review of an existing branch or pull request.\n\nBefore implementation, pin one objective, constraints, exact scope, required evidence and validation, a verifiable stop condition, and every human or external-state boundary. For non-trivial write work, the ordered anti-slop protocol is an executable lane contract, not advice: the writer performs pre-implementation simplification, behavior-first evidence design, and implementation; an independent read-only test-value review then audits every changed or new test and refuses green-only acceptance, weakened assertions, updated snapshots, or private-structure tests without observable-behavior justification; a writable fast-writer correction lane follows that review, applies safe deletions and corrections across production and test code, reports what was deleted, kept, and why, and reruns the focused checks after edits; independent objective-derived verification finishes only after the correction lane, deriving its oracle from the accepted objective and public interface. Tests are subordinate evidence. Lines of code, file counts, and test-to-runtime line ratios are never quality gates, and cyclomatic or Halstead signals stay diagnostic only. These requirements are embedded in every lane contract, so harness writers (including Factory) never depend on installed skills or Codex skill discovery. The vendored \`install-anti-slop\` capability installs only through its Development System contained \`scripts/install.mjs\` entrypoint, which refuses absolute targets, empty, dot, or parent path segments, backslash targets, and any symlink escape, including destination symlinks under \`--force\`; the pristine upstream installer source and MIT provenance are preserved unchanged. A native goal is created only on explicit request; its persistence never expands authority or scope.\n\nCommit, push, pull-request, preview, and deploy state changes occur only when the request and repository policy authorize them. Merge, release, and production remain separate exact human authorizations. Neither automatic nor explicit phase routing grants promotion authority.\n\n## Delivery policy\n\n- Ordinary implementation and pre-push feedback use the changed-validation command. A full repository suite is never implicit.\n- Full certification runs once for the integrated change when explicitly requested or required by the repository release policy.\n- QA is selected by observable risk. Documentation, labels, copy, icons, and internal-only changes do not inherit browser or E2E work without a mapped surface.\n- Parallel or sequential implementation lanes converge before \`develop\`; Git carries their history, and \`develop\` produces one shared branch preview without manual SHA bookkeeping.\n- Provider readiness for auth, data migrations, seeds, roles, and environment contracts is proven before the shared preview merge when those surfaces changed.\n\n## Operational prerequisite\n\nRepository adapter readiness is structural, not proof of skill loading. Synchronize global skill catalog \`${skillCatalogVersion}\` and verify that Codex discovers these commands plus \`drive-development-flow\`. T3 Code shares the Codex adapter structurally but has no independent live command proof in this release.\n\nGlobal \`exa-search\` is paid public-web retrieval and must receive no secrets, private source, customer data, PHI, PII, private URLs, or private identifiers. Global \`global-agent-guardrails\` must be enabled and audited separately; it is defense in depth, not authorization or a sandbox.\n\n## Stack rules\n\n${rules.join("\n")}\n\n## Repository commands\n\nReview\n\n${commandLine(audit.commands.review)}\n\nChanged validation\n\n${commandLine(audit.commands.changedValidation)}\n\nFull certification\n\n${commandLine(audit.commands.certification)}\n\nLegacy validation alias\n\n${commandLine(audit.commands.validation)}\n\nQA\n\n${commandLine(audit.commands.qa)}\n\nPreview\n\n${commandLine(audit.commands.preview)}\n\n## Architecture diagnostic\n\n\`improve-codebase-architecture\` is manual and proposal-only. It must propose deepening before any separately authorized refactor.\n`;
 }
 
 /** @param {string} contents @param {string} target @param {string} replacement */
@@ -910,6 +923,36 @@ function repositoryContract(audit, mode) {
       sharedPreview: "once-per-candidate",
       providerReadiness: "before-shared-preview-when-affected",
     },
+    antiSlop: {
+      schema: "executable-lane-contract-v1",
+      upstream: antiSlopUpstream,
+      phases: antiSlopPhases.map((phase) => ({
+        order: phase.order,
+        id: phase.id,
+        ownerRole: phase.ownerRole,
+        laneType: phase.laneType,
+        writable: phase.writable,
+        dependsOn: [...phase.dependsOn],
+      })),
+      testsAreSubordinateEvidence: true,
+      independentVerification: "oracle-derived-from-objective-and-public-interface",
+      excludedMetrics: [...antiSlopExcludedMetrics],
+      diagnosticOnlyMetrics: [...antiSlopDiagnosticOnlyMetrics],
+      installerSafety: {
+        entrypoint: "scripts/install.mjs",
+        refuses: [
+          "absolute-targets",
+          "empty-dot-or-parent-segments",
+          "backslash-targets",
+          "symlink-ancestors-or-target-escape",
+        ],
+        forceBehaviorPreserved: true,
+      },
+      factoryCoverage: {
+        policy: antiSlopFactoryCoverage.policy,
+        installedSkillsRequired: antiSlopFactoryCoverage.installedSkillsRequired,
+      },
+    },
     operatorPrerequisites: {
       skillCatalogVersion,
       installationScope: "global",
@@ -918,6 +961,8 @@ function repositoryContract(audit, mode) {
         "drive-development-flow",
         "coding-orchestration",
         "simplify-code",
+        "behavioral-evidence",
+        "install-anti-slop",
         "wayfinder",
         "grill-with-docs",
         "to-spec",

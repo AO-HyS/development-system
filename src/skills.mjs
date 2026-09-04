@@ -2,12 +2,20 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { cp, lstat, mkdir, readFile, readdir, readlink, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { cp, lstat, mkdir, open, readFile, readdir, readlink, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { verifySkillProbeEvidenceAuthentication } from "./skill-evidence-auth.mjs";
+import { invocationDigestSchema } from "./invocation-digest.mjs";
 
 /** @param {unknown} error */
 function isMissing(error) {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+/** @param {unknown} value */
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** @param {string} home @param {string} candidate */
@@ -84,6 +92,78 @@ async function assertSafeManagedParent(home, candidate) {
   }
 }
 
+/**
+ * Read a host-retained regular file without following its leaf or any
+ * HOME-owned parent symlink, then confirm that the opened inode is still the
+ * inode named by the validated path.
+ * @param {string} home
+ * @param {string} candidate
+ */
+async function readManagedFileNoFollow(home, candidate) {
+  const resolvedHome = resolve(home);
+  const target = resolveInsideHome(home, candidate);
+  const paths = [resolvedHome];
+  let current = resolvedHome;
+  for (const part of relative(resolvedHome, target).split(sep).filter(Boolean).slice(0, -1)) {
+    current = resolve(current, part);
+    paths.push(current);
+  }
+  const identities = [];
+  for (const path of paths) {
+    const status = await lstat(path);
+    if (status.isSymbolicLink() || !status.isDirectory()) {
+      throw new Error(`Managed file parent must be a real directory: ${path}`);
+    }
+    identities.push({ path, dev: status.dev, ino: status.ino });
+  }
+  const handle = await open(target, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    const opened = await handle.stat();
+    const named = await lstat(target);
+    if (
+      !opened.isFile() ||
+      named.isSymbolicLink() ||
+      !named.isFile() ||
+      opened.dev !== named.dev ||
+      opened.ino !== named.ino
+    ) {
+      throw new Error(`Managed file changed or is not a regular file: ${target}`);
+    }
+    for (const identity of identities) {
+      const status = await lstat(identity.path);
+      if (
+        status.isSymbolicLink() ||
+        !status.isDirectory() ||
+        status.dev !== identity.dev ||
+        status.ino !== identity.ino
+      ) {
+        throw new Error(`Managed file parent changed during read: ${identity.path}`);
+      }
+    }
+    return await handle.readFile("utf8");
+  } finally {
+    await handle.close();
+  }
+}
+
+/** @param {string} home @param {SkillCatalog} catalog */
+async function installedSkillSourceCommit(home, catalog) {
+  const serialized = await readManagedFileNoFollow(home, ".development-system/skills-lock.json");
+  const lock = JSON.parse(serialized);
+  if (
+    lock === null ||
+    typeof lock !== "object" ||
+    Array.isArray(lock) ||
+    lock.schemaVersion !== 1 ||
+    lock.catalogVersion !== catalog.catalogVersion ||
+    typeof lock.sourceCommit !== "string" ||
+    !/^[a-f0-9]{40}$/u.test(lock.sourceCommit)
+  ) {
+    throw new Error("Installed skills lock is malformed or not bound to this catalog");
+  }
+  return lock.sourceCommit;
+}
+
 /** @param {string} text */
 function skillName(text) {
   if (!text.startsWith("---\n")) return null;
@@ -91,6 +171,89 @@ function skillName(text) {
   if (end < 0) return null;
   const match = text.slice(4, end).match(/^name:\s*["']?([^\n"']+)/m);
   return match?.[1]?.trim() ?? null;
+}
+
+/**
+ * Split the command recorded by the Codex runtime into shell tokens. This is
+ * deliberately small: it only needs to prove the command shape emitted by a
+ * probe and rejects malformed quoting rather than trying to interpret a
+ * general shell language.
+ * @param {string} command @returns {string[] | null}
+ */
+function shellTokens(command) {
+  const tokens = [];
+  let current = "";
+  let quote = null;
+  for (const char of command.trim()) {
+    if (quote !== null) {
+      if (char === quote) quote = null;
+      else current += char;
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (/\s/u.test(char)) {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+  if (quote !== null) return null;
+  if (current.length > 0) tokens.push(current);
+  return tokens;
+}
+
+/** @param {string} command @returns {string | null} */
+function catReadOperand(command) {
+  let tokens = shellTokens(command);
+  if (!tokens || tokens.length === 0) return null;
+  if (
+    (tokens[0] === "/bin/zsh" || tokens[0] === "zsh") &&
+    (tokens[1] === "-lc" || (tokens[1] === "-l" && tokens[2] === "-c"))
+  ) {
+    const inner = tokens.slice(tokens[1] === "-lc" ? 2 : 3).join(" ").trim();
+    if (!inner) return null;
+    tokens = shellTokens(inner);
+    if (!tokens || tokens.length === 0) return null;
+  }
+  if (tokens[0].split("/").at(-1) !== "cat") return null;
+  const operands = tokens.slice(1);
+  if (operands[0] === "--") operands.shift();
+  return operands.length === 1 ? operands[0] : null;
+}
+
+/** @param {unknown} receipt @param {string} logicalName @param {string[]} expectedPaths @param {boolean} authenticated */
+function validSkillReadReceipt(receipt, logicalName, expectedPaths, authenticated) {
+  if (
+    receipt === null ||
+    typeof receipt !== "object" ||
+    Array.isArray(receipt) ||
+    (/** @type {Record<string, unknown>} */ (receipt)).schemaVersion !== 1 ||
+    (/** @type {Record<string, unknown>} */ (receipt)).observed !== true ||
+    (/** @type {Record<string, unknown>} */ (receipt)).exitCode !== 0 ||
+    (/** @type {Record<string, unknown>} */ (receipt)).commandProof !== "cat-exact-installed-skill" ||
+    (/** @type {Record<string, unknown>} */ (receipt)).frontmatterName !== logicalName ||
+    typeof (/** @type {Record<string, unknown>} */ (receipt)).path !== "string" ||
+    !expectedPaths.includes(/** @type {string} */ ((/** @type {Record<string, unknown>} */ (receipt)).path)) ||
+    (authenticated
+      ? !["commandEventSha256", "commandSha256", "frontmatterSha256"].every((field) =>
+          typeof (/** @type {Record<string, unknown>} */ (receipt))[field] === "string" &&
+          /^[a-f0-9]{64}$/u.test(/** @type {string} */ ((/** @type {Record<string, unknown>} */ (receipt))[field]))
+        )
+      : typeof (/** @type {Record<string, unknown>} */ (receipt)).command !== "string")
+  ) {
+    return false;
+  }
+  if (authenticated) return true;
+  // The receipt's path field cannot be an independently forged label: the
+  // recorded command must itself parse as the expected one-operand cat read.
+  const record = /** @type {Record<string, unknown>} */ (receipt);
+  return catReadOperand(/** @type {string} */ (record.command)) === record.path;
 }
 
 /** @param {string} directory */
@@ -234,80 +397,186 @@ export async function auditSkillCatalog(options) {
   /** @type {string[]} */
   const problems = [];
   const evidenceRequired = (catalog.operationalEvidenceSkills ?? []).length > 0;
-  if (evidenceRequired) {
-    const generatedAt = Date.parse(evidence.generatedAt ?? "");
-    const age = Date.now() - generatedAt;
-    if (
-      evidence.schemaVersion !== 1 ||
-      evidence.catalogVersion !== catalog.catalogVersion ||
-      resolve(evidence.home ?? "") !== home ||
-      evidence.probeSucceeded !== true ||
-      !Number.isFinite(generatedAt) ||
-      age < -5 * 60 * 1000 ||
-      age > 24 * 60 * 60 * 1000 ||
-      !evidence.installedHashes ||
-      typeof evidence.installedHashes !== "object"
-    ) {
-      problems.push("Operational evidence is missing, stale, unsuccessful, or not bound to this catalog and HOME");
+  const catalogVersionParts = String(catalog.catalogVersion ?? "0.0.0").split(".").map(Number);
+  const authenticationRequired =
+    catalogVersionParts[0] > 0 ||
+    (catalogVersionParts[0] === 0 && catalogVersionParts[1] >= 24);
+  const evidenceGated = authenticationRequired || evidenceRequired;
+
+  const authentication = authenticationRequired
+    ? await verifySkillProbeEvidenceAuthentication({ home, evidence })
+    : { valid: true, reason: null };
+  const evidenceAuthenticated = authentication.valid === true;
+
+  let sourceBound = true;
+  let sourceBindingReason = null;
+  if (evidenceGated) {
+    try {
+      const installedSourceCommit = await installedSkillSourceCommit(home, catalog);
+      sourceBound = typeof evidence.sourceCommit === "string" &&
+        /^[a-f0-9]{40}$/u.test(evidence.sourceCommit) &&
+        evidence.sourceCommit === installedSourceCommit;
+      if (!sourceBound) sourceBindingReason = "operational evidence sourceCommit does not match the installed skills lock";
+    } catch (error) {
+      sourceBound = false;
+      sourceBindingReason = error instanceof Error ? error.message : String(error);
     }
   }
 
+  /** @type {Map<string, {exists: boolean, discovered: boolean, loadable: boolean, hash: string | null, canonicalSkillPath: string | null, hashMatches: boolean}>} */
+  const variantData = new Map();
   for (const logicalSkill of catalog.skills) {
     for (const variant of logicalSkill.variants) {
       const destination = resolveInsideHome(home, variant.destination);
-      let exists = false;
-      let discovered = false;
-      let loadable = false;
-      let hash = null;
+      /** @type {{exists: boolean, discovered: boolean, loadable: boolean, hash: string | null, canonicalSkillPath: string | null, hashMatches: boolean}} */
+      const data = { exists: false, discovered: false, loadable: false, hash: null, canonicalSkillPath: null, hashMatches: false };
       try {
         await lstat(destination);
-        exists = true;
+        data.exists = true;
         const contents = await readFile(resolve(destination, "SKILL.md"), "utf8");
-        discovered = catalog.supportedRoots.some((root) => {
+        data.discovered = catalog.supportedRoots.some((root) => {
           const supportedRoot = resolveInsideHome(home, root);
           return destination.startsWith(`${supportedRoot}${sep}`);
         });
-        hash = await directoryHash(await realpath(destination));
+        const canonicalDestination = await realpath(destination);
+        data.canonicalSkillPath = resolve(canonicalDestination, "SKILL.md");
+        data.hash = await directoryHash(canonicalDestination);
         const executablesHealthy = await Promise.all((variant.executableFiles ?? []).map(async (file) => {
           const status = await lstat(resolveInsideRoot(file, destination));
           return status.isFile() && (status.mode & 0o111) !== 0;
         }));
-        loadable =
-          discovered &&
+        data.loadable =
+          data.discovered &&
           skillName(contents) === logicalSkill.logicalName &&
-          (!variant.folderSha256 || variant.folderSha256 === hash) &&
+          (!variant.folderSha256 || variant.folderSha256 === data.hash) &&
           executablesHealthy.every(Boolean);
       } catch (error) {
         if (!isMissing(error)) {
           problems.push(`${variant.id}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+      data.hashMatches = isRecord(evidence.installedHashes) &&
+        typeof evidence.installedHashes[variant.id] === "string" &&
+        evidence.installedHashes[variant.id] === data.hash;
+      variantData.set(variant.id, data);
+    }
+  }
+
+  const evidenceTrusted = (() => {
+    if (!evidenceGated) return true;
+    if (authenticationRequired && !evidenceAuthenticated) return false;
+    if (!sourceBound) return false;
+    if (evidence.schemaVersion !== 2) return false;
+    if (evidence.catalogVersion !== catalog.catalogVersion) return false;
+    if (resolve(evidence.home ?? "") !== home) return false;
+    if (evidence.probeSucceeded !== true) return false;
+    if (!isRecord(evidence.installedHashes)) return false;
+    for (const logicalSkill of catalog.skills) {
+      if (!(catalog.operationalEvidenceSkills ?? []).includes(logicalSkill.logicalName)) continue;
+      for (const variant of logicalSkill.variants) {
+        if (!variantData.get(variant.id)?.hashMatches) return false;
+      }
+    }
+    const generatedAt = Date.parse(evidence.generatedAt ?? "");
+    const age = Date.now() - generatedAt;
+    return Number.isFinite(generatedAt) && age >= -5 * 60 * 1000 && age <= 24 * 60 * 60 * 1000;
+  })();
+  const dynamicTrusted = evidenceGated ? evidenceTrusted : true;
+
+  if (evidenceGated && !evidenceTrusted) {
+    problems.push("Operational evidence is missing, stale, unsuccessful, or not bound to this catalog and HOME");
+  }
+  if (authenticationRequired && !evidenceAuthenticated) {
+    problems.push(`Operational evidence lacks valid host authentication: ${authentication.reason ?? "unknown authentication failure"}`);
+  }
+  if (evidenceGated && !sourceBound) {
+    problems.push(`Operational evidence is not bound to installed source metadata: ${sourceBindingReason ?? "unknown source binding failure"}`);
+  }
+
+  for (const logicalSkill of catalog.skills) {
+    for (const variant of logicalSkill.variants) {
+      const destination = resolveInsideHome(home, variant.destination);
+      const data = /** @type {{exists: boolean, discovered: boolean, loadable: boolean, hash: string | null, canonicalSkillPath: string | null, hashMatches: boolean}} */ (variantData.get(variant.id));
+      const { exists, discovered, loadable, hash, canonicalSkillPath, hashMatches } = data;
 
       const observed = evidence[variant.harness]?.[logicalSkill.logicalName] ?? {};
+      const skillReadValid = validSkillReadReceipt(
+        observed.skillRead,
+        logicalSkill.logicalName,
+        [resolve(destination, "SKILL.md"), ...(canonicalSkillPath ? [canonicalSkillPath] : [])],
+        authenticationRequired,
+      );
+      const operational = (catalog.operationalEvidenceSkills ?? []).includes(logicalSkill.logicalName);
+      const contract = catalog.operationalEvidenceContracts?.[logicalSkill.logicalName];
+      const signature = contract?.behaviorSignature ?? [];
+      /** @param {unknown} value */
+      const digestShape = (value) =>
+        typeof value === "string" && /^[a-f0-9]{64}$/u.test(value);
+      const authenticatedDetailHealthy =
+        observed.invocationDigestSchema === invocationDigestSchema &&
+        digestShape(observed.invocationSha256) &&
+        digestShape(observed.catalogInvocationSha256) &&
+        digestShape(observed.responseSha256) &&
+        digestShape(observed.catalogResponseSha256) &&
+        // Durable evidence must never persist the structured invocation
+        // itself: its argv carries the raw prompt and its env can carry
+        // secrets. Only the schema marker and digests are allowed.
+        Object.hasOwn(observed, "structuredInvocation") === false &&
+        Object.hasOwn(observed, "catalogStructuredInvocation") === false &&
+        observed.catalogResponseMatched === true && observed.behaviorSignatureMatched === true;
+      const legacyDetailHealthy =
+        typeof observed.command === "string" && observed.command.length > 0 &&
+        typeof observed.catalogCommand === "string" && observed.catalogCommand.length > 0 &&
+        typeof observed.response === "string" &&
+        observed.catalogResponse?.trim() === logicalSkill.logicalName &&
+        hasBehaviorSignature(observed.response, signature);
+      // The per-observation detail predicate is computed before the dynamic
+      // states: an operational receipt that is missing or wrong about its
+      // invocation schema/digests, exit/version, exact skill read,
+      // behavior/catalog match, or exact installed hash makes every
+      // evidence-derived dynamic state false for this variant, not merely
+      // audit.ok false.
+      const detailHealthy = !operational || (
+        observed.exitCode === 0 &&
+        typeof observed.version === "string" && observed.version.length > 0 &&
+        signature.length > 0 &&
+        skillReadValid &&
+        hashMatches &&
+        (authenticationRequired ? authenticatedDetailHealthy : legacyDetailHealthy)
+      );
+      // Every evidence-derived dynamic state is gated by the fail-closed
+      // envelope and the per-observation detail predicate. Operational
+      // loaded and influenced additionally require the installed folder hash
+      // for this exact variant.
       const states = {
         exists,
         discovered,
-        catalogued: observed.catalogued === true,
+        catalogued: dynamicTrusted && detailHealthy && (operational ? observed.catalogResponseMatched === true : observed.catalogued === true),
         loadable,
-        loaded: observed.loaded === true,
-        influenced: observed.influenced === true,
+        loaded: dynamicTrusted && detailHealthy && (operational ? skillReadValid && hashMatches : observed.loaded === true),
+        influenced: dynamicTrusted && detailHealthy && (operational
+          ? (authenticationRequired
+            ? skillReadValid && hashMatches &&
+              observed.behaviorSignatureMatched === true &&
+              typeof observed.responseSha256 === "string" && /^[a-f0-9]{64}$/u.test(observed.responseSha256)
+            : skillReadValid && hashMatches && typeof observed.response === "string" &&
+              hasBehaviorSignature(observed.response, contract?.behaviorSignature ?? []))
+          : observed.influenced === true),
       };
       if (!loadable) problems.push(`${variant.id} is not loadable from its declared root`);
-      if ((catalog.operationalEvidenceSkills ?? []).includes(logicalSkill.logicalName)) {
-        const contract = catalog.operationalEvidenceContracts?.[logicalSkill.logicalName];
-        const signature = contract?.behaviorSignature ?? [];
-        if (evidence.installedHashes?.[variant.id] !== hash) {
+      if (operational) {
+        if (!skillReadValid) {
+          problems.push(`${variant.id} operational evidence has no valid exact skillRead receipt`);
+        }
+        if (!hashMatches) {
           problems.push(`${variant.id} operational evidence does not match the installed folder hash`);
         }
         if (
           observed.exitCode !== 0 ||
-          typeof observed.command !== "string" || observed.command.length === 0 ||
-          typeof observed.catalogCommand !== "string" || observed.catalogCommand.length === 0 ||
           typeof observed.version !== "string" || observed.version.length === 0 ||
-          typeof observed.response !== "string" ||
-          observed.catalogResponse?.trim() !== logicalSkill.logicalName ||
           signature.length === 0 ||
-          !hasBehaviorSignature(observed.response, signature)
+          !skillReadValid ||
+          (authenticationRequired ? !authenticatedDetailHealthy : !legacyDetailHealthy)
         ) {
           problems.push(`${variant.id} operational evidence lacks executable, version, exit, or response detail`);
         }
@@ -324,7 +593,7 @@ export async function auditSkillCatalog(options) {
         adapterContract: variant.adapterContract ?? null,
         states,
         directoryHash: hash,
-        evidence: observed,
+        evidence: { ...observed, skillReadValid },
       };
       skills.push(result);
       byId.set(variant.id, result);

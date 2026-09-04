@@ -1,0 +1,4 @@
+interface:
+  display_name: Simplify Code
+  short_description: Read-only review for safe code reduction
+  default_prompt: Review the assigned diff with the simplify-code skill. Do not edit files. Return evidence-backed keep, simplify, and uncertain findings.

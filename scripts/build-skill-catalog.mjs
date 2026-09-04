@@ -7,9 +7,9 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requestedVersionIndex = process.argv.indexOf("--version");
-const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.23.0";
-if (version !== "0.23.0") {
-  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.23.0");
+const version = requestedVersionIndex >= 0 ? process.argv[requestedVersionIndex + 1] : "0.24.0";
+if (version !== "0.24.0") {
+  throw new Error("Published catalogs are immutable; generator supports only unpublished version 0.24.0");
 }
 const destination = resolve(repositoryRoot, "catalog", `${version}.json`);
 const allowUnpublishedRewrite = process.argv.includes("--rewrite-unpublished");
@@ -274,13 +274,77 @@ const nextInternalSkills = await Promise.all(nextInternalNames.map((logicalName)
 
 const simplifyCode = await sharedSkill(
   "simplify-code",
-  "artifacts/1.5.13/skills/internal/simplify-code",
+  "artifacts/1.5.17/skills/internal/simplify-code",
   {
     repository: "https://github.com/AO-HyS/development-system",
     commit: "$INSTALL_COMMIT",
-    path: "artifacts/1.5.13/skills/internal/simplify-code",
+    path: "artifacts/1.5.17/skills/internal/simplify-code",
   },
 );
+
+const behavioralEvidence = await sharedSkill(
+  "behavioral-evidence",
+  "artifacts/1.5.17/skills/internal/behavioral-evidence",
+  {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: "artifacts/1.5.17/skills/internal/behavioral-evidence",
+  },
+);
+
+const antiSlopUpstreamCommit = "e8c4880471b23ab7f216fba7b27d173a6ef07d4c";
+// Literal pinned expected directory SHA-256 of the pristine upstream tree at
+// artifacts/1.5.17/skills/upstream/install-anti-slop, bound with the canonical
+// folder-hash algorithm at the pinned upstream commit. The vendored tree is
+// verified against this literal during generation.
+const antiSlopUpstreamTreeSha256 = "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55";
+const antiSlopUpstreamSource = "artifacts/1.5.17/skills/upstream/install-anti-slop";
+const antiSlopUpstreamTreeHash = await folderHash(resolve(repositoryRoot, antiSlopUpstreamSource));
+if (antiSlopUpstreamTreeHash !== antiSlopUpstreamTreeSha256) {
+  throw new Error(`Pristine upstream anti-slop tree does not match the pinned directory SHA-256: expected ${antiSlopUpstreamTreeSha256}, computed ${antiSlopUpstreamTreeHash}`);
+}
+// The installed user-facing surface is the Development System contained
+// adapter: the single conventional entrypoint scripts/install.mjs implements
+// the upstream installer behavior behind mandatory containment. The pristine
+// vendored upstream source stays untouched at artifacts/1.5.17/skills/upstream
+// and is recorded here as upstreamReference provenance with its pinned tree
+// hash.
+const antiSlopSource = "artifacts/1.5.17/skills/internal/install-anti-slop";
+const antiSlopLicenseSha256 = "10ed33bf340d6d63dc0633dfc917a346b369b6aa41fe20734aefc6a3fb75ba17";
+const antiSlopLicenseHash = createHash("sha256")
+  .update(await readFile(resolve(repositoryRoot, antiSlopSource, "LICENSE")))
+  .digest("hex");
+if (antiSlopLicenseHash !== antiSlopLicenseSha256) {
+  throw new Error(`Anti-slop MIT notice does not match the pinned upstream bytes: expected ${antiSlopLicenseSha256}, computed ${antiSlopLicenseHash}`);
+}
+const antiSlop = {
+  logicalName: "install-anti-slop",
+  physicalHarnesses: ["codex"],
+  source: {
+    repository: "https://github.com/AO-HyS/development-system",
+    commit: "$INSTALL_COMMIT",
+    path: antiSlopSource,
+    upstreamReference: {
+      repository: "https://github.com/dmmulroy/anti-slop",
+      commit: antiSlopUpstreamCommit,
+      path: "skills/install-anti-slop",
+      license: "MIT",
+      licenseSha256: antiSlopLicenseSha256,
+      treeSha256: antiSlopUpstreamTreeSha256,
+    },
+  },
+  variants: [
+    {
+      id: "install-anti-slop.codex",
+      harness: "codex",
+      sourceDirectory: antiSlopSource,
+      destination: ".agents/skills/install-anti-slop",
+      folderSha256: await folderHash(resolve(repositoryRoot, antiSlopSource)),
+      executableFiles: ["scripts/install.mjs"],
+      expectedMirrorOf: null,
+    },
+  ],
+};
 
 const productVerificationSkills = await Promise.all([
   sharedSkill("create-product-verification", "artifacts/1.5.15/skills/internal/create-product-verification", {
@@ -336,9 +400,23 @@ const catalog = {
   ],
   supportedRoots: [".agents/skills", ".codex/skills", ".factory/skills"],
   maxCatalogEntries: 512,
-  operationalEvidenceSkills: ["research"],
+  operationalEvidenceSkills: [
+    "research",
+    "behavioral-evidence",
+    "simplify-code",
+    "install-anti-slop",
+  ],
   operationalEvidenceContracts: {
     research: { behaviorSignature: ["background agent", "primary sources", "markdown file"] },
+    "behavioral-evidence": {
+      behaviorSignature: ["subordinate evidence", "weakened assertions", "accepted objective"],
+    },
+    "simplify-code": {
+      behaviorSignature: ["deletion pass", "production code and test code", "what was deleted"],
+    },
+    "install-anti-slop": {
+      behaviorSignature: ["install.mjs", "absolute paths", "parent traversal", "symlink escape"],
+    },
   },
   cleanup: [
     ...retiredFactoryDestinations,
@@ -380,6 +458,8 @@ const catalog = {
     workingBackwards,
     ...nextInternalSkills,
     simplifyCode,
+    behavioralEvidence,
+    antiSlop,
     ...productVerificationSkills,
     ...additions,
   ],
