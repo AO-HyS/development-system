@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 
 import { planOrchestration } from "../src/orchestration-plan.mjs";
+import { rosterChain, rosterModel } from "../src/agent-roster.mjs";
 import {
   antiSlopSpecialistFingerprint,
   antiSlopWriterFingerprint,
@@ -824,20 +825,18 @@ test("non-trivial read-only runs own no writable lane for every kind and fail cl
 });
 
 test("independent anti-slop review lanes use the evidence-bound Fable to Sol adversarial route", () => {
+  const expectedModel = rosterModel("adversarial-review");
+  const expectedChain = rosterChain("adversarial-review");
   for (const result of [plan({ trivial: false }), plan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
     for (const laneId of ["review-test-value", "review-objective-verification"]) {
       const lane = laneById(result.lanes, laneId);
       assert.equal(lane.model.resolved, null, `${laneId} resolved model stays null before a runtime receipt`);
-      assert.equal(lane.model.requested, "claude-fable-5.1");
-      assert.equal(lane.model.reasoning, "xhigh");
+      assert.equal(lane.model.requested, expectedModel.requested);
+      assert.equal(lane.model.reasoning, expectedModel.reasoning);
       assert.equal(lane.modelRoute.routeSlot, "adversarial-review");
       assert.equal(lane.modelRoute.receiptRequired, true);
       assert.equal(lane.modelRoute.attemptBeforeDispatch, true);
-      assert.deepEqual(lane.modelRoute.chain.map((candidate) => [candidate.harness, candidate.model, candidate.reasoning]), [
-        ["factory", "claude-fable-5.1", "xhigh"],
-        ["devin", "claude-fable-5.1", "xhigh"],
-        ["codex", "gpt-5.6-sol", "xhigh"],
-      ]);
+      assert.deepEqual(lane.modelRoute.chain, expectedChain);
     }
     // Specialist routing is unchanged.
     const specialists = result.lanes.filter((lane) => lane.type === "specialist-review");

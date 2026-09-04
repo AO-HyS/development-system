@@ -4,6 +4,16 @@ The canonical, versioned source for Alejandro Ortiz Corro's global development c
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
+## Editable agent roster
+
+[`config/agent-roster.json`](config/agent-roster.json) is the human-editable
+source of truth for agent assignments and model fallback order. Each route says
+what the agent does, when it is used, and lists its primary candidate followed
+by ordered substitutes. Change model ids or reasoning levels there, then run
+`pnpm roster:check`. The orchestration planner reads the same file and fails
+closed when an edit is malformed. Published `config/<version>/` rosters remain
+immutable release snapshots.
+
 ## Requirements
 
 - Node.js 22 or newer

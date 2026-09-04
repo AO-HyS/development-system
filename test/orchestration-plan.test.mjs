@@ -12,6 +12,7 @@ import {
   planOrchestration,
   validateRuntimeCorrectionReceipt,
 } from "../src/orchestration-plan.mjs";
+import { rosterModel } from "../src/agent-roster.mjs";
 
 const baseContract = {
   objective: "Ship the bounded change",
@@ -104,9 +105,10 @@ test("normal non-trivial work follows the fast chain then the executable anti-sl
   assert.deepEqual(result.lanes[1].protectedBoundaries, baseContract.protectedBoundaries);
 });
 
-test("planner fast routes cannot drift from the versioned roster chain", async () => {
-  const roster = JSON.parse(await readFile(resolve(import.meta.dirname, "../config/1.5.16/capability-roster.json"), "utf8"));
-  const expected = roster.chains.fast.map((candidate) => ({
+test("planner fast routes are read from the editable agent roster", async () => {
+  const roster = JSON.parse(await readFile(resolve(import.meta.dirname, "../config/agent-roster.json"), "utf8"));
+  const route = roster.routes.find((entry) => entry.routeSlot === "fast-execution");
+  const expected = route.candidates.map((candidate) => ({
     harness: candidate.harness,
     model: candidate.model,
     reasoning: candidate.reasoning,
@@ -123,7 +125,7 @@ test("observed specialist risk adds the matching specialist lane", () => {
   assert.equal(result.valid, true);
   assert.equal(result.mode, "specialist");
   assert.equal(result.lanes.some((lane) => lane.role === "security_reviewer"), true);
-  assert.equal(result.lanes.find((lane) => lane.role === "security_reviewer").model.reasoning, "xhigh");
+  assert.equal(result.lanes.find((lane) => lane.role === "security_reviewer").model.reasoning, rosterModel("security-review").reasoning);
 });
 
 test("multiple specialist risks are validated and routed independently", () => {

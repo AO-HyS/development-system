@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "title": "Development System agent roster",
+  "purpose": "Editable source of truth for who does each kind of work and which ordered fallback is attempted next.",
+  "editInstructions": [
+    "Edit candidates in priority order: the first available candidate wins.",
+    "Keep ids unique and use exact runtime model identifiers.",
+    "Use requiresVerifiedRuntimeAvailability when a model must be observed before selection.",
+    "Run pnpm roster:check after every edit. A malformed roster fails closed.",
+    "For Codex, fast is the priority service tier; it is not a different model id."
+  ],
+  "routes": [
+    {
+      "id": "orchestration",
+      "label": "Pensar, decidir e integrar",
+      "role": "orchestrator",
+      "capability": "orchestration",
+      "routeSlot": "orchestration",
+      "does": ["descomponer trabajo", "resolver ambiguedad", "tomar decisiones de arquitectura", "integrar y dar el veredicto final"],
+      "when": "Siempre como responsable del resultado; no es el writer por defecto.",
+      "candidates": [
+        { "id": "codex-sol-orchestrator", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "fast-execution",
+      "label": "Buscar, crear, editar y probar rapido",
+      "role": "fast_implementer",
+      "capability": "mechanical-execution",
+      "routeSlot": "fast-execution",
+      "aliases": ["implementation-default"],
+      "does": ["buscar archivos y codigo", "crear archivos", "generar y editar codigo", "recolectar evidencia", "correr pruebas enfocadas", "aplicar correcciones"],
+      "when": "Para todo trabajo mecanico o de escritura despues de que el orquestador delimita el objetivo.",
+      "candidates": [
+        { "id": "devin-swe-1-7", "harness": "devin", "model": "swe-1-7", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:devin" },
+        { "id": "factory-glm-5.3-flash", "harness": "factory", "model": "glm-5.3-flash", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:factory" },
+        { "id": "devin-gemini-3.8-flash", "harness": "devin", "model": "gemini-3.8-flash", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "requiresVerifiedRuntimeAvailability": true, "independenceBoundary": "provider:devin" },
+        { "id": "codex-luna-priority", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "fallbackOnly": true, "independenceBoundary": "provider:openai-priority", "serviceTier": { "tier": "priority", "label": "fast", "status": "runtime-required" } }
+      ]
+    },
+    {
+      "id": "adversarial-review",
+      "label": "Revision independiente",
+      "role": "reviewer",
+      "capability": "review",
+      "routeSlot": "adversarial-review",
+      "does": ["auditar el valor de las pruebas", "detectar regresiones", "verificar el objetivo sin editar"],
+      "when": "Despues del writer y otra vez despues de las correcciones.",
+      "candidates": [
+        { "id": "factory-fable-5.1", "harness": "factory", "model": "claude-fable-5.1", "reasoning": "medium", "evidenceStatus": "provisional", "mappingStatus": "mapped", "independenceBoundary": "provider:factory" },
+        { "id": "devin-fable-5.1", "harness": "devin", "model": "claude-fable-5.1", "reasoning": "medium", "evidenceStatus": "provisional", "mappingStatus": "mapped", "independenceBoundary": "provider:devin" },
+        { "id": "codex-sol-review", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "general-review",
+      "label": "Revision general",
+      "role": "reviewer",
+      "capability": "review",
+      "routeSlot": "general-review",
+      "does": ["revisar correccion", "buscar regresiones", "evaluar mantenibilidad"],
+      "when": "Cuando se necesita juicio independiente fuera del protocolo adversarial.",
+      "candidates": [
+        { "id": "codex-sol-general-review", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "security-review",
+      "label": "Seguridad",
+      "role": "security_reviewer",
+      "capability": "security",
+      "routeSlot": "security-review",
+      "does": ["revisar autorizacion", "revisar limites de confianza", "revisar secretos y exposicion de datos"],
+      "when": "Solo cuando existe riesgo de seguridad observado y documentado.",
+      "candidates": [
+        { "id": "codex-sol-security", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "backend-review",
+      "label": "Backend y datos",
+      "role": "backend_specialist",
+      "capability": "backend",
+      "routeSlot": "backend-review",
+      "aliases": ["data-review"],
+      "does": ["revisar schemas", "revisar APIs y autenticacion", "revisar migraciones y contratos de datos"],
+      "when": "Solo cuando el cambio toca backend, datos o migraciones con riesgo observado.",
+      "candidates": [
+        { "id": "codex-sol-backend", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "performance-review",
+      "label": "Rendimiento",
+      "role": "performance_auditor",
+      "capability": "performance",
+      "routeSlot": "performance-review",
+      "does": ["revisar queries", "revisar concurrencia", "revisar bundles y costo de runtime"],
+      "when": "Solo cuando existe riesgo de rendimiento observado.",
+      "candidates": [
+        { "id": "codex-sol-performance", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "medium", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "visual-review",
+      "label": "Diseno y calidad visual",
+      "role": "visual_reviewer",
+      "capability": "visual",
+      "routeSlot": "visual-review",
+      "aliases": ["ui-review"],
+      "does": ["disenar UI", "juzgar calidad visual", "revisar interacciones y responsive"],
+      "when": "Cuando el cambio visible requiere diseno o juicio visual.",
+      "candidates": [
+        { "id": "codex-sol-visual", "harness": "codex", "model": "gpt-5.6-sol", "reasoning": "high", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai" }
+      ]
+    },
+    {
+      "id": "research",
+      "label": "Investigacion tecnica",
+      "role": "docs_researcher",
+      "capability": "research",
+      "routeSlot": "research",
+      "does": ["buscar documentacion primaria", "mapear APIs y versiones", "entregar evidencia sin editar producto"],
+      "when": "Cuando la respuesta depende de documentacion o informacion versionada.",
+      "candidates": [
+        { "id": "codex-luna-research", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai-priority", "serviceTier": { "tier": "priority", "label": "fast", "status": "runtime-required" } }
+      ]
+    },
+    {
+      "id": "computer-use",
+      "label": "Ejecucion de Computer Use",
+      "role": "computer_use_runner",
+      "capability": "computer-use",
+      "routeSlot": "computer-use",
+      "does": ["ejecutar un plan de navegador firmado", "capturar evidencia neutral", "detenerse al salir del alcance"],
+      "when": "Solo cuando la aceptacion exige un flujo real de UI o navegador.",
+      "candidates": [
+        { "id": "codex-luna-computer-use", "harness": "codex", "model": "gpt-5.6-luna", "reasoning": "max", "evidenceStatus": "runtime-required", "mappingStatus": "mapped", "independenceBoundary": "provider:openai-priority", "serviceTier": { "tier": "priority", "label": "fast", "status": "runtime-required" } }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 // @ts-check
 
 import { createHash } from "node:crypto";
+import { rosterChain } from "./agent-roster.mjs";
 
 /**
  * Canonical executable anti-slop lane contract. This module is the single
@@ -116,11 +117,7 @@ export const antiSlopFactoryCoverage = Object.freeze({
 });
 
 /** Ordered evidence-bound adversarial fallback route for independent anti-slop review lanes. */
-export const antiSlopAdversarialChain = Object.freeze([
-  { harness: "factory", model: "claude-fable-5.1", reasoning: "xhigh" },
-  { harness: "devin", model: "claude-fable-5.1", reasoning: "xhigh" },
-  { harness: "codex", model: "gpt-5.6-sol", reasoning: "xhigh" },
-]);
+export const antiSlopAdversarialChain = rosterChain(antiSlopAdversarialRouteSlot);
 
 /** @param {string} routeSlot */
 export function antiSlopAdversarialRoute(routeSlot = antiSlopAdversarialRouteSlot) {

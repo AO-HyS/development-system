@@ -20,6 +20,7 @@
     "recertify:isolated": "node ./scripts/recertify-isolated-scenario.mjs",
     "legacy:harnesses:validate": "node ./scripts/validate-harnesses.mjs",
     "rollout:validate": "node ./scripts/validate-pilot-rollout.mjs",
+    "roster:check": "node ./scripts/validate-agent-roster.mjs",
     "reader:browser": "node ./scripts/verify-technical-reader-browser.mjs",
     "implement-preview": "./bin/development-system implement-preview",
     "skills:audit": "./bin/development-system audit-skills --version 0.25.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
@@ -33,7 +34,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
-    "verify": "pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate"
+    "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate"
   },
   "engines": {
     "node": ">=22.0.0"
