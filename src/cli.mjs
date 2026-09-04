@@ -201,7 +201,7 @@ export async function run(argv) {
 
   if (command === "setup") {
     const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
-    const version = options.version ?? metadata.version;
+    const version = options.version ?? metadata.contractVersion ?? metadata.version;
     const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${version}.json`), "utf8"));
     const catalogArtifact = manifest.artifacts.find((/** @type {{logicalName: string}} */ artifact) => artifact.logicalName === "skill-catalog");
     if (!catalogArtifact) throw new Error(`Contract ${version} has no skill catalog`);
