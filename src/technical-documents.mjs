@@ -8,6 +8,8 @@ import { createHash } from "node:crypto";
 import { chmod, lstat, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { normalizeDocumentEvidence } from "./document-evidence.mjs";
+
 const KINDS = new Set(["completion", "review", "explanation"]);
 const KIND_LABELS = { en: { completion: "Completion", review: "Review", explanation: "Explanation" }, es: { completion: "Entrega", review: "Revisión", explanation: "Explicación" } };
 const SAFE_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/u;
@@ -123,8 +125,8 @@ function sha256Hex(value) {
  */
 export async function writeTechnicalDocument(options) {
   if (!nonEmptyString(options.home)) throw new Error("Technical document generation requires --home");
-  const packet = validatePacket(options.input);
-  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.8.3/skills/internal/working-backwards/scripts/t3-reader.mjs");
+  const packet = { ...validatePacket(options.input), evidence: await normalizeDocumentEvidence(isRecord(options.input) ? options.input.evidence : undefined) };
+  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.9.0/skills/internal/working-backwards/scripts/t3-reader.mjs");
   const model = buildTechnicalReaderModel({
     presentation: "report",
     ...(packet.language ? { language: packet.language } : {}),
@@ -139,6 +141,8 @@ export async function writeTechnicalDocument(options) {
     // Preserved verbatim for the shared reader; visual rendering belongs to
     // the renderer (pr-lens fences referencing these ids), not to this writer.
     visuals: packet.visuals,
+    evidence: packet.evidence,
+    completion: packet.kind === "completion",
   });
   if (model.workflow.implementationAuthorized === true) throw new Error("Technical documents must never carry workflow authority");
   const html = renderTechnicalReaderHtml(model);
