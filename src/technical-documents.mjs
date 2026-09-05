@@ -124,7 +124,7 @@ function sha256Hex(value) {
 export async function writeTechnicalDocument(options) {
   if (!nonEmptyString(options.home)) throw new Error("Technical document generation requires --home");
   const packet = validatePacket(options.input);
-  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.8.1/skills/internal/working-backwards/scripts/t3-reader.mjs");
+  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.8.3/skills/internal/working-backwards/scripts/t3-reader.mjs");
   const model = buildTechnicalReaderModel({
     presentation: "report",
     ...(packet.language ? { language: packet.language } : {}),
