@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.7.0",
-  "contractVersion": "1.7.0",
+  "version": "1.8.0",
+  "contractVersion": "1.8.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -24,9 +24,9 @@
     "roster:check": "node ./scripts/validate-agent-roster.mjs",
     "reader:browser": "node ./scripts/verify-technical-reader-browser.mjs",
     "implement-preview": "./bin/development-system implement-preview",
-    "skills:audit": "./bin/development-system audit-skills --version 0.28.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
+    "skills:audit": "./bin/development-system audit-skills --version 0.29.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",
-    "skills:sync": "./bin/development-system sync-skills --version 0.28.0",
+    "skills:sync": "./bin/development-system sync-skills --version 0.29.0",
     "measure:test": "node --test test/measure-development-run.test.mjs",
     "smoke:repositories": "node ./scripts/smoke-repository-audits.mjs",
     "scenario": "node ./scripts/reproduce-installation.mjs && node ./scripts/reproduce-skills.mjs && node ./scripts/reproduce-lifecycle.mjs && node ./scripts/reproduce-repository-preparation.mjs && node --test test/development-system-next-scenario.test.mjs test/harness-scenario.test.mjs test/benchmark-scenario.test.mjs test/delivery-preview.test.mjs",
@@ -36,7 +36,7 @@
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate",
-    "release:prepare": "node ./scripts/build-release-170.mjs",
+    "release:prepare": "node ./scripts/build-release-180.mjs",
     "release:pack": "node ./scripts/pack-distribution.mjs"
   },
   "engines": {

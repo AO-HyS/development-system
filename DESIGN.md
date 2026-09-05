@@ -1,5 +1,28 @@
 # Technical Reader Design System
 
+## Visual documents, version 1.8
+
+The operator's PR Lens report is the pinned reference for standalone completion,
+review and explanation documents. This direction supersedes the older report
+presentation below; canonical workflow Readers retain their existing design.
+
+- Warm ivory paper `#f3f2eb`, ink `#24271f`, olive `#476526`; dark paper
+  `#151812` with `#b9d68d` accent. Use color sparingly for meaning.
+- Embedded Atkinson Hyperlegible Next, 17px prose, 40–64px responsive title.
+  Metadata is secondary. A 1160px reading surface groups each section title with
+  its opening explanation; evidence spans the full width.
+- PR Lens SVG images arrive drawn inside a dark canvas. Improve node title and
+  subtitle readability without changing graph geometry. Keep two visible
+  controls: expand/close and optional animate/pause. Default to static.
+- At narrow widths, preserve map text size and allow horizontal scrolling inside
+  the viewport. Explicitly announce that interaction. Expansion and Escape
+  return focus to the initiating control. Keep a plain-language flow description.
+- Bar charts show direct numbers, units and a visible zero origin when signed.
+  Essential data and diagrams do not require scripts or network.
+- One shared presentation serves all repositories. Canonical Markdown plus the
+  complete packet preserves SVGs, references and editorial state for regeneration.
+- Visual acceptance must inspect the delivered document, not an example fixture.
+
 ## Direction contract
 
 **THESIS** — A calm technical briefing paper with developer-grade evidence, not a dashboard wearing documentation colors.

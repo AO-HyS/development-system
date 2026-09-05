@@ -1,11 +1,12 @@
 // @ts-check
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { executeLifecycleOperation, readLifecycleState } from "./lifecycle.mjs";
+import { writeTechnicalDocument } from "./technical-documents.mjs";
 
 /** @param {string} value */
 function escapeHtml(value) {
@@ -159,17 +160,43 @@ function visualPlanHtml(plan) {
 }
 
 /** @param {any} details */
-function recapHtml(details) {
-  const corrections = details.failuresAndCorrections.length === 0
-    ? "<li>No blocking findings remained after review.</li>"
-    : details.failuresAndCorrections.map((/** @type {any} */ item) =>
-        `<li><span class="finding-key">${escapeHtml(item.fingerprint)}</span><br>${escapeHtml(item.message)}</li>`
-      ).join("");
-  const checklist = details.plan.manualChecklist.map((/** @type {string} */ item) => `<li>${escapeHtml(item)}</li>`).join("");
-  return surfaceDocument({
-    title: "Local Visual Recap",
-    body: `<section class="hero"><p class="label">Local Visual Recap</p><h1>Inspect the delivery, then decide.</h1><p class="slice">${escapeHtml(details.plan.terminalSlice)}</p></section><section class="decision-bar"><div><span class="state">READY FOR HUMAN REVIEW</span><h2>Preview and pull request are available</h2><p>No promotion authority has been granted.</p></div><div class="actions"><a class="action primary" href="${escapeHtml(details.previewUrl)}" rel="noopener noreferrer">Open preview</a><a class="action secondary" href="${escapeHtml(details.pullRequestUrl)}" rel="noopener noreferrer">Inspect pull request</a></div></section><div class="evidence-layout"><section class="section"><h2>Failures and corrections</h2><ul class="findings">${corrections}</ul><h2 class="section">Risk and evidence</h2><div class="evidence-row"><strong>TDD</strong><span>${escapeHtml(details.plan.tdd.reason)} — ${escapeHtml(details.plan.tdd.evidence)}</span></div><div class="evidence-row"><strong>QA</strong><span>${escapeHtml(details.plan.qa.reason)} — ${escapeHtml(details.plan.qa.alternativeEvidence ?? details.plan.qa.level)}</span></div></section><section class="section"><h2>Manual checklist</h2><ul class="checklist">${checklist}</ul></section></div><p class="footer-note">Merge, release, and production require separate human authorization.</p>`,
-  });
+function recapMarkdown(details) {
+  const lines = [
+    `# Local Visual Recap`,
+    ``,
+    `> Observed delivery evidence. Merge, release, and production remain unauthorized.`,
+    ``,
+    `## Terminal slice`,
+    ``,
+    details.plan.terminalSlice,
+    ``,
+    `## Decision surface`,
+    ``,
+    `- [Pull request](${encodeURI(details.pullRequestUrl).replaceAll("(", "%28").replaceAll(")", "%29")})`,
+    `- [Preview](${encodeURI(details.previewUrl).replaceAll("(", "%28").replaceAll(")", "%29")})`,
+    ``,
+    `## Failures and corrections`,
+    ``,
+  ];
+  if (details.failuresAndCorrections.length === 0) {
+    lines.push(`No blocking findings remained after review.`, ``);
+  } else {
+    for (const item of details.failuresAndCorrections) {
+      lines.push(`- **${item.fingerprint}**: ${item.message}`, ``);
+    }
+  }
+  lines.push(
+    `## Risk and evidence`,
+    ``,
+    `- TDD: ${details.plan.tdd.reason} — ${details.plan.tdd.evidence}`,
+    `- QA: ${details.plan.qa.reason} — ${details.plan.qa.alternativeEvidence ?? details.plan.qa.level}`,
+    ``,
+    `## Manual checklist`,
+    ``,
+  );
+  for (const item of details.plan.manualChecklist) lines.push(`- [ ] ${item}`);
+  lines.push(``);
+  return `${lines.join("\n")}\n`;
 }
 
 /** @param {unknown} value */
@@ -217,7 +244,7 @@ function findingSignature(findings) {
 }
 
 /**
- * @param {{home: string, workflowId: string, plan: any, runtime: {run: (step: string, context: any) => Promise<any>}}} options
+ * @param {{home: string, workflowId: string, plan: any, runtime: {run: (step: string, context: any) => Promise<any>}, documentWriter?: (options: {home: string, input: unknown}) => Promise<any>}} options
  */
 export async function runImplementPreview(options) {
   validatePlan(options.plan);
@@ -381,11 +408,44 @@ export async function runImplementPreview(options) {
   if (!isReviewUrl(pullRequestUrl) || !isReviewUrl(previewUrl)) {
     return { ok: false, status: "failed", step: "decision-surface", reason: "Valid HTTP(S) PR and preview URLs are required", visualPlanPath };
   }
-  const recapPath = await writePrivateSurface(
-    privateRoot,
-    "recap.html",
-    recapHtml({ plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl }),
-  );
+  const recapDetails = { plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl };
+  let recapDocument;
+  try {
+    recapDocument = await (options.documentWriter ?? writeTechnicalDocument)({
+      home: options.home,
+      input: {
+        schemaVersion: 1,
+        kind: "completion",
+        title: "Delivery review",
+        markdown: recapMarkdown(recapDetails),
+        status: "Observed delivery evidence; promotion not granted",
+        productName: "Development System",
+        source: {
+          repository: typeof options.plan.targetRepository === "string" ? options.plan.targetRepository : "",
+          references: [pullRequestUrl, previewUrl],
+        },
+      },
+    });
+    if (recapDocument?.generated !== true) throw new Error("Document writer did not report generated=true");
+    for (const [path, expectedHash] of [[recapDocument.markdownPath, recapDocument.sourceSha256], [recapDocument.htmlPath, recapDocument.htmlSha256]]) {
+      const stat = await lstat(path);
+      if (!stat.isFile() || stat.nlink !== 1) throw new Error("Document receipt requires regular files");
+      if (typeof expectedHash !== "string" || createHash("sha256").update(await readFile(path)).digest("hex") !== expectedHash) throw new Error("Document receipt hash does not match file contents");
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: "failed",
+      step: "document",
+      reason: `Technical recap generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      visualPlanPath,
+      failuresAndCorrections,
+      evidence,
+      externalSideEffects: evidence.filter((entry) => ["commit", "push", "open_pr", "publish_preview"].includes(entry.step)).map((entry) => entry.step),
+    };
+  }
+  const recapPath = recapDocument.htmlPath;
+  const recapMarkdownPath = recapDocument.markdownPath;
   const preRelease = await executeLifecycleOperation({
     home: options.home,
     workflowId: options.workflowId,
@@ -401,6 +461,8 @@ export async function runImplementPreview(options) {
     previewUrl,
     visualPlanPath,
     recapPath,
+    recapMarkdownPath,
+    recapDocument,
     failuresAndCorrections,
     evidence,
     externalSideEffects: evidence
