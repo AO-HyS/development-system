@@ -653,7 +653,7 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.match(initialized[".codex/development-system/repository.md"], /Contract version: `1\.8\.3`/);
   assert.equal(initialized[".factory/development-system/repository.md"], undefined);
   assert.match(initialized[".codex/development-system/repository.md"], /drive-development-flow/);
-  assert.match(initialized[".codex/development-system/repository.md"], /skill catalog `0\.29\.2`/i);
+  assert.match(initialized[".codex/development-system/repository.md"], /skill catalog `0\.29\.3`/i);
   assert.doesNotMatch(initialized[".codex/development-system/repository.md"], /skill catalog `0\.5\.1`/i);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
   assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
