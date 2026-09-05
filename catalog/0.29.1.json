@@ -1112,7 +1112,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.8.1/skills/internal/working-backwards",
           "destination": ".agents/skills/working-backwards",
-          "folderSha256": "c9e26c5a711a5966c6716cc8ad321581e804625874114e9dac39f834f3a876dc",
+          "folderSha256": "2e4670f5dac079492463a4671f63d12caa9141dbe6c6f9c08bbf1134189a889f",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",
