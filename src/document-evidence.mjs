@@ -345,9 +345,10 @@ async function normalizeVideo(input, field) {
  * also record missing comparison/recording lists. Never infers verification
  * success: gaps only state what is missing.
  * @param {unknown} input
+ * @param {"en"|"es"} language
  * @returns {Promise<undefined | { impact: string, reason?: string, comparisons: any[], recordings: any[], gaps: any[] }>}
  */
-export async function normalizeDocumentEvidence(input) {
+export async function normalizeDocumentEvidence(input, language = "en") {
   if (input === undefined) return undefined;
   if (!isRecord(input)) throw new Error("Document evidence input must be an object");
   if (typeof input.impact !== "string" || !IMPACTS.has(input.impact)) {
@@ -464,18 +465,18 @@ export async function normalizeDocumentEvidence(input) {
 
   for (const comparison of comparisons) {
     if (comparison.before === undefined) {
-      addGap({ kind: "before", reason: `Comparison "${comparison.id}" has no before image.` });
+      addGap({ kind: "before", reason: language === "es" ? `Falta la captura inicial de «${comparison.title}».` : `Comparison "${comparison.id}" has no before image.` });
     }
     if (comparison.after === undefined) {
-      addGap({ kind: "after", reason: `Comparison "${comparison.id}" has no after image.` });
+      addGap({ kind: "after", reason: language === "es" ? `Falta la captura del resultado de «${comparison.title}».` : `Comparison "${comparison.id}" has no after image.` });
     }
   }
   if ((impact === "ui" || impact === "backend-visible") && comparisons.length === 0) {
-    addGap({ kind: "before", reason: `No comparisons for ${impact} impact; before evidence is missing.` });
-    addGap({ kind: "after", reason: `No comparisons for ${impact} impact; after evidence is missing.` });
+    addGap({ kind: "before", reason: language === "es" ? "Falta la captura del estado inicial." : `No comparisons for ${impact} impact; before evidence is missing.` });
+    addGap({ kind: "after", reason: language === "es" ? "Falta la captura del resultado." : `No comparisons for ${impact} impact; after evidence is missing.` });
   }
-  if ((impact === "ui" || impact === "backend-visible") && recordings.length === 0) {
-    addGap({ kind: "recording", reason: `No recordings for ${impact} impact; recording evidence is missing.` });
+  if ((impact === "ui" || impact === "backend-visible") && recordings.length === 0 && !gaps.some(gap => gap.kind === "recording")) {
+    addGap({ kind: "recording", reason: language === "es" ? "Falta una grabación del recorrido afectado." : `No recordings for ${impact} impact; recording evidence is missing.` });
   }
 
   let aggregate = 0;
