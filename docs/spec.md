@@ -3,6 +3,11 @@
 
 > Imported from [Linear bootstrap spec](https://linear.app/aohys/document/spec-sistema-de-desarrollo-multi-harness-b30eaf6ef916) on 2026-07-19. Git history in this repository is canonical for implemented contract versions; Linear remains the operational tracker.
 
+> Historical bootstrap specification. Current execution follows the installed
+> versioned contract and accepted superseding ADRs, including ADR 0023.
+> The approval gates and model assignments below describe the original proposal;
+> they do not reopen settled user decisions or override retained authorization.
+
 Fecha: 2026-07-19
 Estado: **En revisión humana**
 Gate: no se autoriza `to-tickets`, creación del repositorio central ni implementación hasta que este spec y su Local Visual Plan sean aprobados explícitamente.
