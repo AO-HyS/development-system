@@ -1,6 +1,10 @@
 # Development System repository instructions
 
-Read `docs/spec.md` and the ADRs relevant to the surface being changed.
+Read the relevant parts of `docs/spec.md` and accepted ADRs. The spec is the
+historical bootstrap proposal; use the current versioned contract for execution.
+Current user instructions override skill guidelines. Preserve platform security
+requirements and repository protections. If guidance blocks authorized work,
+identify its exact file and instruction and explain why it applies.
 
 ## Canonical-source rules
 
@@ -19,4 +23,5 @@ validation, reinstall, rollback, and preservation of unrelated files.
 
 ## Authorization boundary
 
-Repository publication and feature-branch PRs may be part of an explicitly authorized ticket. Do not merge, create a release, publish a package, deploy to production, activate paid infrastructure, or perform destructive cleanup without separate authorization for that exact operation.
+Repository publication and feature-branch PRs may be part of an explicitly authorized ticket. Do not merge, create a release, publish a package, deploy to production, activate paid infrastructure, or perform destructive cleanup without user authorization for that exact operation. One explicit instruction
+can authorize several operations; retain it across turns rather than asking again.

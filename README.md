@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.8.1` makes Astra the orchestrator, designer, reviewer and Computer Use owner, puts OpenCode Go first for bounded implementation, reserves Fable for complex independent review, and keeps Luna as the final fast fallback. Catalog `0.29.1` adds automatic completion documents, on-demand reviews/spec explanations and portable PR Lens maps to the shared report presentation and retains the pinned design and visualization skills while preserving Impeccable. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.8.2` aligns active instructions with Astra guidance: preserve authorized outcomes, use proportional review, and stop redundant verification. Astra owns judgment and Computer Use; OpenCode Go implements bounded work, Fable assists complex review, and Luna is the final fast fallback. Catalog `0.29.2` retains automatic completion documents, on-demand reviews/spec explanations, portable PR Lens maps and the pinned design skills. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -25,7 +25,7 @@ immutable release snapshots.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.8.1/aohys-development-system-1.8.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.8.2/aohys-development-system-1.8.2.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -35,11 +35,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.8.1
-./bin/development-system sync-skills --version 0.29.1
+./bin/development-system install --version 1.8.2
+./bin/development-system sync-skills --version 0.29.2
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.29.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.29.2 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -191,12 +191,12 @@ runtime-verified Go Qwen3.8 Flash, Devin SWE-1.7 Lightning Medium, Factory GLM,
 and Codex Luna High. Factory/Devin Fable Medium assist complex review. Exact
 requested and observed model IDs remain separate until runtime evidence matches.
 Astra executes ordinary review phases in the parent; deterministic Git, search,
-and checks use tools directly. See [current routing policy](artifacts/1.8.1/model-routing.md).
+and checks use tools directly. See [current routing policy](artifacts/1.8.2/model-routing.md).
 
 An unshipped cloud-first Devin factory is retained only as a design proposal in
 [`docs/devin-factory/`](docs/devin-factory/README.md) and
 [ADR 0019](docs/adr/0019-cloud-first-devin-software-factory.md). It does not
-create provider blueprints or govern the executable 1.8.1 routing contract.
+create provider blueprints or govern the executable 1.8.2 routing contract.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -206,7 +206,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.8.1`, `sync-skills --version 0.29.1`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.8.2`, `sync-skills --version 0.29.2`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -251,3 +251,9 @@ Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback tar
 ## Release boundary
 
 Installing this contract never grants promotion authority. Each commit, push, pull request, merge, release, deployment, paid activation, or production synchronization still follows the user's exact request and the target repository's release policy.
+
+
+Astra guidance alignment in 1.8.2 removes conflicting adapter handoffs, retains
+user authorization and adds a stop rule for redundant verification. See
+[ADR 0023](docs/adr/0023-astra-guidance-alignment.md). API-only capabilities are
+not reported as enabled in Codex/T3 without host runtime evidence.
