@@ -24,7 +24,26 @@ test("editable roster is valid and covers every planner route", () => {
 
 test("aliases share one ordered candidate list without duplicating policy", () => {
   assert.deepEqual(rosterChain("implementation-default"), rosterChain("fast-execution"));
-  assert.equal(rosterModel("implementation-default").requested, "opencode-go/glm-5.3-flash");
+  assert.equal(rosterModel("implementation-default").requested, "opencode-go/muse-spark-1.3-contributor");
+});
+
+test("fast-execution leads with Muse and preserves the GLM/Qwen/Devin/Factory/Luna order", () => {
+  const chain = rosterChain("fast-execution");
+  assert.deepEqual(chain.map((candidate) => candidate.model), [
+    "opencode-go/muse-spark-1.3-contributor",
+    "opencode-go/glm-5.3-flash",
+    "opencode-go/qwen3.8-flash",
+    "swe-1-7-lightning",
+    "glm-5.3-flash",
+    "gpt-5.6-luna",
+  ]);
+  const route = rosterRoute("fast-execution");
+  assert.equal(route.candidates[0].id, "opencode-muse-spark-1.3-contributor");
+  assert.equal(route.candidates[0].reasoning, "high");
+  assert.equal(route.candidates[0].mappingStatus, "provisional");
+  assert.equal(route.candidates[0].evidenceStatus, "runtime-required");
+  assert.equal(route.candidates[0].independenceBoundary, "provider:opencode-go");
+  assert.equal("requiresVerifiedRuntimeAvailability" in route.candidates[0], false);
 });
 
 test("rosterModel never reports a runtime-resolved model from config alone", () => {

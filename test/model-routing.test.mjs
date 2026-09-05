@@ -173,14 +173,23 @@ test("OpenCode candidates invoke opencode run with pure, model, variant and json
   const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const first = resolveModelRoute(base);
   assert.equal(first.valid, true);
+  assert.equal(first.selected.id, "opencode-muse-spark-1.3-contributor");
+  assert.equal(first.selected.model, "opencode-go/muse-spark-1.3-contributor");
+  assert.equal(first.selected.reasoning, "high");
+  assert.equal(first.selected.mappingStatus, "provisional");
+  assert.equal(first.selected.evidenceStatus, "runtime-required");
+  assert.equal(first.selected.resolvedModel, null);
+  assert.equal(first.selected.resolvedModelStatus, "receipt-required");
+  assert.equal(first.selected.requiresVerifiedRuntimeAvailability, false);
   assert.deepEqual(first.selected.invocation, {
     command: "opencode",
-    args: ["run", "--pure", "--model", "opencode-go/glm-5.3-flash", "--variant", "high", "--format", "json"],
+    args: ["run", "--pure", "--model", "opencode-go/muse-spark-1.3-contributor", "--variant", "high", "--format", "json"],
   });
   assert.equal(first.selected.invocation.args.includes("--auto"), false);
   const qwen = resolveModelRoute({
     ...base,
     unavailable: [
+      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
       { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
       { candidateId: "opencode-qwen3.8-flash", observedModel: "opencode-go/qwen3.8-flash" },
     ],
@@ -191,21 +200,66 @@ test("OpenCode candidates invoke opencode run with pure, model, variant and json
   });
 });
 
+test("Muse selection stays unresolved without a matching receipt and resolves exactly with one", () => {
+  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+  const unresolved = resolveModelRoute(base);
+  assert.equal(unresolved.selected.id, "opencode-muse-spark-1.3-contributor");
+  assert.equal(unresolved.selected.independenceBoundary, "provider:opencode-go");
+  assert.equal(unresolved.selected.resolvedModel, null);
+  assert.equal(unresolved.selected.resolvedModelStatus, "receipt-required");
+  const resolved = resolveModelRoute({
+    ...base,
+    unavailable: [{ candidateId: "opencode-muse-spark-1.3-contributor", observedModel: "opencode-go/muse-spark-1.3-contributor" }],
+  });
+  assert.equal(resolved.valid, true);
+  assert.equal(resolved.selected.id, "opencode-muse-spark-1.3-contributor");
+  assert.equal(resolved.selected.resolvedModel, "opencode-go/muse-spark-1.3-contributor");
+  assert.equal(resolved.selected.resolvedModelStatus, "receipt-matched");
+});
+
+test("Muse policy-blocked and quota fallback advances to GLM", () => {
+  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+  const policy = resolveModelRoute({
+    ...base,
+    unavailable: [{ candidateId: "opencode-muse-spark-1.3-contributor", reason: "policy-blocked" }],
+  });
+  assert.equal(policy.valid, true);
+  assert.equal(policy.selected.model, "opencode-go/glm-5.3-flash");
+  assert.equal(policy.attempts[0].reason, "policy-blocked");
+  assert.equal(policy.fallbackTrace[0].action, "advance-to-declared-fallback");
+  const quota = resolveModelRoute({
+    ...base,
+    unavailable: [{ candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" }],
+  });
+  assert.equal(quota.valid, true);
+  assert.equal(quota.selected.model, "opencode-go/glm-5.3-flash");
+  assert.equal(quota.selected.resolvedModel, null);
+});
+
 test("fast-execution follows the declared OpenCode-first route order", () => {
   const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const first = resolveModelRoute(base);
-  assert.equal(first.selected.model, "opencode-go/glm-5.3-flash");
+  assert.equal(first.selected.model, "opencode-go/muse-spark-1.3-contributor");
   const second = resolveModelRoute({
     ...base,
+    unavailable: [{ candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" }],
+  });
+  assert.equal(second.selected.model, "opencode-go/glm-5.3-flash");
+  const qwenWithReceipt = resolveModelRoute({
+    ...base,
     unavailable: [
+      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
       { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
       { candidateId: "opencode-qwen3.8-flash", observedModel: "opencode-go/qwen3.8-flash" },
     ],
   });
-  assert.equal(second.selected.model, "opencode-go/qwen3.8-flash");
+  assert.equal(qwenWithReceipt.selected.model, "opencode-go/qwen3.8-flash");
   const third = resolveModelRoute({
     ...base,
-    unavailable: [{ candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" }],
+    unavailable: [
+      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
+      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
+    ],
   });
   assert.equal(third.selected.model, "swe-1-7-lightning");
   assert.equal(third.selected.reasoning, "medium");
@@ -213,6 +267,7 @@ test("fast-execution follows the declared OpenCode-first route order", () => {
   const fourth = resolveModelRoute({
     ...base,
     unavailable: [
+      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
       { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
       { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
     ],
@@ -222,6 +277,7 @@ test("fast-execution follows the declared OpenCode-first route order", () => {
   const fifth = resolveModelRoute({
     ...base,
     unavailable: [
+      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
       { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
       { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
       { candidateId: "factory-glm-5.3-flash", reason: "quota-exhausted" },
