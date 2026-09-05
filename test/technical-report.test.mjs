@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
-import { buildTechnicalReaderModel, renderTechnicalReaderHtml } from "../artifacts/1.7.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
+import { buildTechnicalReaderModel, renderTechnicalReaderHtml } from "../artifacts/1.8.0/skills/internal/working-backwards/scripts/t3-reader.mjs";
 
 const document = { title: "A readable report", status: "Observed", markdown: "# A readable report\n\nSummary.\n\n## Evidence\n\nA measured result." };
 const workflow = { name: "Private workflow", gateLabel: "Secret gate", action: "Deploy", implementationAuthorized: true };
@@ -38,7 +38,7 @@ test("report Markdown remains inert and the executable script matches its restri
   const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
   const expected = html.match(/script-src 'sha256-([^']+)'/)[1];
   assert.equal(createHash("sha256").update(script).digest("base64"), expected);
-  assert.match(html, /data-diagram-source/);
+  assert.match(html, /legacy-diagram/);
   assert.throws(() => buildTechnicalReaderModel({ presentation: "unknown", document }), /Unknown Reader presentation/);
 });
 
@@ -50,7 +50,7 @@ test("report command renders canonical Markdown, regenerates its output and pres
     const output = resolve(directory, "report.html");
     await writeFile(metadata, JSON.stringify({ document: { status: "Draft" } }));
     await writeFile(markdown, "# Canonical report\n\nMeasured evidence.");
-    const command = resolve(import.meta.dirname, "../artifacts/1.7.0/skills/internal/working-backwards/scripts/t3-report.mjs");
+    const command = resolve(import.meta.dirname, "../artifacts/1.8.0/skills/internal/working-backwards/scripts/t3-report.mjs");
     const args = [command, "--input", metadata, "--markdown", markdown, "--output", output];
     const first = spawnSync(process.execPath, args, { encoding: "utf8" });
     assert.equal(first.status, 0, first.stderr);

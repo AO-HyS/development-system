@@ -18,6 +18,7 @@ import {
   runLifecycleRequest,
 } from "./lifecycle.mjs";
 import { createCommandDeliveryRuntime, runImplementPreview } from "./delivery.mjs";
+import { writeTechnicalDocument } from "./technical-documents.mjs";
 import { auditSkillCatalog, rollbackSkillSync, synchronizeSkillCatalog } from "./skills.mjs";
 import { auditRepository, initializeRepository, normalizeRepository } from "./repositories.mjs";
 import {
@@ -129,6 +130,9 @@ function formatHuman(result) {
   if (result.operation === "implement-preview") {
     return `Implement Preview ${result.status}; human decision required before promotion.`;
   }
+  if (result.operation === "document") {
+    return `Technical ${result.kind} document generated at ${result.htmlPath}. Editorial evidence only; no workflow authority granted.`;
+  }
   if (result.operation === "working-backwards") {
     const profile = result.profile;
     const selected = profile && typeof profile === "object" && "selected" in profile
@@ -229,7 +233,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.28.0";
+    const version = options.version ?? "0.29.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -247,7 +251,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.28.0";
+    const version = options.version ?? "0.29.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -316,6 +320,10 @@ export async function run(argv) {
         runtime: createCommandDeliveryRuntime(plan),
       })),
     };
+  } else if (command === "document") {
+    if (!options.input) throw new Error("document requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = { operation: "document", ...(await writeTechnicalDocument({ home: options.home, input })) };
   } else if (command === "definition-route") {
     if (!options.input) throw new Error("definition-route requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -445,7 +453,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
