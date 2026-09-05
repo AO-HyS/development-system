@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { buildTechnicalReaderModel, renderTechnicalReaderHtml } from '../artifacts/1.8.0/skills/internal/working-backwards/scripts/t3-reader.mjs';
-import { visualImage } from '../artifacts/1.8.0/skills/internal/working-backwards/scripts/visual-document.mjs';
+import { buildTechnicalReaderModel, renderTechnicalReaderHtml } from '../artifacts/1.8.1/skills/internal/working-backwards/scripts/t3-reader.mjs';
+import { visualImage } from '../artifacts/1.8.1/skills/internal/working-backwards/scripts/visual-document.mjs';
 
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100"><text x="10" y="40">A to B</text></svg>';
 const render = (markdown, visuals=[]) => renderTechnicalReaderHtml(buildTechnicalReaderModel({presentation:'report',document:{title:'Evidence',markdown},visuals}));

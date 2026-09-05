@@ -6,7 +6,7 @@ import { resolve } from "node:path";
 import test from "node:test";
 
 import { writeTechnicalDocument } from "../src/technical-documents.mjs";
-import { writeTechnicalReport } from "../artifacts/1.8.0/skills/internal/working-backwards/scripts/t3-report.mjs";
+import { writeTechnicalReport } from "../artifacts/1.8.1/skills/internal/working-backwards/scripts/t3-report.mjs";
 
 /** @param {string} value */
 function sha256Hex(value) {

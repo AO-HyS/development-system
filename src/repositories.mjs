@@ -12,8 +12,8 @@ import {
   antiSlopPhases,
 } from "./anti-slop.mjs";
 
-const contractVersion = "1.8.0";
-const skillCatalogVersion = "0.29.0";
+const contractVersion = "1.8.1";
+const skillCatalogVersion = "0.29.1";
 const antiSlopUpstream = Object.freeze({
   catalogSkill: "install-anti-slop",
   repository: "https://github.com/dmmulroy/anti-slop",

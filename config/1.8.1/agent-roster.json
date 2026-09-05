@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 1,
+  "title": "Development System agent roster",
+  "purpose": "Editable source of truth for who does each kind of work and which ordered fallback is attempted next.",
+  "editInstructions": [
+    "Edit candidates in priority order: the first available candidate wins.",
+    "Keep ids unique and use exact runtime model identifiers.",
+    "Use requiresVerifiedRuntimeAvailability when a model must be observed before selection.",
+    "New or unproven mappings stay provisional until runtime evidence upgrades them; config never claims a runtime-resolved model.",
+    "Run pnpm roster:check after every edit. A malformed roster fails closed.",
+    "For Codex, fast is the priority service tier; it is not a different model id.",
+    "Deterministic file search, CLI execution and evidence collection do not require a model worker."
+  ],
+  "routes": [
+    {
+      "id": "orchestration",
+      "label": "Pensar, decidir e integrar",
+      "role": "orchestrator",
+      "capability": "orchestration",
+      "routeSlot": "orchestration",
+      "does": [
+        "descomponer trabajo",
+        "resolver ambiguedad",
+        "tomar decisiones de arquitectura",
+        "integrar y dar el veredicto final"
+      ],
+      "when": "Siempre como responsable del resultado; no es el writer por defecto.",
+      "candidates": [
+        {
+          "id": "astra-orchestrator",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "medium",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "fast-execution",
+      "label": "Buscar, crear, editar y probar rapido",
+      "role": "fast_implementer",
+      "capability": "mechanical-execution",
+      "routeSlot": "fast-execution",
+      "aliases": [
+        "implementation-default"
+      ],
+      "does": [
+        "crear archivos",
+        "generar y editar codigo",
+        "aplicar correcciones"
+      ],
+      "when": "Para todo trabajo mecanico o de escritura despues de que el orquestador delimita el objetivo. La busqueda determinista de archivos, la ejecucion de CLI y la recoleccion de evidencia no requieren un worker de modelo.",
+      "candidates": [
+        {
+          "id": "opencode-muse-spark-1.3-contributor",
+          "harness": "opencode",
+          "model": "opencode-go/muse-spark-1.3-contributor",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "provider:opencode-go"
+        },
+        {
+          "id": "opencode-glm-5.3-flash",
+          "harness": "opencode",
+          "model": "opencode-go/glm-5.3-flash",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "provider:opencode-go"
+        },
+        {
+          "id": "opencode-qwen3.8-flash",
+          "harness": "opencode",
+          "model": "opencode-go/qwen3.8-flash",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "requiresVerifiedRuntimeAvailability": true,
+          "independenceBoundary": "provider:opencode-go"
+        },
+        {
+          "id": "devin-swe-1-7-lightning",
+          "harness": "devin",
+          "model": "swe-1-7-lightning",
+          "reasoning": "medium",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "provider:devin"
+        },
+        {
+          "id": "factory-glm-5.3-flash",
+          "harness": "factory",
+          "model": "glm-5.3-flash",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "mapped",
+          "independenceBoundary": "provider:factory"
+        },
+        {
+          "id": "codex-luna-priority",
+          "harness": "codex",
+          "model": "gpt-5.6-luna",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "mapped",
+          "fallbackOnly": true,
+          "independenceBoundary": "provider:openai-priority",
+          "serviceTier": {
+            "tier": "priority",
+            "label": "fast",
+            "status": "runtime-required"
+          }
+        }
+      ]
+    },
+    {
+      "id": "adversarial-review",
+      "label": "Revision independiente",
+      "role": "reviewer",
+      "capability": "review",
+      "routeSlot": "adversarial-review",
+      "does": [
+        "auditar el valor de las pruebas",
+        "detectar regresiones",
+        "verificar el objetivo sin editar"
+      ],
+      "when": "Despues del writer y otra vez despues de las correcciones.",
+      "candidates": [
+        {
+          "id": "factory-fable-5.1",
+          "harness": "factory",
+          "model": "claude-fable-5.1",
+          "reasoning": "medium",
+          "evidenceStatus": "provisional",
+          "mappingStatus": "mapped",
+          "independenceBoundary": "provider:factory"
+        },
+        {
+          "id": "devin-fable-5.1",
+          "harness": "devin",
+          "model": "claude-fable-5.1",
+          "reasoning": "medium",
+          "evidenceStatus": "provisional",
+          "mappingStatus": "mapped",
+          "independenceBoundary": "provider:devin"
+        },
+        {
+          "id": "astra-adversarial-fallback",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "fallbackOnly": true,
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "general-review",
+      "label": "Revision general",
+      "role": "reviewer",
+      "capability": "review",
+      "routeSlot": "general-review",
+      "does": [
+        "revisar correccion",
+        "buscar regresiones",
+        "evaluar mantenibilidad"
+      ],
+      "when": "Cuando se necesita juicio independiente fuera del protocolo adversarial.",
+      "candidates": [
+        {
+          "id": "astra-general-review",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "medium",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "security-review",
+      "label": "Seguridad",
+      "role": "security_reviewer",
+      "capability": "security",
+      "routeSlot": "security-review",
+      "does": [
+        "revisar autorizacion",
+        "revisar limites de confianza",
+        "revisar secretos y exposicion de datos"
+      ],
+      "when": "Solo cuando existe riesgo de seguridad observado y documentado.",
+      "candidates": [
+        {
+          "id": "astra-security",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "backend-review",
+      "label": "Backend y datos",
+      "role": "backend_specialist",
+      "capability": "backend",
+      "routeSlot": "backend-review",
+      "aliases": [
+        "data-review"
+      ],
+      "does": [
+        "revisar schemas",
+        "revisar APIs y autenticacion",
+        "revisar migraciones y contratos de datos"
+      ],
+      "when": "Solo cuando el cambio toca backend, datos o migraciones con riesgo observado.",
+      "candidates": [
+        {
+          "id": "astra-backend",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "medium",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "performance-review",
+      "label": "Rendimiento",
+      "role": "performance_auditor",
+      "capability": "performance",
+      "routeSlot": "performance-review",
+      "does": [
+        "revisar queries",
+        "revisar concurrencia",
+        "revisar bundles y costo de runtime"
+      ],
+      "when": "Solo cuando existe riesgo de rendimiento observado.",
+      "candidates": [
+        {
+          "id": "astra-performance",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "visual-review",
+      "label": "Diseno y calidad visual",
+      "role": "visual_reviewer",
+      "capability": "visual",
+      "routeSlot": "visual-review",
+      "aliases": [
+        "ui-review"
+      ],
+      "does": [
+        "disenar UI",
+        "juzgar calidad visual",
+        "revisar interacciones y responsive"
+      ],
+      "when": "Cuando el cambio visible requiere diseno o juicio visual.",
+      "candidates": [
+        {
+          "id": "astra-visual",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "label": "Investigacion tecnica",
+      "role": "docs_researcher",
+      "capability": "research",
+      "routeSlot": "research",
+      "does": [
+        "buscar documentacion primaria",
+        "mapear APIs y versiones",
+        "entregar evidencia sin editar producto"
+      ],
+      "when": "Cuando la respuesta depende de documentacion o informacion versionada.",
+      "candidates": [
+        {
+          "id": "astra-research",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "medium",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    },
+    {
+      "id": "computer-use",
+      "label": "Ejecucion de Computer Use",
+      "role": "computer_use_runner",
+      "capability": "computer-use",
+      "routeSlot": "computer-use",
+      "does": [
+        "ejecutar un plan de navegador firmado",
+        "capturar evidencia neutral",
+        "detenerse al salir del alcance"
+      ],
+      "when": "Solo cuando la aceptacion exige un flujo real de UI o navegador.",
+      "candidates": [
+        {
+          "id": "astra-computer-use",
+          "harness": "codex",
+          "model": "gpt-6-astra",
+          "reasoning": "high",
+          "evidenceStatus": "runtime-required",
+          "mappingStatus": "provisional",
+          "independenceBoundary": "agent:astra"
+        }
+      ]
+    }
+  ]
+}

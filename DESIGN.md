@@ -1,16 +1,19 @@
 # Technical Reader Design System
 
-## Visual documents, version 1.8
+## Visual documents, version 1.8.1
 
 The operator's PR Lens report is the pinned reference for standalone completion,
 review and explanation documents. This direction supersedes the older report
 presentation below; canonical workflow Readers retain their existing design.
 
-- Warm ivory paper `#f3f2eb`, ink `#24271f`, olive `#476526`; dark paper
-  `#151812` with `#b9d68d` accent. Use color sparingly for meaning.
-- Embedded Atkinson Hyperlegible Next, 17px prose, 40–64px responsive title.
-  Metadata is secondary. A 1160px reading surface groups each section title with
-  its opening explanation; evidence spans the full width.
+- Near-white paper `#fbfbf8`, ink `#20242c`, blue `#365ad4`; dark paper
+  `#13161c` with `#9eafff` accent. Use color sparingly for orientation.
+- System sans, 18px prose with 1.75 leading and a 68-character measure.
+  Section titles sit above their paragraphs in a continuous reading column.
+  Never split a title and its introduction into parallel columns.
+- A persistent desktop contents rail highlights the current section. The topbar
+  identifies the task, with the product secondary. Collapse navigation on mobile.
+  Metadata follows the summary in one wrapping row; maps use the full content width.
 - PR Lens SVG images arrive drawn inside a dark canvas. Improve node title and
   subtitle readability without changing graph geometry. Keep two visible
   controls: expand/close and optional animate/pause. Default to static.
