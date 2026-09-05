@@ -27,6 +27,39 @@ function packet(kind) {
   };
 }
 
+test("completion media stays portable after originals disappear and cannot grant verification", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-doc-media-"));
+  try {
+    const path = resolve(home, "capture.png");
+    await writeFile(path, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=", "base64"));
+    const input = { ...packet("completion"), evidence: { impact: "ui", comparisons: [{ id: "visible-change", title: "Affected flow", after: {path, alt:"Observed result", revision:"candidate"} }] } };
+    const result = await writeTechnicalDocument({home, input});
+    const canonical = JSON.parse(await readFile(result.packetPath, "utf8"));
+    const html = await readFile(result.htmlPath, "utf8");
+    assert.match(html, /data:image\/png;base64,/);
+    assert.doesNotMatch(html, new RegExp(path));
+    assert.deepEqual(canonical.evidence.gaps.map(gap => gap.kind), ["before", "recording"]);
+    assert.match(html, /Evidence missing/);
+    assert.equal(result.verified, undefined);
+    await unlink(path);
+    assert.deepEqual(await writeTechnicalDocument({home, input:canonical}), result);
+  } finally { await rm(home, {recursive:true,force:true}); }
+});
+
+test("embedded video uses native controls without remote loads or autoplay", async () => {
+  const home = await mkdtemp(resolve(tmpdir(), "aohys-doc-video-"));
+  try {
+    const video = Buffer.from([0,0,0,20,102,116,121,112,105,115,111,109,0,0,0,0,105,115,111,109]);
+    const result = await writeTechnicalDocument({home, input:{...packet("review"),evidence:{impact:"ui",recordings:[{id:"flow",title:"Recorded flow",description:"A recording with an explicit scope",transcript:"Open and inspect the result.",asset:{dataUrl:`data:video/mp4;base64,${video.toString("base64")}`,alt:"Recorded flow",revision:"candidate"}}]}}});
+    const html = await readFile(result.htmlPath, "utf8");
+    assert.match(html, /<video controls playsinline preload="metadata"/);
+    assert.match(html, /media-src data:/);
+    assert.match(html, /Read the video walkthrough/);
+    assert.doesNotMatch(html, /<video[^>]*autoplay/);
+    assert.match(html, /data:video\/mp4;base64,/);
+  } finally { await rm(home, {recursive:true,force:true}); }
+});
+
 test("completion, review, and explanation documents generate without workflow authority", async () => {
   for (const kind of ["completion", "review", "explanation"]) {
     const home = await mkdtemp(resolve(tmpdir(), "aohys-doc-home-"));

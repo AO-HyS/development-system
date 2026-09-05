@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.8.3` aligns active instructions with Astra guidance: preserve authorized outcomes, use proportional review, and stop redundant verification. Astra owns judgment and Computer Use; OpenCode Go implements bounded work, Fable assists complex review, and Luna is the final fast fallback. Catalog `0.29.3` retains automatic completion documents, on-demand reviews/spec explanations, portable PR Lens maps and the pinned design skills. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
+The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.9.0` aligns active instructions with Astra guidance: preserve authorized outcomes, use proportional review, and stop redundant verification. Astra owns judgment and Computer Use; OpenCode Go implements bounded work, Fable assists complex review, and Luna is the final fast fallback. Catalog `0.30.0` retains automatic completion documents, on-demand reviews/spec explanations, portable PR Lens maps and the pinned design skills. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -25,7 +25,7 @@ immutable release snapshots.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.8.3/aohys-development-system-1.8.3.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.9.0/aohys-development-system-1.9.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -35,11 +35,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.8.3
-./bin/development-system sync-skills --version 0.29.3
+./bin/development-system install --version 1.9.0
+./bin/development-system sync-skills --version 0.30.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.29.3 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.30.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -191,12 +191,12 @@ runtime-verified Go Qwen3.8 Flash, Devin SWE-1.7 Lightning Medium, Factory GLM,
 and Codex Luna High. Factory/Devin Fable Medium assist complex review. Exact
 requested and observed model IDs remain separate until runtime evidence matches.
 Astra executes ordinary review phases in the parent; deterministic Git, search,
-and checks use tools directly. See [current routing policy](artifacts/1.8.3/model-routing.md).
+and checks use tools directly. See [current routing policy](artifacts/1.9.0/model-routing.md).
 
 An unshipped cloud-first Devin factory is retained only as a design proposal in
 [`docs/devin-factory/`](docs/devin-factory/README.md) and
 [ADR 0019](docs/adr/0019-cloud-first-devin-software-factory.md). It does not
-create provider blueprints or govern the executable 1.8.3 routing contract.
+create provider blueprints or govern the executable 1.9.0 routing contract.
 
 The latest controlled ordinary-gate measurements and their reproduction
 contract are recorded in
@@ -206,7 +206,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.8.3`, `sync-skills --version 0.29.3`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.9.0`, `sync-skills --version 0.30.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -241,7 +241,7 @@ only when explicitly requested, as required by AGENTS.md.
 
 Generate a private document with
 `development-system document --input packet.json --home HOME --json`.
-See the [visual document contract](artifacts/1.8.3/skills/internal/working-backwards/report-reference.md)
+See the [visual document contract](artifacts/1.9.0/skills/internal/working-backwards/report-reference.md)
 for completion, review and spec explanation packets, PR Lens maps and regeneration.
 
 ## Versioning
@@ -258,4 +258,4 @@ user authorization and adds a stop rule for redundant verification. See
 [ADR 0023](docs/adr/0023-astra-guidance-alignment.md). API-only capabilities are
 not reported as enabled in Codex/T3 without host runtime evidence.
 
-The 1.8.3 report patch anchors the mobile contents menu to the full header, keeping all links inside the viewport. The Astra policy alignment shipped in 1.8.2 is unchanged.
+Version 1.9.0 adds embedded before/after captures and real workflow video to completion reports, with comparison controls, image expansion and reduced-motion support. The shared implementation skill captures the baseline early and requires visual evidence for backend changes that affect UI. Missing evidence stays explicit; presence does not certify the result.
