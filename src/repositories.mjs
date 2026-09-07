@@ -12,8 +12,13 @@ import {
   antiSlopPhases,
 } from "./anti-slop.mjs";
 
-const contractVersion = "1.9.0";
-const skillCatalogVersion = "0.30.0";
+const packageMetadata = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const contractVersion = packageMetadata.contractVersion ?? packageMetadata.version;
+const currentManifest = JSON.parse(await readFile(new URL(`../manifests/${contractVersion}.json`, import.meta.url), "utf8"));
+const catalogArtifact = currentManifest.artifacts.find((/** @type {{logicalName:string, sourcePath:string}} */ artifact) => artifact.logicalName === "skill-catalog");
+if (!catalogArtifact) throw new Error(`Contract ${contractVersion} has no skill catalog`);
+const currentCatalog = JSON.parse(await readFile(new URL(`../${catalogArtifact.sourcePath}`, import.meta.url), "utf8"));
+const skillCatalogVersion = currentCatalog.catalogVersion;
 const antiSlopUpstream = Object.freeze({
   catalogSkill: "install-anti-slop",
   repository: "https://github.com/dmmulroy/anti-slop",
