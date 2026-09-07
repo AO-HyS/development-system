@@ -25,7 +25,7 @@ immutable release snapshots.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.10.0/aohys-development-system-1.10.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.10.1/aohys-development-system-1.10.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
