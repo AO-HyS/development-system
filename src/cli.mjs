@@ -51,6 +51,7 @@ import { auditConvexGuardian } from "./convex-guardian.mjs";
 import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
+import { runSupervisedWorker } from "./supervised-worker.mjs";
 import { resolveModelRoute } from "./model-routing.mjs";
 import { readProviderFailures, recordProviderFailure } from "./provider-availability.mjs";
 
@@ -233,7 +234,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.30.0";
+    const version = options.version ?? "0.31.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -251,7 +252,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.30.0";
+    const version = options.version ?? "0.31.0";
     const catalog = JSON.parse(
       await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
     );
@@ -320,6 +321,9 @@ export async function run(argv) {
         runtime: createCommandDeliveryRuntime(plan),
       })),
     };
+  } else if (command === "run-worker") {
+    if (!options.input) throw new Error("run-worker requires --input <json-path>");
+    result = await runSupervisedWorker(JSON.parse(await readFile(resolve(options.input), "utf8")));
   } else if (command === "document") {
     if (!options.input) throw new Error("document requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -453,7 +457,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

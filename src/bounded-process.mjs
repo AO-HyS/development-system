@@ -1,10 +1,16 @@
 // @ts-check
 
 import { spawn } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
 
 /** @param {import("node:child_process").ChildProcess} child @param {number} [graceMs] */
 export async function stopDetachedProcess(child, graceMs = 3_000) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+  const groupAlive = () => {
+    if (!child.pid) return false;
+    try { process.kill(-child.pid, 0); return true; }
+    catch { return child.exitCode === null && child.signalCode === null; }
+  };
+  if (!groupAlive()) return;
   /** @param {NodeJS.Signals} signal */
   const signalGroup = (signal) => {
     try {
@@ -15,11 +21,11 @@ export async function stopDetachedProcess(child, graceMs = 3_000) {
     }
   };
   /** @param {number} timeoutMs */
-  const waitForExit = (timeoutMs) =>
-    Promise.race([
-      new Promise((resolvePromise) => child.once("exit", () => resolvePromise(true))),
-      new Promise((resolvePromise) => setTimeout(() => resolvePromise(false), timeoutMs)),
-    ]);
+  const waitForExit = async (timeoutMs) => {
+    const deadline = Date.now() + timeoutMs;
+    while (groupAlive() && Date.now() < deadline) await delay(25);
+    return !groupAlive();
+  };
 
   signalGroup("SIGTERM");
   if (await waitForExit(graceMs)) return;

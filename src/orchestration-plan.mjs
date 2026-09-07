@@ -863,6 +863,7 @@ function validateContract(contract, errors) {
 
 /** @param {Record<string, unknown>} signals @param {string[]} errors */
 function validateSignals(signals, errors) {
+  if (signals.structuredReview !== undefined && typeof signals.structuredReview !== "boolean") errors.push("signals.structuredReview must be boolean");
   if (typeof signals.trivial !== "boolean") errors.push("signals.trivial must be an explicit boolean");
   if (signals.readOnly !== undefined && typeof signals.readOnly !== "boolean") errors.push("signals.readOnly must be boolean");
   if (signals.structuredToolHeavy !== undefined && typeof signals.structuredToolHeavy !== "boolean") errors.push("signals.structuredToolHeavy must be boolean");
@@ -1289,7 +1290,8 @@ export function planOrchestration(input) {
     ? "parallel"
     : computerUse.qaOnly
     ? "verification"
-    : signals.trivial === true ? "direct" : risks.length > 0 ? "specialist" : "sequential";
+    : signals.trivial === true || (!readOnlyRun && risks.length === 0 && !computerUse.requested && signals.structuredReview !== true)
+      ? "direct" : risks.length > 0 ? "specialist" : "sequential";
   const codeMode = mode === "direct" || mode === "verification"
     ? { eligible: false, selected: false, selectionAuthority: "host-runtime", preference: null, executor: null, fallback: "direct", reason: "Direct work does not use a Code Mode analysis lane." }
     : codeModeDecision(signals);
