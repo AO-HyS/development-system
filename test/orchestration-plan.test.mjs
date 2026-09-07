@@ -31,7 +31,7 @@ const baseContract = {
 function plan(signals = {}) {
   return planOrchestration({
     taskContract: baseContract,
-    signals,
+    signals: { structuredReview: true, ...signals },
   });
 }
 
@@ -76,7 +76,7 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.deepEqual(result.externalSideEffects, []);
 });
 
-test("normal non-trivial work follows the fast chain then the executable anti-slop review chain", () => {
+test("explicit structured review follows the fast chain then protected correction", () => {
   const result = plan({ trivial: false });
   assert.equal(result.valid, true);
   assert.equal(result.mode, "sequential");

@@ -147,7 +147,7 @@ test("Codex Luna fallback uses exec, max reasoning, and the priority tier", () =
   assert.equal(result.attempts[2].reason, "unavailable");
 });
 
-test("escalation elevates only the Astra route to max", () => {
+test("escalation keeps difficult Astra review at high", () => {
   const base = {
     roster: agentRoster,
     capability: "review",
@@ -165,7 +165,7 @@ test("escalation elevates only the Astra route to max", () => {
   assert.equal(plain.selected.escalationApplied, false);
   const escalated = resolveModelRoute({ ...base, escalation: true });
   assert.equal(escalated.valid, true);
-  assert.equal(escalated.selected.reasoning, "max");
+  assert.equal(escalated.selected.reasoning, "high");
   assert.equal(escalated.selected.escalationApplied, true);
 });
 
