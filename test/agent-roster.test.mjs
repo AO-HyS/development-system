@@ -59,7 +59,7 @@ test("no active route still references retired Sol", () => {
 test("fast-execution wording keeps deterministic work out of the model route", () => {
   const route = rosterRoute("fast-execution");
   assert.equal(route.does.some((entry) => /buscar|evidencia|pruebas/i.test(entry)), false);
-  assert.match(/** @type {string} */ (route.when), /no requieren un worker de modelo/);
+  assert.match(/** @type {string} */ (route.when), /se ejecutan directamente con herramientas/);
 });
 
 test("invalid manual edits fail closed with actionable errors", () => {

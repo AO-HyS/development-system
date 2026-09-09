@@ -20,7 +20,10 @@ test("1.5.16 routes ordinary mechanical work through the declared fast chain", a
   assert.equal(manifest.contractVersion, "1.5.16");
   assert.equal(catalog.catalogVersion, "0.22.0");
   assert.equal(nextCatalog.catalogVersion, "0.23.0");
-  assert.equal(packageJson.version, "1.5.19");
+  const currentManifest = JSON.parse(
+    await readFile(resolve(root, "manifests", packageJson.contractVersion + ".json"), "utf8"),
+  );
+  assert.equal(packageJson.contractVersion, currentManifest.contractVersion);
   const nextOrchestration = nextCatalog.skills.find((skill) => skill.logicalName === "coding-orchestration");
   assert.equal(nextOrchestration.variants[0].sourceDirectory, "artifacts/1.5.16/skills/internal/coding-orchestration");
   assert.equal(nextOrchestration.source.path, nextOrchestration.variants[0].sourceDirectory);

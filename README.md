@@ -268,3 +268,9 @@ user authorization and adds a stop rule for redundant verification. See
 not reported as enabled in Codex/T3 without host runtime evidence.
 
 Version 1.9.0 adds embedded before/after captures and real workflow video to completion reports, with comparison controls, image expansion and reduced-motion support. The shared implementation skill captures the baseline early and requires visual evidence for backend changes that affect UI. Missing evidence stays explicit; presence does not certify the result.
+
+`pnpm verify` certifies the current roster, types, behavior tests and canonical
+sources; `pnpm scenario` exercises isolated installation and recovery.
+`pnpm rollout:validate` remains an explicit audit of the July 20 historical
+pilot and requires its original private recap files. It is not a current-release
+gate; absent archived files remain an audit gap.

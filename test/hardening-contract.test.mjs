@@ -13,7 +13,7 @@ const validator = resolve(repositoryRoot, "scripts", "validate-development-syste
 
 test("portable preflight selects an explicit Node runtime and diagnoses a missing runtime before execution", async () => {
   const packageDocument = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
-  assert.equal(packageDocument.bin["aohys-development-system"], "./bin/development-system");
+  assert.equal(packageDocument.bin["aohys-development-system"], "./bin/development-system.mjs");
 
   const available = spawnSync(preflight, ["validate-repository", "--json"], {
     cwd: repositoryRoot,

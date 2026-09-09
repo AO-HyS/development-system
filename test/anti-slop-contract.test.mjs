@@ -62,6 +62,10 @@ function plan(signals = {}, contract = {}) {
   return planOrchestration({ taskContract: { ...baseContract, ...contract }, signals });
 }
 
+function protocolPlan(signals = {}, contract = {}) {
+  return plan({ structuredReview: true, ...signals }, contract);
+}
+
 const expectedPhases = [
   "pre-implementation-simplification",
   "behavior-first-evidence-design",
@@ -111,7 +115,7 @@ function validatePlan(result, lanes = result.lanes, protocol = result.antiSlop) 
 function parallelPlanFixture() {
   return planOrchestration({
     taskContract: { ...baseContract, requestedWorkItemIds: ["T1", "T2"] },
-    signals: { trivial: false },
+    signals: { trivial: false, structuredReview: true },
     workGraph: {
       repository: { identity: "repo", revision: "a".repeat(40) },
       tickets: ["T1", "T2"].map((id) => ({
@@ -142,10 +146,10 @@ test("every non-trivial write mode assigns all six phases to concrete ordered la
   ];
   for (const mode of ["sequential", "specialist", "parallel"]) {
     const result = mode === "specialist"
-      ? plan({ trivial: false, specialistRisk: "security" })
+      ? protocolPlan({ trivial: false, specialistRisk: "security" })
       : mode === "parallel"
         ? parallelPlanFixture()
-        : plan({ trivial: false });
+        : protocolPlan({ trivial: false });
     assert.equal(result.valid, true, `${mode}: ${result.errors?.join("; ")}`);
     assert.equal(result.mode, mode);
     assert.equal(result.antiSlop.required, true, mode);
@@ -183,7 +187,7 @@ test("every non-trivial write mode assigns all six phases to concrete ordered la
 });
 
 test("sequential and specialist plans chain writer, review, correction, and final verification lanes", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const writer = laneById(result.lanes, "writer");
   const review = laneById(result.lanes, "review-test-value");
   const correction = laneById(result.lanes, "correction");
@@ -220,7 +224,7 @@ test("sequential and specialist plans chain writer, review, correction, and fina
   assert.match(verification.stopCondition, /accepted objective and the public interface/);
   assert.match(verification.stopCondition, /isolated from implementation conclusions/);
 
-  const specialistPlan = plan({ trivial: false, specialistRisk: "security" });
+  const specialistPlan = protocolPlan({ trivial: false, specialistRisk: "security" });
   const specialist = laneById(specialistPlan.lanes, "specialist-security");
   assert.equal(specialist.readOnly, true);
   // The specialist runs after the writer and gates the correction lane.
@@ -321,7 +325,7 @@ test("selected parallel specialists and the standards review gate correction and
 });
 
 test("deletion correction is writable and always precedes the final objective verification", () => {
-  for (const result of [plan({ trivial: false }), plan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
+  for (const result of [protocolPlan({ trivial: false }), protocolPlan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
     const deletionPhase = result.antiSlop.phases.find((phase) => phase.id === "deletion-pass");
     assert.equal(deletionPhase.ownerRole, "fast_implementer");
     assert.equal(deletionPhase.writable, true);
@@ -344,7 +348,7 @@ test("deletion correction is writable and always precedes the final objective ve
 });
 
 test("a weakened or useless test can only pass through a correction before final verification", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const review = laneById(result.lanes, "review-test-value");
   // The review contract rejects exactly the weakening escapes.
   for (const forbidden of [
@@ -371,7 +375,7 @@ test("a weakened or useless test can only pass through a correction before final
 });
 
 test("the validator fails closed on missing, duplicated, or inconsistent phase assignments", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const protocol = result.antiSlop;
 
   const missing = result.lanes.filter((lane) => lane.id !== "correction");
@@ -409,7 +413,7 @@ test("the validator fails closed on missing, duplicated, or inconsistent phase a
 });
 
 test("reversing a lane's phase assignments fails the canonical protocol order check", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const protocol = result.antiSlop;
 
   // The reviewer's exact reverse-order mutation: the writer's three phases
@@ -463,7 +467,7 @@ test("reversing a lane's phase assignments fails the canonical protocol order ch
 });
 
 test("every antiSlopPhases entry must be a full canonical phase object, table-driven across mutations", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const protocol = result.antiSlop;
   const originalWriterPhases = laneById(result.lanes, "writer").antiSlopPhases;
 
@@ -558,7 +562,7 @@ test("trusted topology expectations fail closed when omitted or jointly rewritte
 });
 
 test("same-ID writer substitutes fail the trusted canonical writer fingerprint", () => {
-  const sequential = plan({ trivial: false });
+  const sequential = protocolPlan({ trivial: false });
   const parallel = parallelPlanFixture();
   // Untouched plans keep validating cleanly.
   assert.deepEqual(validatePlan(sequential), []);
@@ -627,7 +631,7 @@ test("same-ID writer substitutes fail the trusted canonical writer fingerprint",
 });
 
 test("same-ID specialist substitutes fail the trusted canonical specialist fingerprint", () => {
-  const result = plan({ trivial: false, specialistRisk: "security" });
+  const result = protocolPlan({ trivial: false, specialistRisk: "security" });
   assert.deepEqual(validatePlan(result), []);
 
   const mutations = [
@@ -745,7 +749,7 @@ test("fingerprints preserve string-array multiplicity and bind the specialist ag
 });
 
 test("anti-slop owning lanes are directly bound to the immutable phase ownerRole and laneType", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   const mutations = [
     ["writer role", "writer", (lane) => ({ ...lane, role: "reviewer" }), /pre-implementation-simplification owner writer must carry the canonical ownerRole fast_implementer/],
     ["writer type", "writer", (lane) => ({ ...lane, type: "correction" }), /pre-implementation-simplification owner writer must carry the canonical laneType writer/],
@@ -827,7 +831,7 @@ test("non-trivial read-only runs own no writable lane for every kind and fail cl
 test("ordinary anti-slop review lanes use the parent-executed general-review route", () => {
   const expectedModel = rosterModel("general-review");
   const expectedChain = rosterChain("general-review");
-  for (const result of [plan({ trivial: false }), plan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
+  for (const result of [protocolPlan({ trivial: false }), protocolPlan({ trivial: false, specialistRisk: "security" }), parallelPlanFixture()]) {
     for (const laneId of ["review-test-value", "review-objective-verification"]) {
       const lane = laneById(result.lanes, laneId);
       assert.equal(lane.model.resolved, null, `${laneId} resolved model stays null before a runtime receipt`);
@@ -907,7 +911,7 @@ test("non-trivial read-only analysis and verification-only runs never receive wr
 });
 
 test("loc and proxy metrics stay excluded and cyclomatic or Halstead signals stay diagnostic only", () => {
-  const result = plan({
+  const result = protocolPlan({
     trivial: false,
     diffRisk: { addedLines: 100000, testToRuntimeLineRatio: 42, linesOfCode: 999999, cyclomaticComplexity: 500, halsteadVolume: 99999 },
   });
@@ -921,7 +925,7 @@ test("loc and proxy metrics stay excluded and cyclomatic or Halstead signals sta
 });
 
 test("lane contracts embed the complete anti-slop requirements for harnesses without installed skills", () => {
-  const result = plan({ trivial: false });
+  const result = protocolPlan({ trivial: false });
   assert.equal(result.antiSlop.factoryCoverage.policy, "requirements-embedded-in-lane-contracts");
   assert.equal(result.antiSlop.factoryCoverage.installedSkillsRequired, false);
   assert.match(result.antiSlop.factoryCoverage.statement, /Writers do not require installed skills/);
@@ -1167,8 +1171,12 @@ test("repository preparation records the executable lane contract and adapter su
   const result = await initializeRepository({ repository, confirm: "initialize" });
   assert.equal(result.status, "updated");
   const contract = JSON.parse(await readFile(resolve(repository, ".development-system/repository.json"), "utf8"));
-  assert.equal(contract.contractVersion, "1.6.0");
-  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, "0.27.0");
+  const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+  const manifest = JSON.parse(await readFile(resolve(root, "manifests", packageJson.contractVersion + ".json"), "utf8"));
+  const catalogArtifact = manifest.artifacts.find((artifact) => artifact.logicalName === "skill-catalog");
+  const catalog = JSON.parse(await readFile(resolve(root, catalogArtifact.sourcePath), "utf8"));
+  assert.equal(contract.contractVersion, manifest.contractVersion);
+  assert.equal(contract.operatorPrerequisites.skillCatalogVersion, catalog.catalogVersion);
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("install-anti-slop"));
   assert.ok(contract.operatorPrerequisites.requiredSkills.includes("behavioral-evidence"));
   assert.equal(contract.antiSlop.schema, "executable-lane-contract-v1");
@@ -1202,10 +1210,11 @@ test("repository preparation records the executable lane contract and adapter su
   assert.equal(contract.antiSlop.upstream.treeSha256, "c309c21257eea4c681cb2388e1939c6f03d98af17885ff14e3b38efaf01f6a55");
   assert.equal(contract.antiSlop.factoryCoverage.installedSkillsRequired, false);
   const adapter = await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8");
-  assert.match(adapter, /Contract version: `1\.6\.0`/);
+  const currentPackage = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+  assert.ok(adapter.includes("Contract version: `" + currentPackage.contractVersion + "`"));
   assert.match(adapter, /executable lane contract/);
-  assert.match(adapter, /test-value review/);
-  assert.match(adapter, /writable fast-writer correction lane/);
+  assert.match(adapter, /behavioral value/);
+  assert.match(adapter, /Correction applies only to actual findings/);
   assert.match(adapter, /never quality gates/);
   assert.match(adapter, /diagnostic only/);
   assert.match(adapter, /scripts\/install\.mjs/);

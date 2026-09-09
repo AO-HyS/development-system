@@ -64,3 +64,19 @@ drift, failed validation, reinstall, rollback and unrelated-file preservation.
 Measure real completed outcomes after rollout; no numeric savings or quality
 improvement is claimed from configuration alone. Local project skill copies need
 explicit migration because global installation cannot override their precedence.
+
+## Reproducible current certification
+
+The inherited suite had 24 stale assertions against earlier versions and
+implicit delegation. Update fixtures to request structured review explicitly
+and derive current versions from release metadata; retain mutation, authority
+and exact provider availability assertions. The July 20 pilot audit additionally
+requires three operator-private AOH-147 recap files that are absent after the
+runtime-directory replacement. Keep `pnpm rollout:validate` available as an
+explicit historical audit; remove it from current `verify`, which runs roster,
+type, behavior and canonical-repository validation. The isolated `scenario`
+checks installation and skills, drift, failed validation, reinstall, rollback,
+lifecycle and repository preparation. Missing historical private files do not
+certify or invalidate the current release; no recap is fabricated or marked
+verified. This is a deliberate retirement of a historical pilot gate, not a
+claim that its missing evidence was recovered.

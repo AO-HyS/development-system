@@ -35,7 +35,7 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
-    "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository && pnpm run rollout:validate",
+    "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository",
     "release:prepare": "node ./scripts/build-release-1110.mjs",
     "release:pack": "node ./scripts/pack-distribution.mjs"
   },
