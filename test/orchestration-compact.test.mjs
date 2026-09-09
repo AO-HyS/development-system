@@ -30,12 +30,12 @@ test("compact planning still rejects out-of-authority runtime receipts", () => {
   assert.equal(p.valid, false);
   assert.deepEqual(p.externalSideEffects, []);
 });
-test("clear orchestration requests low and escalation requests medium", () => {
+test("default orchestration requests medium and explicit escalation requests high", () => {
   const input = { roster: agentRoster, capability: "orchestration", routeSlot: "orchestration" };
   const plain = resolveModelRoute(input);
   const escalated = resolveModelRoute({ ...input, escalation: true });
   assert.equal(plain.valid, true);
-  assert.equal(plain.selected.reasoning, "low");
-  assert.equal(escalated.selected.reasoning, "medium");
+  assert.equal(plain.selected.reasoning, "medium");
+  assert.equal(escalated.selected.reasoning, "high");
   assert.equal(plain.selected.resolvedModel, null);
 });

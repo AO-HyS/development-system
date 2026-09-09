@@ -9,12 +9,12 @@ los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 
-El candidato local 1.13.0 incorpora `design-direction`: el método de diseño y
+La versión 1.14.0 incorpora `design-direction`: el método de diseño y
 las decisiones del proyecto se recuperan sin volver a pasar el artículo. Conserva
-la selección de proveedores y verificación proporcional de 1.12.0. La versión
-publicada sigue siendo 1.11.1 hasta su publicación explícita.
+la selección de proveedores y verificación proporcional de 1.12.0.
+Astra Medium orquesta por defecto; Go ejecuta y Luna Max/priority es alternativa.
 
-Version 1.11.1 includes the complete pinned Impeccable 4.3.0 skill and its
+Version 1.14.0 includes the complete pinned Impeccable 4.3.1 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
 can prepare bounded scripts or media through `evidence-preparation`. Stable
@@ -59,7 +59,7 @@ priority default. Native roles may have fixed model settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.11.1/aohys-development-system-1.11.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.14.0/aohys-development-system-1.14.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
