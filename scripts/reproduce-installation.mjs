@@ -58,18 +58,18 @@ const unrelated = resolve(home, "notes", "preserved.txt");
 await mkdir(dirname(unrelated), { recursive: true });
 await writeFile(unrelated, "user-owned\n", "utf8");
 
-step(["install", "--version", "1.5.14", "--source-commit", sourceCommit]);
-step(["install", "--version", "1.5.15", "--source-commit", sourceCommit]);
-step(["install", "--version", "1.5.16", "--source-commit", sourceCommit]);
-step(["install", "--version", "1.5.17", "--source-commit", sourceCommit]);
-step(["install", "--version", "1.5.19", "--source-commit", sourceCommit]);
+const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+const currentVersion = metadata.contractVersion;
+const previousVersion = "1.10.0";
+step(["install", "--version", previousVersion, "--source-commit", sourceCommit]);
+step(["install", "--version", currentVersion, "--source-commit", sourceCommit]);
 const codexContract = resolve(home, ".codex", "development-system", "contract.md");
 await writeFile(codexContract, "scenario drift\n", "utf8");
 assert.equal(step(["audit"]).status, "drifted");
 step(["validate"], 1);
-step(["install", "--version", "1.5.19", "--source-commit", sourceCommit]);
+step(["install", "--version", currentVersion, "--source-commit", sourceCommit]);
 assert.equal(step(["validate"]).status, "healthy");
-assert.equal(step(["rollback"]).toVersion, "1.5.17");
+assert.equal(step(["rollback"]).toVersion, previousVersion);
 assert.equal(await readFile(unrelated, "utf8"), "user-owned\n");
 
 process.stdout.write(`Scenario complete. Isolated HOME: ${home}\n`);

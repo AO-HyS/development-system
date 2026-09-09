@@ -11,97 +11,9 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = resolve(repositoryRoot, "bin/development-system.mjs");
 const home = await mkdtemp(resolve(tmpdir(), "aohys-development-skills-scenario-"));
 const sourceRoot = await mkdtemp(resolve(tmpdir(), "aohys-development-skills-source-"));
-await mkdir(resolve(sourceRoot, "artifacts"), { recursive: true });
-await cp(
-  resolve(repositoryRoot, "artifacts", "0.2.0"),
-  resolve(sourceRoot, "artifacts", "0.2.0"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "0.9.1"),
-  resolve(sourceRoot, "artifacts", "0.9.1"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.0.0"),
-  resolve(sourceRoot, "artifacts", "1.0.0"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.1.0"),
-  resolve(sourceRoot, "artifacts", "1.1.0"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.1.1"),
-  resolve(sourceRoot, "artifacts", "1.1.1"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.4.0"),
-  resolve(sourceRoot, "artifacts", "1.4.0"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.0"),
-  resolve(sourceRoot, "artifacts", "1.5.0"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.1"),
-  resolve(sourceRoot, "artifacts", "1.5.1"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.2"),
-  resolve(sourceRoot, "artifacts", "1.5.2"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.7"),
-  resolve(sourceRoot, "artifacts", "1.5.7"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.10"),
-  resolve(sourceRoot, "artifacts", "1.5.10"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.11"),
-  resolve(sourceRoot, "artifacts", "1.5.11"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.12"),
-  resolve(sourceRoot, "artifacts", "1.5.12"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.13"),
-  resolve(sourceRoot, "artifacts", "1.5.13"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.15"),
-  resolve(sourceRoot, "artifacts", "1.5.15"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.16"),
-  resolve(sourceRoot, "artifacts", "1.5.16"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.17"),
-  resolve(sourceRoot, "artifacts", "1.5.17"),
-  { recursive: true },
-);
-await cp(
-  resolve(repositoryRoot, "artifacts", "1.5.19"),
-  resolve(sourceRoot, "artifacts", "1.5.19"),
-  { recursive: true },
-);
+// Include the complete versioned source tree: current catalogs may reference
+// any published artifact version, not a hand-maintained historical subset.
+await cp(resolve(repositoryRoot, "artifacts"), resolve(sourceRoot, "artifacts"), { recursive: true });
 for (const args of [
   ["init"],
   ["add", "."],
@@ -124,6 +36,11 @@ function step(args, expectedStatus = 0) {
   return evidence;
 }
 
+const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${metadata.contractVersion}.json`), "utf8"));
+const catalogArtifact = manifest.artifacts.find((/** @type {{logicalName: string}} */ item) => item.logicalName === "skill-catalog");
+const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogArtifact.sourcePath), "utf8"));
+
 const oldResearch = resolve(home, ".agents", "skills", "research", "SKILL.md");
 const brokenFactoryLink = resolve(home, ".factory", "skills", "extract");
 const staleWorkspace = resolve(home, ".agents", "skills", "grill-me-workspace", "result.txt");
@@ -143,8 +60,8 @@ step(["sync-skills", "--source-root", sourceRoot, "--source-commit", sourceCommi
 const structurallyHealthy = step(["audit-skills"], 1);
 assert.equal(structurallyHealthy.status, "invalid");
 assert.match(structurallyHealthy.problems.join("\n"), /operational evidence/i);
-assert.equal(structurallyHealthy.logicalSkillCount, 63);
-assert.equal(structurallyHealthy.physicalVariantCount, 63);
+assert.equal(structurallyHealthy.logicalSkillCount, catalog.skills.length);
+assert.equal(structurallyHealthy.physicalVariantCount, catalog.skills.flatMap((/** @type {{variants: unknown[]}} */ skill) => skill.variants).length);
 assert.ok(structurallyHealthy.skills.every(/** @param {{states: Record<string, boolean>}} skill */ (skill) => skill.states.exists && skill.states.discovered && skill.states.loadable));
 assert.ok(structurallyHealthy.mirrors.every(/** @param {{status: string}} mirror */ (mirror) => mirror.status === "identical"));
 assert.equal(

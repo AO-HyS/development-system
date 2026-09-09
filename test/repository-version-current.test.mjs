@@ -18,6 +18,8 @@ test("normalization distributes the package contract and its catalog without cha
   const contract = JSON.parse(await readFile(join(repository, ".development-system/repository.json"), "utf8"));
   assert.equal(contract.contractVersion, manifest.contractVersion);
   assert.equal(await readFile(join(repository, "package.json"), "utf8"), original);
-  assert.match(await readFile(join(repository, ".codex/development-system/repository.md"), "utf8"), /Contract version: `1\.10\.0`/u);
-  assert.ok(JSON.stringify(contract).includes("0.31.0"));
+  assert.ok((await readFile(join(repository, ".codex/development-system/repository.md"), "utf8")).includes(`Contract version: \`${manifest.contractVersion}\``));
+  const released = JSON.parse(await readFile(new URL(`../manifests/${manifest.contractVersion}.json`, import.meta.url), "utf8"));
+  const catalog = released.artifacts.find(item => item.logicalName === "skill-catalog").sourcePath.split("/").pop().replace(".json", "");
+  assert.ok(JSON.stringify(contract).includes(catalog));
 });

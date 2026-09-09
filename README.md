@@ -1,5 +1,14 @@
 # AOHYS Development System
 
+Version 1.11.0 includes the complete pinned Impeccable 4.3.0 skill and its
+existing command shortcuts. Visual delivery follows Impeccable → independent
+Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
+can prepare bounded scripts or media through `evidence-preparation`. Stable
+operations use the host's existing tool composition. See
+[ADR 0024](docs/adr/0024-design-critique-and-bounded-evidence.md) for sources,
+adopted PStack 0.15.0 tactics and verification limits.
+
+
 The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.9.0` aligns active instructions with Astra guidance: preserve authorized outcomes, use proportional review, and stop redundant verification. Astra owns judgment and Computer Use; OpenCode Go implements bounded work, Fable assists complex review, and Luna is the final fast fallback. Catalog `0.30.0` retains automatic completion documents, on-demand reviews/spec explanations, portable PR Lens maps and the pinned design skills. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
@@ -25,7 +34,7 @@ immutable release snapshots.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.10.1/aohys-development-system-1.10.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.11.0/aohys-development-system-1.11.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -35,11 +44,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.10.0
-./bin/development-system sync-skills --version 0.31.0
+./bin/development-system install --version 1.11.0
+./bin/development-system sync-skills --version 0.32.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.31.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.32.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -206,7 +215,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.10.0`, `sync-skills --version 0.31.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.11.0`, `sync-skills --version 0.32.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -259,3 +268,9 @@ user authorization and adds a stop rule for redundant verification. See
 not reported as enabled in Codex/T3 without host runtime evidence.
 
 Version 1.9.0 adds embedded before/after captures and real workflow video to completion reports, with comparison controls, image expansion and reduced-motion support. The shared implementation skill captures the baseline early and requires visual evidence for backend changes that affect UI. Missing evidence stays explicit; presence does not certify the result.
+
+`pnpm verify` certifies the current roster, types, behavior tests and canonical
+sources; `pnpm scenario` exercises isolated installation and recovery.
+`pnpm rollout:validate` remains an explicit audit of the July 20 historical
+pilot and requires its original private recap files. It is not a current-release
+gate; absent archived files remain an audit gap.

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://development-system.aohys.com/schemas/execution-plan-v1.json",
+  "title": "Product verification execution plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "allowedOrigins",
+    "allowedPathPatterns",
+    "allowedActions",
+    "inputReferences",
+    "steps",
+    "sideEffectMode",
+    "evidencePath",
+    "sha256"
+  ],
+  "properties": {
+    "version": { "const": "1" },
+    "allowedOrigins": { "type": "array", "items": { "type": "string", "pattern": "^https?://[^/?#]+$" }, "minItems": 1, "uniqueItems": true },
+    "allowedPathPatterns": { "type": "array", "items": { "type": "string", "pattern": "^/(?!.*(?:\\.\\.|[?#])).+$" }, "minItems": 1, "uniqueItems": true },
+    "allowedActions": {
+      "type": "array",
+      "items": { "enum": ["navigate", "click", "type", "select", "submit-form", "scroll", "wait", "capture-screenshot", "record-video", "stop-recording"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "inputReferences": { "type": "array", "items": { "type": "string", "pattern": "^(fixture|host|session|vault)\\.[A-Za-z0-9][A-Za-z0-9._-]*$" }, "uniqueItems": true },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "action"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "action": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "inputRef": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "sideEffectMode": { "enum": ["none", "authorized-writes"] },
+    "evidencePath": { "type": "string", "pattern": "^\\$HOME/\\.development-system/private/verification/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._/-]+)?$" },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of normalized canonical JSON containing the required properties in schema order and normalized step keys, excluding sha256."
+    }
+  }
+}

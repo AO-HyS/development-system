@@ -63,13 +63,13 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.equal(result.valid, true);
   assert.equal(result.mode, "direct");
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer"]);
-  assert.equal(result.lanes[0].model.requested, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].model.requested, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].model.resolved, null);
   assert.equal(result.lanes[0].modelRoute.routeSlot, "fast-execution");
-  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
-  assert.equal(result.lanes[0].modelRoute.chain[4].model, "gpt-5.6-luna");
-  assert.equal(result.lanes[0].modelRoute.chain[4].reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).model, "gpt-5.6-luna");
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "high");
   assert.deepEqual(result.lanes[0].expectedOutputs, baseContract.expectedOutputs);
   assert.deepEqual(result.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
   assert.deepEqual(result.externalWriteIntents, []);
@@ -82,13 +82,16 @@ test("explicit structured review follows the fast chain then protected correctio
   assert.equal(result.mode, "sequential");
   assert.deepEqual(result.lanes.map((lane) => lane.id), ["writer", "review-test-value", "correction", "review-objective-verification"]);
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer"]);
-  assert.equal(result.lanes[0].model.requested, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].model.requested, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].model.resolved, null);
-  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/glm-5.3-flash");
+  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
-  assert.equal(result.lanes[0].modelRoute.chain[4].model, "gpt-5.6-luna");
-  assert.equal(result.lanes[0].modelRoute.chain[4].reasoning, "high");
-  assert.equal(result.lanes[0].modelRoute.chain[1].requiresVerifiedRuntimeAvailability, true);
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).model, "gpt-5.6-luna");
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "high");
+  const verifiedAvailabilityCandidate = result.lanes[0].modelRoute.chain.find(
+    (candidate) => candidate.model === "opencode-go/qwen3.8-flash",
+  );
+  assert.equal(verifiedAvailabilityCandidate?.requiresVerifiedRuntimeAvailability, true);
   assert.equal(result.lanes[0].modelRoute.subordinate, true);
   assert.equal(result.lanes[0].modelRoute.runtimeRouting, true);
   assert.equal(result.lanes[0].modelRoute.receiptRequired, true);
@@ -305,7 +308,7 @@ test("ticket count alone does not activate parallelism and graph mismatches fail
     taskContract: { ...baseContract, ticketCount: 8 },
     signals: { trivial: false },
   });
-  assert.equal(ordinary.mode, "sequential");
+  assert.equal(ordinary.mode, "direct");
 
   const mismatch = planOrchestration({
     taskContract: { ...baseContract, scope: ["src"], requestedWorkItemIds: ["T1", "T2"] },
@@ -346,9 +349,9 @@ test("authorized graphs cannot escape task scope or choose their own writer rout
   });
   assert.equal(routed.valid, true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.role === "fast_implementer"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/glm-5.3-flash"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/muse-spark-1.3-contributor"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain[4].model === "gpt-5.6-luna" && lane.agent.modelRoute.chain[4].reasoning === "high"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain.at(-1).model === "gpt-5.6-luna" && lane.agent.modelRoute.chain.at(-1).reasoning === "high"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 
   const specialistProtected = planOrchestration({
@@ -881,7 +884,7 @@ test("parallel writers advertise the first fast-route candidate harness, not cod
   });
   assert.equal(result.valid, true, result.errors?.join("; "));
   assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
-  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/glm-5.3-flash"), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/muse-spark-1.3-contributor"), true);
   assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 });
 

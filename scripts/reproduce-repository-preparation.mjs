@@ -62,7 +62,8 @@ const initialized = step(["initialize-repository", "--confirm", "initialize"]);
 assert.equal(initialized.status, "updated");
 assert.deepEqual(initialized.readiness, { codex: "prepared", t3code: "prepared" });
 assert.equal(step(["initialize-repository", "--confirm", "initialize"]).status, "unchanged");
-assert.equal((await readFile(resolve(repository, ".development-system/repository.json"), "utf8")).includes("1.6.0"), true);
+const metadata = JSON.parse(await readFile(resolve(developmentSystemRoot, "package.json"), "utf8"));
+assert.equal(JSON.parse(await readFile(resolve(repository, ".development-system/repository.json"), "utf8")).contractVersion, metadata.contractVersion);
 assert.equal(step(["audit-repository"]).status, "prepared");
 
 const normalized = step(["normalize-repository", "--confirm", "normalize"]);

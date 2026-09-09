@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { access, mkdtemp, mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -68,11 +68,15 @@ function runCli(...args) {
   };
 }
 
-test("the repository validator proves manifests, canonical hashes, harnesses, and mirrors", () => {
+test("the repository validator proves manifests, canonical hashes, harnesses, and mirrors", async () => {
   const validation = runCli("validate-repository");
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(validation.json.ok, true);
-  assert.deepEqual(validation.json.versions, ["0.0.0", "0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.5.0", "0.6.0", "0.7.0", "0.8.0", "0.9.0", "0.9.1", "1.0.0", "1.1.0", "1.1.1", "1.1.2", "1.2.0", "1.3.0", "1.4.0", "1.4.1", "1.5.0", "1.5.1", "1.5.10", "1.5.11", "1.5.12", "1.5.13", "1.5.14", "1.5.15", "1.5.16", "1.5.17", "1.5.18", "1.5.19", "1.5.2", "1.5.3", "1.5.4", "1.5.5", "1.5.6", "1.5.7", "1.5.8", "1.5.9", "1.6.0", "1.7.0", "1.8.0", "1.8.1", "1.8.2", "1.8.3", "1.9.0"]);
+  const manifestVersions = (await readdir(resolve(repositoryRoot, "manifests")))
+    .filter((entry) => entry.endsWith(".json"))
+    .map((entry) => entry.slice(0, -5))
+    .sort((left, right) => left.localeCompare(right));
+  assert.deepEqual(validation.json.versions, manifestVersions);
   assert.deepEqual(validation.json.errors, []);
 });
 
