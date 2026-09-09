@@ -9,8 +9,9 @@ los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 
-El candidato local 1.12.0 corrige la selección duplicada de proveedores y hace
-las pruebas nuevas opcionales según el comportamiento que protegen. La versión
+El candidato local 1.13.0 incorpora `design-direction`: el método de diseño y
+las decisiones del proyecto se recuperan sin volver a pasar el artículo. Conserva
+la selección de proveedores y verificación proporcional de 1.12.0. La versión
 publicada sigue siendo 1.11.1 hasta su publicación explícita.
 
 Version 1.11.1 includes the complete pinned Impeccable 4.3.0 skill and its
