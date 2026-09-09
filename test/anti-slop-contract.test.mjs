@@ -856,9 +856,9 @@ test("ordinary anti-slop review lanes use the parent-executed general-review rou
     assert.ok(specialists.every((lane) => lane.modelRoute === undefined));
   }
   // The complex independent adversarial route remains available with the real
-  // declared chain: Fable medium, Fable medium, Astra high fallback.
+  // declared Codex-only review chain.
   const adversarialChain = rosterChain("adversarial-review");
-  assert.deepEqual(adversarialChain.map((candidate) => candidate.model), ["claude-fable-5.1", "claude-fable-5.1", "gpt-6-astra"]);
+  assert.deepEqual(adversarialChain.map((candidate) => candidate.model), ["gpt-6-astra"]);
 });
 
 test("non-trivial read-only analysis and verification-only runs never receive writer-owned phases", () => {

@@ -1,5 +1,18 @@
 # AOHYS Development System
 
+## RÁPIDO → BIEN → BARATO
+
+Nuestra prioridad es entregar la funcionalidad completa y usable lo más rápido
+posible; después, maximizar corrección; después, minimizar costo. Medimos hasta
+el resultado, incluidas las correcciones. Astra decide, reparte, revisa e integra;
+los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
+
+[El sistema completo, explicado paso a paso](docs/system-flow.md).
+
+El candidato local 1.12.0 corrige la selección duplicada de proveedores y hace
+las pruebas nuevas opcionales según el comportamiento que protegen. La versión
+publicada sigue siendo 1.11.1 hasta su publicación explícita.
+
 Version 1.11.1 includes the complete pinned Impeccable 4.3.0 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
@@ -9,7 +22,10 @@ operations use the host's existing tool composition. See
 adopted PStack 0.15.0 tactics and verification limits.
 
 
-The canonical, versioned source for Alejandro Ortiz Corro's global development contract. Version `1.9.0` aligns active instructions with Astra guidance: preserve authorized outcomes, use proportional review, and stop redundant verification. Astra owns judgment and Computer Use; OpenCode Go implements bounded work, Fable assists complex review, and Luna is the final fast fallback. Catalog `0.30.0` retains automatic completion documents, on-demand reviews/spec explanations, portable PR Lens maps and the pinned design skills. The five core repositories are NutriPlan, The Barber Central, Casa Roca, aohys.com, and ETERIA.
+The canonical, versioned source for Alejandro Ortiz Corro's development contract.
+Astra owns decisions and integration; the editable roster selects execution workers.
+The five core repositories are NutriPlan, The Barber Central, Casa Roca,
+aohys.com, and ETERIA.
 
 This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
 
@@ -22,6 +38,14 @@ by ordered substitutes. Change model ids or reasoning levels there, then run
 `pnpm roster:check`. The orchestration planner reads the same file and fails
 closed when an edit is malformed. Published `config/<version>/` rosters remain
 immutable release snapshots.
+
+This file controls the resolver, not every live host setting. `model-route` uses
+an input roster, a requested version snapshot, or the executing package's
+`config/agent-roster.json`. The installed HOME copy and native agent TOMLs are
+distributed artifacts; editing one does not reconfigure running agents. Pass the
+selected model/effort through the host's supported dispatch and verify runtime.
+`serviceTier` is propagated to the Codex CLI; an omitted tier retains the historic
+priority default. Native roles may have fixed model settings.
 
 ## Requirements
 
@@ -194,13 +218,12 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.16 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
-`model-route` resolves the declared chain without contacting providers. Astra runs
-in Codex. OpenCode Go GLM 5.3 Flash High is the first worker, followed by
-runtime-verified Go Qwen3.8 Flash, Devin SWE-1.7 Lightning Medium, Factory GLM,
-and Codex Luna High. Factory/Devin Fable Medium assist complex review. Exact
-requested and observed model IDs remain separate until runtime evidence matches.
-Astra executes ordinary review phases in the parent; deterministic Git, search,
-and checks use tools directly. See [current routing policy](artifacts/1.9.0/model-routing.md).
+`model-route` resolves the declared chain without contacting providers. Only
+OpenCode Go and Codex participate in current routes. Muse High leads bounded
+execution; GLM and runtime-verified Qwen are Go alternatives. Luna Max with
+priority requested is the Codex alternative. Astra reviews and integrates.
+Requested and observed model IDs remain separate until runtime evidence matches.
+See [current routing policy](docs/model-routing.md).
 
 An unshipped cloud-first Devin factory is retained only as a design proposal in
 [`docs/devin-factory/`](docs/devin-factory/README.md) and
