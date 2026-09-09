@@ -1,5 +1,12 @@
 # Spec: sistema de desarrollo multi-harness
 
+## Prioridad vigente: RÁPIDO → BIEN → BARATO
+
+La velocidad hasta la funcionalidad completa y usable es la primera prioridad;
+la corrección es la segunda y el costo la tercera. Incluye correcciones y entrega
+en el tiempo medido. ADR 0025 aclara ejecución, contexto y verificación.
+
+
 
 > Imported from [Linear bootstrap spec](https://linear.app/aohys/document/spec-sistema-de-desarrollo-multi-harness-b30eaf6ef916) on 2026-07-19. Git history in this repository is canonical for implemented contract versions; Linear remains the operational tracker.
 

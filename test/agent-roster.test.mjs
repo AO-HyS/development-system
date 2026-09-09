@@ -27,14 +27,12 @@ test("aliases share one ordered candidate list without duplicating policy", () =
   assert.equal(rosterModel("implementation-default").requested, "opencode-go/muse-spark-1.3-contributor");
 });
 
-test("fast-execution leads with Muse and preserves the GLM/Qwen/Devin/Factory/Luna order", () => {
+test("fast-execution leads with Muse and preserves the GLM/Qwen/Luna order", () => {
   const chain = rosterChain("fast-execution");
   assert.deepEqual(chain.map((candidate) => candidate.model), [
     "opencode-go/muse-spark-1.3-contributor",
     "opencode-go/glm-5.3-flash",
     "opencode-go/qwen3.8-flash",
-    "swe-1-7-lightning",
-    "glm-5.3-flash",
     "gpt-5.6-luna",
   ]);
   const route = rosterRoute("fast-execution");

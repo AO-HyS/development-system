@@ -105,7 +105,7 @@ export function resolveModelRoute(input) {
       resolvedModel,
       resolvedModelStatus: resolvedModel !== null ? "receipt-matched" : "receipt-required",
       escalationApplied: astraEscalation,
-      invocation: invocationFor(normalized.harness, normalized.model, reasoning),
+      invocation: invocationFor(normalized.harness, normalized.model, reasoning, normalized.serviceTier),
     };
     const attempt = { candidateId: normalized.id, harness: normalized.harness, model: normalized.model, status: "selected", reason: null, boundaryCrossed: false, boundary: normalized.independenceBoundary };
     attempts.push(attempt);
@@ -214,8 +214,8 @@ function availabilityFor(unavailable, candidate) {
   return model;
 }
 
-/** @param {string} harness @param {string} model @param {string} reasoning */
-function invocationFor(harness, model, reasoning) {
+/** @param {string} harness @param {string} model @param {string} reasoning @param {{tier: string} | null} serviceTier */
+function invocationFor(harness, model, reasoning, serviceTier) {
   if (harness === "opencode") {
     return { command: "opencode", args: ["run", "--pure", "--model", model, "--variant", reasoning, "--format", "json"] };
   }
@@ -240,7 +240,7 @@ function invocationFor(harness, model, reasoning) {
       "--config",
       `model_reasoning_effort=\"${reasoning}\"`,
       "--config",
-      'service_tier="priority"',
+      `service_tier=${JSON.stringify(serviceTier?.tier ?? "priority")}`,
     ],
   };
 }

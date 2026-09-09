@@ -787,7 +787,7 @@ function adapterContentsWithProviderReadiness(audit, harness) {
   contents = contents.replaceAll(", $orchestration-plan", "");
   contents = contents.replace(
     "Recommendation-only requests remain read-only.",
-    "Recommendation-only requests remain read-only. Astra owns orchestration, decisions, design, review, Computer Use and integration. Deterministic searches, Git operations and checks run directly with tools. Bounded implementation uses OpenCode Go first, Factory/Devin as declared fallbacks, and Luna last; Fable assists complex review. Logical phases do not mandate separate agents. Preserve publication authority already granted by the user. An exact authorized multi-ticket work graph routes automatically to dependency-aware parallel lanes; ticket count alone never activates work.",
+    "Recommendation-only requests remain read-only. Astra owns orchestration, decisions, design, review, Computer Use and integration. Deterministic searches, Git operations and checks run directly with tools. Bounded implementation uses OpenCode Go first, Luna Max with priority as the Codex alternative; Astra handles complex review. Logical phases do not mandate separate agents. Preserve publication authority already granted by the user. An exact authorized multi-ticket work graph routes automatically to dependency-aware parallel lanes; ticket count alone never activates work.",
   );
   contents = replaceAdapterSection(
     contents,

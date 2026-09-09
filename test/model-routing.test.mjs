@@ -261,43 +261,13 @@ test("fast-execution follows the declared OpenCode-first route order", () => {
       { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
     ],
   });
-  assert.equal(third.selected.model, "swe-1-7-lightning");
-  assert.equal(third.selected.reasoning, "medium");
-  assert.deepEqual(third.selected.invocation, { command: "devin", args: ["--model", "swe-1-7-lightning-medium", "--print"] });
-  const fourth = resolveModelRoute({
-    ...base,
-    unavailable: [
-      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
-      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
-      { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
-    ],
-  });
-  assert.equal(fourth.selected.model, "glm-5.3-flash");
-  assert.equal(fourth.selected.harness, "factory");
-  const fifth = resolveModelRoute({
-    ...base,
-    unavailable: [
-      { candidateId: "opencode-muse-spark-1.3-contributor", reason: "quota-exhausted" },
-      { candidateId: "opencode-glm-5.3-flash", reason: "quota-exhausted" },
-      { candidateId: "devin-swe-1-7-lightning", reason: "unavailable" },
-      { candidateId: "factory-glm-5.3-flash", reason: "quota-exhausted" },
-    ],
-  });
-  assert.equal(fifth.selected.model, "gpt-5.6-luna");
-  assert.equal(fifth.selected.reasoning, "high");
-  assert.equal(fifth.selected.fallbackOnly, true);
-  assert.deepEqual(fifth.selected.invocation, {
+  assert.equal(third.selected.model, "gpt-5.6-luna");
+  assert.equal(third.selected.reasoning, "max");
+  assert.equal(third.selected.fallbackOnly, true);
+  assert.deepEqual(third.selected.invocation, {
     command: "codex",
-    args: [
-      "exec",
-      "--strict-config",
-      "--model",
-      "gpt-5.6-luna",
-      "--config",
-      'model_reasoning_effort="high"',
-      "--config",
-      'service_tier="priority"',
-    ],
+    args: ["exec", "--strict-config", "--model", "gpt-5.6-luna",
+      "--config", 'model_reasoning_effort="max"', "--config", 'service_tier="priority"'],
   });
 });
 

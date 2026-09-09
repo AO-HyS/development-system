@@ -69,7 +69,7 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
   assert.equal(result.lanes[0].modelRoute.chain.at(-1).model, "gpt-5.6-luna");
-  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "max");
   assert.deepEqual(result.lanes[0].expectedOutputs, baseContract.expectedOutputs);
   assert.deepEqual(result.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
   assert.deepEqual(result.externalWriteIntents, []);
@@ -87,7 +87,7 @@ test("explicit structured review follows the fast chain then protected correctio
   assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/muse-spark-1.3-contributor");
   assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
   assert.equal(result.lanes[0].modelRoute.chain.at(-1).model, "gpt-5.6-luna");
-  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "high");
+  assert.equal(result.lanes[0].modelRoute.chain.at(-1).reasoning, "max");
   const verifiedAvailabilityCandidate = result.lanes[0].modelRoute.chain.find(
     (candidate) => candidate.model === "opencode-go/qwen3.8-flash",
   );
@@ -351,7 +351,7 @@ test("authorized graphs cannot escape task scope or choose their own writer rout
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.role === "fast_implementer"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/muse-spark-1.3-contributor"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain.at(-1).model === "gpt-5.6-luna" && lane.agent.modelRoute.chain.at(-1).reasoning === "high"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain.at(-1).model === "gpt-5.6-luna" && lane.agent.modelRoute.chain.at(-1).reasoning === "max"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 
   const specialistProtected = planOrchestration({
