@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-Version 1.11.0 includes the complete pinned Impeccable 4.3.0 skill and its
+Version 1.11.1 includes the complete pinned Impeccable 4.3.0 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
 can prepare bounded scripts or media through `evidence-preparation`. Stable
@@ -34,7 +34,7 @@ immutable release snapshots.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.11.0/aohys-development-system-1.11.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.11.1/aohys-development-system-1.11.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -44,11 +44,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.11.0
-./bin/development-system sync-skills --version 0.32.0
+./bin/development-system install --version 1.11.1
+./bin/development-system sync-skills --version 0.32.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.32.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.32.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -215,7 +215,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.11.0`, `sync-skills --version 0.32.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.11.1`, `sync-skills --version 0.32.1`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -274,3 +274,7 @@ sources; `pnpm scenario` exercises isolated installation and recovery.
 `pnpm rollout:validate` remains an explicit audit of the July 20 historical
 pilot and requires its original private recap files. It is not a current-release
 gate; absent archived files remain an audit gap.
+
+Catalog 0.32.1 explicitly declares the existing `.codex` and `.factory`
+Impeccable compatibility copies as mirrors of the canonical `.agents` skill.
+These mirror paths do not certify another harness or create additional model routes.

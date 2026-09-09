@@ -80,3 +80,10 @@ lifecycle and repository preparation. Missing historical private files do not
 certify or invalidate the current release; no recap is fabricated or marked
 verified. This is a deliberate retirement of a historical pilot gate, not a
 claim that its missing evidence was recovered.
+
+The live upgrade exposed pre-existing Impeccable aliases in `.codex/skills`
+and `.factory/skills`. Catalog 0.32.1 / contract 1.11.1 declares their exact
+canonical mirror relationship instead of treating them as unmanifested
+entries. The isolated skill scenario now starts with those upstream symlinks
+and verifies identical mirrors after installation and restoration on rollback.
+No published 1.11.0 artifact or 0.32.0 catalog is rewritten.

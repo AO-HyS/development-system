@@ -54,6 +54,15 @@ await writeFile(staleWorkspace, "stale checkout output\n", "utf8");
 await mkdir(dirname(unrelated), { recursive: true });
 await writeFile(unrelated, "user-owned\n", "utf8");
 
+// An upstream installation may already expose these compatibility symlinks.
+const oldImpeccable = resolve(home, ".agents/skills/impeccable/SKILL.md");
+await mkdir(dirname(oldImpeccable), { recursive: true });
+await writeFile(oldImpeccable, "upstream installation before migration\n");
+for (const legacyRoot of [".codex", ".factory"]) {
+  await mkdir(resolve(home, legacyRoot, "skills"), { recursive: true });
+  await symlink("../../.agents/skills/impeccable", resolve(home, legacyRoot, "skills/impeccable"));
+}
+
 assert.equal(step(["audit-skills"], 1).status, "invalid");
 step(["sync-skills", "--version", "0.3.1", "--source-root", sourceRoot, "--source-commit", sourceCommit]);
 step(["sync-skills", "--source-root", sourceRoot, "--source-commit", sourceCommit]);
@@ -83,5 +92,10 @@ assert.equal((await lstat(brokenFactoryLink)).isSymbolicLink(), true);
 assert.equal(await readlink(brokenFactoryLink), "../../.agents/skills/missing");
 assert.equal(await readFile(staleWorkspace, "utf8"), "stale checkout output\n");
 assert.equal(await readFile(unrelated, "utf8"), "user-owned\n");
+
+assert.equal(await readFile(oldImpeccable, "utf8"), "upstream installation before migration\n");
+for (const legacyRoot of [".codex", ".factory"]) {
+  assert.equal(await readlink(resolve(home, legacyRoot, "skills/impeccable")), "../../.agents/skills/impeccable");
+}
 
 process.stdout.write(`Skill scenario complete. Isolated HOME: ${home}\n`);
