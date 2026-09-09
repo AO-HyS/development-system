@@ -57,6 +57,16 @@ import { readProviderFailures, recordProviderFailure } from "./provider-availabi
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
+/** @param {string | undefined} explicitVersion */
+async function readSkillCatalog(explicitVersion) {
+  if (explicitVersion) return JSON.parse(await readFile(resolve(repositoryRoot, "catalog", `${explicitVersion}.json`), "utf8"));
+  const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
+  const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${metadata.contractVersion ?? metadata.version}.json`), "utf8"));
+  const artifact = manifest.artifacts.find((/** @type {{logicalName: string}} */ item) => item.logicalName === "skill-catalog");
+  if (!artifact) throw new Error("Current contract has no skill catalog");
+  return JSON.parse(await readFile(resolve(repositoryRoot, artifact.sourcePath), "utf8"));
+}
+
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
@@ -234,10 +244,7 @@ export async function run(argv) {
   } else if (command === "rollback") {
     result = await rollbackInstallation({ home: options.home });
   } else if (command === "audit-skills" || command === "sync-skills") {
-    const version = options.version ?? "0.31.0";
-    const catalog = JSON.parse(
-      await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
-    );
+    const catalog = await readSkillCatalog(options.version);
     if (command === "audit-skills") {
       const evidence = options.evidence
         ? JSON.parse(await readFile(resolve(options.evidence), "utf8"))
@@ -252,10 +259,7 @@ export async function run(argv) {
       });
     }
   } else if (command === "rollback-skills") {
-    const version = options.version ?? "0.31.0";
-    const catalog = JSON.parse(
-      await readFile(resolve(repositoryRoot, "catalog", `${version}.json`), "utf8"),
-    );
+    const catalog = await readSkillCatalog(options.version);
     result = await rollbackSkillSync({ home: options.home, catalog });
   } else if (command === "guardrails-enable") {
     result = await enableGlobalGuardrails({ home: options.home });
