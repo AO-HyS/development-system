@@ -1,0 +1,176 @@
+# Development System Contract 1.16.1
+
+## RÁPIDO → BIEN → BARATO
+
+Priority order: fastest delivery of the complete usable functionality, then
+correctness, then lowest cost. Measure elapsed time through corrections and
+required delivery, not just first output. Choose capable fast workers; Astra
+selects work, catches errors and integrates. Spend more on a model or an early
+prototype when it is expected to finish the requested result sooner. Preserve
+accepted behavior, authorization and data boundaries. Optional process is not
+a new release gate.
+
+Astra owns orchestration, architecture, design, ordinary review, Computer Use,
+integration and completion. OpenCode Go is the first execution provider; the
+editable roster declares the exact model order and reasoning. OpenCode Go and
+Codex are the only active providers. Luna uses priority with role-specific effort: High for code mapping, general
+implementation, test execution and evidence preparation; Max for fast implementation
+and mechanical work. Astra requests normal/default speed explicitly. Astra handles independent review.
+Sol has no active route.
+
+## Instruction precedence and follow-through
+
+Current user instructions and retained authorization take precedence over skill
+guidelines and historical planning text. Preserve platform security requirements
+and applicable repository protections. An old spec approval gate does not reopen
+a decision already settled by the user. Load only relevant skill references.
+If a skill actually blocks work, cite its exact file and instruction, explain
+why it applies, and distinguish that requirement from your interpretation.
+Complete independent authorized work while a genuinely missing answer is pending.
+
+## Execution and review
+
+Use direct tools for deterministic searches, commands and evidence collection.
+Request Astra xHigh at normal speed for feature orchestration, provisionally
+selected by the complete-flow pilot. Use lower effort for explicitly simple work;
+specialists retain their measured Medium or High effort. Active host evidence establishes the effective effort.
+Tie T3 CLI workers to their owning turn through `run-worker`; ending or losing
+the turn stops the process group. Other hosts use native attached cancellation.
+Delegate a bounded code task when another worker can reduce delivery time.
+The parent resolves the provider once; selected workers execute rather than
+restarting the fallback chain. Use compact task packets and relevant source
+pointers; full-history inheritance needs a concrete reason.
+Give each writer its repository, revision, ownership, intended behavior,
+focused checks and stop condition. Preserve useful work on a fallback and
+never restart an exhausted provider at every step. Batch independent reads and tool calls. Overlap independent CI and useful local
+work when it shortens delivery; serialize edits and commands that mutate the
+same build state. Different writers may run
+concurrently only on explicitly disjoint ownership.
+
+Simplification, behavior-first evidence, test-value review, correction and
+objective verification remain logical responsibilities. They do not require
+a new agent or conversation for each phase. Ordinary work uses one bounded
+execution and parent review. Structured planning/review is reserved for observed
+risk, dependencies or an explicit request. UX, DX and AX guide the smallest useful
+change; they do not create audit stages. Astra reviews ordinary worker
+output. An independent Astra reviewer assists on observed complex risk or an explicitly requested
+independent review. A correction phase with no findings is an evidenced no-op;
+after edits, review the delta and unresolved risks rather than restarting all
+exploration. Never mark a critical finding resolved merely because a timeout
+or budget elapsed. Preserve the host-bound correction and authorization checks.
+
+Keep authorization for implementation, installation, commit, push, PR, merge,
+release, production and paid services distinct. One explicit user instruction
+may authorize several of those operations; retain it instead of requesting
+the same permission again. An audit or a planner result grants none of them.
+
+## Product evidence
+
+Inspect the affected real flow as soon as it exists. Astra may execute Computer
+Use directly and owns the judgment. Neutral delegated execution still receives
+only its authorized execution plan; private rubrics and host authority remain
+separate. Recording is a tool operation, not a reason to add another model.
+Respect repository-specific browser mechanisms and authenticated roles.
+
+Choose the quickest adequate verification for the changed behavior. New tests
+are optional and must catch a named failure that leads to correction. Static
+checks, real product flows and reviewers have distinct coverage; test counts
+do not demonstrate delivery.
+Protect authorization, data boundaries, idempotency and loss prevention.
+Do not add implementation-mirroring tests or use line counts, test counts,
+styling scores or a green workflow as proof of a usable product. Broad suites
+require an applicable repository requirement or explicit user instruction.
+Once affected checks and required gates pass, continue to the authorized delivery.
+Repeat only for a relevant edit, failure, or unresolved concern. Reuse evidence
+only while the tested candidate, command, inputs and environment remain applicable;
+never bypass required hooks or CI to save time. Preserve test exit codes when
+summarizing logs; a successful output filter does not prove a passing check.
+
+## Skills and distribution
+
+Catalog 0.37.1 retains the Jakub interface skills, make-interfaces-feel-better,
+Show-me and PR Lens with exact upstream commits and hashes. Impeccable remains
+the design-direction reference when installed. Choose the relevant specialty;
+do not stack every design skill on every change. Use visual explanations when
+they shorten review. Rendering stays local unless publication is authorized.
+
+Ordinary development closure uses a concise final response. Generate a private
+completion document when requested or needed for a durable evidence package. On-demand review and spec
+explanations use the same `document` command and presentation. Show-me selects
+the useful visual, PR Lens supplies static SVG maps, and explicit measurements
+use HTML/CSS bars. Preserve the complete source packet for regeneration.
+Check the actual delivered file with authorized Computer Use when visual
+acceptance applies. A fixture preview does not certify the delivered document.
+Generation creates no workflow or implementation authority. The delivery
+command validates files and hashes before recording its recap step. Normal
+conversation closure relies on the loaded skill calling the command; there is
+no universal background turn-close hook. Working Backwards retains its workflow
+presentation and authority boundaries.
+
+The installable npm-format package is distributed as a versioned GitHub
+release asset. Its provenance records the canonical commit and packaged file
+hashes; the package manager's lockfile binds the downloaded tarball integrity.
+This is not a claim of a cryptographic publisher signature. Installation never
+writes HOME from a package lifecycle hook. The explicit `setup` command installs
+the contract and skill catalog together. Product repositories pin one tooling
+dependency and expose `pnpm ds`; changing model policy does not itself require
+deploying their applications.
+
+Published artifacts and manifests through 1.16.0 remain immutable rollback
+targets. HOME is generated state. Verify package installation and changes in an
+isolated HOME before applying an authorized installation to the operator.
+
+Measure first useful evidence, accepted delivery, provider/CI/tool waits,
+handoff failures, user corrections, and incremental provider usage. Keep
+unknown costs unknown and do not add overlapping agent time to elapsed time.
+
+## Visual delivery evidence
+
+Completion reports attach authentic before/after screenshots and an actual recording for UI or backend changes with a visible outcome. Capture the baseline before implementation; preserve revision and capture context. Missing media stays explicit. Purely nonvisual work declares its reason and uses behavioral evidence. The shared document embeds media locally; presence never establishes verification or deployment authority. Follow flow-implement and working-backwards/report-reference.md.
+
+## Visual acceptance before final evidence
+
+Use the full pinned Impeccable skill and `design-quality`. After implementing
+and finishing the chosen Impeccable playbook, the orchestrator assigns an
+independent Astra visual critic. A distinct finish reviewer counts; self-review
+does not. Resolve its concrete findings before recording final delivery evidence
+from that candidate. Working screenshots are diagnostic, not final delivery.
+Review only affected states again after corrections; no numerical-score loops.
+Astra retains Computer Use. Follow `evidence-capture` for stable native tool
+batches and media integrity. Luna may prepare scripts or existing media, without
+browser authority. Use representative flows plus distinct risks unless the user
+asks for exhaustive coverage; reuse evidence only when candidate/state match.
+
+## Durable design direction
+
+Use `design-direction` for visual exploration and approved-design handoffs. Its
+reusable method is available without an article link; project briefs retain the
+selected identity, current corrections and approved references. Keep those briefs
+discoverable through project pointers and include them in implementation packets.
+Approved references must be retrievable and visible from the spec and relevant
+tickets in a fresh thread. Follow design-direction's handoff reference; inspect
+existing uploads before claiming them missing. Composition criteria govern
+hierarchy and density even when generated text and data are illustrative.
+
+Independent critique covers the requested composition, not only clipping or a
+bounded correction list. Material deviations block visual acceptance. Compare a
+representative screen early for a new shared language. Record the final visible
+outcome inside the delivered clip and inspect its actual end. A rejected candidate
+is an incomplete attempt, not an accepted delivery with a measured completion time.
+Existing Impeccable, independent critique and evidence roles remain in place.
+
+## Implementation and orchestration continuity
+
+Use flow-implement to carry state/data invariants into stateful changes and
+verify meaningful transitions. A passing check that also passed the broken
+behavior does not establish the claimed fix. Independent code review remains
+useful when it catches these defects; it is not replaced by visual review.
+
+For multi-step or resumed work, coding-orchestration's execution-continuity
+reference owns startup, compact current state, recovery and outcome reconciliation.
+Check usable account/organization and host capabilities early. Use a bounded Astra
+browser-QA pass when sustained browser work dominates and the host supports the
+handoff; keep simple work direct and one driver per session. Retry after relevant
+new evidence, preserve useful output and complete the authorized delivery surface.
+Required repo checks remain; broader reruns need an applicable gate or actual
+change/failure. Update superseded completion claims after rejection.
