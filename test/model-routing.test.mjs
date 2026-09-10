@@ -8,6 +8,7 @@ import { resolveModelRoute } from "../src/model-routing.mjs";
 const root = resolve(import.meta.dirname, "..");
 const roster = JSON.parse(await readFile(resolve(root, "config/1.5.16/capability-roster.json"), "utf8"));
 const agentRoster = JSON.parse(await readFile(resolve(root, "config/agent-roster.json"), "utf8"));
+const historicalAgentRoster = JSON.parse(await readFile(resolve(root, "config/1.16.1/agent-roster.json"), "utf8"));
 
 test("adversarial review uses Fable xhigh by default and reports explicit evidence", () => {
   const result = resolveModelRoute({ roster, capability: "review", routeSlot: "adversarial-review" });
@@ -179,8 +180,8 @@ test("escalation keeps difficult Astra review at high", () => {
   assert.equal(escalated.selected.escalationApplied, true);
 });
 
-test("OpenCode candidates invoke opencode run with pure, model, variant and json format", () => {
-  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+test("historical 1.16.1 OpenCode candidates invoke opencode run with pure, model, variant and json format", () => {
+  const base = { roster: historicalAgentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const first = resolveModelRoute(base);
   assert.equal(first.valid, true);
   assert.equal(first.selected.id, "opencode-muse-spark-1.3-contributor");
@@ -210,8 +211,8 @@ test("OpenCode candidates invoke opencode run with pure, model, variant and json
   });
 });
 
-test("Muse selection stays unresolved without a matching receipt and resolves exactly with one", () => {
-  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+test("historical 1.16.1 Muse selection stays unresolved without a matching receipt and resolves exactly with one", () => {
+  const base = { roster: historicalAgentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const unresolved = resolveModelRoute(base);
   assert.equal(unresolved.selected.id, "opencode-muse-spark-1.3-contributor");
   assert.equal(unresolved.selected.independenceBoundary, "provider:opencode-go");
@@ -227,8 +228,8 @@ test("Muse selection stays unresolved without a matching receipt and resolves ex
   assert.equal(resolved.selected.resolvedModelStatus, "receipt-matched");
 });
 
-test("Muse policy-blocked and quota fallback advances to GLM", () => {
-  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+test("historical 1.16.1 Muse policy-blocked and quota fallback advances to GLM", () => {
+  const base = { roster: historicalAgentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const policy = resolveModelRoute({
     ...base,
     unavailable: [{ candidateId: "opencode-muse-spark-1.3-contributor", reason: "policy-blocked" }],
@@ -246,8 +247,8 @@ test("Muse policy-blocked and quota fallback advances to GLM", () => {
   assert.equal(quota.selected.resolvedModel, null);
 });
 
-test("fast-execution follows the declared OpenCode-first route order", () => {
-  const base = { roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
+test("historical 1.16.1 fast-execution follows the declared OpenCode-first route order", () => {
+  const base = { roster: historicalAgentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" };
   const first = resolveModelRoute(base);
   assert.equal(first.selected.model, "opencode-go/muse-spark-1.3-contributor");
   const second = resolveModelRoute({
@@ -288,6 +289,40 @@ test("new mappings stay provisional and resolution stays receipt-required withou
   assert.equal(result.selected.resolvedModel, null);
   assert.equal(result.selected.resolvedModelStatus, "receipt-required");
   assert.equal(result.authority.dispatchAuthorized, false);
+});
+
+test("current fast-execution defaults to advisory Terra Low priority and requires a receipt", () => {
+  const result = resolveModelRoute({
+    roster: agentRoster,
+    capability: "mechanical-execution",
+    routeSlot: "fast-execution",
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.selected.id, "codex-terra-priority");
+  assert.equal(result.selected.requestedModel, "gpt-5.6-terra");
+  assert.equal(result.selected.reasoning, "low");
+  assert.equal(result.selected.resolvedModel, null);
+  assert.equal(result.selected.resolvedModelStatus, "receipt-required");
+  assert.deepEqual(result.selected.serviceTier, {
+    tier: "priority",
+    label: "fast",
+    status: "runtime-required",
+  });
+  assert.deepEqual(result.selected.invocation, {
+    command: "codex",
+    args: [
+      "exec",
+      "--strict-config",
+      "--model",
+      "gpt-5.6-terra",
+      "--config",
+      'model_reasoning_effort="low"',
+      "--config",
+      'service_tier="priority"',
+    ],
+  });
+  assert.equal(result.authority.dispatchAuthorized, false);
+  assert.deepEqual(result.authority.providerCalls, []);
 });
 
 test("resolveModelRoute accepts installed aliases for the matching capability slot", () => {

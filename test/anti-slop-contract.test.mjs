@@ -575,7 +575,9 @@ test("same-ID writer substitutes fail the trusted canonical writer fingerprint",
     ["ownership duplicated", (lane) => ({ ...lane, ownership: [...lane.ownership, lane.ownership[0]] })],
     ["model requested", (lane) => ({ ...lane, model: { ...lane.model, requested: "other-model" } })],
     ["model resolved", (lane) => ({ ...lane, model: { ...lane.model, resolved: "other-model" } })],
-    ["model reasoning", (lane) => ({ ...lane, model: { ...lane.model, reasoning: "low" } })],
+    // The current Terra writer already uses low reasoning; mutate to a
+    // different supported level so this remains a real fingerprint tamper.
+    ["model reasoning", (lane) => ({ ...lane, model: { ...lane.model, reasoning: "high" } })],
     ["route slot", (lane) => ({ ...lane, modelRoute: { ...lane.modelRoute, routeSlot: "fast-execution" } })],
     ["route removed", (lane) => ({ ...lane, modelRoute: undefined })],
     ["route downgraded", (lane) => ({ ...lane, modelRoute: { ...lane.modelRoute, receiptRequired: false } })],
@@ -603,7 +605,9 @@ test("same-ID writer substitutes fail the trusted canonical writer fingerprint",
     ["agent role", (lane) => ({ ...lane, agent: { ...lane.agent, role: "reviewer" } })],
     ["agent harness", (lane) => ({ ...lane, agent: { ...lane.agent, harness: "factory" } })],
     ["agent requested model", (lane) => ({ ...lane, agent: { ...lane.agent, requestedModel: "other-model" } })],
-    ["agent reasoning", (lane) => ({ ...lane, agent: { ...lane.agent, reasoning: "low" } })],
+    // The current Terra writer already uses low reasoning; mutate to a
+    // different supported level so this remains a real fingerprint tamper.
+    ["agent reasoning", (lane) => ({ ...lane, agent: { ...lane.agent, reasoning: "high" } })],
     ["agent resolved model", (lane) => ({ ...lane, agent: { ...lane.agent, resolvedModel: "other-model" } })],
     ["agent route slot", (lane) => ({ ...lane, agent: { ...lane.agent, modelRoute: { ...lane.agent.modelRoute, routeSlot: "implementation-default" } } })],
     ["agent route removed", (lane) => ({ ...lane, agent: { ...lane.agent, modelRoute: null } })],
