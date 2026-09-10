@@ -4,8 +4,16 @@
 
 Nuestra prioridad es entregar la funcionalidad completa y usable lo más rápido
 posible; después, maximizar corrección; después, minimizar costo. Medimos hasta
-el resultado, incluidas las correcciones. Astra decide, reparte, revisa e integra;
-los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
+el resultado, incluidas las correcciones. El modelo elegido al iniciar la
+conversación conserva la orquestación; el parent elige agentes y el roster ofrece
+recomendaciones. Cada proceso debe ayudar a llegar antes.
+
+La versión 1.17.0 publica el catálogo 0.38.0 y las skills portátiles de
+orquestación, implementación, dirección visual, calidad y evidencia. Conserva
+los invariantes de estado, ownership acotado, referencias visuales recuperables
+y crítica visual independiente antes del walkthrough final. El experimento
+SWE-2 mantiene todos sus descendientes dentro de la familia SWE y no reclama
+adaptadores certificados ni influencia del host hasta contar con evidencia real.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 
@@ -19,6 +27,12 @@ más gates. Ver [decisión y límites](docs/adr/0029-visual-handoff-and-acceptan
 Astra xHigh a velocidad normal conserva el default provisional; Go ejecuta.
 Luna usa High o Max con Fast según la especialidad. Ver [ajustes medidos](docs/adr/0028-measured-specialist-defaults.md).
 
+Version 1.17.0 publishes catalog 0.38.0 and portable orchestration, implementation,
+visual-direction, quality and evidence skills. The starting model remains the
+orchestrator; the parent chooses agents and the roster provides recommendations.
+SWE-2 descendants remain within the SWE family, and no host adapter certification
+or behavioral influence is claimed without live evidence.
+
 Version 1.16.1 includes the complete pinned Impeccable 4.3.1 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
@@ -29,7 +43,8 @@ adopted PStack 0.15.0 tactics and verification limits.
 
 
 The canonical, versioned source for Alejandro Ortiz Corro's development contract.
-Astra owns decisions and integration; the editable roster selects execution workers.
+The model selected when the conversation starts owns orchestration; the parent
+chooses agents and the editable roster provides role recommendations.
 The five core repositories are NutriPlan, The Barber Central, Casa Roca,
 aohys.com, and ETERIA.
 
@@ -38,9 +53,10 @@ This repository owns generated development-system state. Product repositories co
 ## Editable agent roster
 
 [`config/agent-roster.json`](config/agent-roster.json) is the human-editable
-source of truth for agent assignments and model fallback order. Each route says
-what the agent does, when it is used, and lists its primary candidate followed
-by ordered substitutes. Change model ids or reasoning levels there, then run
+source of truth for role recommendations and available model data. Each route
+says what the agent does, when it is used, and lists candidates for an undecided
+parent. Explicit model or family choices take precedence. Change model ids or
+reasoning levels there, then run
 `pnpm roster:check`. The orchestration planner reads the same file and fails
 closed when an edit is malformed. Published `config/<version>/` rosters remain
 immutable release snapshots.
@@ -65,7 +81,7 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.16.1/aohys-development-system-1.16.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.17.0/aohys-development-system-1.17.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -75,11 +91,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.16.1
-./bin/development-system sync-skills --version 0.37.1
+./bin/development-system install --version 1.17.0
+./bin/development-system sync-skills --version 0.38.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.37.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.38.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -225,11 +241,13 @@ The scenarios create isolated temporary HOMEs and repositories. They prove insta
 
 Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.16 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
 
-`model-route` resolves the declared chain without contacting providers. Only
-OpenCode Go and Codex participate in current routes. Muse High leads bounded
-execution; GLM and runtime-verified Qwen are Go alternatives. Luna Max with
-priority requested is the Codex alternative. Astra reviews and integrates.
-Requested and observed model IDs remain separate until runtime evidence matches.
+`model-route` reads the roster's recommendations without contacting providers.
+The starting model remains the orchestrator and the parent chooses agents.
+DeepSeek/OpenCode may use available models, and a Codex parent may choose
+available GPT/Go tools. Requested and observed model IDs remain separate until
+runtime evidence matches; explicit SWE-2 lanes keep every descendant in the SWE
+family without Codex/Go fallback. Design, visual review and Computer Use require
+roles with the actual vision or browser capability needed by the task.
 See [current routing policy](docs/model-routing.md).
 
 An unshipped cloud-first Devin factory is retained only as a design proposal in
