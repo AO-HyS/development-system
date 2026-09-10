@@ -1,0 +1,25 @@
+---
+name: grill-with-docs
+description: Interview the user by topic and maintain planning documents when they explicitly ask to grill, question, define, or refine a software idea with docs. Do not invoke for ordinary implementation.
+---
+
+# Grill With Docs
+
+Use the `grilling` and `domain-modeling` skills together when the operator
+explicitly asks for a grilling session, asks to define an idea through
+questions, or asks to refine planning documents conversationally. Natural
+language is sufficient; no exact approval phrase or skill name is required.
+
+Ask all useful questions for one topic together, provide recommended options
+and examples, incorporate the answers into the durable document, then move to
+the next topic. Revisit a topic when an answer changes earlier assumptions.
+Stop when the operator asks to proceed, skip ceremony, create a spec, or
+implement. This skill never becomes an automatic gate for ordinary work.
+
+
+For a visual-design grill, use `design-direction` to carry the design method,
+compare alternatives and preserve the selected direction in the project brief.
+Reuse that interview; this wrapper adds no second question round.
+When proceeding to specs or tickets, complete `design-direction`'s visual
+handoff: the selected images must be retrievable and visible to a fresh thread,
+with the few composition criteria that distinguish the approved direction.

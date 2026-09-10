@@ -9,13 +9,14 @@ los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 
-La versión 1.15.0 incorpora `design-direction`: el método de diseño y
-las decisiones del proyecto se recuperan sin volver a pasar el artículo. Conserva
-la selección de proveedores y verificación proporcional de 1.12.0.
-Astra xHigh a velocidad normal orquesta como default provisional; Go ejecuta.
+La versión 1.16.0 corrige el handoff visual: referencias visibles y recuperables,
+criterios de composición que el crítico debe comprobar y videos que incluyen el
+resultado final. Reutiliza las skills existentes; no añade otro orquestador ni
+más gates. Ver [decisión y límites](docs/adr/0029-visual-handoff-and-acceptance.md).
+Astra xHigh a velocidad normal conserva el default provisional; Go ejecuta.
 Luna usa High o Max con Fast según la especialidad. Ver [ajustes medidos](docs/adr/0028-measured-specialist-defaults.md).
 
-Version 1.15.0 includes the complete pinned Impeccable 4.3.1 skill and its
+Version 1.16.0 includes the complete pinned Impeccable 4.3.1 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
 can prepare bounded scripts or media through `evidence-preparation`. Stable
@@ -61,7 +62,7 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.15.0/aohys-development-system-1.15.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.16.0/aohys-development-system-1.16.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -71,11 +72,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.15.0
-./bin/development-system sync-skills --version 0.36.0
+./bin/development-system install --version 1.16.0
+./bin/development-system sync-skills --version 0.37.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.36.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.37.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -241,7 +242,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.15.0`, `sync-skills --version 0.36.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.16.0`, `sync-skills --version 0.37.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
