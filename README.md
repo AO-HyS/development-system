@@ -9,12 +9,13 @@ los trabajadores rápidos ejecutan. Cada proceso debe ayudar a llegar antes.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 
-La versión 1.14.0 incorpora `design-direction`: el método de diseño y
+La versión 1.15.0 incorpora `design-direction`: el método de diseño y
 las decisiones del proyecto se recuperan sin volver a pasar el artículo. Conserva
 la selección de proveedores y verificación proporcional de 1.12.0.
-Astra Medium orquesta por defecto; Go ejecuta y Luna Max/priority es alternativa.
+Astra xHigh a velocidad normal orquesta como default provisional; Go ejecuta.
+Luna usa High o Max con Fast según la especialidad. Ver [ajustes medidos](docs/adr/0028-measured-specialist-defaults.md).
 
-Version 1.14.0 includes the complete pinned Impeccable 4.3.1 skill and its
+Version 1.15.0 includes the complete pinned Impeccable 4.3.1 skill and its
 existing command shortcuts. Visual delivery follows Impeccable → independent
 Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
 can prepare bounded scripts or media through `evidence-preparation`. Stable
@@ -45,8 +46,9 @@ an input roster, a requested version snapshot, or the executing package's
 `config/agent-roster.json`. The installed HOME copy and native agent TOMLs are
 distributed artifacts; editing one does not reconfigure running agents. Pass the
 selected model/effort through the host's supported dispatch and verify runtime.
-`serviceTier` is propagated to the Codex CLI; an omitted tier retains the historic
-priority default. Native roles may have fixed model settings.
+`serviceTier` is propagated to the Codex CLI; an omitted tier requests normal
+`default` speed. Astra declares default explicitly; Luna declares priority.
+Native roles have task-specific effort and unchanged sandbox settings.
 
 ## Requirements
 
@@ -59,7 +61,7 @@ priority default. Native roles may have fixed model settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.14.0/aohys-development-system-1.14.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.15.0/aohys-development-system-1.15.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -69,11 +71,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.11.1
-./bin/development-system sync-skills --version 0.32.1
+./bin/development-system install --version 1.15.0
+./bin/development-system sync-skills --version 0.36.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.32.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.36.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -239,7 +241,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.11.1`, `sync-skills --version 0.32.1`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.15.0`, `sync-skills --version 0.36.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

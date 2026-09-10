@@ -95,7 +95,9 @@ export function resolveModelRoute(input) {
       continue;
     }
     const astraEscalation = escalation && normalized.harness === "codex" && normalized.model === "gpt-6-astra";
-    const reasoning = astraEscalation ? (normalized.reasoning === "low" ? "medium" : "high") : normalized.reasoning;
+    const reasoning = astraEscalation
+      ? ({ low: "medium", medium: "high", high: "high", xhigh: "max", max: "max" }[normalized.reasoning] ?? normalized.reasoning)
+      : normalized.reasoning;
     const receiptModel = unavailableAttempt && unavailableAttempt.observedModel ? unavailableAttempt.observedModel : null;
     const resolvedModel = receiptModel !== null && receiptModel === normalized.model ? receiptModel : null;
     const selected = {
@@ -240,7 +242,7 @@ function invocationFor(harness, model, reasoning, serviceTier) {
       "--config",
       `model_reasoning_effort=\"${reasoning}\"`,
       "--config",
-      `service_tier=${JSON.stringify(serviceTier?.tier ?? "priority")}`,
+      `service_tier=${JSON.stringify(serviceTier?.tier ?? "default")}`,
     ],
   };
 }

@@ -42,11 +42,19 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Estado de este cambio
+## Configuración medida
 
-Candidato local 1.12.0: prioridad explícita, selección de proveedor solo por el
-padre, contexto acotado, tests nuevos opcionales y documentación proporcional.
-Conserva rutas de modelos y gates existentes. No demuestra todavía mayor velocidad.
-La comparación acordada son cuatro ejecuciones: misma tarea por repo con Astra
-Low y Medium, mismos workers, versión fijada y entornos aislados. Espera los
-pequeños tickets de Linear del usuario.
+La versión 1.15.0 usa Astra xHigh a velocidad normal para coordinar funcionalidades,
+como decisión provisional del piloto completo. Los especialistas Astra conservan
+Medium o High según su responsabilidad. Luna High + Fast cubre exploración,
+implementación general y preparación de evidencia; Luna Max + Fast cubre la
+alternativa de implementación rápida y el trabajo mecánico. Go conserva su ruta.
+
+Cada selección depende de la tarea; no activamos todos los especialistas en cada
+funcionalidad. Los comandos y grabaciones estables se ejecutan con herramientas.
+Impeccable y la crítica independiente preceden a la evidencia final. Las pruebas
+nuevas se justifican por un error concreto; se conservan los gates del repo.
+
+El piloto de especialistas ensayó 18 roles con tres esfuerzos cada uno. No mide
+semanas de cuota ni demuestra un ganador universal. Reutilizamos las ejecuciones
+completadas pese a los apagones. [Decisión y límites](adr/0028-measured-specialist-defaults.md).

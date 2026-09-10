@@ -147,6 +147,16 @@ test("Codex Luna fallback uses exec, max reasoning, and the priority tier", () =
   assert.equal(result.attempts[2].reason, "unavailable");
 });
 
+test("missing Codex service tier requests normal speed and explicit priority is preserved", () => {
+  const normal = structuredClone(agentRoster);
+  const route = normal.routes.find((entry) => entry.routeSlot === "general-review");
+  delete route.candidates[0].serviceTier;
+  const input = { roster: normal, capability: "review", routeSlot: "general-review" };
+  assert.ok(resolveModelRoute(input).selected.invocation.args.includes('service_tier="default"'));
+  route.candidates[0].serviceTier = { tier: "priority", label: "fast", status: "runtime-required" };
+  assert.ok(resolveModelRoute(input).selected.invocation.args.includes('service_tier="priority"'));
+});
+
 test("escalation keeps difficult Astra review at high", () => {
   const base = {
     roster: agentRoster,
