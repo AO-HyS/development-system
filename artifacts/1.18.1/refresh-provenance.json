@@ -1,0 +1,10 @@
+{
+  "sourcePost": "https://x.com/OpenAIDevs/status/2098480213244117065",
+  "sourceArticle": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+  "skills": [
+    "create-product-verification",
+    "maintain-product-verification",
+    "make-interfaces-feel-better"
+  ],
+  "localChange": "Remove model-name restrictions from verification generators and UI craft integration; preserve capable independent judgment and evidence boundaries."
+}

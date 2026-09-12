@@ -8,16 +8,17 @@ el resultado, incluidas las correcciones. El modelo elegido al iniciar la
 conversación conserva la orquestación; el parent elige agentes y el roster ofrece
 recomendaciones. Cada proceso debe ayudar a llegar antes.
 
-La versión 1.18.0 publica el catálogo 0.39.0: 22 skills con disparadores más
+La versión 1.18.1 publica el catálogo 0.39.1: 24 skills con disparadores más
 precisos y contexto cargado según la tarea. Los contratos locales conservan al
 modelo elegido como orquestador, reutilizan decisiones y evidencias válidas y
 continúan hasta el resultado autorizado. Incluye Impeccable 4.3.1 completo;
 la crítica visual independiente ocurre antes de la evidencia final.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
-Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md).
+Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md) y
+[la corrección de roles de verificación](docs/adr/0033-capability-based-verification-roles.md).
 
-Version 1.18.0 publishes catalog 0.39.0 with context-scoped global skills and
+Version 1.18.1 publishes catalog 0.39.1 with context-scoped global skills and
 repository adapters. The starting model remains the orchestrator. The parent
 chooses agents within the user's provider constraints and actual host
 capabilities; roster settings are recommendations. Visual delivery preserves
@@ -64,7 +65,7 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.18.0/aohys-development-system-1.18.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.18.1/aohys-development-system-1.18.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -74,11 +75,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.18.0
-./bin/development-system sync-skills --version 0.39.0
+./bin/development-system install --version 1.18.1
+./bin/development-system sync-skills --version 0.39.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.39.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.39.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -246,7 +247,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.18.0`, `sync-skills --version 0.39.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.18.1`, `sync-skills --version 0.39.1`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
