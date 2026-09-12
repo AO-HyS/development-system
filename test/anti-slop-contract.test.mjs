@@ -1153,7 +1153,7 @@ test("contract 1.5.17 and manifest 1.5.17 publish the executable anti-slop contr
   }
 });
 
-test("repository preparation records the executable lane contract and adapter surfaces it", async () => {
+test("repository preparation retains the explicit planner contract and surfaces proportional execution", async () => {
   const repository = await mkdtemp(resolve(tmpdir(), "aohys-anti-slop-repository-"));
   const write = async (path, contents) => {
     await mkdir(dirname(resolve(repository, path)), { recursive: true });
@@ -1216,13 +1216,14 @@ test("repository preparation records the executable lane contract and adapter su
   const adapter = await readFile(resolve(repository, ".codex/development-system/repository.md"), "utf8");
   const currentPackage = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
   assert.ok(adapter.includes("Contract version: `" + currentPackage.contractVersion + "`"));
-  assert.match(adapter, /executable lane contract/);
-  assert.match(adapter, /behavioral value/);
-  assert.match(adapter, /Correction applies only to actual findings/);
-  assert.match(adapter, /never quality gates/);
-  assert.match(adapter, /diagnostic only/);
-  assert.match(adapter, /scripts\/install\.mjs/);
-  assert.match(adapter, /never depend on installed skills/);
+  assert.equal(contract.antiSlop.activation, "explicit-orchestration-plan-only");
+  assert.equal(contract.antiSlop.ordinaryWork, "parent-owned-responsibilities-with-proportional-review-not-mandatory-lanes");
+  assert.match(adapter, /responsibilities, not mandatory new\nagents or fixed review loops/);
+  assert.match(adapter, /new tests need a named failure they catch/);
+  assert.match(adapter, /File counts and style scores are not gates/);
+  assert.match(adapter, /Planner output never performs writes/);
+  assert.match(adapter, /rejects\npath traversal and symlink escapes, including under force/);
+  assert.match(adapter, /structural readiness do not prove\nlive loading/);
   await rm(repository, { recursive: true, force: true });
 });
 
