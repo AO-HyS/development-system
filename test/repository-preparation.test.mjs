@@ -665,20 +665,20 @@ test("initialization is idempotent, stack-aware, and preserves product identity,
   assert.ok(initialized[".codex/development-system/repository.md"].toLowerCase().includes("global skill catalog `" + currentVersions.catalogVersion + "`"));
   assert.doesNotMatch(initialized[".codex/development-system/repository.md"], /skill catalog `0\.5\.1`/i);
   assert.match(initialized[".codex/development-system/repository.md"], /native goal.*persistence never expands authority/i);
-  assert.match(initialized[".codex/development-system/repository.md"], /exa-search.*PHI.*PII/i);
-  assert.match(
-    initialized[".codex/development-system/repository.md"],
-    /adapter never activates a paid service/i,
-  );
-  assert.match(
-    initialized[".codex/development-system/repository.md"],
-    /only declares its availability and never calls or activates it/i,
-  );
-  assert.match(initialized[".codex/development-system/repository.md"], /adapter readiness is structural, not proof of skill loading/i);
-  assert.match(initialized[".codex/development-system/repository.md"], /Product architecture baseline/i);
-  assert.match(initialized[".codex/development-system/repository.md"], /component.*cohesion.*not.*line count/is);
-  assert.match(initialized[".codex/development-system/repository.md"], /guardrails.*anti-slop.*Release Train.*Development System/is);
-  assert.match(initialized[".codex/development-system/repository.md"], /Commit, push, pull-request, preview, and deploy.*only when/is);
+  const adapter = initialized[".codex/development-system/repository.md"];
+  // Assert the public safety and routing contract without pinning a paragraph's wording.
+  assert.match(adapter, /exa-search[\s\S]*never send[^.]*PII[^.]*PHI/i);
+  assert.match(adapter, /adapter does\s+not call or activate a paid service/i);
+  assert.match(adapter, /structural readiness do not prove\s+live loading/i);
+  assert.match(adapter, /preserve dependency direction, public\s+interfaces/i);
+  assert.match(adapter, /cohesive modules/i);
+  assert.equal(contract.architectureBaseline.componentBoundary,
+    "cohesion-responsibility-state-ownership-public-interface-not-line-count");
+  assert.match(adapter, /Development System owns[\s\S]*guardrails, anti-slop[\s\S]*release-train/i);
+  assert.match(adapter, /Commit, push, PR, merge, release, production[\s\S]*follow the request and repository policy/i);
+  assert.match(adapter, /starting conversation model remains the orchestrator/i);
+  assert.match(adapter, /bounded worker executes its packet/i);
+  assert.doesNotMatch(adapter, /Astra (?:owns|orchestrates|keeps)|Go first/i);
   assert.match(
     initialized[".codex/development-system/repository.md"],
     /Provider readiness\s+- npm run quality:provider-readiness/i,

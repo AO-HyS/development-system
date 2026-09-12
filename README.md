@@ -8,39 +8,22 @@ el resultado, incluidas las correcciones. El modelo elegido al iniciar la
 conversación conserva la orquestación; el parent elige agentes y el roster ofrece
 recomendaciones. Cada proceso debe ayudar a llegar antes.
 
-La versión 1.17.0 publica el catálogo 0.38.0 y las skills portátiles de
-orquestación, implementación, dirección visual, calidad y evidencia. Conserva
-los invariantes de estado, ownership acotado, referencias visuales recuperables
-y crítica visual independiente antes del walkthrough final. El experimento
-SWE-2 mantiene todos sus descendientes dentro de la familia SWE y no reclama
-adaptadores certificados ni influencia del host hasta contar con evidencia real.
+La versión 1.18.0 publica el catálogo 0.39.0: 22 skills con disparadores más
+precisos y contexto cargado según la tarea. Los contratos locales conservan al
+modelo elegido como orquestador, reutilizan decisiones y evidencias válidas y
+continúan hasta el resultado autorizado. Incluye Impeccable 4.3.1 completo;
+la crítica visual independiente ocurre antes de la evidencia final.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
+Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md).
 
-La versión 1.16.1 incorpora los aprendizajes de implementación y orquestación:
-estado que debe sobrevivir al rediseño, acceso temprano, recuperación y entrega
-completa. Ver [fallos y correcciones](docs/adr/0030-implementation-and-orchestration-continuity.md).
-Conserva el handoff visual: referencias visibles y recuperables,
-criterios de composición que el crítico debe comprobar y videos que incluyen el
-resultado final. Reutiliza las skills existentes; no añade otro orquestador ni
-más gates. Ver [decisión y límites](docs/adr/0029-visual-handoff-and-acceptance.md).
-Astra xHigh a velocidad normal conserva el default provisional; Go ejecuta.
-Luna usa High o Max con Fast según la especialidad. Ver [ajustes medidos](docs/adr/0028-measured-specialist-defaults.md).
-
-Version 1.17.0 publishes catalog 0.38.0 and portable orchestration, implementation,
-visual-direction, quality and evidence skills. The starting model remains the
-orchestrator; the parent chooses agents and the roster provides recommendations.
-SWE-2 descendants remain within the SWE family, and no host adapter certification
-or behavioral influence is claimed without live evidence.
-
-Version 1.16.1 includes the complete pinned Impeccable 4.3.1 skill and its
-existing command shortcuts. Visual delivery follows Impeccable → independent
-Astra critique → corrections → final evidence. Astra keeps Computer Use; Luna
-can prepare bounded scripts or media through `evidence-preparation`. Stable
-operations use the host's existing tool composition. See
-[ADR 0024](docs/adr/0024-design-critique-and-bounded-evidence.md) for sources,
-adopted PStack 0.15.0 tactics and verification limits.
-
+Version 1.18.0 publishes catalog 0.39.0 with context-scoped global skills and
+repository adapters. The starting model remains the orchestrator. The parent
+chooses agents within the user's provider constraints and actual host
+capabilities; roster settings are recommendations. Visual delivery preserves
+approved references, independent critique, corrections and useful final evidence.
+Existing state, authorization, architecture and release protections remain.
+Installation is not proof of host loading or improved speed or token usage.
 
 The canonical, versioned source for Alejandro Ortiz Corro's development contract.
 The model selected when the conversation starts owns orchestration; the parent
@@ -81,7 +64,7 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.17.0/aohys-development-system-1.17.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.18.0/aohys-development-system-1.18.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -91,11 +74,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.17.0
-./bin/development-system sync-skills --version 0.38.0
+./bin/development-system install --version 1.18.0
+./bin/development-system sync-skills --version 0.39.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.38.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.39.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -263,7 +246,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.16.1`, `sync-skills --version 0.37.1`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.18.0`, `sync-skills --version 0.39.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

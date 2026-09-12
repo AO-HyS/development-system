@@ -1,0 +1,66 @@
+{
+  "sourcePost": "https://x.com/OpenAIDevs/status/2098480213244117065",
+  "sourceArticle": "https://developers.openai.com/blog/rethinking-skills-and-prompts-for-gpt-6-astra",
+  "skills": [
+    "agent-browser",
+    "animation-vocabulary",
+    "code-review",
+    "coding-orchestration",
+    "design-direction",
+    "design-quality",
+    "drive-development-flow",
+    "evidence-capture",
+    "firecrawl",
+    "flow-code-review",
+    "flow-implement",
+    "grill-with-docs",
+    "impeccable",
+    "implement-spec",
+    "make-interfaces-feel-better",
+    "orchestrate-work",
+    "pstack-engineering",
+    "review-thread",
+    "shadcn",
+    "vercel-react-best-practices",
+    "working-backwards",
+    "writing-for-agents"
+  ],
+  "localChange": "Precise discovery, conditional guidance, selected-model execution and explicit completion.",
+  "upstream": {
+    "agent-browser": {
+      "repository": "https://github.com/vercel-labs/agent-browser",
+      "path": "skills/agent-browser/SKILL.md",
+      "installedTreeSha1": "88b7e785240d14ab80eb11abdd0cbd27b20055c6",
+      "snapshot": "Existing installed skill; discovery description adapted locally. Tree ID is not asserted to be a commit.",
+      "license": "Apache-2.0"
+    },
+    "animation-vocabulary": {
+      "repository": "https://github.com/emilkowalski/skills",
+      "path": "skills/animation-vocabulary/SKILL.md",
+      "installedTreeSha1": "e6dc24ca1ff1e70c9677df9a1d2d1c80415cbb3c",
+      "snapshot": "Existing installed skill; discovery description adapted locally. Tree ID is not asserted to be a commit.",
+      "license": "MIT"
+    },
+    "firecrawl": {
+      "repository": "https://github.com/firecrawl/cli",
+      "path": "skills/firecrawl-cli/SKILL.md",
+      "installedTreeSha1": "ef84384dece8f31424ac56b6bd3beade01d3e5fb",
+      "snapshot": "Existing installed skill; discovery description adapted locally. Tree ID is not asserted to be a commit.",
+      "license": "ISC"
+    },
+    "shadcn": {
+      "repository": "https://github.com/shadcn/ui",
+      "path": "skills/shadcn/SKILL.md",
+      "installedTreeSha1": "2ae0a0c7f8ba9ab76d6c531e78d980663af90577",
+      "snapshot": "Existing installed skill; discovery description adapted locally. Tree ID is not asserted to be a commit.",
+      "license": "MIT"
+    },
+    "vercel-react-best-practices": {
+      "repository": "https://github.com/vercel-labs/agent-skills",
+      "path": "skills/react-best-practices/SKILL.md",
+      "installedTreeSha1": "079b06a135401704ea94ab74c7c9d86c92ba259f",
+      "snapshot": "Existing installed skill; discovery description adapted locally. Tree ID is not asserted to be a commit.",
+      "license": "MIT"
+    }
+  }
+}
