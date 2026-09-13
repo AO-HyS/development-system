@@ -1,0 +1,28 @@
+{
+  "skills": [
+    "grill-with-docs"
+  ],
+  "localChange": "Reuse the approved HTML questionnaire as a JSON-driven template with submit-to-file and manual chat continuation.",
+  "reusedSources": [
+    {
+      "repository": "AO-HyS/the-barber-central",
+      "path": "docs/visual-plans/dashboard-grill-2026-09-09.html",
+      "sha256": "55f1dd2b2be660ad67f5e8f958b209328274124643c95a60cc73ecaaa5f1a3f5"
+    },
+    {
+      "repository": "AO-HyS/the-barber-central",
+      "path": ".scratch/learning-grill-2026-09-12/build.py",
+      "sha256": "c7b80d903258426f7397555a89a2cfcdb2a1ff01fb7860e3e6f417c2f75142c0"
+    },
+    {
+      "repository": "AO-HyS/the-barber-central",
+      "path": ".scratch/learning-grill-2026-09-12/client.js",
+      "sha256": "c0c04ede3dd21a77b2ceda0547d4622a2d92dec779c566f3ee6d2d5dd8bdbd67"
+    },
+    {
+      "repository": "AO-HyS/the-barber-central",
+      "path": ".scratch/learning-grill-2026-09-12/server.py",
+      "sha256": "dded5a028bdc72a24fc9fffadceeffa47c36d5580b6ab5a6f68b3036036349c1"
+    }
+  ]
+}
