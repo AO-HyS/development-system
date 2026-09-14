@@ -1219,7 +1219,7 @@ test("repository preparation retains the explicit planner contract and surfaces 
   assert.equal(contract.antiSlop.activation, "explicit-orchestration-plan-only");
   assert.equal(contract.antiSlop.ordinaryWork, "parent-owned-responsibilities-with-proportional-review-not-mandatory-lanes");
   assert.match(adapter, /responsibilities, not mandatory new\nagents or fixed review loops/);
-  assert.match(adapter, /new tests need a named failure they catch/);
+  assert.match(adapter, /Test edits are closed by default/);
   assert.match(adapter, /File counts and style scores are not gates/);
   assert.match(adapter, /Planner output never performs writes/);
   assert.match(adapter, /rejects\npath traversal and symlink escapes, including under force/);

@@ -8,22 +8,20 @@ el resultado, incluidas las correcciones. El modelo elegido al iniciar la
 conversación conserva la orquestación; el parent elige agentes y el roster ofrece
 recomendaciones. Cada proceso debe ayudar a llegar antes.
 
-La versión 1.19.0 publica el catálogo 0.40.0 e incorpora en `grill-with-docs`
-la plantilla HTML que ya usamos: preguntas en JSON, respuestas guardadas al
-pulsar Enviar y continuación en el chat cuando el usuario avisa. El mismo
-servidor puede compartir el cuestionario por un túnel temporal. Cada nueva
-ronda reutiliza la plantilla sin reconstruir el HTML.
+La versión 1.20.0 publica el catálogo 0.41.0 y añade contratos de ejecución
+compactos para delegación exacta o por resultado, ownership disjunto,
+finalización por eventos y revisión explícita de cambios de tests. Conserva
+el cuestionario HTML de grill-with-docs de 1.19.1 y sus respuestas guardadas.
 
 [El sistema completo, explicado paso a paso](docs/system-flow.md).
 Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md) y
 [la corrección de roles de verificación](docs/adr/0033-capability-based-verification-roles.md).
 
-Version 1.19.0 publishes catalog 0.40.0 with the reusable HTML grill
-questionnaire, literal local answer saving and an optional temporary tunnel.
-The user submits, then asks the agent to read the saved JSON and continue.
-See [the decision and limits](docs/adr/0034-reusable-html-grill-questionnaire.md).
-Existing orchestration, design handoff, architecture and release protections
-remain. Installation is not proof of model behavior, speed or token savings.
+Version 1.20.0 publishes catalog 0.41.0 with pinned execution contracts,
+exact-instruction and outcome-delegation modes, reviewed test-change policy,
+and deterministic UI evidence packaging. It preserves the reusable HTML grill
+questionnaire from 1.19.1. See [the execution decision and limits](docs/adr/0035-pinned-execution-contract-and-reviewed-test-policy.md).
+Installation is not proof of model behavior, speed or token savings.
 
 The canonical, versioned source for Alejandro Ortiz Corro's development contract.
 The model selected when the conversation starts owns orchestration; the parent
@@ -64,7 +62,7 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.19.0/aohys-development-system-1.19.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.20.0/aohys-development-system-1.20.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -74,11 +72,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.19.0
-./bin/development-system sync-skills --version 0.40.0
+./bin/development-system install --version 1.20.0
+./bin/development-system sync-skills --version 0.41.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.40.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.41.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -246,7 +244,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.19.0`, `sync-skills --version 0.40.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.20.0`, `sync-skills --version 0.41.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
