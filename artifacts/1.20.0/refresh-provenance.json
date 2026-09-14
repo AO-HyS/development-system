@@ -1,0 +1,18 @@
+{
+  "baseContract": "1.19.1",
+  "baseCatalog": "0.40.1",
+  "skills": [
+    "coding-orchestration",
+    "orchestrate-work",
+    "evidence-capture",
+    "behavioral-evidence"
+  ],
+  "changes": [
+    "Pin every delegated run to an exact execution contract with ownership, behavior, checks and an authorized endpoint.",
+    "Support exact-instruction and outcome-delegation modes under the same authorization and evidence constraints.",
+    "Use completion events and disjoint ownership for parallel work without adding a coordinator or repeated unchanged status polling.",
+    "Gate test-file changes through the reviewed test-change policy and require an actual evidence gap report.",
+    "Resolve QA fixtures once, keep browser execution neutral, and package deterministic media with originals and a 4-6 frame contact sheet.",
+    "Keep benchmark profiles and simulated-ticket protocol private to the parent rather than global specialist defaults."
+  ]
+}

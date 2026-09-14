@@ -803,8 +803,11 @@ A plan or installed skill grants no additional authority; platform and repositor
 ## Proportional verification and design
 
 Use changed validation for ordinary feedback and required certification once the
-integrated candidate stabilizes. Choose checks by the changed public behavior;
-new tests need a named failure they catch. Simplification, review of test value,
+integrated candidate stabilizes. Choose checks by the changed public behavior.
+Test edits are closed by default: use the repository's reviewed test-change
+policy and report missing behavioral evidence to the parent before widening it.
+Use the local construction recipes and existing components for screens, forms
+and authorized server operations. Simplification, review of test value,
 correction and objective verification are responsibilities, not mandatory new
 agents or fixed review loops. The parent reviews ordinary work; use independent
 judgment for observed complex risk or when requested. Reject weakened assertions
@@ -834,7 +837,9 @@ interfaces, feature state ownership and cohesive modules. Development System own
 global agent guardrails, anti-slop tooling and release-train capabilities; local
 files supply product contracts rather than duplicating the global coordinator.
 
-Use native host tools and compact worker packets. Batch independent reads and
+Use native host tools and compact worker packets with exact ownership, behavior,
+checks and completion receipts. Receive meaningful completion events instead of
+repeated unchanged status requests. Batch independent reads and
 keep one writer per surface. Independent writes require disjoint ownership and
 parent-owned integration. Planner output never performs writes. The contained
 anti-slop installer remains the only supported installer entrypoint and rejects
