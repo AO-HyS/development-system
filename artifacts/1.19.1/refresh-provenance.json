@@ -1,0 +1,12 @@
+{
+  "baseContract": "1.19.0",
+  "baseCatalog": "0.40.0",
+  "skills": [
+    "grill-with-docs"
+  ],
+  "changes": [
+    "Show pending questions by number and title, including deferred answers.",
+    "Expose per-question navigation status and explicit zero-pending state.",
+    "Preserve original questions, answer semantics, receipts and save conflict handling."
+  ]
+}
