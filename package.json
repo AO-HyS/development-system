@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.20.0",
-  "contractVersion": "1.20.0",
+  "version": "1.20.1",
+  "contractVersion": "1.20.1",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -36,7 +36,7 @@
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",
     "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run test && pnpm run validate:repository",
-    "release:prepare": "node ./scripts/build-release-1200.mjs",
+    "release:prepare": "node ./scripts/build-release-1201.mjs",
     "release:pack": "node ./scripts/pack-distribution.mjs"
   },
   "engines": {
