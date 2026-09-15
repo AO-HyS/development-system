@@ -1,5 +1,12 @@
 # AOHYS Development System
 
+## Current release: 1.21.0 / catalog 0.42.0
+
+Exact instructions are the default across models: ordered actions, expected
+observations, bounded corrections and resumable handoffs. Outcome delegation
+requires an explicit reason. Capability limits change task size and guidance,
+not acceptance or provider authorization. See ADR 0037 and coding-orchestration.
+
 ## RÁPIDO → BIEN → BARATO
 
 Nuestra prioridad es entregar la funcionalidad completa y usable lo más rápido
@@ -8,7 +15,7 @@ el resultado, incluidas las correcciones. El modelo elegido al iniciar la
 conversación conserva la orquestación; el parent elige agentes y el roster ofrece
 recomendaciones. Cada proceso debe ayudar a llegar antes.
 
-La versión 1.20.0 publica el catálogo 0.41.0 y añade contratos de ejecución
+La versión anterior 1.20.0 publicó el catálogo 0.41.0 y añade contratos de ejecución
 compactos para delegación exacta o por resultado, ownership disjunto,
 finalización por eventos y revisión explícita de cambios de tests. Conserva
 el cuestionario HTML de grill-with-docs de 1.19.1 y sus respuestas guardadas.
@@ -17,7 +24,7 @@ el cuestionario HTML de grill-with-docs de 1.19.1 y sus respuestas guardadas.
 Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md) y
 [la corrección de roles de verificación](docs/adr/0033-capability-based-verification-roles.md).
 
-Version 1.20.0 publishes catalog 0.41.0 with pinned execution contracts,
+Previous version 1.20.0 published catalog 0.41.0 with pinned execution contracts,
 exact-instruction and outcome-delegation modes, reviewed test-change policy,
 and deterministic UI evidence packaging. It preserves the reusable HTML grill
 questionnaire from 1.19.1. See [the execution decision and limits](docs/adr/0035-pinned-execution-contract-and-reviewed-test-policy.md).
@@ -72,11 +79,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.20.0
-./bin/development-system sync-skills --version 0.41.0
+./bin/development-system install --version 1.21.0
+./bin/development-system sync-skills --version 0.42.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.41.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.42.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -244,7 +251,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.20.0`, `sync-skills --version 0.41.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `install --version 1.21.0`, `sync-skills --version 0.42.0`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

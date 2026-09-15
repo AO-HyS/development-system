@@ -34,7 +34,10 @@ adapters retain their domain and release rules. Normalize managed adapter files
 with `pnpm ds normalize-repository --repository <root> --confirm normalize`
 when the adapter contract changes; do not copy policy into product components.
 
-Recovery uses `rollback-skills` followed by `rollback`. Preserve the previous
+Recovery uses `rollback` for the prior contract, then the preserved previous
+package CLI `sync-skills --version <previous-catalog>` for its exact skills.
+`rollback-skills` restores the original baseline, not necessarily the immediately
+previous catalog. Preserve the previous
 dependency/checkout when auditing an installation originally made from that
 source commit. Rollback restores only managed paths and retains unrelated HOME
 files. Skills becoming present is not proof they influenced a model; runtime
