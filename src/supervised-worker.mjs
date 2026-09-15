@@ -16,11 +16,19 @@ export function owningTurnIsRunning(owner) {
   if (!uuid.test(owner.threadId) || !uuid.test(owner.turnId) || !isAbsolute(owner.databasePath)) {
     throw new Error("owner requires an absolute databasePath and exact thread/turn UUIDs");
   }
-  const sql = `SELECT state,completed_at FROM projection_turns WHERE thread_id='${owner.threadId}' AND turn_id='${owner.turnId}'`;
+  // completed_at can describe a diff event while the turn is still active;
+  // lifecycle ownership comes from the turn state and its active session.
+  const sql = `SELECT t.state AS turn_state,t.completed_at,s.status AS session_status,s.active_turn_id
+    FROM projection_turns AS t
+    LEFT JOIN projection_thread_sessions AS s ON s.thread_id=t.thread_id
+    WHERE t.thread_id='${owner.threadId}' AND t.turn_id='${owner.turnId}'`;
   const rows = JSON.parse(execFileSync("sqlite3", ["-readonly", "-json", owner.databasePath, sql], {
     encoding: "utf8", timeout: 2_000, maxBuffer: 16_384, stdio: ["ignore", "pipe", "pipe"],
   }) || "[]");
-  return rows.length === 1 && rows[0].state === "running" && rows[0].completed_at === null;
+  return rows.length === 1
+    && rows[0].turn_state === "running"
+    && rows[0].session_status === "running"
+    && rows[0].active_turn_id === owner.turnId;
 }
 
 /** Execute an already-authorized worker, tied to one T3 turn, without model polling.

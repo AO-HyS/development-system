@@ -13,7 +13,7 @@ async function fixture() {
   const threadId = "11111111-1111-4111-8111-111111111111";
   const turnId = "22222222-2222-4222-8222-222222222222";
   const sql = (statement) => execFileSync("sqlite3", [databasePath, statement]);
-  sql(`CREATE TABLE projection_turns(thread_id TEXT,turn_id TEXT,state TEXT,completed_at TEXT); INSERT INTO projection_turns VALUES('${threadId}','${turnId}','running',NULL);`);
+  sql(`CREATE TABLE projection_turns(thread_id TEXT,turn_id TEXT,state TEXT,completed_at TEXT); CREATE TABLE projection_thread_sessions(thread_id TEXT,status TEXT,active_turn_id TEXT); INSERT INTO projection_turns VALUES('${threadId}','${turnId}','running',NULL); INSERT INTO projection_thread_sessions VALUES('${threadId}','running','${turnId}');`);
   return { sql, input: { cwd, owner: { databasePath, threadId, turnId }, command: process.execPath, args: [], outputDirectory: join(cwd, "attempt") } };
 }
 
@@ -26,6 +26,16 @@ test("worker retains a failing process exit and writes a terminal receipt", asyn
   assert.equal(result.ok, false);
   assert.match(await readFile(join(input.outputDirectory, "stderr.log"), "utf8"), /check failed/u);
   assert.equal(JSON.parse(await readFile(join(input.outputDirectory, "result.json"), "utf8")).status, 7);
+});
+
+test("a completed timestamp from an actual diff does not cancel a running owner", async () => {
+  const { input, sql } = await fixture();
+  sql("UPDATE projection_turns SET completed_at='2026-09-07T00:00:00Z'");
+  input.args = ["-e", "process.exit(7)"];
+  const result = await runSupervisedWorker(input);
+  assert.equal(result.status, 7);
+  assert.equal(result.stopReason, null);
+  assert.equal(result.completed, false);
 });
 
 test("CLI propagates a failed child instead of returning success", async () => {
@@ -57,13 +67,36 @@ test("group cancellation also kills a grandchild that ignores TERM", async () =>
 test("interrupting its T3 turn terminates the worker instead of orphaning it", async () => {
   const { input, sql } = await fixture();
   input.args = ["-e", "setInterval(()=>{},1000)"];
-  const timer = setTimeout(() => sql("UPDATE projection_turns SET state='interrupted', completed_at='2026-09-07T00:00:00Z'"), 150);
+  const timer = setTimeout(() => sql("UPDATE projection_turns SET state='interrupted', completed_at='2026-09-07T00:00:00Z'; UPDATE projection_thread_sessions SET status='interrupted'"), 150);
   try {
     const result = await runSupervisedWorker(input);
     assert.equal(result.stopReason, "owning-turn-ended");
     assert.equal(result.completed, false);
     assert.throws(() => process.kill(result.pid, 0), { code: "ESRCH" });
   } finally { clearTimeout(timer); }
+});
+
+test("a different active owner cannot start a worker", async () => {
+  const { input, sql } = await fixture();
+  const differentTurnId = "33333333-3333-4333-8333-333333333333";
+  sql(`UPDATE projection_thread_sessions SET active_turn_id='${differentTurnId}'`);
+  await assert.rejects(runSupervisedWorker(input), /not running/u);
+});
+
+test("a missing, ambiguous, idle, or interrupted session cannot start a worker", async (t) => {
+  const cases = [
+    ["missing", "DELETE FROM projection_thread_sessions"],
+    ["ambiguous", "INSERT INTO projection_thread_sessions VALUES('11111111-1111-4111-8111-111111111111','running','22222222-2222-4222-8222-222222222222')"],
+    ["idle", "UPDATE projection_thread_sessions SET status='idle'"],
+    ["interrupted", "UPDATE projection_thread_sessions SET status='interrupted'"],
+  ];
+  for (const [name, statement] of cases) {
+    await t.test(name, async () => {
+      const { input, sql } = await fixture();
+      sql(statement);
+      await assert.rejects(runSupervisedWorker(input), /not running/u);
+    });
+  }
 });
 
 test("a stopped or unavailable owner cannot start a new worker", async () => {
