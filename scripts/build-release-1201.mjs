@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/** @param {string} path */
 const read = (path) => JSON.parse(readFileSync(resolve(root, path), 'utf8'));
 const previous = read('manifests/1.20.0.json');
 const current = read('manifests/1.20.1.json');
