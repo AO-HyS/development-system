@@ -54,13 +54,13 @@ function explorationReceipt(value, expectedCandidateCount) {
     const event = /** @type {Record<string, unknown>} */ (raw);
     return { type: String(event.type ?? ""), at: String(event.at ?? "") };
   });
-  const expected = ["candidates", "concept-seed", "comparison"];
+  const expected = ["candidates", "concept-seed", "impeccable-decision-page"];
   const observed = events.map((event) => event.type);
   const positions = expected.map((type) => observed.indexOf(type));
   const issues = [];
   if (positions.some((position) => position < 0)) issues.push("missing-required-event");
   if (positions.every((position) => position >= 0) && !(positions[0] < positions[1] && positions[1] < positions[2])) {
-    issues.push("invalid-candidate-seed-comparison-order");
+    issues.push("invalid-candidate-seed-decision-page-order");
   }
   const candidates = records(receipt.candidates);
   if (candidates.length === 0) issues.push("missing-candidates");
@@ -129,7 +129,7 @@ export function routeVisualGrill(input) {
   const rejected = brief.selectionStatus === "all-rejected";
 
   const requiredFlow = mode === "visual-grill" || mode === "mixed-grill"
-    ? ["recover-decisions", "one-interview", "references", "candidates", "concept-seed", "comparison", "human-selection"]
+    ? ["recover-decisions", "one-interview", "references", "candidates", "concept-seed", "impeccable-decision-page", "human-selection"]
     : mode === "continuation"
       ? ["recover-selected-direction", "refine", "prototype-interaction", "extend-after-selection", "independent-critique"]
       : mode === "refinement"
@@ -150,6 +150,7 @@ export function routeVisualGrill(input) {
           ? "impeccable"
           : null,
     questionSurface: mode === "visual-grill" || mode === "mixed-grill" ? "grill-with-docs" : null,
+    decisionSurface: mode === "visual-grill" || mode === "mixed-grill" ? "impeccable-decision-page" : null,
     interviewPolicy: {
       maximumConcurrentInterviews: mode === "visual-grill" || mode === "mixed-grill" ? 1 : 0,
       recoveredAnswerKeys: [...interviewAnswers].sort(),

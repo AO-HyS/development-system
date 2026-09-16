@@ -2,7 +2,8 @@
 
 Date: 2026-09-15 (America/Mexico_City)
 
-Scope: one independent pass in Chrome through `comparison.html` at a 2560 ×
+Scope: one independent pass in Chrome through the now-archived
+`historical-blind-comparison.html` at a 2560 ×
 1296 browser viewport and a 2177 × 1120 prototype frame. The reviewer did not
 read `blind-key.json`, receipts or implementer rationale and did not edit files.
 

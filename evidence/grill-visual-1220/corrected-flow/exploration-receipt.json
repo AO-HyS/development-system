@@ -15,7 +15,7 @@
     "/Users/corrortiz/.agents/skills/impeccable/reference/craft-floor.md"
   ],
   "impeccableContext": {
-    "target": "evidence/grill-visual-1220/pilot/comparison.html",
+    "target": "evidence/grill-visual-1221/impeccable-decision-payload.json",
     "mode": "operate",
     "productContextLoaded": true,
     "designContextLoaded": true
@@ -55,8 +55,8 @@
   "events": [
     { "type": "candidates", "at": "2026-09-16T03:28:54Z", "evidence": "pre-seed-candidates.json" },
     { "type": "concept-seed", "at": "2026-09-16T03:29:02Z", "evidence": "seed key 54e745af; dealt indices 3,2,5" },
-    { "type": "comparison", "at": "2026-09-16T03:30:00Z", "evidence": "decision.html; exactly three equal-salience cards" }
+    { "type": "impeccable-decision-page", "at": "2026-09-16T03:54:37Z", "evidence": "evidence/grill-visual-1221/impeccable-decision-receipt.json; exactly three equal-salience cards" }
   ],
   "selection": { "status": "pending", "approvalClaimed": false },
-  "claimBoundary": "This receipt demonstrates selection, loading and procedural influence of corrected skills and Impeccable. The three high-fidelity pilot arms remain a separate observational comparison."
+  "claimBoundary": "This receipt demonstrates candidate derivation, concept-seed and the real Impeccable decision surface. Selection remains pending. The three high-fidelity pilot arms are separate historical observational evidence."
 }

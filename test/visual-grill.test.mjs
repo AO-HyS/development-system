@@ -17,11 +17,12 @@ test("natural visual and mixed requests route without skill names", () => {
   assert.equal(visual.currentStage, "visual-direction");
   assert.equal(visual.visualFlow.leadSkill, "design-direction");
   assert.equal(visual.visualFlow.questionSurface, "grill-with-docs");
+  assert.equal(visual.visualFlow.decisionSurface, "impeccable-decision-page");
   assert.equal(visual.visualFlow.interviewPolicy.maximumConcurrentInterviews, 1);
 
   const proposalsFirst = routeDefinition({ request: "Muéstrame propuestas antes de hablar de lo funcional" });
   assert.equal(proposalsFirst.currentStage, "visual-direction");
-  assert.deepEqual(proposalsFirst.visualFlow.requiredFlow.slice(3, 6), ["candidates", "concept-seed", "comparison"]);
+  assert.deepEqual(proposalsFirst.visualFlow.requiredFlow.slice(3, 6), ["candidates", "concept-seed", "impeccable-decision-page"]);
 
   const mixed = routeDefinition({ request: "Quiero simplificar tanto el funcionamiento como la apariencia" });
   assert.equal(mixed.currentStage, "mixed-grill");
@@ -125,7 +126,7 @@ test("exploration order and critique inputs are behaviorally validated", () => {
         events: [
           { type: "candidates", at: "2026-09-15T10:00:00Z" },
           { type: "concept-seed", at: "2026-09-15T10:01:00Z" },
-          { type: "comparison", at: "2026-09-15T10:02:00Z" },
+          { type: "impeccable-decision-page", at: "2026-09-15T10:02:00Z" },
         ],
       },
     },
@@ -136,10 +137,10 @@ test("exploration order and critique inputs are behaviorally validated", () => {
 
   const invalid = routeVisualGrill({
     request: "Quiero propuestas visuales",
-    brief: { explorationReceipt: { candidates: [{}], events: [{ type: "concept-seed" }, { type: "candidates" }, { type: "comparison" }] } },
+    brief: { explorationReceipt: { candidates: [{}], events: [{ type: "concept-seed" }, { type: "candidates" }, { type: "impeccable-decision-page" }] } },
   });
   assert.equal(invalid.explorationReceipt.status, "invalid");
-  assert.deepEqual(invalid.explorationReceipt.issues.sort(), ["candidate-contract-incomplete", "invalid-candidate-seed-comparison-order"]);
+  assert.deepEqual(invalid.explorationReceipt.issues.sort(), ["candidate-contract-incomplete", "invalid-candidate-seed-decision-page-order"]);
 
   const empty = routeVisualGrill({
     request: "Quiero tres propuestas visuales",
@@ -149,7 +150,7 @@ test("exploration order and critique inputs are behaviorally validated", () => {
         events: [
           { type: "candidates", at: "2026-09-15T10:02:00Z" },
           { type: "concept-seed", at: "2026-09-15T10:01:00Z" },
-          { type: "comparison", at: "2026-09-15T10:03:00Z" },
+          { type: "impeccable-decision-page", at: "2026-09-15T10:03:00Z" },
         ],
       },
     },
@@ -175,25 +176,25 @@ test("capability gaps limit evidence without blocking independent work and CLI m
   assert.deepEqual(JSON.parse(cli.stdout).limitations, result.limitations);
 });
 
-test("1.22.0 packages the four canonical skills and visual reviewer with explicit hashes", async () => {
+test("1.22.1 packages the four canonical skills and visual reviewer with explicit hashes", async () => {
   const packageJson = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
-  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.22.0.json"), "utf8"));
-  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.43.0.json"), "utf8"));
-  assert.equal(packageJson.version, "1.22.0");
-  assert.equal(packageJson.contractVersion, "1.22.0");
-  assert.equal(manifest.contractVersion, "1.22.0");
-  assert.equal(catalog.catalogVersion, "0.43.0");
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.22.1.json"), "utf8"));
+  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.43.1.json"), "utf8"));
+  assert.equal(packageJson.version, "1.22.1");
+  assert.equal(packageJson.contractVersion, "1.22.1");
+  assert.equal(manifest.contractVersion, "1.22.1");
+  assert.equal(catalog.catalogVersion, "0.43.1");
   assert.deepEqual(await validateSkillCatalog(catalog, repositoryRoot), []);
 
   for (const name of ["drive-development-flow", "grill-with-docs", "design-direction", "design-quality"]) {
     const skill = catalog.skills.find((entry) => entry.logicalName === name);
-    assert.equal(skill.source.path, `artifacts/1.22.0/skills/internal/${name}`);
+    assert.equal(skill.source.path, `artifacts/1.22.1/skills/internal/${name}`);
     assert.equal(skill.variants.every((variant) => variant.sourceDirectory === skill.source.path), true);
     assert.equal(skill.variants.every((variant) => /^[a-f0-9]{64}$/u.test(variant.folderSha256)), true);
   }
 
   const reviewer = manifest.artifacts.find((entry) => entry.logicalName === "codex-agent-visual-reviewer");
-  assert.equal(reviewer.sourcePath, "artifacts/1.22.0/agents/codex/visual-reviewer.toml");
+  assert.equal(reviewer.sourcePath, "artifacts/1.22.1/agents/codex/visual-reviewer.toml");
   const reviewerBytes = readFileSync(resolve(repositoryRoot, reviewer.sourcePath));
   assert.equal(createHash("sha256").update(reviewerBytes).digest("hex"), reviewer.sha256);
 });

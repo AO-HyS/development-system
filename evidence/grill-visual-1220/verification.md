@@ -49,18 +49,17 @@ The scenario used only isolated temporary homes:
   exact count, rejection, continuation, functional preservation, small-change
   proportionality and capability limitation.
 - The corrected-flow receipt validates exactly three candidates and the order
-  candidates → concept-seed → comparison with no issues.
-- Chrome rendered the blind pilot comparator, six view states, all overlay
-  panels and the corrected-flow decision page over a local HTTP server.
+  candidates → concept-seed → Impeccable decision page with no issues.
+- Chrome rendered the historical blind pilot comparator, six view states, all
+  overlay panels and the real Impeccable decision page over local HTTP servers.
 - Escape, background unlock and exact trigger focus restoration were observed in
-  Variante 01. The corrected-flow page preserved a rejection correction verbatim
-  without selecting a direction.
+  Variante 01. No direction was selected on the Impeccable page.
 - An independent critic inspected the anonymous variants without condition keys,
   receipts or implementer rationale. Their review separates constraint conformity
   from compositional quality and retains open findings.
 - The one Impeccable detector pass exited 2 with mechanical warnings. Contrast
-  and font-stack warnings in the comparison shell and corrected-flow decision
-  page were fixed. Pilot-arm warnings remain recorded because post-observation
+  and font-stack warnings in the historical comparison shell were fixed.
+  Pilot-arm warnings remain recorded because post-observation
   edits would contaminate the single-run comparison.
 
 ## Authorization and claims

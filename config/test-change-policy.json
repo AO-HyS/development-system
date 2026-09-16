@@ -3,15 +3,15 @@
   "allowedChanges": [
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "3a652ba62ee5e2abd8296d3fe102f2b180dea2d67a475bc6ba9043bcd070b50a",
-      "reason": "Behavioral coverage is required for natural visual and mixed routing, answer recovery, exact proposal count, rejection, continuation, proportional refinement, exploration order, critique contract and capability limitations.",
-      "issue": "Visual Grill 1.22.0 candidate"
+      "sha256": "e1d7a2f221e0810faeeedc32d7407ebcae593d4effec8d813f868818f20aaf3a",
+      "reason": "Behavioral coverage is required for natural visual and mixed routing, one Impeccable decision surface, answer recovery, exact proposal count, rejection, continuation, proportional refinement, exploration order, critique contract and capability limitations.",
+      "issue": "Visual Grill 1.22.1 candidate"
     },
     {
       "path": "test/grill_questionnaire.py",
-      "sha256": "8c3101d0867e5872d77bb3dc59e38cafa14f12575201bd9b32eefde29a330486",
-      "reason": "The existing real HTTP behavior suite must execute the newly versioned grill-with-docs source instead of the immutable 1.19.1 artifact.",
-      "issue": "Visual Grill 1.22.0 candidate"
+      "sha256": "5667d4685121d8566fa1241f5520216cf6381760f8bfcd0dd03693608e240da8",
+      "reason": "The real HTTP behavior suite verifies the versioned questionnaire, literal answer persistence, legacy-round upgrade, source-independent embedded-reference recovery, media bounds and rejection of active media.",
+      "issue": "Visual Grill 1.22.1 candidate"
     }
   ]
 }

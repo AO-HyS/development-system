@@ -7,9 +7,10 @@ working responses, real browser behavior and an independent visual critique. It
 does not establish universal superiority, user approval, clinical validation,
 mobile adaptation or authority to extend a direction into NutriPlan.
 
-Start with the anonymous evaluator:
+The anonymous evaluator is retained as historical experimental evidence only;
+it is not part of the installed or operational Grill flow:
 
-- [`pilot/comparison.html`](pilot/comparison.html)
+- [`pilot/historical-blind-comparison.html`](pilot/historical-blind-comparison.html)
 
 Record a preference and literal corrections before consulting the separate
 mapping in [`pilot/blind-key.json`](pilot/blind-key.json). The mapping is not
@@ -59,7 +60,7 @@ and all overlay panels. In Variante 01, Escape closed the panel, removed the
 background lock and restored focus to the exact “Abrir contexto” trigger. The
 panel remained over the current view without changing its layout.
 
-The comparison form stores each variant independently in browser-local storage
+The historical comparison form stores each variant independently in browser-local storage
 and exports a blind JSON evaluation. It asks for diversity, fidelity, clarity,
 information load, finish, literal corrections and a preference including
 “Ninguna”. A score supports but never replaces visible observations.
@@ -85,21 +86,22 @@ The one required Impeccable detector pass also found low-contrast labels,
 undersized functional text, overly tight display tracking and generated-UI
 signatures inside the already-observed pilot arms. Those arms remain frozen as
 experimental evidence. Mechanical contrast and font-stack findings in the
-neutral comparison shell and the later corrected-flow decision page were fixed;
+neutral comparison shell and the later redundant corrected-flow decision page were fixed;
 the remaining prototype findings join the critique for any selected refinement.
 
 ## Corrected-flow procedure receipt
 
-An additional bounded run closed the procedure gap without changing the pilot.
-It recorded seven grounded structures, then ran the real Impeccable surface
-`concept-seed` (`54e745af`), which dealt indices 3, 2 and 5. Only those three
-appear with equal salience in the decision page. The state validator confirms
-exactly three complete candidates and monotonic candidates → seed → comparison
-events.
+An additional bounded run recorded seven grounded structures, then ran the real
+Impeccable surface `concept-seed` (`54e745af`), which dealt indices 3, 2 and 5.
+Its custom chooser was subsequently identified as redundant and removed in
+1.22.1. The corrected operational flow sends those dealt candidates to
+Impeccable's own decision page instead.
 
 - [`corrected-flow/pre-seed-candidates.json`](corrected-flow/pre-seed-candidates.json)
 - [`corrected-flow/exploration-receipt.json`](corrected-flow/exploration-receipt.json)
-- [`corrected-flow/decision.html`](corrected-flow/decision.html)
+
+The real generated Impeccable surface and its observable three-card receipt are
+recorded in [`../grill-visual-1221/impeccable-decision-receipt.json`](../grill-visual-1221/impeccable-decision-receipt.json).
 
 ## Interpretation
 
@@ -109,3 +111,7 @@ causality perfectly because the platform did not expose exact resolved model
 identity, and a single execution cannot estimate variability. The appropriate
 next evidence is the user's blind preference and corrections, followed by a
 focused refinement of only the selected direction.
+
+The withheld mapping also prevents a causal overclaim: the blind reviewer
+preferred Variant 02 (current skills), not Variant 03 (article direct). Variant
+03 was the most structurally distinct but weakened the clinical hierarchy.

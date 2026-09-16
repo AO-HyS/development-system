@@ -5,12 +5,12 @@
     {
       "id": "visual-ambiguous",
       "request": "Quiero un Grill de cómo luce el sistema",
-      "observed": { "mode": "visual-grill", "leadSkill": "design-direction", "questionSurface": "grill-with-docs", "maximumConcurrentInterviews": 1 }
+      "observed": { "mode": "visual-grill", "leadSkill": "design-direction", "questionSurface": "grill-with-docs", "decisionSurface": "impeccable-decision-page", "maximumConcurrentInterviews": 1 }
     },
     {
       "id": "proposal-first",
       "request": "Muéstrame propuestas antes de hablar de lo funcional",
-      "observed": { "mode": "visual-grill", "orderedSteps": ["candidates", "concept-seed", "comparison"] }
+      "observed": { "mode": "visual-grill", "orderedSteps": ["candidates", "concept-seed", "impeccable-decision-page"] }
     },
     {
       "id": "mixed",
