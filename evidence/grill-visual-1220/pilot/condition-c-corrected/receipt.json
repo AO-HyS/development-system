@@ -1,0 +1,101 @@
+{
+  "condition_code": "C",
+  "artifact_kind": "blind visual pilot",
+  "base_revision": "2767b409757dd14f378c50f883bbf899a20787a7",
+  "started_at_utc": "2026-09-16T03:09:38Z",
+  "ended_at_utc": "2026-09-16T03:17:27Z",
+  "model": "not observable from the runtime",
+  "reasoning_effort": "not observable from the runtime",
+  "instruction_files_read": [
+    "evidence/grill-visual-1220/pilot/shared-brief.md",
+    "artifacts/1.22.0/skills/internal/drive-development-flow/SKILL.md",
+    "artifacts/1.22.0/skills/internal/grill-with-docs/SKILL.md",
+    "artifacts/1.22.0/skills/internal/design-direction/SKILL.md",
+    "artifacts/1.22.0/skills/internal/design-direction/references/brief.md",
+    "artifacts/1.22.0/skills/internal/design-direction/references/sources.md",
+    "artifacts/1.22.0/skills/internal/design-direction/references/handoff.md",
+    "artifacts/1.22.0/skills/internal/design-quality/SKILL.md",
+    "artifacts/1.22.0/agents/codex/visual-reviewer.toml",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/src/app/globals.css",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/docs/context/ui_design_system.md"
+  ],
+  "thesis": "A calm clinical briefing should reveal the next meaningful decision before it reveals the rest of the record. The expediente concentrates active risk, medication and two trend signals in one high-contrast briefing field; the portal translates the same calm identity into today's next meal, one habit signal and the upcoming visit without dashboard overload.",
+  "phase": "exploring",
+  "user_approval_claimed": false,
+  "visible_choices": {
+    "composition": [
+      "Expediente uses an asymmetric briefing canvas plus a narrow next-step column instead of a uniform card grid.",
+      "Portal reduces the surface to a meal sequence, one circular habits signal, one care-team message and the next appointment.",
+      "The shared synthetic portrait is cropped to the first portrait and kept at 58px so identity remains discreet and subordinate."
+    ],
+    "hierarchy": [
+      "Clinical priority and safety facts appear before visit logistics or contact history.",
+      "Large Figtree-like display type marks the primary decision while Plus Jakarta Sans-like body text keeps supporting copy compact.",
+      "HbA1c and weight trend are the only prominent clinical metrics; portal progress is limited to 2 of 4 habits."
+    ],
+    "interaction": [
+      "A keyboard-operable Expediente/Portal tablist switches populated views and supports Left/Right arrows.",
+      "Abrir contexto launches a fixed overlay above either current view without recomposing the background.",
+      "Escape and both close targets dismiss the panel; focus returns to the exact trigger with preventScroll, Tab is trapped inside, and reduced-motion preferences collapse animation and transition durations."
+    ]
+  },
+  "expressive_opportunity": "Treat the expediente as a composed pre-consultation briefing rather than a stack of interchangeable modules, using one deep ink field to make clinical triage feel focused and deliberate while the portal stays notably quieter.",
+  "concrete_risk": "The large dark briefing field gives the primary clinical context strong authority, but on smaller laptops it may visually outweigh the next-visit actions and should be tested with real product chrome before selection.",
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "exit_status": 0,
+      "result": "2767b409757dd14f378c50f883bbf899a20787a7"
+    },
+    {
+      "command": "node -e inline-script parse using new Function",
+      "exit_status": 0,
+      "result": "PASS inline JavaScript parses"
+    },
+    {
+      "command": "rg -n -F with every fixed datum, view label, dialog hook, Escape hook, preventScroll hook and reduced-motion hook",
+      "exit_status": 0,
+      "result": "All requested data and interaction markers were present in index.html."
+    },
+    {
+      "command": "test -f evidence/grill-visual-1220/assets/synthetic-patient-portraits.png",
+      "exit_status": 0,
+      "result": "Shared portrait asset exists at the path resolved by ../../assets/synthetic-patient-portraits.png."
+    },
+    {
+      "command": "view_image evidence/grill-visual-1220/assets/synthetic-patient-portraits.png",
+      "exit_status": 0,
+      "result": "The shared three-person strip was visually inspected; the CSS crop selects the first portrait for Mariana."
+    },
+    {
+      "command": "Computer Use open local file URL",
+      "exit_status": "blocked",
+      "result": "The browser URL policy rejected file:// navigation; no workaround was attempted."
+    },
+    {
+      "command": "find evidence/grill-visual-1220/pilot/condition-c-corrected -maxdepth 1 -type f -print",
+      "exit_status": 0,
+      "result": "Before the receipt was added, index.html was the only file in the owned directory. The final directory contains only index.html and receipt.json."
+    },
+    {
+      "command": "node -e JSON.parse receipt.json",
+      "exit_status": 0,
+      "result": "PASS receipt JSON parses"
+    },
+    {
+      "command": "git status --short -- evidence/grill-visual-1220/pilot/condition-c-corrected",
+      "exit_status": 0,
+      "result": "The owned condition directory is untracked and no out-of-scope paths were reported by the scoped command."
+    }
+  ],
+  "limitations": [
+    "This is one exploratory direction and does not imply user selection or approval.",
+    "No product repository, product session, external service, secret or real patient data was used or changed.",
+    "The local file URL was blocked by the browser policy, so verification is static and syntax-focused rather than a browser-rendered walkthrough.",
+    "No independent visual-reviewer pass or responsive screenshot comparison was performed in this bounded pilot."
+  ],
+  "files_created": [
+    "index.html",
+    "receipt.json"
+  ]
+}

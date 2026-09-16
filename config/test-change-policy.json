@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "allowedChanges": [
+    {
+      "path": "test/visual-grill.test.mjs",
+      "sha256": "3a652ba62ee5e2abd8296d3fe102f2b180dea2d67a475bc6ba9043bcd070b50a",
+      "reason": "Behavioral coverage is required for natural visual and mixed routing, answer recovery, exact proposal count, rejection, continuation, proportional refinement, exploration order, critique contract and capability limitations.",
+      "issue": "Visual Grill 1.22.0 candidate"
+    },
+    {
+      "path": "test/grill_questionnaire.py",
+      "sha256": "8c3101d0867e5872d77bb3dc59e38cafa14f12575201bd9b32eefde29a330486",
+      "reason": "The existing real HTTP behavior suite must execute the newly versioned grill-with-docs source instead of the immutable 1.19.1 artifact.",
+      "issue": "Visual Grill 1.22.0 candidate"
+    }
+  ]
+}

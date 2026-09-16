@@ -1,0 +1,10 @@
+{
+  "comparison": "comparison.html",
+  "mapping": {
+    "01": "condition-c-corrected",
+    "02": "condition-a-current",
+    "03": "condition-b-article"
+  },
+  "disclosurePolicy": "Keep this file separate from the initial comparison. Reveal the mapping only after the evaluator records a preference and corrections.",
+  "claimBoundary": "One bounded observational run cannot establish universal superiority."
+}

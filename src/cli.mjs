@@ -35,6 +35,7 @@ import {
 } from "./working-backwards-handoff.mjs";
 import { evaluateWorkingBackwards } from "./working-backwards-evaluation.mjs";
 import { routeDefinition } from "./definition-router.mjs";
+import { routeVisualGrill } from "./visual-grill.mjs";
 import { buildDevelopmentRun } from "./development-run.mjs";
 import { planParallelWork } from "./parallel-work.mjs";
 import { planReleaseTrain } from "./release-train-v2.mjs";
@@ -159,6 +160,7 @@ function formatHuman(result) {
     : "Working Backwards evaluation is not ready for a pilot.";
   if (result.operation === "working-backwards-humanlayer") return "HumanLayer supplied snapshot recorded as unverified input without granting lifecycle authority.";
   if (result.operation === "definition-route") return `Definition route: ${result.currentStage}; ${result.nextAction}.`;
+  if (result.operation === "visual-grill-route") return `Visual grill route: ${result.mode}; ${Array.isArray(result.requiredFlow) ? result.requiredFlow.join(" → ") : "no visual flow"}.`;
   if (result.operation === "development-run") {
     const identity = result.identity && typeof result.identity === "object" ? result.identity : {};
     const speed = result.speed && typeof result.speed === "object" ? result.speed : {};
@@ -336,6 +338,10 @@ export async function run(argv) {
     if (!options.input) throw new Error("definition-route requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = routeDefinition(input);
+  } else if (command === "visual-grill-route") {
+    if (!options.input) throw new Error("visual-grill-route requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = routeVisualGrill(input);
   } else if (command === "development-run") {
     if (!options.input) throw new Error("development-run requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -461,7 +467,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

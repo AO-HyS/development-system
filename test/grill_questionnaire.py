@@ -10,7 +10,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILL = ROOT / 'artifacts/1.19.1/skills/internal/grill-with-docs'
+SKILL = ROOT / 'artifacts/1.22.0/skills/internal/grill-with-docs'
 spec = importlib.util.spec_from_file_location('questionnaire', SKILL / 'scripts/questionnaire.py')
 grill = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(grill)
