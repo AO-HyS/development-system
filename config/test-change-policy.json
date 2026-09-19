@@ -3,16 +3,16 @@
   "allowedChanges": [
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "481390fd13b81e9cb1b7d9f0cb8db55f40abac75567744610ada40bfa5885853",
-      "reason": "Parent independent exact-diff review approved four current manifest/package/contract version literals to1.23.2. Catalog0.43.1 validation, four canonical1.22.1 skill source paths/folder hashes and visual reviewer source/hash assertions remain unchanged. No assertions removed or weakened.",
-      "issue": "User-authorized local1.23.2 code-review runtime repair",
+      "sha256": "9a05bcf06c8781a818268f93fb52c69b8fc195b6eaa57d8a798c8fc8b79980bc",
+      "reason": "Parent independent exact-diff review approved four current manifest/package/contract version literals to1.23.3. Catalog0.43.1 validation, four canonical1.22.1 skill source paths/folder hashes and visual reviewer source/hash assertions remain unchanged. No assertions removed or weakened.",
+      "issue": "User-authorized local1.23.3 planning portability repair",
       "reviewedContent": true
     },
     {
       "path": "test/jev-workflow-driver.test.mjs",
-      "sha256": "df03eccf4cb5b465cd88d1c90c95836c870dbc7dad40a6cbd946aa6f57a3443c",
-      "reason": "Independent provider_preflight exact-diff/content review approved temporary output and real Node check execution for both code-review phases, rejection of product content, same-tree HEAD and branch mutations for both reviewers, and strict false/empty rejection. Existing default/direct/single, review/correction/QA/acceptance, cancellation and preservation assertions remain.",
-      "issue": "User-authorized local1.23.2 code-review runtime repair",
+      "sha256": "d0e7d351c7100423cfc358ab9dc61534966bf681cc56d18d1cacdfd1acad54f2",
+      "reason": "Independent provider_preflight exact-diff/content review approved extending the existing invalid-root correction scenario with semantic review rejection/correction. Both correction prompts retain the established portability rule before echoed plan content, and corrected portable instructions reach actual detached writer/reviewer worktrees. Red regression failed against old prompt. Existing validation, binding, review, QA and acceptance assertions retained.",
+      "issue": "User-authorized local1.23.3 planning portability repair",
       "reviewedContent": true
     }
   ]

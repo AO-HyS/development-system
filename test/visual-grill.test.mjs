@@ -178,11 +178,11 @@ test("capability gaps limit evidence without blocking independent work and CLI m
 
 test("current release retains the four 1.22.1 canonical skills and visual reviewer with explicit hashes", async () => {
   const packageJson = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
-  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.23.2.json"), "utf8"));
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.23.3.json"), "utf8"));
   const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.43.1.json"), "utf8"));
-  assert.equal(packageJson.version, "1.23.2");
-  assert.equal(packageJson.contractVersion, "1.23.2");
-  assert.equal(manifest.contractVersion, "1.23.2");
+  assert.equal(packageJson.version, "1.23.3");
+  assert.equal(packageJson.contractVersion, "1.23.3");
+  assert.equal(manifest.contractVersion, "1.23.3");
   assert.equal(catalog.catalogVersion, "0.43.1");
   assert.deepEqual(await validateSkillCatalog(catalog, repositoryRoot), []);
 

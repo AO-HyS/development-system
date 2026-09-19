@@ -323,20 +323,33 @@ test('check-capable code reviewers cannot approve changed product content, HEAD 
   }
 });
 
-test('original-root plans are corrected and every dispatched packet is bound to its private detached worktree', async () => {
+test('semantic plan corrections retain portable instructions and every dispatched packet binds to its private detached worktree', async () => {
   const f = await fixture();
   await writeFile(f.config.taskFile, `Repository: ${f.config.root}\nBranch: main\nImplement this fixture task.`);
   const invalid = plan([{ ...packet('writer', ['src']), instructions: `Work from ${f.config.root} on branch main and edit ${f.config.root}/src/main.mjs.` }]);
   const portable = plan([{ ...packet('writer', ['src']), instructions: 'Edit {{WORKTREE_ROOT}}/src/main.mjs at {{BASE_SHA}}, branch {{BRANCH}}.', checks: ['node --check {{WORKTREE_ROOT}}/src/main.mjs'] }]);
+  const corrected = plan([{ ...portable.packets[0], instructions: `${portable.packets[0].instructions} Verify the changed export value before finishing.` }]);
+  let planReviews = 0;
   const runtime = { ...f.runtime, runModel: async options => {
     if (options.phase === 'plan') return f.reply(options, invalid);
-    if (options.phase === 'plan-correction') return f.reply(options, portable);
-    if (options.phase === 'plan-review' || options.phase === 'integrated-code-review' || options.phase === 'visual-critique') return f.reply(options, approved);
+    if (options.phase === 'plan-correction') {
+      const instructions = options.prompt.split('\nPLAN:')[0];
+      for (const placeholder of ['{{WORKTREE_ROOT}}', '{{BASE_SHA}}', '{{BRANCH}}']) assert.ok(instructions.includes(placeholder));
+      assert.match(instructions, /relative (?:product )?paths/);
+      assert.match(instructions, /(?:no original-root paths|Never embed .*absolute path)/);
+      assert.match(instructions, /(?:branch changes or commits|never switch branches or commit)/);
+      return f.reply(options, planReviews ? corrected : portable);
+    }
+    if (options.phase === 'plan-review') return f.reply(options, ++planReviews === 1
+      ? { ...rejection, findings: [{ severity: 'medium', description: 'Require verification of the changed export value before finishing.', paths: ['src/main.mjs'] }] }
+      : approved);
+    if (options.phase === 'integrated-code-review' || options.phase === 'visual-critique') return f.reply(options, approved);
     if (options.phase === 'write-writer' || options.phase === 'review-writer') {
       assert.equal(options.prompt.includes(f.config.root), false);
       assert.equal(options.prompt.includes('{{WORKTREE_ROOT}}'), false);
       assert.equal(options.prompt.includes('branch main'), false);
       assert.ok(options.prompt.includes(`Edit ${options.cwd}/src/main.mjs at ${f.config.baseSha}, branch HEAD.`));
+      assert.ok(options.prompt.includes('Verify the changed export value before finishing.'));
       assert.ok(options.prompt.includes(`node --check ${options.cwd}/src/main.mjs`));
       assert.equal(git(options.cwd, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), 'HEAD');
       if (options.phase === 'write-writer') {
@@ -349,7 +362,8 @@ test('original-root plans are corrected and every dispatched packet is bound to 
     return f.reply(options, 'Observed completion');
   } };
   assert.equal((await runWorkflow(f.config, runtime)).status, 'accepted-local');
-  assert.equal(f.phases.filter(phase => phase === 'plan-correction').length, 1);
+  assert.equal(f.phases.filter(phase => phase === 'plan-correction').length, 2);
+  assert.equal(planReviews, 2);
   assert.match(await readFile(join(f.config.root, 'src/main.mjs'), 'utf8'), /bound-worker/);
 });
 
