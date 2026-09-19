@@ -36,7 +36,7 @@ const commitPattern = /^[a-f0-9]{40}$/u;
 const semverPattern = /^\d+\.\d+\.\d+$/u;
 const hashPattern = /^[a-f0-9]{64}$/u;
 
-/** Top-level runtime paths eligible for distribution. */
+/** Runtime directories and exact canonical sources referenced by old manifests. */
 const runtimeTopLevelPaths = [
   "package.json",
   "README.md",
@@ -48,6 +48,8 @@ const runtimeTopLevelPaths = [
   "manifests",
   "catalog",
   "scripts",
+  "benchmarks/suite.json",
+  "docs/architecture-reference-pack.md",
 ];
 const builderPath = "scripts/pack-distribution.mjs";
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

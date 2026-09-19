@@ -55,6 +55,8 @@
     "manifests/",
     "catalog/",
     "scripts/",
+    "benchmarks/suite.json",
+    "docs/architecture-reference-pack.md",
     ".development-system-package.json",
     "README.md",
     "LICENSE"
