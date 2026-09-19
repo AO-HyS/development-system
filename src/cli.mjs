@@ -111,6 +111,9 @@ function parseArguments(argv) {
 
 /** @param {Record<string, unknown>} result */
 function formatHuman(result) {
+  if (result.operation === "jev-workflow") return `Jev workflow: ${result.status}.`;
+  if (result.operation === "jev-workflow-measure") return `Workflow measurement written to ${result.output}.`;
+  if (result.operation === "validate-atom-plan") return `Atom plan: ${result.status}.`;
   if (result.operation === "record-provider-failure") return `Provider failure cached for ${result.candidateId} until ${result.expiresAt}.`;
   if (result.operation === "setup") return `Development System ${result.version} and skill catalog ${result.catalogVersion} installed. Run audit and audit-skills to inspect installation state.`;
   if (result.operation === "install") {
@@ -350,6 +353,21 @@ export async function run(argv) {
     if (!options.input) throw new Error("orchestrator-pilot requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = evaluateOrchestrationPilot(input);
+  } else if (command === "jev-workflow") {
+    if (!options.input) throw new Error("jev-workflow requires --input <private-manifest.json>");
+    const { runWorkflow } = await import("../scripts/run-jev-workflow.mjs");
+    const execution = await runWorkflow(JSON.parse(await readFile(resolve(options.input), "utf8")));
+    result = { operation: "jev-workflow", ok: execution?.status === "accepted-local", ...execution };
+  } else if (command === "jev-workflow-measure") {
+    if (!options.input) throw new Error("jev-workflow-measure requires --input <private-execution-directory>");
+    const { measureWorkflow } = await import("../scripts/measure-jev-workflow.mjs");
+    const measurement = await measureWorkflow(resolve(options.input));
+    result = { operation: "jev-workflow-measure", ok: true, ...measurement };
+  } else if (command === "validate-atom-plan") {
+    if (!options.plan) throw new Error("validate-atom-plan requires --plan <plan.json>");
+    const { validateAtomPlan } = await import("./orchestration.mjs");
+    const errors = validateAtomPlan(JSON.parse(await readFile(resolve(options.plan), "utf8")));
+    result = { operation: "validate-atom-plan", ok: errors.length === 0, status: errors.length === 0 ? "valid" : "invalid", errors };
   } else if (command === "orchestration-plan") {
     if (!options.input) throw new Error("orchestration-plan requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -467,7 +485,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|jev-workflow|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

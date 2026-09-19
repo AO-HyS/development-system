@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.0",
+  "base": {
+    "contractVersion": "1.22.1",
+    "sourceCommit": "24efbe31b085e29ffc6d18b63bad4f4d57552b3e",
+    "manifest": "manifests/1.22.1.json",
+    "manifestSha256": "333e21bfc10affd4923f9fc9b1e98d1475d43404f558fc2bb8ed64f6a10135a8",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 30,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Every baseline managed destination and skill variant is retained. Unchanged sources retain their published hashes. General routing and existing CLI behavior remain inherited from the 1.22.1 canonical source; the new workflow policy is scoped to explicit invocation.",
+  "runtimeProvenance": "artifacts/1.23.0/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; source integrity and copying do not prove runtime model identity or accepted product behavior."
+}
