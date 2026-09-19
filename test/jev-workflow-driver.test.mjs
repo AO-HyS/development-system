@@ -64,11 +64,24 @@ async function fixture(packets = [packet('writer', ['src'])]) {
   return { base, config, phases, requests, runtime, reply, qa, plan: plan(packets), isStopped: () => stopped };
 }
 
-test('real Git driver preserves rejected candidates, includes new files, repeats final review after QA corrections and records every QA job', async () => {
+test('direct single-packet planning skips discovery and preserves every review, correction and QA gate through real Git integration', async () => {
   const f = await fixture();
+  f.config.planningMode = 'direct';
+  f.config.packetization = 'single';
+  const partitioned = plan([packet('first', ['src/main.mjs'], ids.slice(0, 3)), packet('second', ['src/new.mjs'], ids.slice(3))]);
   let writes = 0, packetReviews = 0, qaRuns = 0;
   const runtime = { ...f.runtime, runModel: async options => {
-    if (options.phase === 'plan') return f.reply(options, f.plan);
+    if (options.phase === 'plan') {
+      assert.deepEqual(options.profile, { adapter: 'codex', model: 'gpt-6-astra', effort: 'xhigh' });
+      assert.equal(options.sandbox, 'read-only');
+      assert.match(options.prompt, /Inspect the actual relevant source/);
+      assert.match(options.prompt, /exactly one coherent implementation packet/);
+      return f.reply(options, partitioned);
+    }
+    if (options.phase === 'plan-correction') {
+      assert.match(options.prompt, /Single packetization requires exactly one/);
+      return f.reply(options, f.plan);
+    }
     if (options.phase === 'plan-review') return f.reply(options, approved);
     if (options.phase === 'write-writer') {
       assert.ok(options.prompt.includes(f.plan.packets[0].instructions));
@@ -97,6 +110,16 @@ test('real Git driver preserves rejected candidates, includes new files, repeats
   } };
   const result = await runWorkflow(f.config, runtime);
   assert.equal(result.status, 'accepted-local');
+  assert.deepEqual(f.phases, ['plan', 'plan-correction', 'plan-review', 'write-writer', 'review-writer', 'write-writer', 'review-writer',
+    'integration', 'integrated-code-review', 'acceptance', 'acceptance-correction', 'integrated-code-review', 'acceptance', 'visual-critique']);
+  const manifest = JSON.parse(await readFile(join(f.config.evidenceDirectory, 'manifest.json'), 'utf8'));
+  const packageVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
+  assert.equal(manifest.controllerVersion, packageVersion);
+  assert.equal(manifest.planningMode, 'direct');
+  assert.equal(manifest.packetization, 'single');
+  const acceptedPlan = JSON.parse(await readFile(join(f.config.evidenceDirectory, 'approved-plan.json'), 'utf8'));
+  assert.equal(acceptedPlan.packets.length, 1);
+  assert.deepEqual(acceptedPlan.packets[0].acceptanceIds, ids);
   assert.equal(writes, 2);
   assert.equal(qaRuns, 2);
   assert.equal(f.phases.filter(phase => phase === 'integrated-code-review').length, 2);
@@ -107,9 +130,18 @@ test('real Git driver preserves rejected candidates, includes new files, repeats
   assert.deepEqual([...new Set(flows.flatMap(request => request.state.flow.fileSummaries.map(file => file.path)))].sort(), ['src/main.mjs', 'src/new.mjs']);
   assert.ok(flows.some(request => request.state.flow.fileSummaries.some(file => file.summary.includes('+export const'))));
   const events = (await readFile(join(f.config.evidenceDirectory, 'events.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  assert.equal(events.some(event => event.phase === 'discovery'), false);
   assert.equal(events.filter(event => event.type === 'job-completed' && event.phase === 'acceptance').length, 2);
   assert.equal(events.filter(event => event.type === 'job-started').length, events.filter(event => event.type === 'job-completed').length);
   assert.equal(f.isStopped(), true);
+});
+
+test('invalid planning or packetization modes reject before starting any provider', async () => {
+  const f = await fixture();
+  const runtime = { ...f.runtime, startFlashServer: async () => { assert.fail('Invalid configuration must not start a provider'); } };
+  for (const planningMode of ['unknown', null]) await assert.rejects(runWorkflow({ ...f.config, planningMode }, runtime), /Unknown planning mode/);
+  for (const packetization of ['unknown', null]) await assert.rejects(runWorkflow({ ...f.config, packetization }, runtime), /Unknown packetization mode/);
+  await assert.rejects(readFile(join(f.config.evidenceDirectory, 'events.jsonl'), 'utf8'), { code: 'ENOENT' });
 });
 
 test('unowned new file fails before integration and a late approved sibling review cannot apply after cancellation', async () => {
@@ -189,6 +221,7 @@ test('independent writers and reviewers overlap within configured capacities whi
   } };
   const result = await runWorkflow(f.config, runtime);
   assert.equal(result.status, 'accepted-local');
+  assert.deepEqual(f.phases.slice(0, 3), ['discovery', 'plan', 'plan-review']);
   assert.equal(writerPeak, 2);
   assert.equal(reviewerPeak, 2);
   assert.equal(writerRoots.size, 2);

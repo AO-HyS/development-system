@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.1",
+  "base": {
+    "contractVersion": "1.23.0",
+    "sourceCommit": "04fe3dde41f0d085ac2c07d207eb4379073853d6",
+    "manifest": "manifests/1.23.0.json",
+    "manifestSha256": "898c2f1b1dea39e607c8b9209b07e22a4c5209607995d9594b29dcd22f05ee29",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 41,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Retain every managed destination, skill variant, general model route and existing workflow default. Only explicitly selected direct planning with single-packet enforcement adds a fourth experimental alternative; all review, correction and QA gates remain.",
+  "compatiblePolicy": "config/1.23.0/orchestration-policy.json",
+  "compatiblePricing": "config/1.23.0/api-prices.json",
+  "runtimeProvenance": "artifacts/1.23.1/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; this release does not rank an unfinished alternative or claim product acceptance from installation."
+}

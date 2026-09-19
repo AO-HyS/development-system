@@ -2,45 +2,17 @@
   "schemaVersion": 1,
   "allowedChanges": [
     {
-      "path": "test/orchestration.test.mjs",
-      "sha256": "205b2987fa36c28b13a1e1b928fdb7c27786259e4254cb2570df5d5286322236",
-      "reason": "Exercises invalid plans, leases, forged/stale receipts, quarantined dispatch/hooks, strict typed provider response checks, timeout, advisory non-authority and compact context boundaries.",
-      "issue": "User-authorized Jev orchestration 1.23.0 release and benchmark corrections",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/orchestration-store.test.mjs",
-      "sha256": "daf45f36ebecadaf73b9e2e21321a27514062f235501f66de575297fcfe34149",
-      "reason": "Exercises durable ownership, cross-path conflicts, matching attempts/candidate/reviewer identity, cancellation termination, crash recovery and dependency release only after verification.",
-      "issue": "User-authorized Jev orchestration 1.23.0 release and benchmark corrections",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/model-execution.test.mjs",
-      "sha256": "755357623755abcb64c6e2695149c60f6c92b14a880534784b8c5f2c5f18ba04",
-      "reason": "Uses isolated real child processes and HTTP server seams for pinned model/effort, identity drift termination, cancellation, secret redaction, per-request pricing, partial usage and concurrent sessions; live provider claims require separate operational probes.",
-      "issue": "User-authorized Jev orchestration 1.23.0 release and benchmark corrections",
+      "path": "test/visual-grill.test.mjs",
+      "sha256": "39fcd528324bc6666f9b24e43f929d4ffef8863af6ddd26dfba2c109b2da25b7",
+      "reason": "Parent-authorized narrow version compatibility update: current package/manifest1.23.1 retain exact catalog0.43.1, all four canonical1.22.1 skill source paths/folder hashes and reviewer source/hash assertions. Exact diff independently reviewed; no assertions removed or weakened.",
+      "issue": "User-authorized optional fourth workflow alternative1.23.1",
       "reviewedContent": true
     },
     {
       "path": "test/jev-workflow-driver.test.mjs",
-      "sha256": "d9e2acf69d8a34e3d4b04e6b2212baae5c4e7bae47b4bec27129b93e70271d5d",
-      "reason": "Runs real Git fixture changes through rejection/correction/integration, concurrent ownership, cancellation, independent final review, acceptance evidence confinement and billed Jev failure retention; fake model/browser data tests controller plumbing only. Latest reviewed correction additionally proves unknown termination preserves the writer lease and controller lock. Final independently reviewed regression checks portable packet rebinding to real private Git worktrees, invalid-plan correction, source-root mutation rejection, empty candidate rejection and severity alias retention without bypassing review.",
-      "issue": "User-authorized Jev orchestration 1.23.0 release and benchmark corrections",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/jev-workflow-measurement.test.mjs",
-      "sha256": "f5face8e95a02e2b1650044180ed9c787d691c9b62f59dd0155942405cfae79a",
-      "reason": "Checks union elapsed time, failed and QA costs, missing receipts, incomplete totals and known partial usage/cost counted once. Known partial usage and cost remain a subtotal rather than inventing complete cost.",
-      "issue": "User-authorized Jev orchestration 1.23.0 release and benchmark corrections",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/visual-grill.test.mjs",
-      "sha256": "488f25205078e91f8fbe2cfd3ef06ac4abffeb66f9b957434e28dd9682b146f4",
-      "reason": "Independently reviewed exact narrow version change: verifies current package and manifest 1.23.0 retain published catalog 0.43.1, all four canonical 1.22.1 skills, folder hashes and visual-reviewer source/hash. No assertion is removed or weakened.",
-      "issue": "User-authorized 1.23.0 compatibility correction",
+      "sha256": "d71aabe896ccd585fc94bed59f4a64209725f5fd1462111ae9035f535f06ce48",
+      "reason": "Independent exact-diff/content review: real Git direct/single execution skips discovery, repairs a multi-packet plan to exactly one, retains all rejection/correction/review/integration/QA phases and ledger entries; invalid modes reject before provider startup. Existing default scenario still proves discovery, planning and independent concurrent writers/reviewers. Original acceptance and preservation assertions remain.",
+      "issue": "User-authorized optional fourth workflow alternative 1.23.1",
       "reviewedContent": true
     }
   ]

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { validateSkillCatalog } from "../src/skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const version = "1.23.0";
+const version = "1.23.1";
 const artifactRoot = `artifacts/${version}`;
 const args = process.argv.slice(2);
 if (args.some((arg) => !["--write", "--check", "--snapshot-runtime"].includes(arg))
@@ -23,8 +23,8 @@ if (write) {
   try {
     execFileSync("git", ["cat-file", "-e", `HEAD:manifests/${version}.json`], { cwd: repositoryRoot, stdio: "ignore" });
     recorded = true;
-  } catch { /* Only the not-yet-committed 1.23.0 candidate may be regenerated. */ }
-  if (recorded) throw new Error("Refusing to rewrite the recorded 1.23.0 manifest; prepare a new semantic version");
+  } catch { /* Only the not-yet-committed 1.23.1 candidate may be regenerated. */ }
+  if (recorded) throw new Error("Refusing to rewrite the recorded 1.23.1 manifest; prepare a new semantic version");
 }
 const runtimePaths = [
   "config/1.23.0/orchestration-policy.json",
@@ -67,7 +67,7 @@ if (args.includes("--snapshot-runtime")) {
   await writeFile(resolve(repositoryRoot, artifactRoot, "runtime-source-provenance.json"), `${JSON.stringify(provenance, null, 2)}\n`);
 }
 
-const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.22.1.json"), "utf8"));
+const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.23.0.json"), "utf8"));
 const catalogPath = "catalog/0.43.1.json";
 const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogPath), "utf8"));
 if (catalog.catalogVersion !== "0.43.1") throw new Error("Candidate must retain the published 0.43.1 catalog");
@@ -77,8 +77,9 @@ if (catalogErrors.length) throw new Error(`Candidate catalog is invalid:\n- ${ca
 /** @type {any[]} */
 const artifacts = [];
 for (const artifact of previous.artifacts) {
-  const sourcePath = artifact.logicalName === "development-contract" ? `${artifactRoot}/contract.md`
-    : artifact.logicalName === "skill-catalog" ? catalogPath : artifact.sourcePath;
+  const sourcePath = artifact.sourcePath.startsWith("artifacts/1.23.0/")
+    ? `${artifactRoot}/${artifact.sourcePath.slice("artifacts/1.23.0/".length)}`
+    : artifact.sourcePath;
   const actual = await digest(sourcePath);
   if (sourcePath === artifact.sourcePath && actual !== artifact.sha256) {
     throw new Error(`Cannot carry forward drifted published artifact ${artifact.id}`);
@@ -86,25 +87,6 @@ for (const artifact of previous.artifacts) {
   artifacts.push({ ...artifact, sourcePath, sha256: actual });
 }
 
-/** @param {string} name @param {string} sourcePath @param {string} relativeDestination */
-async function addMirrors(name, sourcePath, relativeDestination) {
-  const hash = await digest(sourcePath);
-  for (const harness of ["codex"]) {
-    artifacts.push({
-      id: `${name}.${harness}`,
-      logicalName: name,
-      sourcePath,
-      destination: `.${harness}/development-system/${relativeDestination}`,
-      harness,
-      sha256: hash,
-      expectedMirrorOf: harness === "codex" ? null : `${name}.codex`,
-    });
-  }
-}
-
-await addMirrors("orchestration-contract", `${artifactRoot}/orchestration-contract.md`, "orchestration-contract.md");
-await addMirrors("orchestration-source-provenance", `${artifactRoot}/source-provenance.json`, "orchestration-source-provenance.json");
-await addMirrors("orchestration-runtime-provenance", `${artifactRoot}/runtime-source-provenance.json`, "runtime-source-provenance.json");
 const runtimeProvenance = JSON.parse(await readFile(resolve(repositoryRoot, artifactRoot, "runtime-source-provenance.json"), "utf8"));
 if (runtimeProvenance.contractVersion !== version || runtimeProvenance.sources.length !== runtimePaths.length) {
   throw new Error("Candidate runtime provenance does not declare the complete runtime source set");
@@ -114,7 +96,10 @@ for (const sourcePath of runtimePaths) {
   const pin = runtimeProvenance.sources.find((/** @type {any} */ item) => item.sourcePath === sourcePath && item.artifactPath === artifactPath);
   if (!pin || pin.sha256 !== await digest(artifactPath)) throw new Error(`Runtime snapshot differs from its source provenance: ${sourcePath}`);
   if (pin.sha256 !== await digest(sourcePath)) throw new Error(`Runtime source changed after snapshot: ${sourcePath}`);
-  await addMirrors(`orchestration-runtime-${sourcePath.replaceAll(/[^a-zA-Z0-9]/g, "-")}`, artifactPath, `runtime/${sourcePath}`);
+  const installed = artifacts.find((artifact) => artifact.sourcePath === artifactPath);
+  if (!installed || installed.sha256 !== pin.sha256 || installed.destination !== `.codex/development-system/runtime/${sourcePath}`) {
+    throw new Error(`Runtime source is missing its explicit manifest binding: ${sourcePath}`);
+  }
 }
 
 const priorDestinations = new Set(previous.artifacts.map((/** @type {any} */ artifact) => artifact.destination));
@@ -126,5 +111,5 @@ const manifest = { ...previous, contractVersion: version, artifacts };
 const manifestPath = resolve(repositoryRoot, "manifests", `${version}.json`);
 const bytes = `${JSON.stringify(manifest, null, 2)}\n`;
 if (write) await writeFile(manifestPath, bytes);
-else if (await readFile(manifestPath, "utf8") !== bytes) throw new Error("Candidate manifest differs from reviewed source snapshots; rebuild the unpublished 1.23.0 candidate explicitly");
+else if (await readFile(manifestPath, "utf8") !== bytes) throw new Error("Candidate manifest differs from reviewed source snapshots; rebuild the unpublished 1.23.1 candidate explicitly");
 process.stdout.write(`${write ? "Wrote" : "Verified"} manifests/${version}.json: ${artifacts.length} artifacts, all ${previous.artifacts.length} prior destinations retained.\n`);
