@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.23.1",
-  "contractVersion": "1.23.1",
+  "version": "1.23.2",
+  "contractVersion": "1.23.2",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",

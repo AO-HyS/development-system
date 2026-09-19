@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, realpath, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -71,6 +71,15 @@ test('direct single-packet planning skips discovery and preserves every review, 
   const partitioned = plan([packet('first', ['src/main.mjs'], ids.slice(0, 3)), packet('second', ['src/new.mjs'], ids.slice(3))]);
   let writes = 0, packetReviews = 0, qaRuns = 0;
   const runtime = { ...f.runtime, runModel: async options => {
+    if (options.phase === 'review-writer' || options.phase === 'integrated-code-review') {
+      assert.equal(options.sandbox, 'danger-full-access');
+      assert.match(options.prompt, /concrete product defect or validation blocker/);
+      const temporaryFile = join(options.cwd, '.review-check.tmp');
+      await writeFile(temporaryFile, 'Temporary check output');
+      try { execFileSync(process.execPath, ['--check', 'src/main.mjs'], { cwd: options.cwd }); }
+      finally { await rm(temporaryFile); }
+    }
+    if (options.phase === 'plan-review' || options.phase === 'visual-critique') assert.equal(options.sandbox, 'read-only');
     if (options.phase === 'plan') {
       assert.deepEqual(options.profile, { adapter: 'codex', model: 'gpt-6-astra', effort: 'xhigh' });
       assert.equal(options.sandbox, 'read-only');
@@ -269,6 +278,49 @@ test('invalid review verifier fails receipt validation before any candidate patc
   await assert.rejects(runWorkflow(f.config, runtime), /matching acceptance receipt required/);
   assert.match(await readFile(join(f.config.root, 'src/main.mjs'), 'utf8'), /baseline/);
   assert.equal(git(f.config.root, ['status', '--porcelain']).trim(), '');
+});
+
+test('check-capable code reviewers cannot approve changed product content, HEAD or branch, or return empty rejections', async () => {
+  for (const scenario of [
+    { phase: 'review-writer', mutation: 'product', error: /Candidate changed after its immutable review snapshot/ },
+    { phase: 'review-writer', mutation: 'head', error: /Worker changed its pinned base revision or detached branch/ },
+    { phase: 'review-writer', mutation: 'branch', error: /Worker changed its pinned base revision or detached branch/ },
+    { phase: 'integrated-code-review', mutation: 'product', error: /Independent review changed the integrated candidate/ },
+    { phase: 'integrated-code-review', mutation: 'head', error: /Integrated candidate changed its pinned base revision or branch/ },
+    { phase: 'integrated-code-review', mutation: 'branch', error: /Integrated candidate changed its pinned base revision or branch/ },
+    { phase: 'review-writer', mutation: null, error: /Rejected review requires concrete findings/ },
+  ]) {
+    const f = await fixture();
+    const runtime = { ...f.runtime, runModel: async options => {
+      if (options.phase === 'plan') return f.reply(options, f.plan);
+      if (options.phase === 'plan-review') return f.reply(options, approved);
+      if (options.phase === 'write-writer') {
+        await writeFile(join(options.cwd, 'src/main.mjs'), 'export const value = "writer-candidate";\n');
+        return f.reply(options, 'Completed the candidate');
+      }
+      if (options.phase === scenario.phase) {
+        assert.equal(options.sandbox, 'danger-full-access');
+        if (scenario.mutation === 'product') await writeFile(join(options.cwd, 'src/main.mjs'), 'export const value = "reviewer-mutated";\n');
+        if (scenario.mutation === 'head' || scenario.mutation === 'branch') {
+          const beforeTree = git(options.cwd, ['write-tree']).trim();
+          if (scenario.mutation === 'head') git(options.cwd, ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '--allow-empty', '-m', 'Unauthorized reviewer commit']);
+          else git(options.cwd, ['switch', '-c', 'unauthorized-review-branch']);
+          assert.equal(git(options.cwd, ['write-tree']).trim(), beforeTree);
+        }
+        return f.reply(options, scenario.mutation ? approved : { approved: false, findings: [], observations: ['Existing check could not run'] });
+      }
+      if (options.phase === 'review-writer' || options.phase === 'integrated-code-review') return f.reply(options, approved);
+      return f.reply(options, 'Observed completion');
+    } };
+    await assert.rejects(runWorkflow(f.config, runtime), scenario.error);
+    assert.equal(f.phases.includes('acceptance'), false);
+    await assert.rejects(readFile(join(f.config.evidenceDirectory, 'acceptance.json'), 'utf8'), { code: 'ENOENT' });
+    if (scenario.phase === 'review-writer') {
+      assert.match(await readFile(join(f.config.root, 'src/main.mjs'), 'utf8'), /baseline/);
+      const failed = JSON.parse(await readFile(join(f.config.evidenceDirectory, 'workflow-failed.json'), 'utf8'));
+      assert.ok(failed.atoms.every(atom => atom.state !== 'verified'));
+    }
+  }
 });
 
 test('original-root plans are corrected and every dispatched packet is bound to its private detached worktree', async () => {
