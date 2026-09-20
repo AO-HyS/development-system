@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.4",
+  "base": {
+    "contractVersion": "1.23.3",
+    "sourceCommit": "bfd845704a28b9fdbd5911dad65c6e42bc82730b",
+    "manifest": "manifests/1.23.3.json",
+    "manifestSha256": "e82287f1f1f2e990ffebbd8a2e25cabc66442da7eee45c402fde90169b72a55d",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 41,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Retain every managed destination, skill variant, model route, planning mode and acceptance gate. Stable failed-criterion progress prevents evidence-path churn from appearing as progress; native Codex completion and final output govern success; incomplete usage remains explicit per model and full arm.",
+  "compatiblePolicy": "config/1.23.0/orchestration-policy.json",
+  "compatiblePricing": "config/1.23.0/api-prices.json",
+  "runtimeProvenance": "artifacts/1.23.4/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; this release does not rank an unfinished alternative or claim product acceptance from installation."
+}

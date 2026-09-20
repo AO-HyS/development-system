@@ -145,6 +145,48 @@ test('direct single-packet planning skips discovery and preserves every review, 
   assert.equal(f.isStopped(), true);
 });
 
+test('acceptance stops repeated failed criteria despite fresh evidence, while changed candidates and successful environment corrections proceed', async () => {
+  for (const correction of ['unchanged', 'product', 'environment']) {
+    const f = await fixture();
+    let qaRuns = 0, corrections = 0;
+    const evidencePaths = [];
+    const runtime = { ...f.runtime, runModel: async options => {
+      if (options.phase === 'plan') return f.reply(options, f.plan);
+      if (['plan-review', 'review-writer', 'integrated-code-review', 'visual-critique'].includes(options.phase)) return f.reply(options, approved);
+      if (options.phase === 'write-writer') await writeFile(join(options.cwd, 'src/main.mjs'), 'export const value = "writer-candidate";\n');
+      if (options.phase === 'acceptance') {
+        qaRuns += 1;
+        const accepted = correction === 'product' ? qaRuns === 3 : correction === 'environment' && qaRuns === 2;
+        const qa = await f.qa(options, accepted);
+        qa.criteria.forEach(item => { item.observation = `Round ${qaRuns}: ${item.observation}`; });
+        if (!accepted) qa.findings = [`Criterion 2 still fails in round ${qaRuns}`];
+        evidencePaths.push(qa.criteria.find(item => item.id === '2').evidence[0]);
+        return f.reply(options, qa);
+      }
+      if (options.phase === 'acceptance-correction') {
+        corrections += 1;
+        if (correction === 'unchanged' && corrections > 1) throw new Error('Unexpected additional acceptance correction');
+        if (correction === 'product') await writeFile(join(options.cwd, 'src/main.mjs'), `export const value = "corrected-${corrections}";\n`);
+      }
+      return f.reply(options, 'Observed completion');
+    } };
+    if (correction === 'unchanged') {
+      await assert.rejects(runWorkflow(f.config, runtime), /acceptance repeats the same failed candidate and findings/);
+      await assert.rejects(readFile(join(f.config.evidenceDirectory, 'acceptance.json'), 'utf8'), { code: 'ENOENT' });
+      assert.equal(f.phases.includes('visual-critique'), false);
+    } else {
+      assert.equal((await runWorkflow(f.config, runtime)).status, 'accepted-local');
+      assert.equal(f.phases.at(-1), 'visual-critique');
+    }
+    assert.equal(qaRuns, correction === 'product' ? 3 : 2);
+    assert.equal(corrections, correction === 'product' ? 2 : 1);
+    assert.equal(new Set(evidencePaths).size, qaRuns);
+    assert.equal(f.phases.filter(phase => phase === 'integrated-code-review').length, qaRuns);
+    assert.match(await readFile(join(f.config.root, 'src/main.mjs'), 'utf8'), correction === 'product' ? /corrected-2/ : /writer-candidate/);
+    assert.equal(f.isStopped(), true);
+  }
+});
+
 test('invalid planning or packetization modes reject before starting any provider', async () => {
   const f = await fixture();
   const runtime = { ...f.runtime, startFlashServer: async () => { assert.fail('Invalid configuration must not start a provider'); } };

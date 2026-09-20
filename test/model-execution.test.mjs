@@ -41,8 +41,8 @@ if(['drift','cancel','timeout'].includes(mode)){
  setInterval(()=>{},1000);
 }else{
  emit({type:'item.completed',item:{type:'error',message:'PRIVATE_PROVIDER_TEXT'}});
- writeFileSync(flag('--output-last-message'),'FIXTURE_OK');
- emit({type:'turn.completed',usage:{input_tokens:100,output_tokens:20}});
+ if(!['stopped','no-final'].includes(mode)) writeFileSync(flag('--output-last-message'),mode==='blank-final'?' \\n\\t':'FIXTURE_OK');
+ if(!['stopped','no-terminal'].includes(mode)) emit({type:'turn.completed',usage:{input_tokens:100,output_tokens:20}});
  process.exit(mode==='failed'?7:0);
 }
 `, { mode: 0o700 });
@@ -119,6 +119,33 @@ test("unknown identity and nonzero exit remain failures despite a usable final a
     assert.equal(result.finalText, "FIXTURE_OK");
     assert.equal(result.failure, mode === "unknown" ? "observed_identity_unknown" : "process_exit_nonzero");
     assert.equal(result.usage.input, 100);
+  }
+});
+
+test("zero-exit Codex turns require terminal completion and a meaningful final response", async (t) => {
+  for (const mode of ["stopped", "no-terminal", "no-final", "blank-final"]) {
+    await t.test(mode, async (t) => {
+      const f = await codexFixture(t, mode);
+      const result = await runModel({ ...f, profile: astra, prompt: "packet", evidenceDirectory: join(f.root, "evidence") });
+      assert.equal(result.exitCode, 0);
+      assert.equal(result.ok, false);
+      assert.equal(result.failure, "provider_turn_incomplete");
+      assert.equal(result.identityAttested, true);
+      assert.equal(result.cancellationConfirmed, true);
+      assert.equal(result.usage.input, 100);
+      assert.equal(result.usage.cachedInput, 40);
+      assert.equal(result.usage.output, 20);
+      assert.equal(result.finalText, mode === "no-terminal" ? "FIXTURE_OK" : "");
+      if (["stopped", "no-terminal"].includes(mode)) {
+        assert.equal(result.usageComplete, false);
+        assert.equal(result.apiCostComplete, false);
+        assert.equal(result.apiEquivalentCostUsd, null);
+      }
+      const saved = JSON.parse(await readFile(result.receiptPath, "utf8"));
+      assert.equal(saved.ok, false);
+      assert.equal(saved.failure, "provider_turn_incomplete");
+      assert.deepEqual(saved.usage, result.usage);
+    });
   }
 });
 

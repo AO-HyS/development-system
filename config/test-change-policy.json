@@ -3,16 +3,30 @@
   "allowedChanges": [
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "9a05bcf06c8781a818268f93fb52c69b8fc195b6eaa57d8a798c8fc8b79980bc",
-      "reason": "Parent independent exact-diff review approved four current manifest/package/contract version literals to1.23.3. Catalog0.43.1 validation, four canonical1.22.1 skill source paths/folder hashes and visual reviewer source/hash assertions remain unchanged. No assertions removed or weakened.",
-      "issue": "User-authorized local1.23.3 planning portability repair",
+      "sha256": "31660e2e2ea3db0babd09f576c71b09a48bc57023d16bc44d8313e5e92f39fbb",
+      "reason": "Parent independent exact-diff review approved four current manifest/package/contract version literals to 1.23.4. Catalog 0.43.1 validation, four canonical 1.22.1 skill source paths/folder hashes and visual reviewer source/hash assertions remain unchanged. No assertions removed or weakened.",
+      "issue": "User-authorized local 1.23.4 terminal evidence and acceptance progress repairs",
       "reviewedContent": true
     },
     {
       "path": "test/jev-workflow-driver.test.mjs",
-      "sha256": "d0e7d351c7100423cfc358ab9dc61534966bf681cc56d18d1cacdfd1acad54f2",
-      "reason": "Independent provider_preflight exact-diff/content review approved extending the existing invalid-root correction scenario with semantic review rejection/correction. Both correction prompts retain the established portability rule before echoed plan content, and corrected portable instructions reach actual detached writer/reviewer worktrees. Red regression failed against old prompt. Existing validation, binding, review, QA and acceptance assertions retained.",
-      "issue": "User-authorized local1.23.3 planning portability repair",
+      "sha256": "d2704ec1f94d51285441c851dcc03deaaf039a44d177b2baa38b65dc0a4c7345",
+      "reason": "Parent and provider_preflight independently reviewed the real Git regression: unchanged candidate and failed criterion with fresh evidence paths stop repeated corrections; changed candidates and successful environment corrections continue through integrated review, acceptance, final visual review and cleanup. Existing assertions retained; regression reproduced red before the fix.",
+      "issue": "User-authorized local 1.23.4 terminal evidence and acceptance progress repairs",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/jev-workflow-measurement.test.mjs",
+      "sha256": "cd84acbe1e9047368b4e06fe32da8c7316cf6137d9c90b07e318ce299a468592",
+      "reason": "Parent and provider_preflight independently reviewed numeric partial usage remaining unknown per model and full arm while observed token counters and known cost remain preserved. Existing accounting assertions retained; regression reproduced red before the fix.",
+      "issue": "User-authorized local 1.23.4 terminal evidence and acceptance progress repairs",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/model-execution.test.mjs",
+      "sha256": "19f12861b7844754d2c09e754f3a1cf056e45140cf6eb19bd2ceff6f7802f121",
+      "reason": "Parent and workflow_runtime independently reviewed four native exit-zero missing-terminal/final-response cases. Receipts fail closed while retaining available usage and correct completeness flags; existing successful-completion, identity, cancellation and accounting checks remain. Red regression precedes the one-line provider fix.",
+      "issue": "User-authorized local 1.23.4 terminal evidence and acceptance progress repairs",
       "reviewedContent": true
     }
   ]

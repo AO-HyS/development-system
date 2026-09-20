@@ -52,5 +52,18 @@ test('failed work and QA stay in per-arm cost; absent receipts remain unknown',a
     assert.equal(partial.byModel['gpt-6-astra'].input,250);
     assert.equal(partial.byModel['gpt-6-astra'].cachedInput,160);
     assert.equal(partial.byModel['gpt-6-astra'].unknownUsageJobs,1);
+
+    // Valid numeric counters can still describe only a partial provider turn.
+    await save('jobs/003-missing/receipt.json',{phase:'correction',ok:false,modelObserved:'gpt-6-astra',identityAttested:true,
+      startedAt:'2026-09-19T10:00:30.000Z',endedAt:'2026-09-19T10:00:40.000Z',
+      apiEquivalentCostUsd:null,apiEquivalentKnownCostUsd:0.5,usageComplete:false,apiCostComplete:false,
+      usage:{input:50,cachedInput:30,output:5,total:55}});
+    const numericPartial=(await measureWorkflow(root)).result;
+    assert.equal(numericPartial.byModel['gpt-6-astra'].unknownUsageJobs,1);
+    assert.equal(numericPartial.byModel['gpt-6-astra'].input,250);
+    assert.equal(numericPartial.byModel['gpt-6-astra'].cachedInput,190);
+    assert.equal(numericPartial.cost.knownApiEquivalentUsd,3.500042);
+    assert.equal(numericPartial.cost.unknownUsageJobs,1);
+    assert.equal(numericPartial.cost.complete,false);
   }finally{await rm(root,{recursive:true,force:true});}
 });
