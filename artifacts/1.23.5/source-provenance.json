@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.5",
+  "base": {
+    "contractVersion": "1.23.4",
+    "sourceCommit": "b669b89fc7a2384e9aa79d4a0fd854c1dfddc411",
+    "manifest": "manifests/1.23.4.json",
+    "manifestSha256": "d0ac53ba59fa16d7cdde917f222f8153d4bf1cbd295dbe4ebd22a020a53b56f4",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 41,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Retain every managed destination, skill variant, model route, validator and acceptance gate. At most three total identical-request Jev attempts retry only typed malformed-answer errors, preserve private per-attempt response/accounting and fail closed after exhaustion; no fallback or provider substitution.",
+  "compatiblePolicy": "config/1.23.0/orchestration-policy.json",
+  "compatiblePricing": "config/1.23.0/api-prices.json",
+  "runtimeProvenance": "artifacts/1.23.5/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; this release does not rank an unfinished alternative or claim product acceptance from installation."
+}

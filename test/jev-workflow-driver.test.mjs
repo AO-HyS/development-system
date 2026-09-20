@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { runWorkflow, validateAcceptance, validateDriverPlan } from '../scripts/run-jev-workflow.mjs';
+import { measureWorkflow } from '../scripts/measure-jev-workflow.mjs';
 
 const coordinator = { adapter: 'codex', model: 'gpt-5.6-sol', effort: 'high' };
 const ids = ['1', '2', '3', '4', '5', '6', '7'];
@@ -279,6 +280,83 @@ test('independent writers and reviewers overlap within configured capacities whi
   assert.deepEqual(reviewerRoots, writerRoots);
   assert.match(await readFile(join(f.config.root, 'src/main.mjs'), 'utf8'), /write-first/);
   assert.match(await readFile(join(f.config.root, 'src/second.mjs'), 'utf8'), /write-second/);
+});
+
+test('Jev retries only invalid answers with identical requests, preserves billed diagnostics, and stops after three total attempts', async () => {
+  for (const scenario of ['recovers', 'exhausts', 'unauthorized']) {
+    const f = await fixture();
+    f.config.jevMode = 'compact';
+    let calls = 0;
+    const runtime = { ...f.runtime,
+      fetchImpl: async (...args) => {
+        const response = await f.runtime.fetchImpl(...args);
+        const payload = await response.json();
+        if (JSON.parse(args[1].body).state.run.phase === 'implementation') {
+          calls += 1;
+          if (scenario === 'unauthorized') return new Response(JSON.stringify({ error: 'Denied synthetic-fixture-key' }), { status: 401 });
+          if (scenario === 'exhausts' || calls === 1) payload.answers.route.probabilities.root_direct = 0.5;
+          payload.diagnostic = 'Provider echoed synthetic-fixture-key';
+        }
+        return new Response(JSON.stringify(payload), { headers: { 'x-private-header': 'never-save-response-headers' } });
+      },
+      runModel: async options => {
+        if (options.phase === 'plan') return f.reply(options, f.plan);
+        if (['plan-review', 'review-writer', 'integrated-code-review', 'visual-critique'].includes(options.phase)) return f.reply(options, approved);
+        if (options.phase === 'write-writer') await writeFile(join(options.cwd, 'src/main.mjs'), 'export const value = "reviewed-once";\n');
+        if (options.phase === 'acceptance') return f.reply(options, await f.qa(options));
+        return f.reply(options, 'Observed completion');
+      },
+    };
+    if (scenario === 'recovers') {
+      assert.equal((await runWorkflow(f.config, runtime)).status, 'accepted-local');
+      assert.equal(f.phases.filter(phase => phase === 'write-writer').length, 1);
+      assert.equal(f.phases.filter(phase => phase === 'review-writer').length, 1);
+      assert.equal(f.requests.filter(request => request.state.run.phase === 'review').length, 1);
+      assert.equal(f.phases.at(-1), 'visual-critique');
+    } else {
+      await assert.rejects(runWorkflow(f.config, runtime), scenario === 'exhausts' ? /after 3 total attempts/ : /HTTP 401/);
+      assert.equal(f.phases.some(phase => phase.startsWith('write-') || phase === 'acceptance'), false);
+      assert.equal(git(f.config.root, ['status', '--porcelain']).trim(), '');
+    }
+    const expectedCalls = scenario === 'recovers' ? 2 : scenario === 'exhausts' ? 3 : 1;
+    assert.equal(calls, expectedCalls);
+    const requests = f.requests.filter(request => request.state.run.phase === 'implementation');
+    assert.equal(new Set(requests.map(request => JSON.stringify(request))).size, 1);
+    const events = (await readFile(join(f.config.evidenceDirectory, 'events.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+    const attempts = events.filter(event => event.type === 'jev-completed' && event.boundary === 'implementation');
+    assert.equal(attempts.length, expectedCalls);
+    assert.deepEqual(attempts.map(attempt => attempt.attempt), Array.from({ length: expectedCalls }, (_, index) => index + 1));
+    assert.equal(new Set(attempts.map(attempt => attempt.requestHash)).size, 1);
+    for (const [index, attempt] of attempts.entries()) {
+      assert.match(attempt.requestHash, /^[a-f0-9]{64}$/);
+      assert.equal(attempt.valid, scenario === 'recovers' && index === 1);
+      assert.equal(attempt.questions, 5);
+      assert.equal(attempt.apiCostComplete, scenario !== 'unauthorized');
+      assert.equal(attempt.apiEquivalentCostUsd, scenario === 'unauthorized' ? null : 10 * 0.042 / 1e6);
+      const receipt = JSON.parse(await readFile(attempt.receiptPath, 'utf8'));
+      assert.equal(receipt.requestHash, attempt.requestHash);
+      assert.equal(receipt.rawResponsePath, attempt.rawResponsePath);
+      const raw = await readFile(attempt.rawResponsePath, 'utf8');
+      assert.equal((await stat(attempt.rawResponsePath)).mode & 0o777, 0o600);
+      assert.equal(raw.includes('synthetic-fixture-key'), false);
+      assert.equal(raw.includes('never-save-response-headers'), false);
+      assert.equal(JSON.stringify(receipt).includes('Authorization'), false);
+      if (scenario !== 'unauthorized') {
+        assert.deepEqual(attempt.usage, { input_tokens: 10, output_tokens: 5 });
+        assert.equal(JSON.parse(raw).answers.route.probabilities.root_direct, attempt.valid ? 0 : 0.5);
+      }
+    }
+    assert.equal(attempts.reduce((sum, attempt) => sum + (attempt.usage?.input_tokens ?? 0), 0), scenario === 'unauthorized' ? 0 : expectedCalls * 10);
+    const { result: measurement } = await measureWorkflow(f.config.evidenceDirectory);
+    const billedCalls = scenario === 'unauthorized' ? 0 : f.requests.length;
+    assert.equal(measurement.jev.attempts, f.requests.length);
+    assert.equal(measurement.jev.validResponses, scenario === 'recovers' ? 2 : 0);
+    assert.equal(measurement.jev.input, billedCalls * 10);
+    assert.equal(measurement.jev.output, billedCalls * 5);
+    assert.equal(measurement.jev.unknownUsageAttempts, scenario === 'unauthorized' ? 1 : 0);
+    assert.equal(measurement.jev.unknownCostAttempts, scenario === 'unauthorized' ? 1 : 0);
+    assert.ok(Math.abs(measurement.jev.knownApiEquivalentUsd - billedCalls * 10 * 0.042 / 1e6) < 1e-18);
+  }
 });
 
 test('failed billed Jev answer retains known usage and stops before any writer dispatch', async () => {

@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { validateSkillCatalog } from "../src/skills.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const version = "1.23.4";
+const version = "1.23.5";
 const artifactRoot = `artifacts/${version}`;
 const args = process.argv.slice(2);
 if (args.some((arg) => !["--write", "--check", "--snapshot-runtime"].includes(arg))
@@ -23,8 +23,8 @@ if (write) {
   try {
     execFileSync("git", ["cat-file", "-e", `HEAD:manifests/${version}.json`], { cwd: repositoryRoot, stdio: "ignore" });
     recorded = true;
-  } catch { /* Only the not-yet-committed 1.23.4 candidate may be regenerated. */ }
-  if (recorded) throw new Error("Refusing to rewrite the recorded 1.23.4 manifest; prepare a new semantic version");
+  } catch { /* Only the not-yet-committed 1.23.5 candidate may be regenerated. */ }
+  if (recorded) throw new Error("Refusing to rewrite the recorded 1.23.5 manifest; prepare a new semantic version");
 }
 const runtimePaths = [
   "config/1.23.0/orchestration-policy.json",
@@ -67,7 +67,7 @@ if (args.includes("--snapshot-runtime")) {
   await writeFile(resolve(repositoryRoot, artifactRoot, "runtime-source-provenance.json"), `${JSON.stringify(provenance, null, 2)}\n`);
 }
 
-const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.23.3.json"), "utf8"));
+const previous = JSON.parse(await readFile(resolve(repositoryRoot, "manifests/1.23.4.json"), "utf8"));
 const catalogPath = "catalog/0.43.1.json";
 const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogPath), "utf8"));
 if (catalog.catalogVersion !== "0.43.1") throw new Error("Candidate must retain the published 0.43.1 catalog");
@@ -77,8 +77,8 @@ if (catalogErrors.length) throw new Error(`Candidate catalog is invalid:\n- ${ca
 /** @type {any[]} */
 const artifacts = [];
 for (const artifact of previous.artifacts) {
-  const sourcePath = artifact.sourcePath.startsWith("artifacts/1.23.3/")
-    ? `${artifactRoot}/${artifact.sourcePath.slice("artifacts/1.23.3/".length)}`
+  const sourcePath = artifact.sourcePath.startsWith("artifacts/1.23.4/")
+    ? `${artifactRoot}/${artifact.sourcePath.slice("artifacts/1.23.4/".length)}`
     : artifact.sourcePath;
   const actual = await digest(sourcePath);
   if (sourcePath === artifact.sourcePath && actual !== artifact.sha256) {
@@ -111,5 +111,5 @@ const manifest = { ...previous, contractVersion: version, artifacts };
 const manifestPath = resolve(repositoryRoot, "manifests", `${version}.json`);
 const bytes = `${JSON.stringify(manifest, null, 2)}\n`;
 if (write) await writeFile(manifestPath, bytes);
-else if (await readFile(manifestPath, "utf8") !== bytes) throw new Error("Candidate manifest differs from reviewed source snapshots; rebuild the unpublished 1.23.4 candidate explicitly");
+else if (await readFile(manifestPath, "utf8") !== bytes) throw new Error("Candidate manifest differs from reviewed source snapshots; rebuild the unpublished 1.23.5 candidate explicitly");
 process.stdout.write(`${write ? "Wrote" : "Verified"} manifests/${version}.json: ${artifacts.length} artifacts, all ${previous.artifacts.length} prior destinations retained.\n`);
