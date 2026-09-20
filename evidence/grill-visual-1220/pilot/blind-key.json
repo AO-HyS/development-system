@@ -1,0 +1,10 @@
+{
+  "comparison": "historical-blind-comparison.html",
+  "mapping": {
+    "01": "condition-c-corrected",
+    "02": "condition-a-current",
+    "03": "condition-b-article"
+  },
+  "disclosurePolicy": "Historical pilot only. This blind evaluator is not an operational visual-grill selection surface.",
+  "claimBoundary": "One bounded observational run cannot establish universal superiority."
+}

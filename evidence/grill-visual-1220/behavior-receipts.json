@@ -1,0 +1,58 @@
+{
+  "executedAtUtc": "2026-09-16T03:23:30Z",
+  "runner": "src/visual-grill.mjs#routeVisualGrill",
+  "cases": [
+    {
+      "id": "visual-ambiguous",
+      "request": "Quiero un Grill de cómo luce el sistema",
+      "observed": { "mode": "visual-grill", "leadSkill": "design-direction", "questionSurface": "grill-with-docs", "decisionSurface": "impeccable-decision-page", "maximumConcurrentInterviews": 1 }
+    },
+    {
+      "id": "proposal-first",
+      "request": "Muéstrame propuestas antes de hablar de lo funcional",
+      "observed": { "mode": "visual-grill", "orderedSteps": ["candidates", "concept-seed", "impeccable-decision-page"] }
+    },
+    {
+      "id": "mixed",
+      "request": "Quiero simplificar tanto el funcionamiento como la apariencia",
+      "observed": { "mode": "mixed-grill", "leadSkill": "design-direction", "maximumConcurrentInterviews": 1 }
+    },
+    {
+      "id": "fixed-palette-three",
+      "request": "Quiero tres propuestas visuales con la paleta actual",
+      "observed": { "mode": "visual-grill", "requestedAlternatives": 3, "exactAlternativeCountRequired": true, "identity": { "palette": "existing" }, "composition": { "status": "open" } }
+    },
+    {
+      "id": "answer-reuse",
+      "priorAnswer": { "key": "density", "status": "answered", "answer": "menos texto" },
+      "nextProposalDecisionKeys": ["density", "composition"],
+      "observed": { "recoveredAnswerKeys": ["density"], "openDecisionKeys": ["composition"] }
+    },
+    {
+      "id": "all-rejected",
+      "request": "Ninguna funciona; quiero nuevas propuestas visuales",
+      "observed": { "mode": "visual-grill", "selectionRequired": false, "nextAction": "revise-hypothesis-from-literal-correction", "openDecisionKeys": ["literal-correction"] }
+    },
+    {
+      "id": "approved-continuation",
+      "priorBrief": { "selectedDirection": "clinical-brief", "phase": "selected" },
+      "observed": { "mode": "continuation", "restartExploration": false, "firstSteps": ["recover-selected-direction", "refine", "prototype-interaction"] }
+    },
+    {
+      "id": "small-adjustment",
+      "request": "Ajusta el espaciado del componente",
+      "observed": { "mode": "refinement", "leadSkill": "impeccable", "requiredFlow": ["impeccable-refinement", "focused-check"] }
+    },
+    {
+      "id": "functional-grill",
+      "request": "Quiero un Grill funcional del producto",
+      "observed": { "mode": "functional-grill", "leadSkill": "grill-with-docs", "requiredFlow": ["functional-interview"] }
+    },
+    {
+      "id": "capability-gap",
+      "capabilities": { "imageGeneration": false, "vision": false },
+      "observed": { "limitations": ["image-generation-unavailable", "visual-judgment-unavailable"], "allowedEvidence": ["html-css-prototype"] }
+    }
+  ],
+  "claimBoundary": "These receipts demonstrate routing and state behavior. They do not replace the separate browser execution and independent visual critique."
+}

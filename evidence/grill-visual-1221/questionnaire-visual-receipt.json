@@ -1,0 +1,35 @@
+{
+  "executedAtUtc": "2026-09-16T03:59:00Z",
+  "source": "artifacts/1.22.1/skills/internal/grill-with-docs",
+  "input": "evidence/grill-visual-1221/questionnaire-visual-sample.json",
+  "home": "isolated temporary home; removed from the candidate after verification",
+  "observableStructure": {
+    "questionCount": 2,
+    "interviewCount": 1,
+    "embeddedReferenceCount": 1,
+    "referenceAltVisibleToAccessibilityTree": true,
+    "referenceFunctionVisible": "Escala, tono e importancia de la imagen",
+    "directionSelectionControls": 0,
+    "answerPersistenceEndpoint": true
+  },
+  "browserObservation": {
+    "browser": "Chrome through authorized computer use",
+    "diagnosticCaptureBeforeFinalInteractionCorrections": {"width": 2545, "height": 1344, "format": "jpeg", "bytes": 144586, "sha256": "b4d45fe753b82123a658030fc257e18e7a0f1ff38ad386c02e734c5a4aa0d255"},
+    "finalIndependentConfirmation": {
+      "viewports": ["1440x900", "390x844"],
+      "result": "The pending list starts collapsed and still expands; the free-text question has no empty choice instruction or clear-choice control. The embedded reference remains readable with no new clipping.",
+      "evidence": "evidence/grill-visual-1221/independent-visual-review.md"
+    },
+    "result": "The reference image, caption, named purpose, response options and literal free-text correction were readable in one questionnaire. No direction chooser was present."
+  },
+  "detector": {
+    "command": "impeccable detect --json <isolated generated questionnaire>",
+    "exitStatus": 2,
+    "finding": "cream-palette",
+    "correction": "Changed the 1.22.1 template from warm cream to the approved cool-paper palette and confirmed the regenerated page in the final browser capture.",
+    "rerun": false,
+    "rerunReason": "Impeccable permits one detector pass; the affected token was confirmed by source and browser recapture."
+  },
+  "behaviorSuite": "test/grill_questionnaire.py covers literal partial answers, refresh recovery, round isolation, revision conflict, security, image embedding and rejection of active media.",
+  "claimBoundary": "This proves questionnaire rendering and reference semantics at the inspected desktop and mobile questionnaire viewports. It does not select a visual direction or prove mobile product adaptation."
+}

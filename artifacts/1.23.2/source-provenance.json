@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.2",
+  "base": {
+    "contractVersion": "1.23.1",
+    "sourceCommit": "ac3ab4d397291d850d09bca1e7c2fa4b12392761",
+    "manifest": "manifests/1.23.1.json",
+    "manifestSha256": "f656bc3ba7f9747b2bbd334bb511855c9a36a961fb2d245b37ae02b21b0e11d4",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 41,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Retain every managed destination, skill variant, model route, planning mode and acceptance gate. Only packet and integrated code review gain execution capability for required checks; immutable candidate/source/revision guards still forbid product mutation.",
+  "compatiblePolicy": "config/1.23.0/orchestration-policy.json",
+  "compatiblePricing": "config/1.23.0/api-prices.json",
+  "runtimeProvenance": "artifacts/1.23.2/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; this release does not rank an unfinished alternative or claim product acceptance from installation."
+}

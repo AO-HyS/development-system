@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.23.0",
+  "classifier": {
+    "provider": "typesafe-ai",
+    "model": "jev-1.13.0",
+    "mode": "advisory",
+    "credentialEnvironmentVariable": "TYPESAFE_API_KEY",
+    "maxRequestBytes": 32768,
+    "timeoutMs": 5000,
+    "thresholdStatus": "uncalibrated"
+  },
+  "coordinators": [
+    { "adapter": "codex", "model": "gpt-5.6-sol", "effort": "high" },
+    { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" }
+  ],
+  "executor": { "adapter": "opencode", "model": "opencode-go/deepseek-v4.1-flash", "effort": "high" },
+  "planner": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" },
+  "reviewer": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" },
+  "prohibitedModels": ["gpt-5.6-luna"],
+  "fallback": "none",
+  "routes": {
+    "deepseek_exact": { "adapter": "opencode", "model": "opencode-go/deepseek-v4.1-flash", "effort": "high" },
+    "astra_xhigh_decision": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" },
+    "read_only_mapper": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" },
+    "browser_executor": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh", "requiredCapability": "browser" },
+    "specialist_review": { "adapter": "codex", "model": "gpt-6-astra", "effort": "xhigh" },
+    "root_direct": { "adapter": "root" },
+    "blocked_dependency": { "adapter": "none" }
+  }
+}

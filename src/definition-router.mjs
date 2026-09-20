@@ -1,5 +1,7 @@
 // @ts-check
 
+import { routeVisualGrill } from "./visual-grill.mjs";
+
 const profiles = Object.freeze(["Quick", "Standard", "Complex"]);
 /** @type {readonly (readonly [string, RegExp])[]} */
 const hardRiskPatterns = Object.freeze([
@@ -127,6 +129,47 @@ export function routeDefinition(input) {
     || input.productGrill !== undefined
     || input.customerStory !== undefined
     || input.technicalGrill !== undefined;
+  const visualFlow = routeVisualGrill(input);
+
+  if (["visual-grill", "mixed-grill", "continuation", "refinement"].includes(visualFlow.mode)) {
+    const currentStage = visualFlow.mode === "mixed-grill"
+      ? "mixed-grill"
+      : visualFlow.mode === "continuation"
+        ? "visual-direction-continuation"
+        : visualFlow.mode === "refinement"
+          ? "visual-refinement"
+          : "visual-direction";
+    const nextAction = visualFlow.mode === "continuation"
+      ? "Continue the selected direction without restarting exploration"
+      : visualFlow.mode === "refinement"
+        ? "Use the matching Impeccable refinement workflow without a full exploration"
+        : visualFlow.mode === "mixed-grill"
+          ? "Run one mixed interview led by design-direction and compare visual candidates"
+          : "Run one visual interview led by design-direction and compare visual candidates";
+    return {
+      ok: true,
+      operation: "definition-route",
+      supportedHarnesses: ["codex", "t3-code"],
+      requestedProfile: requested,
+      selectedProfile,
+      hardRiskTriggers: risks,
+      simpleImplementation: {
+        requested: simpleRequested,
+        eligible: false,
+        deniedReason: null,
+      },
+      currentStage,
+      nextAction,
+      activeTopics: visualFlow.interviewPolicy.openDecisionKeys,
+      artifactCandidate: null,
+      requiredArtifacts: [],
+      workingBackwardsRequested,
+      visualFlow,
+      implementationAuthorized: false,
+      externalWriteIntents: [],
+      externalSideEffects: [],
+    };
+  }
 
   let currentStage;
   let nextAction;

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.2",
+  "status": "unpublished candidate",
+  "sources": [
+    {
+      "sourcePath": "config/1.23.0/orchestration-policy.json",
+      "artifactPath": "artifacts/1.23.2/runtime/config/1.23.0/orchestration-policy.json",
+      "sha256": "03a3604120256833a27e21d910448f5ffbec93961a57727162c089e1765845f8"
+    },
+    {
+      "sourcePath": "config/1.23.0/api-prices.json",
+      "artifactPath": "artifacts/1.23.2/runtime/config/1.23.0/api-prices.json",
+      "sha256": "34eaba0c809a7d3ef67d4f4cb9834a87d09e52674fad4c7dd9b5c65e66affd00"
+    },
+    {
+      "sourcePath": "src/orchestration.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/src/orchestration.mjs",
+      "sha256": "e7f2798556800091418f692692336a45a200a6962cbe44a5c5054bf6cff63e9f"
+    },
+    {
+      "sourcePath": "src/orchestration-store.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/src/orchestration-store.mjs",
+      "sha256": "d2ae24db85b7778c999cb2bfa79fdf3a5b7e840dadf9182150de5666ffea0819"
+    },
+    {
+      "sourcePath": "src/model-execution.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/src/model-execution.mjs",
+      "sha256": "e310c06ef0e0867b387ddd201aad5c008daddebd4fd77a815ff30ba85aaa3070"
+    },
+    {
+      "sourcePath": "scripts/run-jev-workflow.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/scripts/run-jev-workflow.mjs",
+      "sha256": "b82850d37ec19f848371a9aa911329943e265a49792a24efa2309c15e8cfa65f"
+    },
+    {
+      "sourcePath": "scripts/measure-jev-workflow.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/scripts/measure-jev-workflow.mjs",
+      "sha256": "3dbc1275b03e6100c73bd80c19c328d543cd5aea44d5def361f32622c6e90ebd"
+    },
+    {
+      "sourcePath": "scripts/orchestration-hook.mjs",
+      "artifactPath": "artifacts/1.23.2/runtime/scripts/orchestration-hook.mjs",
+      "sha256": "b2510446e163f8bd9d723ac313fd10bc262583116fc09eaae7a460767f268c98"
+    }
+  ]
+}

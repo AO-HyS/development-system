@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "version": "2026-09-19.standard",
+  "currency": "USD",
+  "unit": "per-million-tokens",
+  "sources": {
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "jev": "https://docs.typesafe.ai/models",
+    "flash": "OpenCode 1.18.31 live provider model catalog, observed 2026-09-19"
+  },
+  "models": {
+    "gpt-6-astra": { "input": 10, "cachedInput": 1, "output": 50 },
+    "gpt-5.6-sol": { "input": 4, "cachedInput": 0.4, "output": 20 },
+    "opencode-go/deepseek-v4.1-flash": { "input": 0.15, "cachedInput": 0.003, "output": 0.6 },
+    "jev-1.13.0": { "input": 0.042, "cachedInput": 0.042, "output": 0 }
+  },
+  "openaiLongContext": { "inputTokensGreaterThan": 272000, "inputMultiplier": 2, "cacheMultiplier": 2, "outputMultiplier": 1.5 },
+  "interpretation": "API-equivalent token cost, not subscription invoice. Input includes cachedInput; output includes reasoning. Apply long-context rates per request, not to cumulative input. Never add reasoning twice. Missing usage remains unknown."
+}

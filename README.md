@@ -1,6 +1,15 @@
 # AOHYS Development System
 
-## Current release: 1.21.0 / catalog 0.42.0
+## Current local candidate: 1.22.1 / catalog 0.43.1
+
+Visual and mixed grills now route from natural language to one recoverable
+interview led by `design-direction`. The candidate separates confirmed
+constraints, verified product facts and agent proposals; records candidates
+before concept seeding; uses Impeccable's page as the sole direction chooser;
+lets the questionnaire embed accessible visual references; and gives the
+independent critic separate constraint and compositional judgments. See ADRs
+0038 and 0039. This local candidate is not a release, deployment or HOME
+installation.
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -79,11 +88,11 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.21.0
-./bin/development-system sync-skills --version 0.42.0
+./bin/development-system install --version 1.22.1
+./bin/development-system sync-skills --version 0.43.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.42.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.43.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -117,6 +126,14 @@ Lifecycle requests use natural language but persist canonical operation names:
 ```
 
 Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode recommend` for a read-only recommendation; it never persists a transition or grants authority. Use `--json` to inspect the exact transition, authorization source, evidence, stage, and reported external side effects.
+
+Visual-grill routing is a separate read-only seam. It classifies natural intent,
+recovers answered decision keys and validates exploration order without creating
+a session or granting implementation:
+
+```sh
+./bin/development-system visual-grill-route --input /private/path/visual-brief.json --json
+```
 
 Working Backwards operations consume explicit JSON files:
 
@@ -251,7 +268,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.21.0`, `sync-skills --version 0.42.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → for this candidate, `install --version 1.22.1`, `sync-skills --version 0.43.1`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

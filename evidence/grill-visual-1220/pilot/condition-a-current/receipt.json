@@ -1,0 +1,96 @@
+{
+  "condition_code": "A",
+  "artifact_status": "exploratory_unapproved",
+  "base_revision": "2767b409757dd14f378c50f883bbf899a20787a7",
+  "started_at_utc": "2026-09-16T03:09:14Z",
+  "ended_at_utc": "2026-09-16T03:16:10Z",
+  "model": {
+    "name": "not exposed to worker",
+    "reasoning_effort": "not exposed to worker"
+  },
+  "instruction_files_read": [
+    "evidence/grill-visual-1220/pilot/shared-brief.md",
+    "artifacts/1.21.0/skills/internal/drive-development-flow/SKILL.md",
+    "artifacts/1.19.1/skills/internal/grill-with-docs/SKILL.md",
+    "artifacts/1.18.0/skills/internal/design-direction/SKILL.md",
+    "artifacts/1.18.0/skills/internal/design-direction/references/brief.md",
+    "artifacts/1.18.0/skills/internal/design-direction/references/sources.md",
+    "artifacts/1.18.0/skills/internal/design-direction/references/handoff.md",
+    "artifacts/1.18.0/skills/internal/design-quality/SKILL.md",
+    "artifacts/1.16.0/agents/codex/visual-reviewer.toml",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/src/app/globals.css",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/docs/context/ui_design_system.md"
+  ],
+  "source_asset_inspected": "evidence/grill-visual-1220/assets/synthetic-patient-portraits.png",
+  "thesis": "A calm consultation briefing that gives one dominant clinical priority to the professional and one obvious next step to the patient, with supporting context deferred to an intentional overlay.",
+  "visible_choices": {
+    "composition": [
+      "A deep-ink navigation rail anchors both views while the content rests on the warm off-white canvas.",
+      "Expediente uses one editorial clinical-priority field, a compact appointment block, and two measured signals instead of a uniform dashboard grid.",
+      "Portal uses a single daily sequence as the dominant surface, with habits, appointment, and message compressed into a supporting column.",
+      "The first portrait in the supplied synthetic strip is cropped into a small rounded identity tile and never treated as a hero image."
+    ],
+    "hierarchy": [
+      "Patient identity and the next consultation frame the clinician view before diagnosis, safety facts, and trend values.",
+      "The portal leads with lunch as the next action; breakfast completion, habits, appointment, and message remain secondary.",
+      "Large Figtree-like headings contrast with compact Plus Jakarta Sans-like body labels while using only local system fallbacks."
+    ],
+    "interaction": [
+      "Expediente and Portal are keyboard-switchable tabs with synchronized selected and hidden states.",
+      "Abrir contexto launches a fixed modal panel above either current view without reserving layout space or changing the document scroll position.",
+      "The panel supports backdrop close, close-button focus, a focus loop, Escape close, and focus restoration to the exact trigger.",
+      "Reduced-motion preferences collapse animation and transition durations."
+    ]
+  },
+  "expressive_opportunity": "The oversized diagnosis field and quiet orbit motif make clinical priority feel like a composed briefing rather than another card collection, while the portal translates the same visual identity into a reassuring sequence.",
+  "concrete_risk": "The editorial scale of the diagnosis works for the supplied short priority but could consume too much space with longer real clinical labels or additional mandatory warnings; production adaptation would need constrained-content testing before preserving this exact scale.",
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "exit_status": 0,
+      "result": "Matched required base 2767b409757dd14f378c50f883bbf899a20787a7."
+    },
+    {
+      "command": "node -e (extract embedded script and compile with new Function)",
+      "exit_status": 0,
+      "result": "Embedded JavaScript parsed successfully."
+    },
+    {
+      "command": "rg --fixed-strings (required synthetic data, states, reduced-motion rule, and context trigger)",
+      "exit_status": 0,
+      "result": "All required content markers were present."
+    },
+    {
+      "command": "test -f evidence/grill-visual-1220/assets/synthetic-patient-portraits.png",
+      "exit_status": 0,
+      "result": "The relative portrait target exists."
+    },
+    {
+      "command": "node -e (reject http/https references and condition labels in index.html)",
+      "exit_status": 0,
+      "result": "No network references or visible condition disclosure found."
+    },
+    {
+      "command": "git diff --check -- evidence/grill-visual-1220/pilot/condition-a-current/index.html",
+      "exit_status": 0,
+      "result": "No whitespace errors."
+    },
+    {
+      "command": "tidy -errors -quiet evidence/grill-visual-1220/pilot/condition-a-current/index.html",
+      "exit_status": 0,
+      "result": "Inconclusive HTML validation: the installed Apple HTML Tidy build is from 2006 and reports HTML5 elements and inline SVG as unrecognized."
+    },
+    {
+      "command": "node -e (parse receipt.json), find owned directory files, and git diff --check",
+      "exit_status": 0,
+      "result": "Receipt parsed, the owned directory contained exactly index.html and receipt.json, and the final diff had no whitespace errors."
+    }
+  ],
+  "limitations": [
+    "This is one cohesive exploratory direction and has not been presented to or approved by a user.",
+    "Verification was intentionally focused on local static content, embedded JavaScript syntax, asset resolution, and repository whitespace; no live browser walkthrough or independent visual acceptance was claimed.",
+    "No external font files are loaded, so typography uses named local fallbacks that approximate the product's Figtree and Plus Jakarta Sans pairing.",
+    "The available HTML Tidy executable predates HTML5 and could not provide meaningful semantic validation.",
+    "A composite checker was blocked by the repository shell guard before execution; equivalent checks were rerun as simple explicit commands."
+  ]
+}

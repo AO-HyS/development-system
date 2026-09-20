@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.23.3",
+  "base": {
+    "contractVersion": "1.23.2",
+    "sourceCommit": "8adcddbc925161bf698b1d9ed0bb056f28f19107",
+    "manifest": "manifests/1.23.2.json",
+    "manifestSha256": "0341b6729ecc6911e13159eb3f2a2be32bc1eaebfe9a4428f2775ca5e3c2b392",
+    "catalog": "catalog/0.43.1.json",
+    "catalogSha256": "c7a76974dfdfd4bd4e911c2a5769b429533ea5ea5327c90d416b9b7f66831d1d",
+    "managedDestinations": 41,
+    "logicalSkills": 104,
+    "physicalVariants": 140
+  },
+  "preservation": "Retain every managed destination, skill variant, model route, planning mode, validator, binding and acceptance gate. Shared planning instructions repeat the existing portability constraints for every initial and correction plan.",
+  "compatiblePolicy": "config/1.23.0/orchestration-policy.json",
+  "compatiblePricing": "config/1.23.0/api-prices.json",
+  "runtimeProvenance": "artifacts/1.23.3/runtime-source-provenance.json",
+  "operationalAcceptance": "Recorded separately; this release does not rank an unfinished alternative or claim product acceptance from installation."
+}
