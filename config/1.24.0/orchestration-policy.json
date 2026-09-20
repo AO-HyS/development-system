@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "profileVersion": "1.24.0",
+  "mode": "advisory-parent-execution",
+  "defaultCoordinator": {
+    "model": "gpt-5.6-sol",
+    "effort": "high"
+  },
+  "preserveSelectedCoordinator": true,
+  "writer": {
+    "adapter": "opencode",
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "effort": "high"
+  },
+  "nativeDelegate": {
+    "adapter": "codex",
+    "model": "gpt-6-astra",
+    "effort": "xhigh"
+  },
+  "automaticFallback": false,
+  "forbiddenModels": [
+    "gpt-5.6-luna"
+  ],
+  "maxConcurrentWriters": 2,
+  "serializeProviderSharedState": true,
+  "classifier": {
+    "provider": "typesafe-ai",
+    "model": "jev-1.13.0",
+    "mode": "advisory",
+    "corePolicyVersion": "1.2.0-candidate.3",
+    "maxAttemptsPerBoundary": 1,
+    "failureBehavior": "record failure and use parent judgment"
+  },
+  "automaticControllerEnabled": false,
+  "acceptance": "required behavior, relevant checks, independent capable review and corrections at authorized endpoint",
+  "measurement": "full product work through close, excluding setup and explicit human pauses; include all providers/reviews/corrections; unknown usage stays unknown"
+}

@@ -158,25 +158,22 @@ test("missing Codex service tier requests normal speed and explicit priority is 
   assert.ok(resolveModelRoute(input).selected.invocation.args.includes('service_tier="priority"'));
 });
 
-test("escalation keeps difficult Astra review at high", () => {
+test("default Astra review requests XHigh and explicit escalation raises effort without changing models", () => {
   const base = {
     roster: agentRoster,
     capability: "review",
     routeSlot: "adversarial-review",
-    unavailable: [
-      { candidateId: "factory-fable-5.1", reason: "quota-exhausted" },
-      { candidateId: "devin-fable-5.1", reason: "quota-exhausted" },
-    ],
   };
   const plain = resolveModelRoute(base);
   assert.equal(plain.valid, true);
   assert.equal(plain.selected.harness, "codex");
   assert.equal(plain.selected.model, "gpt-6-astra");
-  assert.equal(plain.selected.reasoning, "high");
+  assert.equal(plain.selected.reasoning, "xhigh");
   assert.equal(plain.selected.escalationApplied, false);
   const escalated = resolveModelRoute({ ...base, escalation: true });
   assert.equal(escalated.valid, true);
-  assert.equal(escalated.selected.reasoning, "high");
+  assert.equal(escalated.selected.model, "gpt-6-astra");
+  assert.equal(escalated.selected.reasoning, "max");
   assert.equal(escalated.selected.escalationApplied, true);
 });
 
@@ -282,43 +279,41 @@ test("historical 1.16.1 fast-execution follows the declared OpenCode-first route
   });
 });
 
-test("new mappings stay provisional and resolution stays receipt-required without evidence", () => {
+test("current evidence stays provisional and resolution stays receipt-required without runtime evidence", () => {
   const result = resolveModelRoute({ roster: agentRoster, capability: "mechanical-execution", routeSlot: "fast-execution" });
-  assert.equal(result.selected.evidenceStatus, "runtime-required");
-  assert.equal(result.selected.mappingStatus, "provisional");
+  assert.equal(result.valid, true);
+  assert.equal(result.selected.evidenceStatus, "provisional");
+  assert.equal(result.selected.mappingStatus, "runtime-required");
   assert.equal(result.selected.resolvedModel, null);
   assert.equal(result.selected.resolvedModelStatus, "receipt-required");
   assert.equal(result.authority.dispatchAuthorized, false);
 });
 
-test("current fast-execution defaults to advisory Terra Low priority and requires a receipt", () => {
+test("current fast-execution requests advisory Flash High through OpenCode and requires a receipt", () => {
   const result = resolveModelRoute({
     roster: agentRoster,
     capability: "mechanical-execution",
     routeSlot: "fast-execution",
   });
   assert.equal(result.valid, true);
-  assert.equal(result.selected.id, "codex-terra-priority");
-  assert.equal(result.selected.requestedModel, "gpt-5.6-terra");
-  assert.equal(result.selected.reasoning, "low");
+  assert.equal(result.selected.id, "advisory-fast-execution");
+  assert.equal(result.selected.harness, "opencode");
+  assert.equal(result.selected.requestedModel, "opencode-go/deepseek-v4.1-flash");
+  assert.equal(result.selected.reasoning, "high");
   assert.equal(result.selected.resolvedModel, null);
   assert.equal(result.selected.resolvedModelStatus, "receipt-required");
-  assert.deepEqual(result.selected.serviceTier, {
-    tier: "priority",
-    label: "fast",
-    status: "runtime-required",
-  });
+  assert.equal(result.selected.serviceTier, null);
   assert.deepEqual(result.selected.invocation, {
-    command: "codex",
+    command: "opencode",
     args: [
-      "exec",
-      "--strict-config",
+      "run",
+      "--pure",
       "--model",
-      "gpt-5.6-terra",
-      "--config",
-      'model_reasoning_effort="low"',
-      "--config",
-      'service_tier="priority"',
+      "opencode-go/deepseek-v4.1-flash",
+      "--variant",
+      "high",
+      "--format",
+      "json",
     ],
   });
   assert.equal(result.authority.dispatchAuthorized, false);

@@ -123,8 +123,8 @@ test('direct single-packet planning skips discovery and preserves every review, 
   assert.deepEqual(f.phases, ['plan', 'plan-correction', 'plan-review', 'write-writer', 'review-writer', 'write-writer', 'review-writer',
     'integration', 'integrated-code-review', 'acceptance', 'acceptance-correction', 'integrated-code-review', 'acceptance', 'visual-critique']);
   const manifest = JSON.parse(await readFile(join(f.config.evidenceDirectory, 'manifest.json'), 'utf8'));
-  const packageVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
-  assert.equal(manifest.controllerVersion, packageVersion);
+  // This injected historical controller retains its original version; 1.24 disables its live entry point.
+  assert.equal(manifest.controllerVersion, '1.23.5');
   assert.equal(manifest.planningMode, 'direct');
   assert.equal(manifest.packetization, 'single');
   const acceptedPlan = JSON.parse(await readFile(join(f.config.evidenceDirectory, 'approved-plan.json'), 'utf8'));

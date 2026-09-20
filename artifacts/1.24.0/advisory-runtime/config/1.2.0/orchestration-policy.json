@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.2.0-candidate.3",
+  "classifier": {
+    "provider": "typesafe-ai",
+    "model": "jev-1.13.0",
+    "mode": "advisory",
+    "credentialEnvironmentVariable": "TYPESAFE_API_KEY",
+    "maxRequestBytes": 32768,
+    "timeoutMs": 5000,
+    "thresholdStatus": "uncalibrated"
+  },
+  "routes": {
+    "deepseek_exact": {
+      "adapter": "opencode",
+      "model": "opencode-go/deepseek-v4.1-flash",
+      "effort": "high"
+    },
+    "astra_xhigh_decision": {
+      "adapter": "codex",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "read_only_mapper": {
+      "adapter": "native",
+      "role": "code_mapper"
+    },
+    "browser_executor": {
+      "adapter": "native",
+      "role": "computer_use_runner"
+    },
+    "specialist_review": {
+      "adapter": "native",
+      "role": "reviewer"
+    },
+    "root_direct": {
+      "adapter": "root"
+    },
+    "blocked_dependency": {
+      "adapter": "none"
+    }
+  }
+}

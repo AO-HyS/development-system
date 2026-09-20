@@ -24,30 +24,22 @@ test("editable roster is valid and covers every planner route", () => {
 
 test("aliases share one ordered candidate list without duplicating policy", () => {
   assert.deepEqual(rosterChain("implementation-default"), rosterChain("fast-execution"));
-  assert.equal(rosterModel("implementation-default").requested, "gpt-5.6-terra");
+  assert.equal(rosterModel("implementation-default").requested, "opencode-go/deepseek-v4.1-flash");
 });
 
-test("fast-execution leads with the current Terra/Sol recommendations and preserves the fallback order", () => {
+test("fast-execution requests Flash High with no fallback candidates", () => {
   const chain = rosterChain("fast-execution");
   assert.deepEqual(chain.map((candidate) => candidate.model), [
-    "gpt-5.6-terra",
-    "gpt-5.6-sol",
-    "opencode-go/glm-5.3-flash",
-    "opencode-go/muse-spark-1.3-contributor",
-    "opencode-go/qwen3.8-flash",
-    "gpt-5.6-luna",
+    "opencode-go/deepseek-v4.1-flash",
   ]);
   const route = rosterRoute("fast-execution");
-  assert.equal(route.candidates[0].id, "codex-terra-priority");
-  assert.equal(route.candidates[0].reasoning, "low");
-  assert.equal(route.candidates[0].mappingStatus, "provisional");
-  assert.equal(route.candidates[0].evidenceStatus, "runtime-required");
-  assert.equal(route.candidates[0].independenceBoundary, "provider:openai-priority");
-  assert.deepEqual(route.candidates[0].serviceTier, {
-    tier: "priority",
-    label: "fast",
-    status: "runtime-required",
-  });
+  assert.equal(route.candidates[0].id, "advisory-fast-execution");
+  assert.equal(route.candidates[0].harness, "opencode");
+  assert.equal(route.candidates[0].reasoning, "high");
+  assert.equal(route.candidates[0].mappingStatus, "runtime-required");
+  assert.equal(route.candidates[0].evidenceStatus, "provisional");
+  assert.equal(route.candidates[0].independenceBoundary, "exact bounded packet and exclusive ownership; no native fallback");
+  assert.equal(route.candidates[0].serviceTier, undefined);
   assert.equal("requiresVerifiedRuntimeAvailability" in route.candidates[0], false);
 });
 
@@ -57,17 +49,24 @@ test("rosterModel never reports a runtime-resolved model from config alone", () 
   }
 });
 
-test("the current fast route retains Sol as a provisional recommendation", () => {
-  const route = rosterRoute("fast-execution");
-  assert.equal(route.candidates.some((candidate) => candidate.id === "codex-sol-priority"), true);
-  assert.equal(JSON.stringify(agentRoster).includes("gpt-5.6-sol"), true);
+test("current coordination requests Sol High and every native delegate requests Astra XHigh", () => {
+  const coordinator = rosterRoute("orchestration");
+  assert.deepEqual(coordinator.candidates.map(({ harness, model, reasoning }) => ({ harness, model, reasoning })), [
+    { harness: "codex", model: "gpt-5.6-sol", reasoning: "high" },
+  ]);
+  for (const route of agentRoster.routes.filter((entry) => !["orchestration", "fast-execution"].includes(entry.routeSlot))) {
+    assert.deepEqual(route.candidates.map(({ harness, model, reasoning }) => ({ harness, model, reasoning })), [
+      { harness: "codex", model: "gpt-6-astra", reasoning: "xhigh" },
+    ], route.id);
+  }
+  assert.equal(JSON.stringify(agentRoster).includes("gpt-5.6-luna"), false);
 });
 
 test("fast-execution wording keeps deterministic work out of the model route", () => {
   const route = rosterRoute("fast-execution");
   assert.equal(route.does.some((entry) => /buscar|evidencia|pruebas/i.test(entry)), false);
-  assert.match(/** @type {string} */ (route.when), /Recomendaciones provisionales/i);
-  assert.match(/** @type {string} */ (route.when), /parent conserva seleccion/i);
+  assert.match(/** @type {string} */ (route.when), /bounded|acotad/i);
+  assert.match(/** @type {string} */ (route.when), /parent/i);
 });
 
 test("invalid manual edits fail closed with actionable errors", () => {

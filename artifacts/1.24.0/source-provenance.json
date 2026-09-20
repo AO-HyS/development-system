@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.24.0",
+  "mode": "advisory-parent-execution",
+  "recoveredSourceCommit": "86a5910cf6a0615116034ae31e857ec913e2e682",
+  "recoveredHashes": {
+    "src/orchestration.mjs": "f9ccf4cd988945878afaa5f2fb51b3ef70873034f9ddc99c975d2d25c5501ab4",
+    "config/1.2.0/orchestration-policy.json": "79dc345192fa955ca6b48059b8dc8600d61bfad9662449c32d03bb56619d7b23"
+  },
+  "benchmark": {
+    "task": "BARBER-205",
+    "date": "2026-09-20",
+    "sol": {
+      "workSeconds": 2114.8685961250158,
+      "apiEquivalentUsd": 18.88570183000001,
+      "acceptedCriteria": 7
+    },
+    "astra": {
+      "workSeconds": 2949.1086261660093,
+      "apiEquivalentUsd": 33.334097322000005,
+      "acceptedCriteria": 7
+    },
+    "scope": "One complete accepted execution per configuration; API equivalent, not subscription invoice"
+  }
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
-/** The controller executes a fixed, reviewed plan. Models supply bounded work. */
+/** Historical controller exports retained for isolated injected-runtime tests.
+ * Direct execution is disabled; production uses parent-owned advisory routing. */
 import { readFile, writeFile, mkdir, symlink, lstat, appendFile, realpath, rm, readdir } from 'node:fs/promises';
 import { resolve, dirname, relative, isAbsolute, extname } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -630,7 +631,6 @@ export async function runWorkflow(config, runtime = {}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const manifest = process.argv[process.argv.indexOf('--manifest') + 1];
-  if (!process.argv.includes('--manifest') || !manifest) throw new Error('Usage: run-jev-workflow.mjs --manifest <private arm manifest>');
-  await runWorkflow(await readJson(resolve(manifest)));
+  process.stderr.write('Historical controller disabled in Development System 1.24.0. Use classify-atom and record-route-decision with parent-owned execution; historical controllers require their original preserved package.\n');
+  process.exitCode = 1;
 }

@@ -7,7 +7,14 @@
     "noEmit": true,
     "strict": true,
     "target": "ES2022",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["bin/**/*.mjs", "src/**/*.mjs", "scripts/**/*.mjs"]
+  "include": [
+    "bin/**/*.mjs",
+    "src/**/*.mjs",
+    "scripts/**/*.mjs",
+    "runtime/**/*.mjs"
+  ]
 }

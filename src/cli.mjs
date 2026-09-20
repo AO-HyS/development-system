@@ -216,6 +216,10 @@ function formatHuman(result) {
 
 /** @param {string[]} argv */
 export async function run(argv) {
+  if (["advisory-status", "classify-atom", "record-route-decision"].includes(argv[0])) {
+    const { runAdvisory } = await import("../runtime/jev-advisory/cli.mjs");
+    return runAdvisory([argv[0] === "advisory-status" ? "status" : argv[0], ...argv.slice(1)]);
+  }
   const { command, options } = parseArguments(argv);
   let result;
 
@@ -354,10 +358,7 @@ export async function run(argv) {
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = evaluateOrchestrationPilot(input);
   } else if (command === "jev-workflow") {
-    if (!options.input) throw new Error("jev-workflow requires --input <private-manifest.json>");
-    const { runWorkflow } = await import("../scripts/run-jev-workflow.mjs");
-    const execution = await runWorkflow(JSON.parse(await readFile(resolve(options.input), "utf8")));
-    result = { operation: "jev-workflow", ok: execution?.status === "accepted-local", ...execution };
+    throw new Error("Historical controller disabled in Development System 1.24.0. Use classify-atom and record-route-decision with parent-owned execution; historical controllers require their original preserved package.");
   } else if (command === "jev-workflow-measure") {
     if (!options.input) throw new Error("jev-workflow-measure requires --input <private-execution-directory>");
     const { measureWorkflow } = await import("../scripts/measure-jev-workflow.mjs");
@@ -485,7 +486,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|jev-workflow|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
