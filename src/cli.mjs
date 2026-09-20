@@ -35,6 +35,7 @@ import {
 } from "./working-backwards-handoff.mjs";
 import { evaluateWorkingBackwards } from "./working-backwards-evaluation.mjs";
 import { routeDefinition } from "./definition-router.mjs";
+import { routeVisualGrill } from "./visual-grill.mjs";
 import { buildDevelopmentRun } from "./development-run.mjs";
 import { planParallelWork } from "./parallel-work.mjs";
 import { planReleaseTrain } from "./release-train-v2.mjs";
@@ -110,6 +111,9 @@ function parseArguments(argv) {
 
 /** @param {Record<string, unknown>} result */
 function formatHuman(result) {
+  if (result.operation === "jev-workflow") return `Jev workflow: ${result.status}.`;
+  if (result.operation === "jev-workflow-measure") return `Workflow measurement written to ${result.output}.`;
+  if (result.operation === "validate-atom-plan") return `Atom plan: ${result.status}.`;
   if (result.operation === "record-provider-failure") return `Provider failure cached for ${result.candidateId} until ${result.expiresAt}.`;
   if (result.operation === "setup") return `Development System ${result.version} and skill catalog ${result.catalogVersion} installed. Run audit and audit-skills to inspect installation state.`;
   if (result.operation === "install") {
@@ -159,6 +163,7 @@ function formatHuman(result) {
     : "Working Backwards evaluation is not ready for a pilot.";
   if (result.operation === "working-backwards-humanlayer") return "HumanLayer supplied snapshot recorded as unverified input without granting lifecycle authority.";
   if (result.operation === "definition-route") return `Definition route: ${result.currentStage}; ${result.nextAction}.`;
+  if (result.operation === "visual-grill-route") return `Visual grill route: ${result.mode}; ${Array.isArray(result.requiredFlow) ? result.requiredFlow.join(" → ") : "no visual flow"}.`;
   if (result.operation === "development-run") {
     const identity = result.identity && typeof result.identity === "object" ? result.identity : {};
     const speed = result.speed && typeof result.speed === "object" ? result.speed : {};
@@ -211,6 +216,10 @@ function formatHuman(result) {
 
 /** @param {string[]} argv */
 export async function run(argv) {
+  if (["advisory-status", "classify-atom", "record-route-decision"].includes(argv[0])) {
+    const { runAdvisory } = await import("../runtime/jev-advisory/cli.mjs");
+    return runAdvisory([argv[0] === "advisory-status" ? "status" : argv[0], ...argv.slice(1)]);
+  }
   const { command, options } = parseArguments(argv);
   let result;
 
@@ -336,6 +345,10 @@ export async function run(argv) {
     if (!options.input) throw new Error("definition-route requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = routeDefinition(input);
+  } else if (command === "visual-grill-route") {
+    if (!options.input) throw new Error("visual-grill-route requires --input <json-path>");
+    const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
+    result = routeVisualGrill(input);
   } else if (command === "development-run") {
     if (!options.input) throw new Error("development-run requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -344,6 +357,18 @@ export async function run(argv) {
     if (!options.input) throw new Error("orchestrator-pilot requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     result = evaluateOrchestrationPilot(input);
+  } else if (command === "jev-workflow") {
+    throw new Error("Historical controller disabled in Development System 1.24.0. Use classify-atom and record-route-decision with parent-owned execution; historical controllers require their original preserved package.");
+  } else if (command === "jev-workflow-measure") {
+    if (!options.input) throw new Error("jev-workflow-measure requires --input <private-execution-directory>");
+    const { measureWorkflow } = await import("../scripts/measure-jev-workflow.mjs");
+    const measurement = await measureWorkflow(resolve(options.input));
+    result = { operation: "jev-workflow-measure", ok: true, ...measurement };
+  } else if (command === "validate-atom-plan") {
+    if (!options.plan) throw new Error("validate-atom-plan requires --plan <plan.json>");
+    const { validateAtomPlan } = await import("./orchestration.mjs");
+    const errors = validateAtomPlan(JSON.parse(await readFile(resolve(options.plan), "utf8")));
+    result = { operation: "validate-atom-plan", ok: errors.length === 0, status: errors.length === 0 ? "valid" : "invalid", errors };
   } else if (command === "orchestration-plan") {
     if (!options.input) throw new Error("orchestration-plan requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -461,7 +486,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|development-run|orchestrator-pilot|orchestration-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

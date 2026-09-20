@@ -1,0 +1,43 @@
+{
+  "executedAtUtc": "2026-09-16T03:54:37Z",
+  "skillVersion": "4.3.1",
+  "command": "/Users/corrortiz/.agents/skills/impeccable/scripts/impeccable serve-question --start --payload evidence/grill-visual-1221/impeccable-decision-payload.json",
+  "exitStatus": 0,
+  "questionKey": "1fe6ce68",
+  "urlLifecycle": "ephemeral local server; stopped after verification",
+  "observableStructure": {
+    "optionCount": 3,
+    "optionLabels": [
+      "Historia clínica en secuencia",
+      "Expediente de seguridad",
+      "Guion de conversación"
+    ],
+    "buildActions": 3,
+    "steerField": true,
+    "rerollAction": true,
+    "canonAction": false
+  },
+  "visualObservation": {
+    "browser": "Chrome through authorized computer use",
+    "viewportCapture": {"width": 2560, "height": 1352, "format": "jpeg"},
+    "captureBytes": 149384,
+    "captureSha256": "ad29b10c796a2f892ca0778473494237b4b4281a5ffe67e5cf61afa0f72a6778",
+    "result": "Three equal-size direction cards were visible side by side, each with a distinct wireframe, thesis, first viewport, risk and build action. The roll, steer and re-roll controls were visible without a second chooser."
+  },
+  "knownRendererLimits": [
+    {
+      "viewport": "390x844",
+      "severity": "blocks mobile comparison acceptance",
+      "finding": "The floating Back control overlapped wireframe region labels on the second and third cards.",
+      "disposition": "External Impeccable renderer finding. Do not create a fork or second chooser; desktop remains the verified selection viewport until upstream correction."
+    },
+    {
+      "viewport": "desktop and mobile accessibility tree",
+      "severity": "accessibility gap",
+      "finding": "Each wireframe exposed the generic name Layout schematic rather than its specific region relationships.",
+      "disposition": "External Impeccable renderer finding; adjacent thesis and viewport text remains available, but full screen-reader comparison is not certified."
+    }
+  ],
+  "selection": {"status": "pending", "approvalClaimed": false},
+  "claimBoundary": "This verifies the real Impeccable decision surface and its rendered three-option desktop structure. Mobile comparison and complete screen-reader semantics remain blocked by the recorded renderer findings. It does not record a user direction choice or validate a product implementation."
+}

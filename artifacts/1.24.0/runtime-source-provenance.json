@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.24.0",
+  "activeMode": "advisory-parent-execution",
+  "sources": [
+    {
+      "sourcePath": "runtime/jev-advisory/cli.mjs",
+      "artifactPath": "artifacts/1.24.0/advisory-runtime/cli.mjs",
+      "destination": ".codex/development-system/advisory-runtime/cli.mjs",
+      "sha256": "472ca3bc584181acebd3c92502cb08e26cbe82d9a0a90a37fcf959232bb0bc10"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/provenance.json",
+      "artifactPath": "artifacts/1.24.0/advisory-runtime/provenance.json",
+      "destination": ".codex/development-system/advisory-runtime/provenance.json",
+      "sha256": "0ef4c4416c51a25a264ff60c39dc1a81d8956e7022529a20679d599da121d600"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/src/orchestration.mjs",
+      "artifactPath": "artifacts/1.24.0/advisory-runtime/src/orchestration.mjs",
+      "destination": ".codex/development-system/advisory-runtime/src/orchestration.mjs",
+      "sha256": "f9ccf4cd988945878afaa5f2fb51b3ef70873034f9ddc99c975d2d25c5501ab4"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/config/1.2.0/orchestration-policy.json",
+      "artifactPath": "artifacts/1.24.0/advisory-runtime/config/1.2.0/orchestration-policy.json",
+      "destination": ".codex/development-system/advisory-runtime/config/1.2.0/orchestration-policy.json",
+      "sha256": "79dc345192fa955ca6b48059b8dc8600d61bfad9662449c32d03bb56619d7b23"
+    }
+  ],
+  "legacySources": "Retained immutable manifest bindings are recovery material; the legacy controller entry point is disabled."
+}

@@ -1,0 +1,67 @@
+{
+  "title": "Cómo preparar la próxima consulta",
+  "question": "Tres composiciones con la misma identidad, datos y tarea. Elige una, orienta otra mano o recházalas.",
+  "options": [
+    {
+      "id": "consultation-timeline",
+      "label": "Historia clínica en secuencia",
+      "kicker": "THE ROLL",
+      "thesis": "Una línea temporal conecta el último contacto, las señales actuales y la siguiente decisión.",
+      "palette": ["#24544c", "#f4f0e8", "#243033"],
+      "materials": ["papel clínico", "reglas temporales"],
+      "viewport": "El expediente abre sobre la decisión activa y conserva el contexto reciente en un carril longitudinal.",
+      "risk": "La cronología puede desplazar hechos urgentes si el estado activo no domina.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "identidad", "x": 0, "y": 0, "w": 3, "h": 10},
+          {"label": "secuencia", "x": 3, "y": 0, "w": 3, "h": 10, "accent": true},
+          {"label": "decisión activa", "x": 6, "y": 0, "w": 6, "h": 6},
+          {"label": "siguiente acción", "x": 6, "y": 6, "w": 6, "h": 4}
+        ]
+      }
+    },
+    {
+      "id": "safety-docket",
+      "label": "Expediente de seguridad",
+      "thesis": "La primera lectura ordena riesgo, medicación y siguiente acción como un expediente preciso.",
+      "palette": ["#24544c", "#f4f0e8", "#243033"],
+      "materials": ["índice vertical", "hoja de evidencia"],
+      "viewport": "Un índice compacto fija hechos críticos y abre una hoja alineada para la revisión profesional.",
+      "risk": "Puede sentirse burocrático si la identidad del paciente queda demasiado silenciosa.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "índice", "x": 0, "y": 0, "w": 2, "h": 10, "accent": true},
+          {"label": "seguridad", "x": 2, "y": 0, "w": 10, "h": 3},
+          {"label": "evidencia", "x": 2, "y": 3, "w": 7, "h": 7},
+          {"label": "acción", "x": 9, "y": 3, "w": 3, "h": 7}
+        ]
+      }
+    },
+    {
+      "id": "conversation-brief",
+      "label": "Guion de conversación",
+      "thesis": "La consulta se prepara enlazando lo que el profesional debe saber con lo que el paciente debe hacer.",
+      "palette": ["#24544c", "#f4f0e8", "#243033"],
+      "materials": ["columnas desiguales", "línea de relevo"],
+      "viewport": "Dos planos relacionados separan evidencia profesional y acción del paciente sin perder continuidad.",
+      "risk": "La pareja visual puede sugerir uso simultáneo aunque los portales sean distintos.",
+      "wireframe": {
+        "cols": 12,
+        "rows": 10,
+        "regions": [
+          {"label": "contexto", "x": 0, "y": 0, "w": 12, "h": 2},
+          {"label": "profesional", "x": 0, "y": 2, "w": 8, "h": 8, "accent": true},
+          {"label": "paciente", "x": 8, "y": 2, "w": 4, "h": 6},
+          {"label": "relevo", "x": 8, "y": 8, "w": 4, "h": 2}
+        ]
+      }
+    }
+  ],
+  "reroll": true,
+  "buildPath": {"value": "code", "toggle": false},
+  "steer": true
+}

@@ -36,18 +36,21 @@ const commitPattern = /^[a-f0-9]{40}$/u;
 const semverPattern = /^\d+\.\d+\.\d+$/u;
 const hashPattern = /^[a-f0-9]{64}$/u;
 
-/** Top-level runtime paths eligible for distribution. */
+/** Runtime directories and exact canonical sources referenced by old manifests. */
 const runtimeTopLevelPaths = [
   "package.json",
   "README.md",
   "LICENSE",
   "bin",
   "src",
+  "runtime",
   "config",
   "artifacts",
   "manifests",
   "catalog",
   "scripts",
+  "benchmarks/suite.json",
+  "docs/architecture-reference-pack.md",
 ];
 const builderPath = "scripts/pack-distribution.mjs";
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -136,8 +139,11 @@ function enumerateCommittedRuntimeFiles(root, commit) {
  * @returns {Array<{path: string, executable: boolean}>}
  */
 function stageCommittedFiles(root, commit, files, stage) {
-  const topPaths = [...new Set(files.map((file) => file.path.split("/")[0]))];
-  const archive = git(root, "archive", "--format=tar", commit, "--", ...topPaths, `:(exclude)${builderPath}`);
+  const archivePaths = [...new Set(files.map((file) => {
+    const top = file.path.split("/")[0];
+    return runtimeTopLevelPaths.includes(top) ? top : file.path;
+  }))];
+  const archive = git(root, "archive", "--format=tar", commit, "--", ...archivePaths, `:(exclude)${builderPath}`);
   const archivePath = join(mkdtempSync(join(tmpdir(), "ds-pack-archive-")), "stage.tar");
   writeFileSync(archivePath, archive);
   try {

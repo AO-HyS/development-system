@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comparación ciega · Grill visual</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #13273f;
+        --muted: #596677;
+        --line: #dce3e7;
+        --paper: #f5f7f6;
+        --white: #fff;
+        --accent: #245a4a;
+        --accent-soft: #e3eee9;
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--paper); color: var(--ink); }
+      button, textarea, input { font: inherit; }
+      .shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+      header {
+        position: sticky; top: 0; z-index: 10; display: grid; gap: 14px;
+        padding: 18px clamp(18px, 3vw, 42px); border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--paper) 94%, transparent); backdrop-filter: blur(16px);
+      }
+      .intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+      .eyebrow { margin: 0 0 4px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin: 0; font-size: clamp(24px, 3vw, 38px); letter-spacing: -.035em; }
+      .intro p:last-child { max-width: 690px; margin: 0; color: var(--muted); line-height: 1.5; }
+      .tabs { display: flex; gap: 8px; align-items: center; overflow-x: auto; }
+      .tab {
+        min-width: 118px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--white); color: var(--ink); cursor: pointer; font-weight: 750;
+      }
+      .tab[aria-selected="true"] { border-color: var(--accent); background: var(--accent); color: white; }
+      .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 330px; min-height: 0; }
+      .preview { padding: 18px; min-width: 0; }
+      iframe {
+        width: 100%; min-height: 820px; height: calc(100vh - 174px); border: 1px solid #cfd8dc;
+        border-radius: 18px; background: white; box-shadow: 0 18px 48px rgba(19, 39, 63, .10);
+      }
+      aside { padding: 22px; border-left: 1px solid var(--line); background: var(--white); }
+      aside h2 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.02em; }
+      aside > p { margin: 0 0 18px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+      fieldset { margin: 0 0 18px; padding: 0; border: 0; }
+      legend { margin-bottom: 9px; font-size: 13px; font-weight: 800; }
+      .score { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+      .score label { display: grid; place-items: center; gap: 4px; padding: 7px 2px; border: 1px solid var(--line); border-radius: 8px; font-size: 11px; cursor: pointer; }
+      .score label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 800; }
+      textarea { width: 100%; min-height: 94px; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); }
+      .actions { display: grid; gap: 8px; }
+      .action { padding: 11px 14px; border: 0; border-radius: 10px; cursor: pointer; font-weight: 800; }
+      .primary { background: var(--accent); color: white; }
+      .secondary { background: var(--accent-soft); color: var(--accent); }
+      .status { min-height: 18px; margin-top: 10px; color: var(--accent); font-size: 12px; font-weight: 700; }
+      @media (max-width: 980px) {
+        .intro { align-items: start; flex-direction: column; gap: 8px; }
+        .workspace { grid-template-columns: 1fr; }
+        iframe { height: 74vh; min-height: 650px; }
+        aside { border-left: 0; border-top: 1px solid var(--line); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="intro">
+          <div>
+            <p class="eyebrow">Piloto observacional</p>
+            <h1>Tres respuestas al mismo encargo</h1>
+          </div>
+          <p>Explora Expediente, Portal y el panel superpuesto en cada variante. Evalúa lo visible antes de conocer qué condición produjo cada resultado.</p>
+        </div>
+        <nav class="tabs" role="tablist" aria-label="Variantes anónimas">
+          <button class="tab" id="variant-01" role="tab" aria-selected="true" aria-controls="prototype" data-src="condition-c-corrected/index.html">Variante 01</button>
+          <button class="tab" id="variant-02" role="tab" aria-selected="false" aria-controls="prototype" data-src="condition-a-current/index.html" tabindex="-1">Variante 02</button>
+          <button class="tab" id="variant-03" role="tab" aria-selected="false" aria-controls="prototype" data-src="condition-b-article/index.html" tabindex="-1">Variante 03</button>
+        </nav>
+      </header>
+      <main class="workspace">
+        <section class="preview" aria-label="Prototipo seleccionado">
+          <iframe id="prototype" title="Variante 01" src="condition-c-corrected/index.html"></iframe>
+        </section>
+        <aside aria-labelledby="evaluation-title">
+          <h2 id="evaluation-title">Ficha de evaluación</h2>
+          <p>1 es débil; 5 es sobresaliente. La puntuación apoya el juicio: no sustituye las observaciones visibles.</p>
+          <form id="evaluation-form">
+            <div id="criteria"></div>
+            <label for="notes"><strong>Correcciones literales</strong></label>
+            <textarea id="notes" name="notes" placeholder="Ej.: menos bloques simultáneos; conservar el contraste editorial; el panel necesita…"></textarea>
+            <fieldset>
+              <legend>Preferencia provisional</legend>
+              <div class="score">
+                <label><input type="radio" name="preference" value="01" />01</label>
+                <label><input type="radio" name="preference" value="02" />02</label>
+                <label><input type="radio" name="preference" value="03" />03</label>
+                <label><input type="radio" name="preference" value="ninguna" />Ninguna</label>
+              </div>
+            </fieldset>
+            <div class="actions">
+              <button class="action primary" type="submit">Guardar evaluación local</button>
+              <button class="action secondary" id="export" type="button">Exportar evidencia JSON</button>
+            </div>
+            <p class="status" id="status" aria-live="polite"></p>
+          </form>
+        </aside>
+      </main>
+    </div>
+    <script>
+      const criterionNames = ["diversidad-util", "fidelidad", "claridad", "carga-informativa", "acabado"];
+      const criterionLabels = ["Diversidad útil", "Fidelidad a restricciones", "Claridad", "Carga informativa", "Acabado"];
+      const tabs = [...document.querySelectorAll(".tab")];
+      const frame = document.getElementById("prototype");
+      const form = document.getElementById("evaluation-form");
+      const status = document.getElementById("status");
+      const storageKey = "visual-grill-1220-blind-evaluation";
+      const state = JSON.parse(localStorage.getItem(storageKey) || "{}") || {};
+      let current = "01";
+      document.getElementById("criteria").innerHTML = criterionNames.map((name, index) => `
+        <fieldset><legend>${criterionLabels[index]}</legend><div class="score">
+          ${[1,2,3,4,5].map(value => `<label><input type="radio" name="${name}" value="${value}" />${value}</label>`).join("")}
+        </div></fieldset>`).join("");
+      function capture() {
+        const data = Object.fromEntries(new FormData(form));
+        state[current] = { ...data, recordedAt: new Date().toISOString() };
+        localStorage.setItem(storageKey, JSON.stringify(state));
+      }
+      function restore() {
+        form.reset();
+        const saved = state[current] || {};
+        Object.entries(saved).forEach(([name, value]) => {
+          const field = form.elements.namedItem(name);
+          if (!field) return;
+          if (field instanceof RadioNodeList) field.value = value;
+          else field.value = value;
+        });
+      }
+      function activate(tab) {
+        capture();
+        tabs.forEach(item => {
+          const selected = item === tab;
+          item.setAttribute("aria-selected", String(selected));
+          item.tabIndex = selected ? 0 : -1;
+        });
+        current = tab.id.slice(-2);
+        frame.src = tab.dataset.src;
+        frame.title = `Variante ${current}`;
+        restore();
+        status.textContent = `Mostrando Variante ${current}`;
+      }
+      tabs.forEach((tab, index) => {
+        tab.addEventListener("click", () => activate(tab));
+        tab.addEventListener("keydown", event => {
+          if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+          event.preventDefault();
+          const direction = event.key === 'ArrowRight' ? 1 : -1;
+          const next = tabs[(index + direction + tabs.length) % tabs.length];
+          next.focus(); activate(next);
+        });
+      });
+      form.addEventListener("submit", event => {
+        event.preventDefault(); capture(); status.textContent = `Evaluación de Variante ${current} guardada sólo en este navegador.`;
+      });
+      document.getElementById("export").addEventListener("click", () => {
+        capture();
+        const payload = { experiment: "visual-grill-1220", blind: true, exportedAt: new Date().toISOString(), evaluations: state };
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
+        link.download = "visual-grill-1220-evaluation.json";
+        link.click(); URL.revokeObjectURL(link.href);
+        status.textContent = "Evidencia exportada. La clave de condiciones sigue separada.";
+      });
+      restore();
+    </script>
+  </body>
+</html>

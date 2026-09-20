@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "allowedChanges": [
+    {
+      "path": "test/orchestration.test.mjs",
+      "sha256": "916488f7ec2da37ebe2cb84fa6ffd721658a9e661b82c9c146dd1bce6aeecbdc",
+      "reason": "Parent and workflow_runtime independently reviewed exact classifier test content: strict malformed-answer validation retained, escaped credentials redacted, exact request hash preserved, diagnostic mutation isolated and hard-failure precedence asserted. Existing timeout and malformed-response cases strengthened; no validator or success assertion weakened.",
+      "issue": "User-authorized local 1.23.5 bounded Jev malformed-answer retries",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/agent-roster.test.mjs",
+      "sha256": "3b56e71dd04ce91b133320d3f79060b69cd685bd0f804ec3b7bcc72c835197b8",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/anti-slop-contract.test.mjs",
+      "sha256": "8501897302cb75c562e52e4b9c5892604c4d98c4f4b75bd6e6bdda47ba762f9c",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/orchestration-compact.test.mjs",
+      "sha256": "c9b1d720a6701aa0a2ed275a56819eb3b8eb541952d85b4fdf116df54d6e80b6",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/orchestration-plan.test.mjs",
+      "sha256": "813501752d1d326b6405358d76e521852f24ba243e513ad4f621155174711d4f",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/provider-availability.test.mjs",
+      "sha256": "12a7ca08f3c7c29feb63db13c28b341cd84b7a21e070db208404578967083c31",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/visual-grill.test.mjs",
+      "sha256": "34de975f7d8b11703edf0abd466d09532ece2705be3ffbbe97a0a3e5c79df3aa",
+      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/jev-advisory-release.test.mjs",
+      "sha256": "12000c46a58734182b37578818c1de30116650bd8bdcd9ad36f87de3790cc96f",
+      "reason": "Parent reviewed exact test diff: current profile assertions updated to Sol High, Flash High, native Astra XHigh and no fallback; historical snapshots and acceptance gates preserved. New adviser regression intercepts active write sets, rejects malformed ownership before provider access and verifies direct legacy controller refusal without side effects.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/evidence-routing.test.mjs",
+      "sha256": "6b7361d703d7d8344d7148dfd976e2a65f3f80265a0de81d7396e7261d53bcd1",
+      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/model-routing.test.mjs",
+      "sha256": "ab4be0494e0d484d998e7d64af1546dba202bf6213e1173b5ec13fd156820e63",
+      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/jev-workflow-driver.test.mjs",
+      "sha256": "85943404fed5318e6816051287f83ce524de094f65c99c8a70e79cf050e86860",
+      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
+      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    }
+  ]
+}

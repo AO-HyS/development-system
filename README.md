@@ -1,6 +1,21 @@
 # AOHYS Development System
 
-## Current release: 1.21.0 / catalog 0.42.0
+## Release 1.24.0 / catalog 0.44.0
+
+The default development profile is Sol High with Jev as a typed adviser,
+bounded Flash High writers, and native Astra XHigh researchers/reviewers.
+The model already selected for a conversation remains its orchestrator.
+The parent owns dependencies, integration, corrections and final acceptance;
+Jev does not launch agents or grant authority. There is no automatic model
+fallback and the experimental controller is disabled.
+
+This restores the exact adviser core and policy used by the accepted complete
+BARBER-205 comparison. Sol reached final close in 35:14.9 at $18.8857 API
+equivalent; Astra in 49:09.1 at $33.3341. Each met 7/7 criteria. These are one
+complete run per configuration, not a guarantee for every task. Earlier
+17:14/24:02 Sol timings did not measure the complete delivery endpoint.
+See [the release decision](docs/adr/0046-recovered-advisory-production-profile.md)
+and [the installed recipe](artifacts/1.24.0/skills/internal/coding-orchestration/references/jev-advisory.md).
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -55,8 +70,8 @@ an input roster, a requested version snapshot, or the executing package's
 distributed artifacts; editing one does not reconfigure running agents. Pass the
 selected model/effort through the host's supported dispatch and verify runtime.
 `serviceTier` is propagated to the Codex CLI; an omitted tier requests normal
-`default` speed. Astra declares default explicitly; Luna declares priority.
-Native roles have task-specific effort and unchanged sandbox settings.
+`default` speed. The new Codex profile requests the default service tier. Native descendants
+request Astra XHigh and retain their role-specific sandbox settings.
 
 ## Requirements
 
@@ -69,9 +84,28 @@ Native roles have task-specific effort and unchanged sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.20.0/aohys-development-system-1.20.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.24.0/aohys-development-system-1.24.0.tgz
 pnpm exec aohys-development-system setup
 ```
+
+`setup` installs the governed contract, native profiles, adviser and skills.
+It preserves credentials and does not rewrite the host's selected model.
+For new local Codex sessions, set only `model = "gpt-5.6-sol"` and
+`model_reasoning_effort = "high"` in the existing host config, preserving its
+MCP, authentication and other settings. Repository-local settings may override
+that default and must agree. Restarting an existing conversation is unnecessary.
+
+`pnpm ds advisory-status --json` reports the installed adviser profile and
+whether a credential is available, without printing it or calling a provider.
+The private credential location is described in the recipe. Installation hashes
+prove installed bytes; a real classification receipt proves the provider path.
+Keep both kinds of evidence separate.
+
+To reverse an upgrade, retain the prior pinned package/source and host-config
+backup. `rollback` restores the previous contract. Reinstall its catalog
+explicitly (for 1.23.5, `sync-skills --version 0.43.1` from that source);
+`rollback-skills` restores its original baseline rather than necessarily the
+previous catalog. Restore only the two backed-up host model settings if needed.
 
 Commit the lockfile, which pins the tarball integrity. A `ds` package script can alias `aohys-development-system`. Normal dependency installation never writes HOME; `setup` is an explicit local operation. See [package distribution and recovery](docs/package-distribution.md).
 
@@ -79,11 +113,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system install --version 1.21.0
-./bin/development-system sync-skills --version 0.42.0
+./bin/development-system setup --version 1.24.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.42.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.44.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -117,6 +150,14 @@ Lifecycle requests use natural language but persist canonical operation names:
 ```
 
 Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode recommend` for a read-only recommendation; it never persists a transition or grants authority. Use `--json` to inspect the exact transition, authorization source, evidence, stage, and reported external side effects.
+
+Visual-grill routing is a separate read-only seam. It classifies natural intent,
+recovers answered decision keys and validates exploration order without creating
+a session or granting implementation:
+
+```sh
+./bin/development-system visual-grill-route --input /private/path/visual-brief.json --json
+```
 
 Working Backwards operations consume explicit JSON files:
 
@@ -251,7 +292,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `install --version 1.21.0`, `sync-skills --version 0.42.0`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → for this candidate, `install --version 1.22.1`, `sync-skills --version 0.43.1`, then `guardrails-enable`
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

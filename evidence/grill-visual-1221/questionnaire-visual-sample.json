@@ -1,0 +1,35 @@
+{
+  "id": "visual-reference-sample-1221",
+  "title": "Referencias que aclaran, no eligen",
+  "productName": "Development System",
+  "introduction": "Esta muestra comprueba que el cuestionario puede enseñar material visible y conservar la respuesta literal sin convertirse en otra página de selección de dirección.",
+  "questions": [
+    {
+      "id": "imagery-role",
+      "group": "Referencia visual",
+      "text": "¿Qué función deben cumplir los retratos en la próxima propuesta?",
+      "context": "La imagen permite reaccionar a escala, presencia y tono sin tener que inventar vocabulario abstracto.",
+      "references": [
+        {
+          "id": "synthetic-patient-portraits",
+          "imagePath": "../grill-visual-1220/assets/synthetic-patient-portraits.png",
+          "alt": "Fila de retratos sintéticos discretos usada para calibrar presencia fotográfica",
+          "title": "Retratos discretos",
+          "caption": "Observa cuánto protagonismo visual deberían tener frente a la información clínica.",
+          "function": "Escala, tono e importancia de la imagen"
+        }
+      ],
+      "options": {
+        "A": "Identificar a la persona sin competir con el dato clínico.",
+        "B": "Aportar calidez sólo en momentos de orientación o relevo."
+      },
+      "recommendation": "Mantenerlos subordinados a la tarea clínica y registrar cualquier corrección con las palabras exactas del usuario."
+    },
+    {
+      "id": "literal-correction",
+      "group": "Corrección",
+      "text": "¿Qué conservarías o cambiarías después de ver esta referencia?",
+      "context": "La respuesta se reutiliza por clave de decisión; no se vuelve a preguntar en otra skill."
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "conditionCode": "B",
+  "conditionLabel": "ARTICLE DIRECT",
+  "baseRevision": "2767b409757dd14f378c50f883bbf899a20787a7",
+  "startedAtUtc": "2026-09-16T03:09:39Z",
+  "endedAtUtc": "2026-09-16T03:16:11Z",
+  "artifact": "index.html",
+  "article": {
+    "url": "https://www.lennysnewsletter.com/p/how-to-turn-your-ai-into-a-world",
+    "title": "How to turn your AI into a world-class designer",
+    "author": "Anshu Chimala",
+    "accessedLive": true,
+    "accessBoundary": "The public page exposed the introduction, Discover and Define material, techniques 1 through 6, and the heading for technique 7. Technique 7 body content was behind the paid-subscriber boundary and was not read or inferred.",
+    "guidanceApplied": [
+      "Pursue a specific, ambitious design identity instead of default dashboard patterns.",
+      "Judge the visible composition independently of implementation rationale.",
+      "Use the supplied image only where it adds pertinent identity.",
+      "Remove low-value chrome and keep attention on the immediate task."
+    ]
+  },
+  "instructionFilesRead": [
+    "/Users/corrortiz/Documents/AO/.worktrees/development-system-grill-visual-122/evidence/grill-visual-1220/pilot/shared-brief.md",
+    "/Users/corrortiz/Documents/AO/.worktrees/development-system-grill-visual-122/evidence/grill-visual-1220/article-access-note.md",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/src/app/globals.css",
+    "/Users/corrortiz/Documents/AO/nutri-plan/apps/dashboard/docs/context/ui_design_system.md",
+    "/Users/corrortiz/.agents/skills/coding-orchestration/SKILL.md",
+    "/Users/corrortiz/.agents/skills/coding-orchestration/references/execution-contract.md"
+  ],
+  "additionalContextFilesRead": [
+    {
+      "path": "/Users/corrortiz/.codex/memories/MEMORY.md",
+      "scope": "Relevant Development System workflow-boundary registry lines only; no design direction was taken from memory."
+    }
+  ],
+  "filesCreated": [
+    "index.html",
+    "receipt.json"
+  ],
+  "thesis": "Clinical context should feel like a prepared folio rather than a crowded dashboard: one dominant decision surface, one supporting time rail, and a brief context layer that leaves the current task visually intact.",
+  "visibleChoices": {
+    "composition": [
+      "An asymmetric two-part stage pairs a large clinical folio with an editorial next-visit rail in Expediente.",
+      "Portal keeps the same visual grammar but shifts emphasis to one dark daily-plan surface and a narrow stack for habits, appointment and the available care-team message.",
+      "The synthetic portrait is cropped discreetly into a compact identity chip and remains subordinate to task content."
+    ],
+    "hierarchy": [
+      "Expediente leads with diabetes type 2, then allergy, medication, HbA1c and weight trend, with the next visit isolated as the supporting cue.",
+      "Portal leads with breakfast completed and lunch next, then shows only one progress signal, the next appointment and message availability.",
+      "Large heading contrast, limited labels and ledger-like rules replace repeated generic metric cards."
+    ],
+    "interaction": [
+      "Expediente and Portal are keyboard-operable tabs with ArrowLeft and ArrowRight navigation.",
+      "Abrir contexto opens a fixed modal panel over either view without reflowing the background.",
+      "The panel traps Tab focus, closes from its controls, scrim or Escape, and restores focus to the exact trigger.",
+      "The background is made inert while open, scroll is held, and reduced-motion preferences collapse animations and transitions."
+    ]
+  },
+  "expressiveOpportunity": "The oversized visit date, offset folio edge and confident ink-blue fields create a memorable editorial clinical identity without adding new colors, decorative media or extra dashboard modules.",
+  "concreteRisk": "The low-density, large-type composition may move secondary clinical signals below the first viewport on compact screens; a real product pass would need task-timing evidence before preserving this exact scale.",
+  "model": {
+    "observableIdentity": "Codex agent based on GPT-5",
+    "exactRuntimeModelId": "unknown",
+    "reasoningEffort": "unknown"
+  },
+  "checks": [
+    {
+      "command": "git rev-parse HEAD",
+      "exitStatus": 0,
+      "result": "2767b409757dd14f378c50f883bbf899a20787a7"
+    },
+    {
+      "command": "sed -n '/<script>/,/<\\/script>/p' index.html | sed '1d;$d' | node --check -",
+      "exitStatus": null,
+      "result": "Blocked before execution by the shell-parameter-expansion hook because of $d."
+    },
+    {
+      "command": "set -o pipefail; sed -n '/<script>/{:a;n;/<\\/script>/q;p;ba}' index.html | node --check -",
+      "exitStatus": 1,
+      "result": "BSD sed reported an unmatched block; superseded by the portable awk extraction below."
+    },
+    {
+      "command": "set -o pipefail; awk '/<script>/{flag=1;next}/<\\/script>/{flag=0}flag' index.html | node --check -",
+      "exitStatus": 0,
+      "result": "Embedded JavaScript syntax passed."
+    },
+    {
+      "command": "rg -q required-value index.html (five focused invocations for Mariana Torres, medication, weight trend, habits state, and interaction/reduced-motion hooks)",
+      "exitStatus": 0,
+      "result": "All five focused source assertions passed."
+    },
+    {
+      "command": "rg -n '(https?:|@import|url\\()' index.html",
+      "exitStatus": 1,
+      "result": "Expected no-match status; no network asset reference or CSS import was found."
+    },
+    {
+      "command": "test -f ../../assets/synthetic-patient-portraits.png",
+      "exitStatus": 0,
+      "result": "The required relative portrait asset resolves."
+    },
+    {
+      "command": "command -v tidy",
+      "exitStatus": 0,
+      "result": "/usr/bin/tidy"
+    },
+    {
+      "command": "tidy -qe index.html",
+      "exitStatus": 2,
+      "result": "The installed legacy Tidy rejected standard HTML5 semantic and inline SVG elements, so it was not treated as a valid HTML5 gate. JavaScript syntax and focused source checks remain the usable local evidence."
+    }
+  ],
+  "limitations": [
+    "This is synthetic exploratory evidence, not NutriPlan product code, user approval or clinical validation.",
+    "No product session, product write, external provider, network asset, secret or installation was used.",
+    "No live browser or visual acceptance run was performed in this bounded pass; interaction behavior is supported by source inspection and embedded JavaScript syntax checking only.",
+    "Figtree and Plus Jakarta Sans are represented by local-first font stacks because network font assets were prohibited.",
+    "Subscriber-only article content was neither accessed nor inferred.",
+    "No current or corrected Development System design skill file was read."
+  ]
+}
