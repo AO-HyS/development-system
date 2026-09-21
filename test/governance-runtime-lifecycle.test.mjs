@@ -7,8 +7,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { bindProcessCandidate, createRun, classifyBoundary, prepareAction, authorizeAction, recordHostEvent, advancePhase, closeRun, getRun, registerHostSession } from '../runtime/jev-governance/core.mjs';
+import { bindProcessCandidate, createRun, classifyBoundary, prepareAction, authorizeAction, recordHostEvent, advancePhase, closeRun, getRun, registerHostSession, recordPassiveToolObservation } from '../runtime/jev-governance/core.mjs';
 const exec = promisify(execFile);
+async function observeFixtureShell(home, session, root) {
+  const event = { session_id: session, turn_id: 'passive-fixture', tool_use_id: 'passive-shell', model: 'gpt-5.6-sol', reasoning: 'high', cwd: root, tool_name: 'Bash', tool_input: { command: 'pwd' } };
+  await recordPassiveToolObservation({ home, event: { ...event, hook_event_name: 'PreToolUse' } });
+  await recordPassiveToolObservation({ home, event: { ...event, hook_event_name: 'PostToolUse', tool_response: { exit_code: 0, stdout: root } } });
+}
 test('observed lifecycle accepts a corrected candidate and rejects stale, replayed, and unattributed work', { timeout: 60000 }, async (t) => {
   const children = new Set();
   const base = await realpath(await mkdtemp(join(tmpdir(), 'governance-lifecycle-')));
@@ -36,7 +41,9 @@ test('observed lifecycle accepts a corrected candidate and rejects stale, replay
   const cli = fileURLToPath(new URL('../runtime/jev-governance/cli.mjs', import.meta.url));
   const session = 'root-fixture';
   await registerHostSession({ home, event: { kind: 'session', sessionId: session, model: 'gpt-5.6-sol', reasoning: 'high', cwd: root, transcriptPath: join(base, 'synthetic-transcript.jsonl') } });
+  await observeFixtureShell(home, session, root);
   const contract = { id: 'full-lifecycle', root, baseSha: sha, endpoint: 'local accepted', authorization: 'Implement and verify the isolated lifecycle fixture locally.', sources: [{ id: 'spec', path: 'spec.md', kind: 'spec' }], tickets: [{ id: 'T1', dependsOn: [] }], criteria: [{ id: 'C1', ticketId: 'T1', requirement: 'Export the corrected value 3', evidenceRequired: 'Approved value assertion process exit zero' }], capacity: { total: 4, providers: { codex: 2, 'opencode-go': 2, local: 1 } } };
+  contract.requiredCapabilities = ['shell'];
   await createRun({ home, contract, activation: { sessionId: session } });
   const runDirectory = join(home, '.development-system/governance/runs/full-lifecycle');
   const route = (role) => role === 'coordinator' ? { role, provider: 'codex', model: 'gpt-5.6-sol', reasoning: 'high', capabilities: [] }
@@ -59,7 +66,7 @@ test('observed lifecycle accepts a corrected candidate and rejects stale, replay
     assert.equal(result.verdict, 'pass', `${id}: ${result.reason}`); return proposal;
   }
   async function prepare(proposal) { return prepareAction({ runDirectory, boundaryId: proposal.id, action: { actorId: session, attemptId: proposal.attemptId, toolName: proposal.toolName, toolInput: proposal.toolInput } }); }
-  function pre(proposal) { number++; return { session_id: session, turn_id: `turn-${number}`, tool_use_id: `use-${number}`, hook_event_name: 'PreToolUse', model: 'gpt-5.6-sol', cwd: root, tool_name: proposal.toolName, tool_input: proposal.toolInput }; }
+  function pre(proposal) { number++; return { session_id: session, turn_id: `turn-${number}`, tool_use_id: `use-${number}`, hook_event_name: 'PreToolUse', model: 'gpt-5.6-sol', reasoning: 'high', cwd: root, tool_name: proposal.toolName, tool_input: proposal.toolInput }; }
   async function post(event) { return recordHostEvent({ home, event: { kind: 'hook', ...event, hook_event_name: 'PostToolUse', tool_response: 'Actual fixture tool completion.' } }); }
   async function dispatch(id, action, role, options = {}) {
     const candidateRoot = options.candidateRoot ?? root;
@@ -184,6 +191,7 @@ test('observed lifecycle accepts a corrected candidate and rejects stale, replay
   // A separate unfinished run checks stale permits and interrupted ownership.
   const cancelRoot = await candidate('cancel-root'), cancelSession = 'cancel-session';
   await registerHostSession({ home, event: { kind: 'session', sessionId: cancelSession, model: 'gpt-5.6-sol', reasoning: 'high', cwd: cancelRoot, transcriptPath: join(base, 'cancel-transcript.jsonl') } });
+  await observeFixtureShell(home, cancelSession, cancelRoot);
   const cancelContract = { ...contract, id: 'cancel-run', root: cancelRoot };
   await createRun({ home, contract: cancelContract, activation: { sessionId: cancelSession } });
   const cancelDirectory = join(home, '.development-system/governance/runs/cancel-run');
@@ -196,7 +204,7 @@ test('observed lifecycle accepts a corrected candidate and rejects stale, replay
   const cancelAction = p => ({ actorId: cancelSession, attemptId: p.attemptId, toolName: p.toolName, toolInput: p.toolInput });
   await prepareAction({ runDirectory: cancelDirectory, boundaryId: stale.id, action: cancelAction(stale) });
   await writeFile(join(cancelRoot, 'src/value.mjs'), 'export const changed = 4;\n');
-  const cancelPre = { session_id: cancelSession, turn_id: 'cancel-turn', tool_use_id: 'stale-use', model: 'gpt-5.6-sol', hook_event_name: 'PreToolUse', tool_name: stale.toolName, tool_input: stale.toolInput };
+  const cancelPre = { session_id: cancelSession, turn_id: 'cancel-turn', tool_use_id: 'stale-use', model: 'gpt-5.6-sol', reasoning: 'high', cwd: cancelRoot, hook_event_name: 'PreToolUse', tool_name: stale.toolName, tool_input: stale.toolInput };
   assert.equal((await authorizeAction({ home, preToolEvent: cancelPre })).decision, 'deny');
   await writeFile(join(cancelRoot, 'src/value.mjs'), 'export const value = 1;\n');
   const interrupted = { ...stale, id: 'interrupted', attemptId: 'interrupted-attempt' };

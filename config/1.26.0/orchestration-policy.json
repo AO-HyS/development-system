@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.26.0",
+  "mode": "parent-owned-governance",
+  "runtimePolicy": "runtime/jev-governance/policy.mjs",
+  "coordinator": {
+    "newSessionModel": "gpt-5.6-sol",
+    "reasoning": "high",
+    "retainSelectedParent": true
+  },
+  "research": {
+    "defaultModel": "gpt-5.6-luna",
+    "reasoning": "high",
+    "replaceableCapability": true
+  },
+  "planning": {
+    "model": "gpt-6-astra",
+    "reasoning": "xhigh",
+    "independentFreshReview": true
+  },
+  "writing": {
+    "model": "opencode-go/deepseek-v4.1-flash",
+    "reasoning": "high"
+  },
+  "jev": {
+    "model": "jev-1.13.0",
+    "missingEvidence": "block-permit"
+  },
+  "concurrency": "dependency-and-ownership-ready-within-observed-capacity",
+  "automaticFallback": false,
+  "legacyController": "disabled",
+  "enforcement": "only-observed-supported-host-surfaces",
+  "installationProvesEnforcement": false
+}

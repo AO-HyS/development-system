@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-## Release 1.25.0 / catalog 0.45.0
+## Release 1.26.0 / catalog 0.46.0
 
 Sol coordinates the complete feature from its spec and all linked tickets.
 Fast researchers collect source facts; Astra XHigh authors the plan and a
@@ -15,9 +15,9 @@ remain explicit. Installation does not establish runtime influence. The former
 advisory CLI is compatible and the experimental controller remains disabled.
 
 See [the release decision](docs/adr/0047-whole-flow-jev-governance.md),
-[validation and supported surfaces](docs/releases/1.25.0-validation.md),
-[the execution recipe](artifacts/1.25.0/skills/internal/coding-orchestration/references/jev-governance.md)
-and [the spec/ticket contract](artifacts/1.25.0/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
+[validation and supported surfaces](docs/releases/1.26.0-validation.md),
+[the execution recipe](artifacts/1.26.0/skills/internal/coding-orchestration/references/jev-governance.md)
+and [the spec/ticket contract](artifacts/1.26.0/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -85,7 +85,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.25.0/aohys-development-system-1.25.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.26.0/aohys-development-system-1.26.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -116,10 +116,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.25.0
+./bin/development-system setup --version 1.26.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.45.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.46.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

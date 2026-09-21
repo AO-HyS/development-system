@@ -42,12 +42,12 @@ step(["setup", "--version", "1.24.0", "--source-commit", sourceCommit]);
 // A malformed operator configuration must abort the upgrade and restore its
 // previous contract; setup cannot silently replace the operator's file.
 await writeFile(hooks, "{ deliberately malformed operator hooks\n");
-step(["setup", "--version", "1.25.0", "--source-commit", sourceCommit], 1);
+step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit], 1);
 assert.equal(step(["audit"]).contractVersion, "1.24.0");
 assert.equal(await readFile(hooks, "utf8"), "{ deliberately malformed operator hooks\n");
 await writeFile(hooks, priorHooks);
 
-const setup = step(["setup", "--version", "1.25.0", "--source-commit", sourceCommit]);
+const setup = step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit]);
 assert.equal(setup.governance.ok, true);
 assert.equal(setup.governance.operationalEnforcement, "not-established-by-installation");
 assert.equal(step(["governance-hooks-audit"]).ok, true);
@@ -57,7 +57,7 @@ const engine = resolve(home, ".codex/development-system/governance-runtime/hook-
 await writeFile(engine, "// deliberately drifted isolated engine\n");
 assert.equal(step(["audit"]).status, "drifted");
 step(["validate"], 1);
-step(["setup", "--version", "1.25.0", "--source-commit", sourceCommit]);
+step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit]);
 assert.equal(step(["validate"]).status, "healthy");
 assert.equal(await readFile(hooks, "utf8"), installedHooks);
 assert.equal(step(["rollback"]).toVersion, "1.24.0");

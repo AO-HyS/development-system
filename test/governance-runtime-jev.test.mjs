@@ -150,5 +150,5 @@ test("returned-code context includes complete changed hunks in a large file and 
 test("an unavailable classifier remains unavailable without interpreting provider text as success", async (t) => {
   const input = await fixture(t);
   const result = await classifyWithJev({ ...input, transport: async () => { throw new Error("provider internals must not become evidence"); } });
-  assert.deepEqual(result, { ok: false, reason: "Jev transport failed" });
+  assert.deepEqual(result, { ok: false, reason: "Jev transport failed", code: "provider_unavailable", transportAttempted: true });
 });

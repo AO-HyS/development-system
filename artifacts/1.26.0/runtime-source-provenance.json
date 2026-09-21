@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.26.0",
+  "activeMode": "parent-owned-governance",
+  "sources": [
+    {
+      "sourcePath": "runtime/jev-governance/adapters.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/adapters.mjs",
+      "destination": ".codex/development-system/governance-runtime/adapters.mjs",
+      "sha256": "2ccd86b161e9c60410cfc737632897638e30ca4fc8468398b86238f624c45b29"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/cli.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/cli.mjs",
+      "destination": ".codex/development-system/governance-runtime/cli.mjs",
+      "sha256": "5aaacb8e586b787d70712753caf342d865706f367aa045b97d93bce5c4321ae2"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/command-reference.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/command-reference.mjs",
+      "destination": ".codex/development-system/governance-runtime/command-reference.mjs",
+      "sha256": "84a6641534525e2d80ed95810ea44489e0bc98d4fb73ed4acc07bba4b77f4348"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/core.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/core.mjs",
+      "destination": ".codex/development-system/governance-runtime/core.mjs",
+      "sha256": "f0d1bad41e250761252b959d78eadc23e3c2cce375da597f2f69da39d556aaa1"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/errors.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/errors.mjs",
+      "destination": ".codex/development-system/governance-runtime/errors.mjs",
+      "sha256": "1ba4a789c1f57605314e05b98caa936db7ad7bc1cb7e02639525301f93476aa0"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/executor.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/executor.mjs",
+      "destination": ".codex/development-system/governance-runtime/executor.mjs",
+      "sha256": "4b0d3ce5c783a751bbeba476f812576c20dc1d2aed882600ff4f8e1e7fdc693f"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook-launcher.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/hook-launcher.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook-launcher.mjs",
+      "sha256": "207a481460bdc036f292445b2ba0a3d2c7369e72b7b913dc4f47643da0e83472"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/hook.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook.mjs",
+      "sha256": "7f1304d3777f9bae0c901d5d816137002353168cbd2c8f9e4a2b5ee975c5c19d"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/jev.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/jev.mjs",
+      "destination": ".codex/development-system/governance-runtime/jev.mjs",
+      "sha256": "0bf1ca6752b50f3aa392ea7e93d1d4e7e69476a389c567e24bcbc035eff919b8"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/opencode.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/opencode.mjs",
+      "destination": ".codex/development-system/governance-runtime/opencode.mjs",
+      "sha256": "bd50cd076b0ea025fd05504ce1c147f07c14221579a1bf396e6dcdb2e706359e"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/policy.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/policy.mjs",
+      "destination": ".codex/development-system/governance-runtime/policy.mjs",
+      "sha256": "996bbb90dd3294e1c6153f2ba5396a130a0b1d9eaf3f6164aa9ff65ba2e51b1a"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/schemas.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/schemas.mjs",
+      "destination": ".codex/development-system/governance-runtime/schemas.mjs",
+      "sha256": "faec0827a2df69f69c68125d960d4ef6d326d499e3dcf84be22bbf2e41d1cc27"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/store.mjs",
+      "artifactPath": "artifacts/1.26.0/governance-runtime/store.mjs",
+      "destination": ".codex/development-system/governance-runtime/store.mjs",
+      "sha256": "2f7880e8f589aed506860641651a3379454fe04232809a80d363738be893ba88"
+    }
+  ],
+  "operationalEvidence": "Installation hashes are not host enforcement; consult release validation evidence and capability matrix."
+}
