@@ -5,7 +5,7 @@ import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRun, classifyBoundary, prepareAction, advancePhase, closeRun, getRun, resolveRunDirectory, preflightRun, recoverUnstartedRun } from "./core.mjs";
+import { createRun, classifyBoundary, prepareAction, advancePhase, closeRun, getRun, resolveRunDirectory, preflightRun, recoverUnstartedRun, safeAttemptDiagnostic } from "./core.mjs";
 import { readSessionObservation } from "./store.mjs";
 import { launchGovernedProcess } from "./executor.mjs";
 import { GovernanceError, safeGovernanceError } from "./errors.mjs";
@@ -121,7 +121,7 @@ export async function runGovernance(argv) {
       result = { runId: result.runId, root: result.root, rootSessionId: result.rootSessionId, coordinator: result.coordinator,
         endpoint: result.endpoint, phase: result.phase, outcome: result.outcome, revision: result.revision, capacity: result.capacity,
         criteria: result.criteria, tickets: result.tickets, leases: result.leases,
-        attempts: result.attempts.slice(-20).map((/** @type {any} */ attempt) => ({ id: attempt.id, role: attempt.role, actorId: attempt.actorId, status: attempt.status, acceptanceId: attempt.acceptanceId ?? null, failure: attempt.failure ?? null,
+        attempts: result.attempts.slice(-20).map((/** @type {any} */ attempt) => ({ id: attempt.id, role: attempt.role, actorId: attempt.actorId, status: attempt.status, acceptanceId: attempt.acceptanceId ?? null, failure: safeAttemptDiagnostic(attempt)?.message ?? null, failureDiagnostic: safeAttemptDiagnostic(attempt),
           ...(attempt.process ? { process: { sessionId: attempt.sessionId ?? null, provider: attempt.observed?.provider ?? "unknown", model: attempt.observed?.model ?? "unknown", reasoning: attempt.observed?.reasoning ?? null, exitCode: attempt.process.exitCode, terminated: attempt.process.terminated } } : {}) })),
         boundaries: result.boundaries.filter((/** @type {any} */ boundary) => boundary.phase === result.phase).slice(-20).map((/** @type {any} */ boundary) => ({ id: boundary.id, action: boundary.action, verdict: boundary.verdict, judgmentId: boundary.judgmentId })),
         plans: result.plans.map((/** @type {any} */ plan) => ({ id: plan.id, actorId: plan.actorId, summary: plan.summary, criterionIds: plan.criterionIds, invalidated: plan.invalidated === true })),

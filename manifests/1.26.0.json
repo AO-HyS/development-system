@@ -310,7 +310,7 @@
       "sourcePath": "artifacts/1.26.0/runtime-source-provenance.json",
       "destination": ".codex/development-system/runtime-source-provenance.json",
       "harness": "codex",
-      "sha256": "5534ad2be16654e91abb5c26306002077aca5ffb4a74171577750a8fb09f77f5",
+      "sha256": "a8cb2b32ec108cbd5830345b0ac01a4224b899bf0f0523d035dda0dc4b04c1f9",
       "expectedMirrorOf": null
     },
     {
@@ -445,7 +445,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/cli.mjs",
       "destination": ".codex/development-system/governance-runtime/cli.mjs",
       "harness": "codex",
-      "sha256": "5aaacb8e586b787d70712753caf342d865706f367aa045b97d93bce5c4321ae2",
+      "sha256": "d53794c4344fe9ba6c01b0c679913519ad6532f67e8c3ec03fa567bbd8fc290e",
       "expectedMirrorOf": null
     },
     {
@@ -463,7 +463,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/core.mjs",
       "destination": ".codex/development-system/governance-runtime/core.mjs",
       "harness": "codex",
-      "sha256": "c1f27b7723288d86f088eebb8df5eb28aa5011aac11baba4ee36be0d83a5ed3f",
+      "sha256": "20e7a3f87ff307f1e8ef13549a54318725cf69964e98189ca1aacad6ded6d33c",
       "expectedMirrorOf": null
     },
     {
@@ -481,7 +481,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/executor.mjs",
       "destination": ".codex/development-system/governance-runtime/executor.mjs",
       "harness": "codex",
-      "sha256": "4b0d3ce5c783a751bbeba476f812576c20dc1d2aed882600ff4f8e1e7fdc693f",
+      "sha256": "51eec718bd0b7a3399ac5e4a7df7b37f6bb0dba020cfe2f9287b6c5e497f75ff",
       "expectedMirrorOf": null
     },
     {
@@ -508,7 +508,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/jev.mjs",
       "destination": ".codex/development-system/governance-runtime/jev.mjs",
       "harness": "codex",
-      "sha256": "52f321e356c5f96014448460ccb6ebbe397c4b71bcc8581482ac1b460b5a6607",
+      "sha256": "40184e3afd3444f17d11464ccf08450c78f8ffa37f364f80d37ce7805277d7a1",
       "expectedMirrorOf": null
     },
     {

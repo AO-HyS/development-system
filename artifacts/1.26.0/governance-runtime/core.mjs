@@ -261,6 +261,7 @@ async function computeBoundaryInput(run, proposal) {
     candidateHash,
     evidence: [...run.plans, ...run.reviews, ...run.evidence, ...run.verifications].filter((/** @type {any} */ artifact) => proposal.evidenceRefs.includes(artifact.id) || proposal.action === "close"),
     findings: ["close", "correct", "final-review-return"].includes(proposal.action) ? run.findings : [],
+    correctionState: proposal.action === "correct" ? await correctionState(run) : null,
   });
   return { inputHash, scopeHash, dependencyHashes, sourceHashes, candidateHash };
 }
@@ -462,9 +463,10 @@ export async function buildCompletedContext(run, proposal) {
     } else verificationDispatch = { kind: "deterministic-check", designatedProfile: proposal.route, selectedCriterionIds: proposal.requirementIds, check: launch.check };
   }
   return {
+    ...(proposal.action === "correct" ? { correctionState: await correctionState(run) } : {}),
     activeOwnership: activeAttempts(run).map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, role: attempt.role, provider: attempt.provider, readSet: attempt.readSet, writeSet: attempt.leasePaths })),
     capacity: run.capacity,
-    dependencies: run.attempts.map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, role: attempt.role, boundaryId: attempt.boundaryId, acceptanceId: attempt.acceptanceId ?? null, candidateHash: attempt.candidateHash, executionKind: attempt.expectedProcess ? "attached-process" : "ordinary-host-tool", invocationObserved: attempt.invocationObserved === true, terminationObserved: attempt.expectedProcess ? attempt.process?.terminated === true : null, actorId: attempt.actorId, sessionId: attempt.sessionId, outputHash: attempt.outputHash, returnedObservation: attempt.returnedObservation ?? null })),
+    dependencies: run.attempts.map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, role: attempt.role, boundaryId: attempt.boundaryId, acceptanceId: attempt.acceptanceId ?? null, candidateHash: attempt.candidateHash, executionKind: attempt.expectedProcess ? "attached-process" : "ordinary-host-tool", invocationObserved: attempt.invocationObserved === true, terminationObserved: attempt.expectedProcess ? attempt.process?.terminated === true : null, actorId: attempt.actorId, sessionId: attempt.sessionId, outputHash: attempt.outputHash, failureDiagnostic: safeAttemptDiagnostic(attempt), returnedObservation: attempt.returnedObservation ?? null })),
     actors: run.actors.map((/** @type {any} */ actor) => ({ id: actor.id, role: actor.role, sessionId: actor.sessionId, provider: actor.provider, model: actor.model, reasoning: actor.reasoning, provenance: actor.provenance })),
     plans,
     reviews,
@@ -476,6 +478,35 @@ export async function buildCompletedContext(run, proposal) {
     planAuthorSessionId: plan?.sessionId ?? null,
     ticketStatuses: run.tickets.map((/** @type {any} */ ticket) => ({ id: ticket.id, dependsOn: ticket.dependsOn, status: ticket.status })),
   };
+}
+
+/** Public diagnostics contain runtime-defined text and bounded typed fields,
+ * never raw provider output or arbitrary exception text.
+ * @param {any} attempt */
+export function safeAttemptDiagnostic(attempt) {
+  if (!attempt.failure && !attempt.failureDiagnostic) return null;
+  const stored = attempt.failureDiagnostic;
+  const code = ["malformed", "identity", "candidate", "scope", "observation_invalid", "observation_stale", "observation_missing"].includes(stored?.code) ? stored.code : attempt.failure === "review finding is malformed" ? "malformed" : "invalid";
+  const field = typeof stored?.field === "string" && /^(?:review\.(?:kind|verdict|criterionIds|findings|resolvedFindingIds)(?:\[\d{1,3}\](?:\.(?:id|criterionIds|severity|message))?)?|process\.output)$/u.test(stored.field) ? stored.field : attempt.failure === "review finding is malformed" ? "review.findings" : null;
+  const rejectedOutput = attempt.rejectedOutput && /^[a-f0-9]{64}$/u.test(attempt.rejectedOutput.sha256 ?? "") && /^rejected-outputs\/[a-f0-9]{64}\.txt$/u.test(attempt.rejectedOutput.relativePath ?? "") && Number.isSafeInteger(attempt.rejectedOutput.size) && attempt.rejectedOutput.size >= 0 && attempt.rejectedOutput.size <= 128 * 1024 ? { relativePath: attempt.rejectedOutput.relativePath, sha256: attempt.rejectedOutput.sha256, size: attempt.rejectedOutput.size } : null;
+  return { code, field, message: code === "malformed" ? "The actual process result does not satisfy the designated output schema." : "The actual process result failed runtime reconciliation.",
+    ...(field?.endsWith(".severity") ? { expectedValues: ["blocking", "blocker", "high", "medium", "low"] } : {}),
+    nextAction: "Inspect the private rejected output and correct the identified input or schema through a fresh designated process. Preserve every actual finding; no acceptance was imported.", rejectedOutput };
+}
+
+/** Deterministic recovery facts describe readiness to propose a fresh attempt,
+ * never permission to run it or an acceptance verdict.
+ * @param {any} run */
+async function correctionState(run) {
+  const active = activeAttempts(run), leaseOwners = [...new Set(Object.values(run.leases))];
+  const prerequisites = run.taskKind === "audit" && run.phase === "final-review" ? ["plan-review-pass"] : /** @type {Record<string,readonly string[]>} */ (PHASE_PREREQUISITES)[run.phase] ?? [];
+  const prerequisiteResults = await Promise.all(prerequisites.map(async (kind) => ({ kind, satisfied: await prerequisiteSatisfied(run, kind) })));
+  const allowedActions = ACTIONS.filter((action) => phaseActionAllowed(run.phase, action) && !(run.taskKind === "audit" && ["writer-dispatch", "writer-return", "integrate", "integration-return"].includes(action)));
+  const failedAttempts = run.attempts.filter((/** @type {any} */ attempt) => attempt.status === "failed" && boundaryById(run, attempt.boundaryId)?.phase === run.phase).map((/** @type {any} */ attempt) => ({ id: attempt.id, boundaryId: attempt.boundaryId, role: attempt.role, acceptanceId: attempt.acceptanceId ?? null, invocationObserved: attempt.invocationObserved === true, terminationObserved: attempt.process?.terminated === true, exitCode: Number.isSafeInteger(attempt.process?.exitCode) ? attempt.process.exitCode : null, identityObserved: Boolean(attempt.observed && !attempt.identityMismatch), failureDiagnostic: safeAttemptDiagnostic(attempt), leaseRetained: leaseOwners.includes(attempt.id) }));
+  const prerequisitePass = prerequisiteResults.every((entry) => entry.satisfied);
+  return { phase: run.phase, allowedActions, correctionAllowed: allowedActions.includes("correct"), activeAttemptIds: active.map((/** @type {any} */ attempt) => attempt.id), leaseOwners, prerequisites: prerequisiteResults, failedAttempts,
+    retryEligibleAttemptIds: !active.length && !leaseOwners.length && prerequisitePass ? failedAttempts.filter((/** @type {any} */ attempt) => attempt.invocationObserved && attempt.terminationObserved && attempt.identityObserved && !attempt.leaseRetained).map((/** @type {any} */ attempt) => attempt.id) : [],
+    acceptanceImported: false, executionPermissionGranted: false };
 }
 
 /** @param {any} run @param {string} action */
@@ -1028,8 +1059,13 @@ async function ingestOutput(run, attempt, parsed) {
     if (Object.keys(parsed).some((key) => !["kind", "verdict", "findings", "criterionIds", "resolvedFindingIds"].includes(key)) || !["pass", "revise"].includes(parsed.verdict) || !Array.isArray(parsed.findings) || !coverage(parsed.criterionIds)) throw new GovernanceError("review output must cover the exact declared criteria", "malformed");
     assertReviewerIndependence(run, attempt);
     const kind = attempt.role === "plan-reviewer" ? "plan-review" : "final-review";
-    const findings = parsed.findings.map((/** @type {any} */ finding) => {
-      if (!isRecord(finding) || !isNonEmpty(finding.id) || !isStringArray(finding.criterionIds) || !finding.criterionIds.length || finding.criterionIds.some((/** @type {string} */ id) => !boundary.requirementIds.includes(id)) || !["blocking", "blocker", "high", "medium", "low"].includes(finding.severity) || !isNonEmpty(finding.message)) throw new GovernanceError("review finding is malformed", "malformed");
+    const findings = parsed.findings.map((/** @type {any} */ finding, /** @type {number} */ index) => {
+      const field = `review.findings[${index}]`;
+      if (!isRecord(finding)) throw new GovernanceError("Review finding must be an object", "malformed", { field });
+      if (!isNonEmpty(finding.id)) throw new GovernanceError("Review finding requires an identifier", "malformed", { field: `${field}.id` });
+      if (!isStringArray(finding.criterionIds) || !finding.criterionIds.length || finding.criterionIds.some((/** @type {string} */ id) => !boundary.requirementIds.includes(id))) throw new GovernanceError("Review finding requires selected criterion identifiers", "malformed", { field: `${field}.criterionIds` });
+      if (!["blocking", "blocker", "high", "medium", "low"].includes(finding.severity)) throw new GovernanceError("Review finding severity is outside the designated enum", "malformed", { field: `${field}.severity` });
+      if (!isNonEmpty(finding.message)) throw new GovernanceError("Review finding requires a message", "malformed", { field: `${field}.message` });
       return { id: finding.id, criterionIds: [...finding.criterionIds], severity: finding.severity, message: finding.message, gating: ["blocking", "blocker", "high"].includes(finding.severity) };
     });
     if (new Set(findings.map((/** @type {any} */ finding) => finding.id)).size !== findings.length || (parsed.verdict === "pass" && findings.some((/** @type {any} */ finding) => finding.gating))) throw new GovernanceError("review verdict contradicts its findings");
@@ -1167,6 +1203,7 @@ export async function recordHostEvent(input) {
       attempt.identityUnconfirmed = false;
       ensureActor(run, { id: attempt.actorId, role: attempt.role, ...attempt.observed, sessionId: attempt.sessionId, parentActorId: run.rootSessionId, provenance: "observed-process", status: "terminated" });
       try {
+        if (["planner", "plan-reviewer", "reviewer", "verifier"].includes(attempt.role) && (typeof event.output !== "string" || Buffer.byteLength(event.output) > 128 * 1024)) throw new GovernanceError("Designated process output is missing or exceeds the bounded limit", "malformed", { field: "process.output" });
         if (["researcher", "writer"].includes(attempt.role)) {
           if (typeof event.output !== "string" || Buffer.byteLength(event.output) > 32768) throw new GovernanceError("returned observation is missing or exceeds the bounded output cap");
           attempt.returnedObservation = event.output;
@@ -1189,6 +1226,12 @@ export async function recordHostEvent(input) {
         attempt.status = event.exitCode === 0 ? (attempt.invocationObserved ? "completed" : "awaiting-post") : "failed";
       } catch (error) {
         attempt.status = "failed"; attempt.failure = error instanceof Error ? error.message : "process reconciliation failed";
+        attempt.failureDiagnostic = { code: error instanceof GovernanceError ? error.code : "invalid", field: error instanceof GovernanceError ? error.details?.field ?? null : null };
+        if (typeof event.output === "string" && Buffer.byteLength(event.output) <= 128 * 1024) {
+          const relativePath = `rejected-outputs/${sha256Hex(event.output)}.txt`;
+          const artifact = await store.writeImmutablePrivate(join(runDirectory, relativePath), event.output);
+          attempt.rejectedOutput = { relativePath, sha256: artifact.sha256, size: artifact.size };
+        }
       }
       releaseLeases(run, attempt.id);
       return { ok: ["completed", "awaiting-post"].includes(attempt.status), status: attempt.status, attemptId: attempt.id, reason: attempt.failure ?? null };

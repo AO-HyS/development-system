@@ -29,6 +29,15 @@ summary or confused with later implementation acceptance. Verification dispatch
 distinguishes an approved deterministic command from a current observation
 bundle assigned to an independent capable assessor.
 
+Both independent review roles receive the authored plan; final review also
+receives its matching plan-review receipt. Native review output uses an explicit
+JSON schema, while runtime validation still establishes provenance and meaning.
+A malformed response remains rejected, with a safe field diagnostic and private
+immutable original output. Correction context includes actual termination,
+ownership and phase prerequisites; eligibility to propose a retry is never an
+execution permission. The next reviewer receives verified rejected output as
+evidence so actual findings cannot disappear during format correction.
+
 Raw tool names and complete inputs remain the identity of exact one-use permits.
 Linear reads and Computer Use outer invocations use specific adapters. Computer
 Use scripts are opaque internally: governance controls the outer call, serializes

@@ -122,8 +122,15 @@
     },
     {
       "path": "test/governance-recovery-core.test.mjs",
-      "sha256": "1e50cde8de7268344e75082a0c9b9b738f52f542f4faf9871371aa9b163c9fe0",
+      "sha256": "373ac5e1e9ecd334f43d4165cc2a68839e6feb3f60a56ca2a3c3cf4e8d60588d",
       "reason": "Parent reviewed actual OS lifecycle fixtures for audit independence, missing/stale images, runtime-byte freshness, mixed deterministic and visual evidence, failed visual assessment, final asset integrity, preserved ownership, recovery and disjoint dispatch. Provider identity remains explicitly simulated.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-recovery-executor.test.mjs",
+      "sha256": "3a5ef5af9ae8c26f0ce0a3bd1b663f9bbbcbe589749fbde22e6c2e7bd06a4303",
+      "reason": "Parent reviewed final-review plan context and matching plan-review receipt, independent context exclusion, preservation of actual rejected findings, and rejection of tampered correction artifacts. Real native JSON schema transport is checked separately.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     }

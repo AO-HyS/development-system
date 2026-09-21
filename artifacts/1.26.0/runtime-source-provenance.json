@@ -13,7 +13,7 @@
       "sourcePath": "runtime/jev-governance/cli.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/cli.mjs",
       "destination": ".codex/development-system/governance-runtime/cli.mjs",
-      "sha256": "5aaacb8e586b787d70712753caf342d865706f367aa045b97d93bce5c4321ae2"
+      "sha256": "d53794c4344fe9ba6c01b0c679913519ad6532f67e8c3ec03fa567bbd8fc290e"
     },
     {
       "sourcePath": "runtime/jev-governance/command-reference.mjs",
@@ -25,7 +25,7 @@
       "sourcePath": "runtime/jev-governance/core.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/core.mjs",
       "destination": ".codex/development-system/governance-runtime/core.mjs",
-      "sha256": "c1f27b7723288d86f088eebb8df5eb28aa5011aac11baba4ee36be0d83a5ed3f"
+      "sha256": "20e7a3f87ff307f1e8ef13549a54318725cf69964e98189ca1aacad6ded6d33c"
     },
     {
       "sourcePath": "runtime/jev-governance/errors.mjs",
@@ -37,7 +37,7 @@
       "sourcePath": "runtime/jev-governance/executor.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/executor.mjs",
       "destination": ".codex/development-system/governance-runtime/executor.mjs",
-      "sha256": "4b0d3ce5c783a751bbeba476f812576c20dc1d2aed882600ff4f8e1e7fdc693f"
+      "sha256": "51eec718bd0b7a3399ac5e4a7df7b37f6bb0dba020cfe2f9287b6c5e497f75ff"
     },
     {
       "sourcePath": "runtime/jev-governance/hook-launcher.mjs",
@@ -55,7 +55,7 @@
       "sourcePath": "runtime/jev-governance/jev.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/jev.mjs",
       "destination": ".codex/development-system/governance-runtime/jev.mjs",
-      "sha256": "52f321e356c5f96014448460ccb6ebbe397c4b71bcc8581482ac1b460b5a6607"
+      "sha256": "40184e3afd3444f17d11464ccf08450c78f8ffa37f364f80d37ce7805277d7a1"
     },
     {
       "sourcePath": "runtime/jev-governance/opencode.mjs",

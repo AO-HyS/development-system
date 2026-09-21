@@ -248,6 +248,26 @@ export function buildBody(run, proposal, obligations, candidates, sources, crite
     },
   };
   if (proposal.action === "verify-return" && questions["obligation:criterion_evidence"]) questions["obligation:criterion_evidence"].instructions = "For exactly boundary.requirementIds, inspect actual results in the dependency-bound current returned verification artifacts. Does each selected criterion have passing evidence from its designated producer? Other criteria remain required at final closure but are not silently attributed to this verifier's subset. Failed or insufficient outcomes cannot pass this return.";
+  if (proposal.action === "correct") {
+    if (questions["obligation:order"]) questions["obligation:order"] = {
+      type: "choice",
+      instructions: "Inspect state.completed.correctionState: current phase, actual allowed actions, active attempts, retained leases, observed failed-attempt termination and current phase prerequisites. This boundary prepares a correction; it does not advance the phase or execute a replacement. Is correction preparation correctly ordered under those recorded facts and the named dependencies? A terminated rejected result is an observed reason for correction, not a missing successful prerequisite unless explicitly named as such.",
+      criteria: {
+        satisfied: "Correction is an allowed current-phase action and its bounded preparation respects actual dependencies and any retained ownership.",
+        violated: "The proposal skips a required phase, treats unresolved ownership as released, or executes an unpermitted replacement.",
+        insufficient_evidence: "The applicable phase, dependency or ownership facts needed to order this correction are unavailable or ambiguous.",
+      },
+    };
+    if (questions["obligation:context"]) questions["obligation:context"] = {
+      type: "choice",
+      instructions: "Compare the runtime-recorded correctionState failed attempts, typed failure diagnostics and actual prerequisites with this correction objective, declared sources and observations. Is enough context supplied to prepare the stated bounded repair or fresh retry? The rejected result remains rejected; a future successful replacement is not a prerequisite for preparing its correction. An actual unresolved finding must be retained and addressed, not silently dropped.",
+      criteria: {
+        satisfied: "Recorded failure facts and current inputs identify a bounded next step that addresses the failure while retaining findings and acceptance gates.",
+        violated: "The correction contradicts the recorded failure, discards actual findings, imports success, or depends on unavailable hidden material context.",
+        insufficient_evidence: "The relevant failure or necessary repair inputs are missing or too unclear to prepare the correction.",
+      },
+    };
+  }
   if (["plan-review", "final-review"].includes(proposal.action) && questions["obligation:reviewer_independence"]) {
     questions["obligation:reviewer_independence"] = {
       type: "choice",
