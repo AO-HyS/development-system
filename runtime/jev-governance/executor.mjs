@@ -61,6 +61,13 @@ export function reviewOutputSchema(criterionIds) {
   } };
 }
 
+/** Keep the positional prompt outside Codex's variadic image option.
+ * @param {{model:string,reasoning:string|null,candidateRoot:string,schemaPath?:string|null,imagePaths?:string[],prompt:string}} input */
+export function codexArguments({ model, reasoning, candidateRoot, schemaPath, imagePaths = [], prompt }) {
+  return ["exec", "--json", "--sandbox", "read-only", "--model", model, "-c", `model_reasoning_effort="${reasoning}"`, "--cd", candidateRoot,
+    ...(schemaPath ? ["--output-schema", schemaPath] : []), ...imagePaths.flatMap((path) => ["--image", path]), "--", prompt];
+}
+
 /** Guarded exact argv spawn. No shell, no detached completion, bounded output.
  * The durable authorization callback runs after the actual PID exists, before
  * the caller can report launch success. Aborts terminate the whole process group.
@@ -261,7 +268,7 @@ export async function launchGovernedProcess({ home, runDirectory, sessionId, lau
     if (schemaPath && schemaText !== null) await writeFile(schemaPath, schemaText, { flag: "wx", mode: 0o600 });
     const before = codex || check ? stableHash(await snapshotPaths(root, proposal.readSet)) : null;
     const processArgs = check ? launch.check.argv : flash ? flashArguments(packetPath, candidateRoot, prompt)
-      : ["exec", "--json", "--sandbox", "read-only", "--model", proposal.route.model, "-c", `model_reasoning_effort="${proposal.route.reasoning}"`, "--cd", candidateRoot, ...(schemaPath ? ["--output-schema", schemaPath] : []), ...(observationAssessment?.imagePaths.flatMap((path) => ["--image", path]) ?? []), assessmentPrompt];
+      : codexArguments({ model: proposal.route.model, reasoning: proposal.route.reasoning, candidateRoot, schemaPath, imagePaths: observationAssessment?.imagePaths, prompt: assessmentPrompt });
     const baseline = flash ? await snapshotRepository(candidateRoot) : null;
     const binding = await bindProcessCandidate({ runDirectory, attemptId: launch.attemptId, candidateRoot, command: { executable, argv: processArgs } });
     if (binding.baselineHash !== stableHash(baseline)) invalid("Candidate changed during process preparation.");

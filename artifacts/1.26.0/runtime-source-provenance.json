@@ -37,7 +37,7 @@
       "sourcePath": "runtime/jev-governance/executor.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/executor.mjs",
       "destination": ".codex/development-system/governance-runtime/executor.mjs",
-      "sha256": "51eec718bd0b7a3399ac5e4a7df7b37f6bb0dba020cfe2f9287b6c5e497f75ff"
+      "sha256": "830dbd4ade5ca5dfe1ce2bf9a6dbb33a513ca401e4d38ed4e925b32f15cd10ea"
     },
     {
       "sourcePath": "runtime/jev-governance/hook-launcher.mjs",

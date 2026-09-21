@@ -129,8 +129,8 @@
     },
     {
       "path": "test/governance-recovery-executor.test.mjs",
-      "sha256": "3a5ef5af9ae8c26f0ce0a3bd1b663f9bbbcbe589749fbde22e6c2e7bd06a4303",
-      "reason": "Parent reviewed final-review plan context and matching plan-review receipt, independent context exclusion, preservation of actual rejected findings, and rejection of tampered correction artifacts. Real native JSON schema transport is checked separately.",
+      "sha256": "ff4ad2bfdae4a75fb6353dc27e3f2491b4d2c2f2ad0207e699a21b750255522c",
+      "reason": "Parent and independent Astra final_review reviewed exact bytes. Retains review-context and rejected-finding integrity assertions; adds actual launcher argument-builder regressions for variadic image parsing, negative reproduction without the prompt separator, exact single/multiple image paths and order, and zero-image research/review options and schema. Parser fixtures do not claim host certification; a separate installed CLI probe verified the same actual JPEG reaches an observed evaluator.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     }
