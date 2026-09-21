@@ -45,9 +45,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "adf4594b36b41bfe02fd425d5d71bf14643a601642ff3e7bbcf3183099e09926",
-      "reason": "Parent reviewed exact current-release version update: immutable visual design and quality remain pinned to 1.22.1, governed intake skills move to 1.25.0, all catalog hashes and Astra XHigh reviewer identity assertions retained. Historical tests unchanged.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "76b9d08f4892d6af4330289c133f1dad0bde80a478d7ad6b95a3dd16a2b5dffa",
+      "reason": "Parent reviewed current release pins 1.26.0/catalog0.46.0. Historical visual skills remain1.22.1, current governed intake sources and explicit artifact hashes validated; no visual quality assertion removed.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     },
     {
@@ -94,16 +94,44 @@
     },
     {
       "path": "test/governance-runtime-jev.test.mjs",
-      "sha256": "3d79adfd43342f44d19a8106e220653af4c8fc87d9d748a7ca65a4a647b82cfd",
-      "reason": "Parent reviewed exact schema/probability validation, current source and diff context, complete source and aggregate limits, pinned API endpoint and unavailable transport assertions. No live provider or secrets are used by permanent tests.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "d4fb45d5c704ac98cc8f0b9e79beec3c9a827b3fb9ba1c2bdbf1da465d940d4d",
+      "reason": "Parent reviewed exact unavailable-provider result extension with code and actual transportAttempted=true. Existing malformed, source overflow and complete changed-hunk assertions remain.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     },
     {
       "path": "test/governance-runtime-lifecycle.test.mjs",
-      "sha256": "8baadb09d76e72108c3f47a5b900fe5e5b2cd54793fd920a10d34d628ed49abc",
-      "reason": "Parent reviewed full actual OS fixture lifecycle and preserved negative cases for attribution, replay, ownership, freshness, correction findings and interrupted replacement. Research/writer JSON cannot grant acceptance. Actual failing and passing check exits remain necessary. Provider metadata explicitly simulated.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "472e64383d31a772380703981c54f923770ab42a96da1e50402f2a5339cf658f",
+      "reason": "Parent reviewed fixture upgrade for explicit capability declaration, matched passive observations and observed cwd/reasoning. All prior behavioral, stale, replay, attribution, correction and interruption assertions remain.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-recovery-cli.test.mjs",
+      "sha256": "b2b3c7ed92cc37b81b90a3f47408e97e1ad4ac10bbeeb9d7152b931990dfe001",
+      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes: retained schema diagnostics, safe redaction and bounded transport; added recover-host-attempt schema, explicit run requirement, exact hook control availability and rejection of composed/unknown arguments. Isolated HOME; no host certification claimed.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-recovery-adapters.test.mjs",
+      "sha256": "db93f1499a76116fc5b03621e8a45a10e5af2d04706d5afe6ceec5d2be86c3bd",
+      "reason": "Parent reviewed and corrected raw stdout acceptance: stdout and printed JSON cannot prove shell exits. Exact known Linear read/update operations, full input identity, patch carrier and passive hook correlation remain tested; unknown operations reject.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-recovery-core.test.mjs",
+      "sha256": "144b501f4073bd7b72142ef55badceca475867215dd3b914f212beda888ba65c",
+      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes after correcting two fixture gaps: consistent historical run/invocation policy and nonempty prior history. Regressions preserve mismatched-MIME bytes and original hash without acceptance, retain safe failure ownership, exercise explicit CLI recovery preserving four terminated role attempts, one plan and two reviews, reject ambiguous provenance/ownership without mutation, and require a fresh empty successor. Existing acceptance tests remain; identity and signature fixtures explicitly do not claim actual host image acceptance.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-recovery-executor.test.mjs",
+      "sha256": "ff4ad2bfdae4a75fb6353dc27e3f2491b4d2c2f2ad0207e699a21b750255522c",
+      "reason": "Parent and independent Astra final_review reviewed exact bytes. Retains review-context and rejected-finding integrity assertions; adds actual launcher argument-builder regressions for variadic image parsing, negative reproduction without the prompt separator, exact single/multiple image paths and order, and zero-image research/review options and schema. Parser fixtures do not claim host certification; a separate installed CLI probe verified the same actual JPEG reaches an observed evaluator.",
+      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     }
   ]

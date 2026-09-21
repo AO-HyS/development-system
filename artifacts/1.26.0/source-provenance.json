@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.26.0",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.25.0",
+  "decision": "docs/adr/0048-operational-governance-recovery.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}
