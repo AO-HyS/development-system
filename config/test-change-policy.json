@@ -10,16 +10,16 @@
     },
     {
       "path": "test/agent-roster.test.mjs",
-      "sha256": "3b56e71dd04ce91b133320d3f79060b69cd685bd0f804ec3b7bcc72c835197b8",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "sha256": "1896aab8600d64a4cfce55cbd0425e720db568612a0aea44f2ed5e186bcb2ac3",
+      "reason": "Parent reviewed exact diff against intentional 1.25 routing change: explicit fast Luna researcher and code mapping alias, retained Sol coordinator, Flash writer, Astra planning and all specialist review profiles; no runtime identity or fallback assertions weakened.",
+      "issue": "User-authorized replaceable fast research and independent Astra planning in 1.25.0",
       "reviewedContent": true
     },
     {
       "path": "test/anti-slop-contract.test.mjs",
-      "sha256": "8501897302cb75c562e52e4b9c5892604c4d98c4f4b75bd6e6bdda47ba762f9c",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "sha256": "9f8b9f520771438867ae255041e6d561c7da495a62fec05cd546be18201d857b",
+      "reason": "Parent reviewed proportional-execution text assertion update: tiny work remains parent-owned while governed features now explicitly require independent Astra plan and final reviews. All planner phases, behavioral evidence, immutable historical sources and installer boundaries remain asserted.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
       "reviewedContent": true
     },
     {
@@ -45,9 +45,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "34de975f7d8b11703edf0abd466d09532ece2705be3ffbbe97a0a3e5c79df3aa",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "sha256": "adf4594b36b41bfe02fd425d5d71bf14643a601642ff3e7bbcf3183099e09926",
+      "reason": "Parent reviewed exact current-release version update: immutable visual design and quality remain pinned to 1.22.1, governed intake skills move to 1.25.0, all catalog hashes and Astra XHigh reviewer identity assertions retained. Historical tests unchanged.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
       "reviewedContent": true
     },
     {
@@ -76,6 +76,34 @@
       "sha256": "85943404fed5318e6816051287f83ce524de094f65c99c8a70e79cf050e86860",
       "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
       "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-installation.test.mjs",
+      "sha256": "1f8a442a75ebbe17e9c6236d1a3521b2f348b76c649c54f3b0546a5d7528a2b1",
+      "reason": "Parent authored and reviewed five behavioral regressions: preserve unrelated hooks, idempotency, exact rollback, failed contract rollback recovery, missing engine, concurrent operator change refusal, and symlink boundary. No existing acceptance assertion removed.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-runtime-adapter.test.mjs",
+      "sha256": "8c20023f8fdf26ec6224a5bec50e2d01c285cbd317e2ba84d1daedf086014926",
+      "reason": "Parent reviewed actual hook grammar, isolation, malformed launcher denial, worker environment and real persistent process-group teardown assertions. Retains observed nonzero parent exit and independently verifies no surviving PID/group. No production identities simulated as real.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-runtime-jev.test.mjs",
+      "sha256": "3d79adfd43342f44d19a8106e220653af4c8fc87d9d748a7ca65a4a647b82cfd",
+      "reason": "Parent reviewed exact schema/probability validation, current source and diff context, complete source and aggregate limits, pinned API endpoint and unavailable transport assertions. No live provider or secrets are used by permanent tests.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-runtime-lifecycle.test.mjs",
+      "sha256": "8baadb09d76e72108c3f47a5b900fe5e5b2cd54793fd920a10d34d628ed49abc",
+      "reason": "Parent reviewed full actual OS fixture lifecycle and preserved negative cases for attribution, replay, ownership, freshness, correction findings and interrupted replacement. Research/writer JSON cannot grant acceptance. Actual failing and passing check exits remain necessary. Provider metadata explicitly simulated.",
+      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
       "reviewedContent": true
     }
   ]

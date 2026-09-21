@@ -55,6 +55,7 @@ import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
 import { resolveModelRoute } from "./model-routing.mjs";
 import { readProviderFailures, recordProviderFailure } from "./provider-availability.mjs";
+import { auditGovernanceHooks, enableGovernanceHooks, rollbackGovernanceHooks, withGovernanceHookRollback } from "./governance-installation.mjs";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -216,6 +217,10 @@ function formatHuman(result) {
 
 /** @param {string[]} argv */
 export async function run(argv) {
+  if (argv[0] === "governance") {
+    const { runGovernance } = await import("../runtime/jev-governance/cli.mjs");
+    return runGovernance(argv.slice(1));
+  }
   if (["advisory-status", "classify-atom", "record-route-decision"].includes(argv[0])) {
     const { runAdvisory } = await import("../runtime/jev-advisory/cli.mjs");
     return runAdvisory([argv[0] === "advisory-status" ? "status" : argv[0], ...argv.slice(1)]);
@@ -231,10 +236,15 @@ export async function run(argv) {
     if (!catalogArtifact) throw new Error(`Contract ${version} has no skill catalog`);
     const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogArtifact.sourcePath), "utf8"));
     const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
+    let governance;
     try {
+      if (manifest.artifacts.some((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === "governance-runtime-hook-launcher-mjs")) {
+        governance = await enableGovernanceHooks({ home: options.home });
+      }
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
-      result = { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills };
+      result = { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(governance ? { governance } : {}) };
     } catch (error) {
+      if (governance?.changed) await rollbackGovernanceHooks({ home: options.home });
       if (!installation.reinstalled) await rollbackInstallation({ home: options.home });
       const recovery = installation.reinstalled ? "existing contract reinstalled; skill sync restored its prior state" : "contract installation rolled back";
       throw new Error(`Setup skill synchronization failed; ${recovery}: ${error instanceof Error ? error.message : String(error)}`);
@@ -251,7 +261,7 @@ export async function run(argv) {
   } else if (command === "validate") {
     result = await validateInstallation({ home: options.home });
   } else if (command === "rollback") {
-    result = await rollbackInstallation({ home: options.home });
+    result = await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
   } else if (command === "audit-skills" || command === "sync-skills") {
     const catalog = await readSkillCatalog(options.version);
     if (command === "audit-skills") {
@@ -276,6 +286,12 @@ export async function run(argv) {
     result = await auditGlobalGuardrails({ home: options.home });
   } else if (command === "guardrails-rollback") {
     result = await rollbackGlobalGuardrails({ home: options.home });
+  } else if (command === "governance-hooks-enable") {
+    result = await enableGovernanceHooks({ home: options.home });
+  } else if (command === "governance-hooks-audit") {
+    result = await auditGovernanceHooks({ home: options.home });
+  } else if (command === "governance-hooks-rollback") {
+    result = await rollbackGovernanceHooks({ home: options.home });
   } else if (command === "validate-repository") {
     result = await validateRepository();
   } else if (command === "audit-repository") {
@@ -486,7 +502,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

@@ -176,25 +176,26 @@ test("capability gaps limit evidence without blocking independent work and CLI m
   assert.deepEqual(JSON.parse(cli.stdout).limitations, result.limitations);
 });
 
-test("current release retains the four 1.22.1 canonical skills and pins its Astra XHigh visual reviewer with explicit hashes", async () => {
+test("current release retains visual quality skills, updates governed intake, and pins its Astra XHigh visual reviewer with explicit hashes", async () => {
   const packageJson = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
-  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.24.0.json"), "utf8"));
-  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.44.0.json"), "utf8"));
-  assert.equal(packageJson.version, "1.24.0");
-  assert.equal(packageJson.contractVersion, "1.24.0");
-  assert.equal(manifest.contractVersion, "1.24.0");
-  assert.equal(catalog.catalogVersion, "0.44.0");
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.25.0.json"), "utf8"));
+  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.45.0.json"), "utf8"));
+  assert.equal(packageJson.version, "1.25.0");
+  assert.equal(packageJson.contractVersion, "1.25.0");
+  assert.equal(manifest.contractVersion, "1.25.0");
+  assert.equal(catalog.catalogVersion, "0.45.0");
   assert.deepEqual(await validateSkillCatalog(catalog, repositoryRoot), []);
 
   for (const name of ["drive-development-flow", "grill-with-docs", "design-direction", "design-quality"]) {
     const skill = catalog.skills.find((entry) => entry.logicalName === name);
-    assert.equal(skill.source.path, `artifacts/1.22.1/skills/internal/${name}`);
+    const version = ["drive-development-flow", "grill-with-docs"].includes(name) ? "1.25.0" : "1.22.1";
+    assert.equal(skill.source.path, `artifacts/${version}/skills/internal/${name}`);
     assert.equal(skill.variants.every((variant) => variant.sourceDirectory === skill.source.path), true);
     assert.equal(skill.variants.every((variant) => /^[a-f0-9]{64}$/u.test(variant.folderSha256)), true);
   }
 
   const reviewer = manifest.artifacts.find((entry) => entry.logicalName === "codex-agent-visual-reviewer");
-  assert.equal(reviewer.sourcePath, "artifacts/1.24.0/agents/codex/visual-reviewer.toml");
+  assert.equal(reviewer.sourcePath, "artifacts/1.25.0/agents/codex/visual-reviewer.toml");
   const reviewerBytes = readFileSync(resolve(repositoryRoot, reviewer.sourcePath));
   assert.equal(createHash("sha256").update(reviewerBytes).digest("hex"), reviewer.sha256);
   assert.match(reviewerBytes.toString(), /^model = "gpt-6-astra"$/mu);

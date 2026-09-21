@@ -1,21 +1,23 @@
 # AOHYS Development System
 
-## Release 1.24.0 / catalog 0.44.0
+## Release 1.25.0 / catalog 0.45.0
 
-The default development profile is Sol High with Jev as a typed adviser,
-bounded Flash High writers, and native Astra XHigh researchers/reviewers.
-The model already selected for a conversation remains its orchestrator.
-The parent owns dependencies, integration, corrections and final acceptance;
-Jev does not launch agents or grant authority. There is no automatic model
-fallback and the experimental controller is disabled.
+Sol coordinates the complete feature from its spec and all linked tickets.
+Fast researchers collect source facts; Astra XHigh authors the plan and a
+separate fresh Astra reviews it. Bounded Flash writers execute disjoint packets.
+Jev evaluates every lifecycle boundary, and the governance runtime enforces
+current permits, scope, dependencies, independent review and evidence.
+The selected parent stays fixed; there is no silent provider fallback.
 
-This restores the exact adviser core and policy used by the accepted complete
-BARBER-205 comparison. Sol reached final close in 35:14.9 at $18.8857 API
-equivalent; Astra in 49:09.1 at $33.3341. Each met 7/7 criteria. These are one
-complete run per configuration, not a guarantee for every task. Earlier
-17:14/24:02 Sol timings did not measure the complete delivery endpoint.
-See [the release decision](docs/adr/0046-recovered-advisory-production-profile.md)
-and [the installed recipe](artifacts/1.24.0/skills/internal/coding-orchestration/references/jev-advisory.md).
+Codex hooks require trust and observed session binding. Enforcement claims are
+limited to operationally verified surfaces; unsupported tools and identity gaps
+remain explicit. Installation does not establish runtime influence. The former
+advisory CLI is compatible and the experimental controller remains disabled.
+
+See [the release decision](docs/adr/0047-whole-flow-jev-governance.md),
+[validation and supported surfaces](docs/releases/1.25.0-validation.md),
+[the execution recipe](artifacts/1.25.0/skills/internal/coding-orchestration/references/jev-governance.md)
+and [the spec/ticket contract](artifacts/1.25.0/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -70,8 +72,7 @@ an input roster, a requested version snapshot, or the executing package's
 distributed artifacts; editing one does not reconfigure running agents. Pass the
 selected model/effort through the host's supported dispatch and verify runtime.
 `serviceTier` is propagated to the Codex CLI; an omitted tier requests normal
-`default` speed. The new Codex profile requests the default service tier. Native descendants
-request Astra XHigh and retain their role-specific sandbox settings.
+`default` speed. The new Codex profile requests the default service tier. Planners/reviewers request Astra XHigh. Fast native researchers default to Luna High; all profiles retain role-specific sandboxes and require observed identity.
 
 ## Requirements
 
@@ -84,11 +85,13 @@ request Astra XHigh and retain their role-specific sandbox settings.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.24.0/aohys-development-system-1.24.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.25.0/aohys-development-system-1.25.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
-`setup` installs the governed contract, native profiles, adviser and skills.
+`setup` installs the contract, profiles, governance runtime, merged hooks and skills.
+`governance-hooks-audit` checks installed definitions; host trust and operational
+evidence are separate. `governance-hooks-rollback` restores prior hooks safely.
 It preserves credentials and does not rewrite the host's selected model.
 For new local Codex sessions, set only `model = "gpt-5.6-sol"` and
 `model_reasoning_effort = "high"` in the existing host config, preserving its
@@ -113,10 +116,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.24.0
+./bin/development-system setup --version 1.25.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.44.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.45.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
