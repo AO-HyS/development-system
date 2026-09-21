@@ -1,6 +1,6 @@
 # One dependency, explicit setup
 
-Development System 1.6.0 is distributed as an npm-format tarball attached to
+Development System is distributed as an npm-format tarball attached to
 the canonical GitHub release. The source repository is public; this does not
 require a new npm registry, account, token or recurring subscription.
 
@@ -20,6 +20,14 @@ There is no postinstall hook and ordinary product deployment never runs setup.
 A contract upgrade followed by failed skill synchronization rolls the contract
 back; a reinstall of the current version retains that version. Skill sync has
 its own transactional recovery. Failed setup is reported as failure.
+
+Starting with contract 1.25.0, setup also merges the Jev governance hooks into
+the chosen HOME, preserving unrelated handlers. `governance-hooks-audit`
+checks their installed definitions. Codex must separately trust the exact hook
+definitions and demonstrate their execution; installation alone does not prove
+that agent actions are governed. A bound run uses the installed governance CLI
+and the capability limits documented in its recipe. The historical automatic
+controller remains disabled.
 
 The tarball contains committed runtime files, historical manifests/artifacts
 needed for recovery, and a provenance marker with source commit, version, file
@@ -42,6 +50,12 @@ dependency/checkout when auditing an installation originally made from that
 source commit. Rollback restores only managed paths and retains unrelated HOME
 files. Skills becoming present is not proof they influenced a model; runtime
 receipts and relevant visible acceptance remain distinct.
+
+`rollback` restores the hook configuration before removing its governed
+runtime. It refuses to overwrite later operator changes and restores the
+installed hooks if contract rollback fails. `governance-hooks-rollback` is the
+explicit hook-only recovery command. Preserve the exact previous package and
+its catalog when recovering the complete installation.
 
 Maintainers prepare new immutable versions, commit reviewed changes, then run
 `pnpm release:pack --output <private-directory>`. The builder refuses dirty

@@ -49,17 +49,23 @@ test("rosterModel never reports a runtime-resolved model from config alone", () 
   }
 });
 
-test("current coordination requests Sol High and every native delegate requests Astra XHigh", () => {
+test("current coordination uses Sol, fast research is distinct, and planning/review retain Astra XHigh", () => {
   const coordinator = rosterRoute("orchestration");
   assert.deepEqual(coordinator.candidates.map(({ harness, model, reasoning }) => ({ harness, model, reasoning })), [
     { harness: "codex", model: "gpt-5.6-sol", reasoning: "high" },
   ]);
-  for (const route of agentRoster.routes.filter((entry) => !["orchestration", "fast-execution"].includes(entry.routeSlot))) {
+  const research = rosterRoute("research");
+  assert.deepEqual(research.candidates.map(({ harness, model, reasoning }) => ({ harness, model, reasoning })), [
+    { harness: "codex", model: "gpt-5.6-luna", reasoning: "high" },
+  ]);
+  assert.deepEqual(rosterChain("code-mapping"), rosterChain("research"));
+  assert.equal(rosterRoute("implementation-planning").role, "architecture_planner");
+  for (const route of agentRoster.routes.filter((entry) => !["orchestration", "fast-execution", "research"].includes(entry.routeSlot))) {
     assert.deepEqual(route.candidates.map(({ harness, model, reasoning }) => ({ harness, model, reasoning })), [
       { harness: "codex", model: "gpt-6-astra", reasoning: "xhigh" },
     ], route.id);
   }
-  assert.equal(JSON.stringify(agentRoster).includes("gpt-5.6-luna"), false);
+  assert.equal(research.candidates.length, 1, "Research has an explicit selected profile, not an automatic fallback chain");
 });
 
 test("fast-execution wording keeps deterministic work out of the model route", () => {
