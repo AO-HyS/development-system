@@ -231,7 +231,8 @@ async function dependencyHashesFor(run, dependsOn) {
     const attempt = run.attempts.find((/** @type {any} */ entry) => entry.id === dependency);
     const boundary = boundaryById(run, dependency);
     if (attempt) {
-      out[dependency] = { kind: "attempt", status: attempt.status, outputHash: attempt.outputHash ?? null, candidateHash: attempt.candidateHash ?? null };
+      const artifact = attempt.acceptanceId ? acceptanceArtifact(run, attempt) : null;
+      out[dependency] = { kind: "attempt", status: attempt.status, outputHash: attempt.outputHash ?? null, candidateHash: attempt.candidateHash ?? null, acceptanceId: attempt.acceptanceId ?? null, acceptanceHash: artifact ? stableHash(artifact) : null };
     } else if (boundary) {
       const judgment = judgmentFor(run, boundary.id);
       out[dependency] = { kind: "boundary", verdict: judgment?.verdict ?? "none", candidateHash: boundary.candidateHash ?? null };
@@ -395,7 +396,11 @@ async function assertBoundarySemantics(run, proposal) {
       if (attempt.process && !attempt.process.terminated) throw new GovernanceError("process termination is unobserved");
       if (["planner", "plan-reviewer", "reviewer", "verifier"].includes(expected) && !attempt.acceptanceId) throw new GovernanceError("return lacks designated acceptance output");
       if (attempt.acceptanceId) {
-        const artifact = [...run.plans, ...run.reviews, ...run.verifications].find((/** @type {any} */ entry) => entry.id === attempt.acceptanceId);
+        const artifact = acceptanceArtifact(run, attempt);
+        const kinds = /** @type {Record<string,string[]>} */ ({ planner: ["plan"], "plan-reviewer": ["plan-review"], reviewer: ["final-review"], verifier: ["verification", "observation-assessment"] });
+        const artifactCriteria = artifact?.criterionIds ?? artifact?.results?.map((/** @type {any} */ result) => result.criterionId);
+        const dispatch = boundaryById(run, attempt.boundaryId);
+        if (!artifact || !kinds[expected]?.includes(artifact.kind) || artifact.source !== "process-output" || artifact.attemptId !== attempt.id || artifact.actorId !== attempt.actorId || artifact.sessionId !== attempt.sessionId || artifact.boundaryId !== attempt.boundaryId || artifact.role !== attempt.role || artifact.candidateHash !== attempt.candidateHash || !isStringArray(artifactCriteria) || !dispatch || stableHash([...artifactCriteria].sort()) !== stableHash([...dispatch.requirementIds].sort())) throw new GovernanceError("Return artifact is not bound to the completed designated producer", "identity");
         if (!await artifactCurrent(run, artifact) || artifact.verdict === "revise") throw new GovernanceError("return evidence is stale or requires correction");
       }
     }
@@ -427,18 +432,46 @@ async function assertBoundarySemantics(run, proposal) {
   }
 }
 
-/** @param {any} run */
-function completedContext(run) {
+/** @param {any} run @param {any} attempt */
+function acceptanceArtifact(run, attempt) {
+  const matches = [...run.plans, ...run.reviews, ...run.verifications].filter((/** @type {any} */ entry) => entry.id === attempt.acceptanceId);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/** Runtime-derived classification facts. Reading this projection does not create
+ * a judgment, permit, actor or acceptance artifact.
+ * @param {any} run @param {any} proposal */
+export async function buildCompletedContext(run, proposal) {
   const plan = run.plans.at(-1) ?? null;
+  /** @param {any} artifact */
+  const provenance = async (artifact) => ({ id: artifact.id, kind: artifact.kind, attemptId: artifact.attemptId, actorId: artifact.actorId, sessionId: artifact.sessionId, boundaryId: artifact.boundaryId, role: artifact.role, candidateHash: artifact.candidateHash, source: artifact.source, current: await artifactCurrent(run, artifact), invalidated: artifact.invalidated === true, stamp: artifact.stamp });
+  const plans = await Promise.all(run.plans.map(async (/** @type {any} */ entry) => ({ ...await provenance(entry), summary: entry.summary, criterionIds: entry.criterionIds, packets: entry.packets })));
+  const reviews = await Promise.all(run.reviews.map(async (/** @type {any} */ review) => ({ ...await provenance(review), verdict: review.verdict, criterionIds: review.criterionIds, findings: review.findings, planId: review.planId })));
+  const verifications = await Promise.all(run.verifications.map(async (/** @type {any} */ verification) => ({ ...await provenance(verification), command: verification.command, results: verification.results, manifestHash: verification.manifestHash, observationRefs: verification.observationRefs })));
+  const declaredAttempts = run.attempts.filter((/** @type {any} */ attempt) => proposal.dependsOn.includes(attempt.id));
+  const returnedArtifacts = declaredAttempts.flatMap((/** @type {any} */ attempt) => [...plans, ...reviews, ...verifications].filter((artifact) => artifact.id === attempt.acceptanceId && artifact.attemptId === attempt.id && artifact.actorId === attempt.actorId && artifact.sessionId === attempt.sessionId && artifact.boundaryId === attempt.boundaryId && artifact.role === attempt.role));
+  let verificationDispatch = null;
+  if (proposal.action === "verify") {
+    const launch = executionDescriptor(run, proposal);
+    if (launch.assessment) {
+      const bundle = await assessmentInput(store.runDirectoryFor(run.home, run.runId), run, launch.assessment);
+      verificationDispatch = { kind: "observation-assessment", designatedProfile: proposal.route, selectedCriterionIds: launch.assessment.criterionIds, bundle, observations: launch.assessment.observationIds.map((/** @type {string} */ id) => {
+        const observation = run.observations.find((/** @type {any} */ item) => item.id === id);
+        return { id, manifestHash: observation.manifestHash, candidateHash: observation.candidateHash, criterionIds: observation.criterionIds, result: observation.result, artifacts: observation.artifacts, source: observation.source };
+      }), processContract: "Fresh independent observed Astra process receives the exact runtime bundle and every image as --image. Actual process identity, returned hashes and per-criterion outcomes are checked on return; host success is not criterion success." };
+    } else verificationDispatch = { kind: "deterministic-check", designatedProfile: proposal.route, selectedCriterionIds: proposal.requirementIds, check: launch.check };
+  }
   return {
     activeOwnership: activeAttempts(run).map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, role: attempt.role, provider: attempt.provider, readSet: attempt.readSet, writeSet: attempt.leasePaths })),
     capacity: run.capacity,
-    dependencies: run.attempts.map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, executionKind: attempt.expectedProcess ? "attached-process" : "ordinary-host-tool", invocationObserved: attempt.invocationObserved === true, terminationObserved: attempt.expectedProcess ? attempt.process?.terminated === true : null, actorId: attempt.actorId, sessionId: attempt.sessionId, outputHash: attempt.outputHash, returnedObservation: attempt.returnedObservation ?? null })),
+    dependencies: run.attempts.map((/** @type {any} */ attempt) => ({ id: attempt.id, status: attempt.status, role: attempt.role, boundaryId: attempt.boundaryId, acceptanceId: attempt.acceptanceId ?? null, candidateHash: attempt.candidateHash, executionKind: attempt.expectedProcess ? "attached-process" : "ordinary-host-tool", invocationObserved: attempt.invocationObserved === true, terminationObserved: attempt.expectedProcess ? attempt.process?.terminated === true : null, actorId: attempt.actorId, sessionId: attempt.sessionId, outputHash: attempt.outputHash, returnedObservation: attempt.returnedObservation ?? null })),
     actors: run.actors.map((/** @type {any} */ actor) => ({ id: actor.id, role: actor.role, sessionId: actor.sessionId, provider: actor.provider, model: actor.model, reasoning: actor.reasoning, provenance: actor.provenance })),
-    plans: run.plans.map((/** @type {any} */ entry) => ({ id: entry.id, summary: entry.summary, criterionIds: entry.criterionIds, packets: entry.packets, invalidated: entry.invalidated === true })),
-    reviews: run.reviews.map((/** @type {any} */ review) => ({ id: review.id, kind: review.kind, verdict: review.verdict, actorId: review.actorId, sessionId: review.sessionId, criterionIds: review.criterionIds, findings: review.findings, invalidated: review.invalidated === true })),
+    plans,
+    reviews,
+    returnedArtifacts,
+    verificationDispatch,
     findings: run.findings,
-    verifications: run.verifications.map((/** @type {any} */ verification) => ({ id: verification.id, attemptId: verification.attemptId, actorId: verification.actorId, sessionId: verification.sessionId, command: verification.command, candidateHash: verification.candidateHash, results: verification.results, invalidated: verification.invalidated === true })),
+    verifications,
     planAuthorActorId: plan?.actorId ?? null,
     planAuthorSessionId: plan?.sessionId ?? null,
     ticketStatuses: run.tickets.map((/** @type {any} */ ticket) => ({ id: ticket.id, dependsOn: ticket.dependsOn, status: ticket.status })),
@@ -580,7 +613,7 @@ async function classifyProposal(run, proposal, options) {
     proposal,
     obligations,
     candidates,
-    completed: completedContext(run),
+    completed: await buildCompletedContext(run, proposal),
     home: options?.home,
     env: options?.env,
     transport: /** @type {any} */ (options?.transport),

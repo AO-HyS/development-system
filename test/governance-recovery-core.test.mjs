@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { advancePhase, authorizeAction, bindProcessCandidate, buildObservationAssessmentInput, classifyBoundary, closeRun, createRun, getRun, persistObservedToolOutput, preflightRun, prepareAction, recordHostEvent, recordPassiveToolObservation, recoverUnstartedRun, registerHostSession, resolveRunDirectory } from '../runtime/jev-governance/core.mjs';
-import { readRegistry, writeRegistry } from '../runtime/jev-governance/store.mjs';
+import { readRegistry, saveRun, writeRegistry } from '../runtime/jev-governance/store.mjs';
 import { handleHook } from '../runtime/jev-governance/hook.mjs';
 
 const exec = promisify(execFile);
@@ -38,6 +38,7 @@ async function fixture(t, visual = false) {
   await registerHostSession({ home, event: sessionEvent });
   const contract = { id: 'recovery', taskKind: 'audit', requiredCapabilities: visual ? ['shell', 'computer-use'] : ['shell'], root, baseSha, endpoint: 'local accepted', authorization: 'Audit this isolated fixture', sources: [{ id: 'spec', path: 'spec.md', kind: 'spec' }], tickets: [{ id: 'T1', dependsOn: [] }], criteria: [{ id: 'C1', ticketId: 'T1', requirement: 'Product meets the specified state', evidenceRequired: visual ? 'Actual observed screenshot assessed independently' : 'Exact process check', evidenceKind: visual ? 'visual' : 'check' }], capacity: { total: 3, providers: { codex: 3, local: 1 } } };
   const runDirectory = join(home, '.development-system/governance/runs/recovery');
+  const requests = [];
   let sequence = 0;
   const event = (toolName = 'Bash', toolInput = { command: 'pwd' }) => ({ session_id: session, turn_id: `turn-${++sequence}`, tool_use_id: `use-${sequence}`, cwd: root, model: sessionEvent.model, reasoning: sessionEvent.reasoning, tool_name: toolName, tool_input: toolInput });
   async function passive(toolName = 'Bash', toolInput = { command: 'pwd' }, output = `${root}\n`) {
@@ -55,7 +56,7 @@ async function fixture(t, visual = false) {
     return { id: `boundary-${++sequence}`, phase: (await getRun({ runDirectory })).phase, action, actorId: session, attemptId: null, objective: `Perform ${action} for all criteria using exact evidence`, requirementIds: contract.criteria.map(c => c.id), sourceIds: ['spec'], readSet: ['spec.md', 'candidate.txt'], writeSet: [], dependsOn: [], route: route(role), toolName: 'governance', toolInput: {}, observations: ['Authorized endpoint local accepted'], evidenceRefs: [], ...fields };
   }
   async function classified(action, role, fields) {
-    const p = await proposal(action, role, fields), result = await classifyBoundary({ runDirectory, proposal: p, transport, env });
+    const p = await proposal(action, role, fields), result = await classifyBoundary({ runDirectory, proposal: p, transport: async request => { requests.push(JSON.parse(request.body)); return transport(request); }, env });
     assert.equal(result.verdict, 'pass', result.reason); return p;
   }
   async function permit(p) {
@@ -109,7 +110,7 @@ async function fixture(t, visual = false) {
     const final = await processOutput('final-review', 'reviewer', { kind: 'review', verdict: 'pass', findings: [], criterionIds });
     await advance('final-review-return', 'evidence', [final]);
   }
-  return { home, root, session, sessionEvent, contract, runDirectory, event, passive, begin, proposal, classified, permit, post, capture, processOutput, reachEvidence };
+  return { home, root, session, sessionEvent, contract, runDirectory, requests, event, passive, begin, proposal, classified, permit, post, capture, processOutput, reachEvidence };
 }
 
 test('preflight rejects undeclared/unobserved capabilities before binding and completed runs permit same-session recovery', async t => {
@@ -167,6 +168,13 @@ test('audit keeps independent reviews and actual visual assessment; successful h
   assert.equal((await stat(bundle.imagePaths[0])).mode & 0o777, 0o600);
   const assess = outcome => b => ({ kind: 'observation-assessment', manifestHash: b.manifestHash, candidateHash: b.candidateHash, observationRefs: b.observationRefs, results: [{ criterionId: 'C1', outcome, observationIds: assessment.observationIds, reason: outcome === 'fail' ? 'The observed failing product state does not meet C1.' : 'The independent fixture observation meets C1.' }] });
   await f.processOutput('verify', 'verifier', assess('fail'), { assessment });
+  const dispatchRequest = f.requests.find(request => request.state.boundary.action === 'verify');
+  assert.equal(dispatchRequest.state.run.taskKind, 'audit');
+  assert.equal(dispatchRequest.state.criteria[0].evidenceKind, 'visual');
+  assert.equal(dispatchRequest.state.completed.verificationDispatch.kind, 'observation-assessment');
+  assert.equal(dispatchRequest.state.completed.verificationDispatch.bundle.manifestHash, bundle.manifestHash);
+  assert.deepEqual(dispatchRequest.state.completed.verificationDispatch.bundle.imagePaths, bundle.imagePaths);
+  assert.match(dispatchRequest.questions['obligation:approved_check_identity'].instructions, /independent observation assessment/);
   let state = await getRun({ runDirectory: f.runDirectory });
   assert.equal(state.evidence.at(-1).outcome, 'fail');
   assert.equal(state.attempts.some(a => a.role === 'writer'), false); assert.equal(state.reviews.length, 2);
@@ -240,6 +248,45 @@ test('runtime-byte changes invalidate passive observations without modifying ope
   await writeFile(script, `import { preflightRun } from ${JSON.stringify(new URL(`file://${join(runtimeCopy, 'core.mjs')}`).href)};\nconst result = await preflightRun(${JSON.stringify({ home: f.home, contract: f.contract, activation: { sessionId: f.session } })}); process.stdout.write(JSON.stringify(result));\n`);
   const result = JSON.parse((await exec(process.execPath, [script])).stdout);
   assert.equal(result.ready, false); assert.deepEqual(result.missingCapabilities, ['shell']);
+});
+
+test('plan returns expose the actual dependency-bound artifact and reject wrong, unbound or stale producer evidence before Jev', async t => {
+  const f = await fixture(t, true); await f.begin();
+  const intake = await f.classified('intake-review', 'coordinator');
+  await advancePhase({ runDirectory: f.runDirectory, transition: { to: 'research', reason: 'Start research', boundaryId: intake.id } });
+  const research = await f.processOutput('research-dispatch', 'researcher', 'C1 is visual; independently assess actual negative and positive images.');
+  const returnedResearch = await f.classified('research-return', 'coordinator', { dependsOn: [research] });
+  await advancePhase({ runDirectory: f.runDirectory, transition: { to: 'plan', reason: 'Research complete', boundaryId: returnedResearch.id } });
+  const planner = await f.processOutput('plan-author', 'planner', { kind: 'plan', summary: 'C1: obtain independent plan and final reviews, capture actual Pending and Verified states, independently assess each exact image and close only with current passing evidence. No images or product acceptance exist yet.', criterionIds: ['C1'], packets: [{ id: 'review-and-observe', readSet: ['candidate.txt'], writeSet: [], dependsOn: [] }] });
+  const proposal = await f.proposal('plan-return', 'coordinator', { dependsOn: [planner] });
+  let request;
+  const result = await classifyBoundary({ runDirectory: f.runDirectory, proposal, env, transport: async value => { request = JSON.parse(value.body); return transport(value); } });
+  assert.equal(result.verdict, 'pass');
+  const dependency = request.state.completed.requiredDependencies[0], artifact = request.state.completed.returnedArtifacts[0];
+  assert.equal(dependency.role, 'planner'); assert.equal(dependency.acceptanceId, artifact.id);
+  assert.equal(artifact.attemptId, planner); assert.equal(artifact.role, 'planner'); assert.equal(artifact.source, 'process-output'); assert.equal(artifact.current, true);
+  assert.equal(artifact.actorId, dependency.actorId); assert.equal(artifact.sessionId, dependency.sessionId); assert.equal(artifact.boundaryId, dependency.boundaryId);
+  assert.deepEqual(artifact.criterionIds, ['C1']); assert.deepEqual(request.state.completed.verifications, []);
+  assert.equal(request.state.run.taskKind, 'audit'); assert.equal(request.state.criteria[0].evidenceKind, 'visual');
+  const original = await getRun({ runDirectory: f.runDirectory });
+  let calls = 0;
+  const shouldNotCall = async () => { calls++; throw Error('Invalid returned provenance reached classifier'); };
+  for (const [label, mutate] of [
+    ['wrong-producer', run => { run.plans[0].attemptId = 'different-planner'; }],
+    ['unbound-artifact', run => { run.attempts.find(a => a.id === planner).acceptanceId = 'unbound-plan'; }],
+    ['wrong-kind', run => { run.plans[0].kind = 'verification'; }],
+    ['stale-artifact', run => { run.plans[0].stamp.sources[0].sha256 = '0'.repeat(64); }],
+  ]) {
+    const candidate = structuredClone(original); mutate(candidate); await saveRun(f.runDirectory, candidate);
+    const rejected = await classifyBoundary({ runDirectory: f.runDirectory, proposal: { ...proposal, id: label }, env, transport: shouldNotCall });
+    assert.equal(rejected.verdict, 'insufficient', label); assert.equal(rejected.transportAttempted, false, label);
+  }
+  assert.equal(calls, 0);
+  await saveRun(f.runDirectory, original);
+  await assert.rejects(classifyBoundary({ runDirectory: f.runDirectory, proposal: { ...proposal, id: 'concurrent-artifact-change' }, env, transport: async value => {
+    const changed = await getRun({ runDirectory: f.runDirectory }); changed.plans[0].summary = 'Different plan after request'; await saveRun(f.runDirectory, changed);
+    return transport(value);
+  } }), error => error.code === 'stale');
 });
 
 test('an exact existing-issue update traverses the actual hook adapter and cannot be replayed', async t => {

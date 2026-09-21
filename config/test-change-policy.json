@@ -122,7 +122,7 @@
     },
     {
       "path": "test/governance-recovery-core.test.mjs",
-      "sha256": "b4b0256ab1eb547f649b09b0f103c1d52e1b05b21b3fb045482990ace4fb8627",
+      "sha256": "1e50cde8de7268344e75082a0c9b9b738f52f542f4faf9871371aa9b163c9fe0",
       "reason": "Parent reviewed actual OS lifecycle fixtures for audit independence, missing/stale images, runtime-byte freshness, mixed deterministic and visual evidence, failed visual assessment, final asset integrity, preserved ownership, recovery and disjoint dispatch. Provider identity remains explicitly simulated.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true

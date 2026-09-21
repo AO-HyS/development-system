@@ -25,7 +25,7 @@
       "sourcePath": "runtime/jev-governance/core.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/core.mjs",
       "destination": ".codex/development-system/governance-runtime/core.mjs",
-      "sha256": "f0d1bad41e250761252b959d78eadc23e3c2cce375da597f2f69da39d556aaa1"
+      "sha256": "c1f27b7723288d86f088eebb8df5eb28aa5011aac11baba4ee36be0d83a5ed3f"
     },
     {
       "sourcePath": "runtime/jev-governance/errors.mjs",
@@ -55,7 +55,7 @@
       "sourcePath": "runtime/jev-governance/jev.mjs",
       "artifactPath": "artifacts/1.26.0/governance-runtime/jev.mjs",
       "destination": ".codex/development-system/governance-runtime/jev.mjs",
-      "sha256": "0bf1ca6752b50f3aa392ea7e93d1d4e7e69476a389c567e24bcbc035eff919b8"
+      "sha256": "52f321e356c5f96014448460ccb6ebbe397c4b71bcc8581482ac1b460b5a6607"
     },
     {
       "sourcePath": "runtime/jev-governance/opencode.mjs",

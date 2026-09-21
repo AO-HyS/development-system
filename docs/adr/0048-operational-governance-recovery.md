@@ -22,6 +22,13 @@ globally rejected when the host emits attributable inner Pre/Post events.
 Unknown tools remain unsupported. Shell stdout alone cannot establish a process
 exit; deterministic behavioral checks retain their actual process attribution.
 
+Returned artifacts retain their observed producer, dependency and freshness in
+the classifier input. Planning coverage is evaluated against the current plan
+bound to the completed planner attempt; it is not inferred from an unbound
+summary or confused with later implementation acceptance. Verification dispatch
+distinguishes an approved deterministic command from a current observation
+bundle assigned to an independent capable assessor.
+
 Raw tool names and complete inputs remain the identity of exact one-use permits.
 Linear reads and Computer Use outer invocations use specific adapters. Computer
 Use scripts are opaque internally: governance controls the outer call, serializes

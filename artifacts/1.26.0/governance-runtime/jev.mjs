@@ -123,10 +123,11 @@ export function buildQuestions(obligations, candidates, applicability) {
  */
 function buildState(run, proposal, sources, criteria, completed) {
   return {
-    run: { runId: run.runId, root: run.root, baseSha: run.baseSha, phase: run.phase, endpoint: run.endpoint, authorization: run.authorization, observedCoordinator: run.coordinator, integratedCandidatePaths: run.candidatePaths ?? [] },
+    run: { runId: run.runId, root: run.root, baseSha: run.baseSha, phase: run.phase, taskKind: run.taskKind ?? "implementation", endpoint: run.endpoint, authorization: run.authorization, observedCoordinator: run.coordinator, integratedCandidatePaths: run.candidatePaths ?? [] },
     policy: {
       executionRequested: DISPATCH_ACTIONS.includes(proposal.action) || !["governance", "control"].includes(proposal.toolName),
       boundaryKind: ["governance", "control"].includes(proposal.toolName) ? "non-executing-control-boundary" : DISPATCH_ACTIONS.includes(proposal.action) ? "process-dispatch-readiness" : "ordinary-tool-permit",
+      lifecycleContract: run.taskKind === "audit" ? "Audit order: intake, research, authored plan, independent plan review, independent final review, actual criterion evidence, closure. Audit omits only writer and integration; every review and evidence gate remains required." : "Implementation order: intake, research, authored plan, independent plan review, writers, integration, independent final review, actual criterion evidence, closure.",
       routeValidation: profileFor(proposal.route.role, proposal.route, run.coordinator),
       routeContract: "The coordinator retains the actual observed starting profile. Research uses approved fast profiles; planner/reviewer use Astra xhigh; writer uses Flash high; exact checks use local/deterministic-check. A dispatch selects a target distinct from the caller; actual target identity is required only after process launch.",
       processLaunchContract: "The registered execute adapter starts a fresh Codex exec process for each planner/reviewer, never resume or fork. It supplies only the current contract, declared packet and applicable stored plan/findings; no author conversation. Return acceptance requires actual new session metadata and a distinct observed actor. The current proposal actorId is the dispatching coordinator, not the future process reviewer.",
@@ -220,7 +221,7 @@ export function buildBody(run, proposal, obligations, candidates, sources, crite
   if (["research-return", "plan-return", "plan-review-return"].includes(proposal.action) && questions["obligation:completed_coverage"]) {
     questions["obligation:completed_coverage"] = {
       type: "choice",
-      instructions: `For this ${proposal.action}, compare the actual returned research/plan/plan-review artifact in state.completed with state.criteria. Were all criteria addressed by that role? This is coverage of research, planning or plan review; implementation and behavioral acceptance come in later phases.`,
+      instructions: `For this ${proposal.action}, inspect state.completed.requiredDependencies and their bound state.completed.returnedArtifacts (research uses the dependency returnedObservation). Compare their criterionIds and actual content with state.criteria selected by boundary.requirementIds. Were all selected criteria addressed by the returning role? Artifact source, role, producer identity and current stamp are supplied separately from the coordinator's claims. This is coverage of research, planning or plan review; implementation and behavioral acceptance come in later phases.`,
       criteria: {
         satisfied: "The current returned role artifact addresses every declared criterion, without dropping any from research, planning or plan review.",
         violated: "The returned artifact omits or explicitly excludes at least one declared criterion from this role's coverage.",
@@ -228,6 +229,25 @@ export function buildBody(run, proposal, obligations, candidates, sources, crite
       },
     };
   }
+  if (proposal.action === "plan-return" && questions["obligation:context"]) questions["obligation:context"] = {
+    type: "choice",
+    instructions: "Inspect the completed planner dependency and its bound current plan in state.completed.returnedArtifacts. Does the actual summary and packet sequence provide enough criterion, source, scope and verification direction for the next independent plan reviewer? The plan is a completed authoring output; its proposed future reviews and criterion checks are not completed behavioral evidence. Missing material planning decisions still block the handoff.",
+    criteria: {
+      satisfied: "The bound current authored plan gives the next reviewer explicit scope, ordered work and verification direction for the selected criteria.",
+      violated: "The actual authored plan contradicts the contract or relies on hidden context or unsupported acceptance claims.",
+      insufficient_evidence: "A current bound planner artifact or material planning direction is missing or unclear.",
+    },
+  };
+  if (proposal.action === "verify" && completed.verificationDispatch?.kind === "observation-assessment" && questions["obligation:approved_check_identity"]) questions["obligation:approved_check_identity"] = {
+    type: "choice",
+    instructions: "This selected check is independent observation assessment. Inspect state.completed.verificationDispatch: designated fresh Astra profile, exact runtime bundle manifest/candidate hashes, selected criteria, observation refs and actual private text/image artifact identities. Does this define an appropriate reproducible assessment input for those criteria? The process adapter attaches each declared image via --image; observed process identity and assessment outcomes are checked after execution. A shell assertion is not the selected evidence kind.",
+    criteria: {
+      satisfied: "The current runtime-bound observation bundle and exact designated independent evaluator cover the selected observation/visual criteria, including image assets for visual criteria.",
+      violated: "The selected evaluator or assets contradict the criteria, substitute shell success for visual judgment, or include an unsupported producer or input identity.",
+      insufficient_evidence: "The selected criterion mapping, evaluator identity or current observation/image asset binding is missing or ambiguous.",
+    },
+  };
+  if (proposal.action === "verify-return" && questions["obligation:criterion_evidence"]) questions["obligation:criterion_evidence"].instructions = "For exactly boundary.requirementIds, inspect actual results in the dependency-bound current returned verification artifacts. Does each selected criterion have passing evidence from its designated producer? Other criteria remain required at final closure but are not silently attributed to this verifier's subset. Failed or insufficient outcomes cannot pass this return.";
   if (["plan-review", "final-review"].includes(proposal.action) && questions["obligation:reviewer_independence"]) {
     questions["obligation:reviewer_independence"] = {
       type: "choice",
@@ -387,6 +407,8 @@ export async function classifyWithJev(input) {
     ticketId: criterion.ticketId,
     requirement: criterion.requirement,
     evidenceRequired: criterion.evidenceRequired,
+    evidenceKind: criterion.evidenceKind ?? "check",
+    requiredCapabilities: criterion.requiredCapabilities ?? [],
   }));
   /** @type {any[]} */ const changeEvidence = [];
   if (obligations.some((id) => ["changed_scope", "repo_patterns", "docs_consistency"].includes(id))) {
