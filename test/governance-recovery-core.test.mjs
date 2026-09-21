@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { advancePhase, authorizeAction, bindProcessCandidate, buildObservationAssessmentInput, classifyBoundary, closeRun, createRun, getRun, persistObservedToolOutput, preflightRun, prepareAction, recordHostEvent, recordPassiveToolObservation, recoverUnstartedRun, registerHostSession, resolveRunDirectory } from '../runtime/jev-governance/core.mjs';
+import { advancePhase, authorizeAction, bindProcessCandidate, buildObservationAssessmentInput, classifyBoundary, closeRun, createRun, getRun, persistObservedToolOutput, preflightRun, prepareAction, recordHostEvent, recordPassiveToolObservation, recoverHostAttempt, recoverUnstartedRun, registerHostSession, resolveRunDirectory, safeAttemptDiagnostic, stableHash } from '../runtime/jev-governance/core.mjs';
 import { readRegistry, saveRun, writeRegistry } from '../runtime/jev-governance/store.mjs';
 import { runGovernance } from '../runtime/jev-governance/cli.mjs';
 import { handleHook } from '../runtime/jev-governance/hook.mjs';
@@ -15,6 +15,9 @@ const exec = promisify(execFile);
 const cli = fileURLToPath(new URL('../runtime/jev-governance/cli.mjs', import.meta.url));
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aR9sAAAAASUVORK5CYII=';
 const imageOutput = { content: [{ type: 'text', text: 'Observed product still displays the failing state.' }, { type: 'image', mimeType: 'image/png', data: png }] };
+// Only signature handling is under test; real image usability is independently
+// assessed in the operational browser probe, never inferred from this fixture.
+const jpegSignature = Buffer.from([255, 216, 255, 217]);
 const env = { TYPESAFE_API_KEY: 'fixture-only-not-a-secret' };
 async function transport({ body }) {
   const request = JSON.parse(body), answers = {};
@@ -156,6 +159,152 @@ test('passive observations require exact pairs and cross-session recovery preser
   assert.equal(recovered.rootSessionId, f.session); assert.equal(recovered.judgments.length, 1); assert.equal(recovered.boundaries[0].id, p.id);
   assert.equal(recovered.recoveryReceipts[0].operatorSessionId, 'observed-operator');
   assert.equal(recovered.outcome.status, 'blocked');
+});
+
+test('actual image bytes control persisted MIME without changing returned bytes or granting acceptance', async t => {
+  const f = await fixture(t, true); await f.begin();
+  const output = { content: [{ type: 'text', text: 'Pending' }, { type: 'image', mimeType: 'image/png', data: jpegSignature.toString('base64') }] };
+  const capture = await f.capture(output);
+  assert.equal(capture.result.ok, true);
+  assert.equal(capture.result.productAcceptance, false);
+  const state = await getRun({ runDirectory: f.runDirectory });
+  const observation = state.observations[0], artifact = observation.artifacts.find(a => a.type === 'image');
+  assert.equal(observation.outputHash, stableHash(output));
+  assert.equal(artifact.mimeType, 'image/jpeg');
+  assert.equal(artifact.declaredMimeType, 'image/png');
+  assert.match(artifact.name, /\.jpg$/);
+  assert.deepEqual(await readFile(join(f.runDirectory, 'observations', observation.id, artifact.name)), jpegSignature);
+  assert.equal(state.evidence.length, 0);
+  assert.equal((await f.post(capture.actual, output)).status, 'idempotent');
+  await assert.rejects(f.post(capture.actual, { ...output, isError: true }), error => error.code === 'duplicate');
+  assert.equal((await getRun({ runDirectory: f.runDirectory })).observations.length, 1);
+
+  const correct = await f.capture({ content: [{ type: 'image', mimeType: 'image/jpeg', data: jpegSignature.toString('base64') }] });
+  assert.equal(correct.result.ok, true);
+  assert.equal((await getRun({ runDirectory: f.runDirectory })).observations.at(-1).artifacts[0].declaredMimeType, undefined);
+});
+
+test('invalid image carriers retain a safe diagnosis and unresolved ownership', async t => {
+  const cases = [
+    ['unknown declared MIME', { type: 'image', mimeType: 'image/svg+xml', data: jpegSignature.toString('base64') }],
+    ['invalid bytes', { type: 'image', mimeType: 'image/png', data: Buffer.from('fixture-private-provider-message').toString('base64') }],
+    ['invalid base64', { type: 'image', mimeType: 'image/png', data: 'fixture-private-provider-message!' }],
+    ['external URL', { type: 'input_image', image_url: 'https://example.invalid/fixture-private-provider-message.png' }],
+    ['oversized image', { type: 'image', mimeType: 'image/png', data: 'A'.repeat(12 * 1024 * 1024 + 1) }],
+  ];
+  for (const [name, image] of cases) await t.test(name, async child => {
+    const f = await fixture(child, true); await f.begin();
+    const capture = await f.capture({ content: [image] });
+    assert.equal(capture.result.status, 'recovery-required');
+    const state = await getRun({ runDirectory: f.runDirectory }), attempt = state.attempts.at(-1);
+    assert.equal(attempt.invocationObserved, true);
+    assert.equal(state.observations.length, 0); assert.equal(state.evidence.length, 0);
+    const diagnostic = safeAttemptDiagnostic(attempt);
+    assert.equal(diagnostic.code, 'observation_invalid');
+    assert.match(diagnostic.message, /host|observ|captur/i);
+    assert.equal(JSON.stringify(diagnostic).includes('fixture-private-provider-message'), false);
+    assert.equal(JSON.stringify({ failure: attempt.failure, failureDiagnostic: attempt.failureDiagnostic }).includes('fixture-private-provider-message'), false);
+    assert.equal(await resolveRunDirectory(f.home, f.session), f.runDirectory);
+  });
+});
+
+async function failedHostCapture(t, reviewed = false) {
+  const f = await fixture(t, true); await f.begin();
+  if (reviewed) await f.reachEvidence();
+  const capture = await f.capture({ content: [{ type: 'image', mimeType: 'image/png', data: 'bm90LWFuLWltYWdl' }] });
+  assert.equal(capture.result.status, 'recovery-required');
+  await closeRun({ runDirectory: f.runDirectory, outcome: { status: 'blocked', reason: 'Capture persistence failed; preserve completed invocation', boundaryId: capture.p.id } });
+  await registerHostSession({ home: f.home, event: { ...f.sessionEvent, sessionId: 'recovery-operator' } });
+  const state = await getRun({ runDirectory: f.runDirectory });
+  return { ...f, capture, attemptId: state.attempts.at(-1).id,
+    recoveryInput: { home: f.home, runId: f.contract.id, sessionId: 'recovery-operator', attemptId: state.attempts.at(-1).id, reason: 'Close failed capture administratively; new run must capture fresh evidence' } };
+}
+
+test('explicit host recovery preserves blocked history, fails only the capture and enables a fresh successor', async t => {
+  const f = await failedHostCapture(t, true);
+  let before = await getRun({ runDirectory: f.runDirectory });
+  // Simulate the legacy omission and obsolete runtime policy. Recovery must not
+  // invent a historic failure cause or make an old permission current.
+  delete before.attempts.at(-1).failure; delete before.attempts.at(-1).failureDiagnostic;
+  before.policyHash = 'a'.repeat(64);
+  for (const attempt of before.attempts) if (attempt.invocation) attempt.invocation.policyHash = before.policyHash;
+  for (const permit of before.permits) if (permit.invocation) permit.invocation.policyHash = before.policyHash;
+  await saveRun(f.runDirectory, before);
+  before = await getRun({ runDirectory: f.runDirectory });
+  assert.equal(before.plans.length, 1); assert.equal(before.reviews.length, 2);
+  assert.equal(before.attempts.filter(a => a.expectedProcess && a.process.terminated && a.status === 'completed').length, 4);
+  assert.equal(await resolveRunDirectory(f.home, f.session), f.runDirectory);
+  const previousSession = process.env.CODEX_THREAD_ID;
+  process.env.CODEX_THREAD_ID = 'recovery-operator';
+  try {
+    const receipt = await runGovernance(['recover-host-attempt', '--home', f.home, '--run', f.contract.id, '--input-json', JSON.stringify({ attemptId: f.attemptId, reason: f.recoveryInput.reason }), '--json']);
+    assert.equal(receipt.code, 0, receipt.output);
+    assert.equal(receipt.result.outcome.status, 'blocked');
+  } finally {
+    if (previousSession === undefined) delete process.env.CODEX_THREAD_ID;
+    else process.env.CODEX_THREAD_ID = previousSession;
+  }
+  const after = await getRun({ runDirectory: f.runDirectory });
+  for (const key of ['rootSessionId', 'coordinator', 'outcome', 'phase', 'reviews', 'plans', 'permits', 'eventKeys', 'observations', 'evidence', 'policyHash']) assert.deepEqual(after[key], before[key], key);
+  assert.deepEqual(after.attempts.slice(0, -1), before.attempts.slice(0, -1));
+  assert.equal(after.attempts.at(-1).status, 'failed');
+  assert.equal(after.attempts.at(-1).failureDiagnostic, undefined);
+  assert.equal(after.recoveryReceipts.length, 1);
+  assert.equal(after.recoveryReceipts[0].originalSessionId, f.session);
+  assert.equal(after.recoveryReceipts[0].operatorSessionId, 'recovery-operator');
+  assert.equal(after.recoveryReceipts[0].attemptId, f.attemptId);
+  assert.equal(after.recoveryReceipts[0].originalPolicyHash, before.policyHash);
+  assert.match(after.recoveryReceipts[0].recoveryPolicyHash, /^[a-f0-9]{64}$/);
+  assert.notEqual(after.recoveryReceipts[0].recoveryPolicyHash, before.policyHash);
+  assert.equal(after.leasePreserved, false);
+  assert.equal(await resolveRunDirectory(f.home, f.session), null);
+  assert.equal((await readRegistry(f.home)).runs.recovery.finished, true);
+  await assert.rejects(recoverHostAttempt(f.recoveryInput), error => error.code === 'duplicate');
+  assert.equal((await getRun({ runDirectory: f.runDirectory })).recoveryReceipts.length, 1);
+  await f.passive(); await f.passive('mcp__cua_repl__js', { code: 'await cua.getState();' }, imageOutput);
+  const successor = await createRun({ home: f.home, contract: { ...f.contract, id: 'successor' }, activation: { sessionId: f.session } });
+  assert.equal(successor.phase, 'intake'); assert.equal(successor.evidence.length, 0); assert.equal(successor.reviews.length, 0);
+  assert.equal((await getRun({ runDirectory: f.runDirectory })).outcome.status, 'blocked');
+});
+
+test('host recovery refuses ambiguous invocation, ownership or acceptance without mutating retained state', async t => {
+  const cases = [
+    ['active run', s => { s.phase = 'evidence'; s.outcome = null; }],
+    ['accepted run', s => { s.outcome.status = 'accepted'; }],
+    ['process attempt', s => { s.attempts.at(-1).expectedProcess = true; }],
+    ['process ownership', s => { s.attempts.at(-1).process = { terminated: false }; }],
+    ['process binding', s => { s.attempts.at(-1).processBinding = {}; }],
+    ['process launch', s => { s.attempts.at(-1).launch = {}; }],
+    ['declared write', s => { s.attempts.at(-1).writeSet = ['candidate.txt']; }],
+    ['declared lease path', s => { s.attempts.at(-1).leasePaths = ['candidate.txt']; }],
+    ['changed path', s => { s.attempts.at(-1).changedPaths = ['candidate.txt']; }],
+    ['live lease', s => { s.leases['candidate.txt'] = s.attempts.at(-1).id; }],
+    ['other owner', s => { s.attempts.unshift({ id: 'other-owner', status: 'running', invocationObserved: true }); }],
+    ['missing observed Post', s => { s.attempts.at(-1).invocationObserved = false; }],
+    ['missing event receipt', s => { s.eventKeys = {}; }],
+    ['invalid event hash', s => { const key = Object.keys(s.eventKeys).find(k => k.includes(':PostToolUse:')); s.eventKeys[key] = 'invalid'; }],
+    ['uncompleted permit', s => { s.permits.at(-1).status = 'consumed'; }],
+    ['duplicate permit', s => { s.permits.push(structuredClone(s.permits.at(-1))); }],
+    ['mismatched invocation', s => { s.permits.at(-1).invocation.toolUseId = 'unrelated'; }],
+    ['incoherent historical policy', s => { s.policyHash = 'a'.repeat(64); }],
+    ['mismatched input', s => { s.permits.at(-1).toolInput = { code: 'unrelated' }; }],
+    ['unreconciled scope', s => { s.attempts.at(-1).snapshotHash = 'b'.repeat(64); }],
+    ['observation exists', s => { s.attempts.at(-1).observationId = 'existing-observation'; }],
+    ['produced observation', s => { s.observations.push({ id: 'existing', attemptId: s.attempts.at(-1).id }); }],
+    ['acceptance exists', s => { s.attempts.at(-1).acceptanceId = 'existing-acceptance'; }],
+  ];
+  for (const [name, mutate] of cases) await t.test(name, async child => {
+    const f = await failedHostCapture(child), state = await getRun({ runDirectory: f.runDirectory });
+    mutate(state); await saveRun(f.runDirectory, state);
+    const before = await readFile(join(f.runDirectory, 'run.json'));
+    await assert.rejects(recoverHostAttempt(f.recoveryInput));
+    assert.deepEqual(await readFile(join(f.runDirectory, 'run.json')), before);
+  });
+  await t.test('different observed root', async child => {
+    const f = await failedHostCapture(child);
+    await registerHostSession({ home: f.home, event: { ...f.sessionEvent, sessionId: 'different-root', cwd: f.home } });
+    await assert.rejects(recoverHostAttempt({ ...f.recoveryInput, sessionId: 'different-root' }), error => error.code === 'binding');
+  });
 });
 
 test('audit keeps independent reviews and actual visual assessment; successful host calls and imported pass JSON do not pass criteria', async t => {

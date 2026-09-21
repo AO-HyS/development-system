@@ -487,6 +487,12 @@ export function safeAttemptDiagnostic(attempt) {
   if (!attempt.failure && !attempt.failureDiagnostic) return null;
   const stored = attempt.failureDiagnostic;
   const code = ["malformed", "identity", "candidate", "scope", "observation_invalid", "observation_stale", "observation_missing"].includes(stored?.code) ? stored.code : attempt.failure === "review finding is malformed" ? "malformed" : "invalid";
+  if (stored?.kind === "host-capture") return { kind: "host-capture", code, field: null,
+    message: "The actual host output could not be retained as an observation.",
+    nextAction: "Inspect status and correct the host capture before a fresh permitted invocation. For a closed blocked or interrupted run, use recover-host-attempt only if its ownership guards pass. Recovery does not import acceptance or prove absence of external effects.", rejectedOutput: null };
+  if (stored?.kind === "host-reconciliation") return { kind: "host-reconciliation", code, field: null,
+    message: "The actual host invocation failed runtime reconciliation.",
+    nextAction: "Inspect the retained scope and ownership before correcting the host invocation. Preserve unresolved ownership; no acceptance was imported.", rejectedOutput: null };
   const field = typeof stored?.field === "string" && /^(?:review\.(?:kind|verdict|criterionIds|findings|resolvedFindingIds)(?:\[\d{1,3}\](?:\.(?:id|criterionIds|severity|message))?)?|process\.output)$/u.test(stored.field) ? stored.field : attempt.failure === "review finding is malformed" ? "review.findings" : null;
   const rejectedOutput = attempt.rejectedOutput && /^[a-f0-9]{64}$/u.test(attempt.rejectedOutput.sha256 ?? "") && /^rejected-outputs\/[a-f0-9]{64}\.txt$/u.test(attempt.rejectedOutput.relativePath ?? "") && Number.isSafeInteger(attempt.rejectedOutput.size) && attempt.rejectedOutput.size >= 0 && attempt.rejectedOutput.size <= 128 * 1024 ? { relativePath: attempt.rejectedOutput.relativePath, sha256: attempt.rejectedOutput.sha256, size: attempt.rejectedOutput.size } : null;
   return { code, field, message: code === "malformed" ? "The actual process result does not satisfy the designated output schema." : "The actual process result failed runtime reconciliation.",
@@ -1268,7 +1274,13 @@ export async function recordHostEvent(input) {
           attempt.status = "completed";
           run.candidatePaths = [...new Set([...run.candidatePaths, ...attempt.leasePaths])].sort();
           if (attempt.leasePaths.length) run.acceptanceEpoch += 1;
-        } catch { attempt.status = "recovery-required"; return { ok: false, status: attempt.status }; }
+        } catch (error) {
+          const hostCapture = boundaryById(run, attempt.boundaryId)?.action === "host-tool";
+          attempt.status = "recovery-required";
+          attempt.failure = hostCapture ? "The actual host output could not be retained as an observation." : "The actual host invocation failed runtime reconciliation.";
+          attempt.failureDiagnostic = { kind: hostCapture ? "host-capture" : "host-reconciliation", code: error instanceof GovernanceError && ["scope", "observation_invalid", "observation_stale", "observation_missing"].includes(error.code) ? error.code : "invalid", field: null };
+          return { ok: false, status: attempt.status, failureDiagnostic: safeAttemptDiagnostic(attempt), reason: attempt.failure };
+        }
         releaseLeases(run, attempt.id);
         return { ok: true, status: attempt.status };
       }
@@ -1561,10 +1573,67 @@ export async function recoverUnstartedRun(input) {
   });
 }
 
+/** Administrative recovery retains failed history, never observation or acceptance.
+ * Empty managed paths say nothing about external effects of the host invocation.
+ * @param {{home?:string,runId:string,sessionId:string,attemptId:string,reason:string}} input */
+export async function recoverHostAttempt(input) {
+  const home = store.resolveHome(input.home);
+  if (Object.keys(input).some((key) => !["home", "runId", "sessionId", "attemptId", "reason"].includes(key))) throw new GovernanceError("Recovery input contains unsupported fields", "invalid", { field: "input" });
+  assertSafeId(input.runId, "run");
+  assertSafeId(input.sessionId, "sessionId");
+  assertSafeId(input.attemptId, "recovery.attemptId");
+  if (!isNonEmpty(input.reason) || input.reason.length > 2048) throw new GovernanceError("Recovery requires a bounded reason", "invalid", { field: "recovery.reason" });
+  const runDirectory = store.runDirectoryFor(home, input.runId);
+  return mutateRun(runDirectory, async (run) => {
+    const registry = await store.readRegistry(home), observer = registry.sessions[input.sessionId];
+    if (!observer || observer.sessionId !== input.sessionId || await store.canonicalDirectory(observer.cwd) !== run.root) throw new GovernanceError("Recovery requires an observed operator at the same canonical root", "binding");
+    const entry = registry.runs[input.runId];
+    if (run.runId !== input.runId || !entry || entry.runId !== run.runId || entry.rootSessionId !== run.rootSessionId || entry.root !== run.root || entry.runDirectory !== runDirectory || await store.canonicalDirectory(run.root) !== run.root) throw new GovernanceError("Recovery requires a valid registry root mapping", "corrupt");
+    const attempt = attemptById(run, input.attemptId);
+    if (attempt?.recoveryReceiptId || (run.recoveryReceipts ?? []).some((/** @type {any} */ receipt) => receipt.attemptId === input.attemptId)) throw new GovernanceError("Host attempt was already recovered", "duplicate");
+    const reject = () => { throw new GovernanceError("Host attempt does not satisfy the administrative recovery guards", "recovery_host_attempt"); };
+    const emptyPaths = (/** @type {any} */ paths) => Array.isArray(paths) && paths.length === 0;
+    const isHash = (/** @type {any} */ hash) => typeof hash === "string" && /^[a-f0-9]{64}$/u.test(hash);
+    if (run.phase !== "closed" || !["blocked", "interrupted"].includes(run.outcome?.status) || !attempt || attempt.status !== "recovery-required" || run.attempts.filter((/** @type {any} */ item) => item.id === input.attemptId).length !== 1) reject();
+    const boundary = boundaryById(run, attempt.boundaryId);
+    if (boundary?.action !== "host-tool" || attempt.runId !== run.runId || attempt.expectedProcess !== false || attempt.process != null || attempt.processBinding != null || attempt.launch != null || !emptyPaths(boundary.writeSet) || !emptyPaths(attempt.writeSet) || !emptyPaths(attempt.leasePaths) || !emptyPaths(attempt.changedPaths) || !isRecord(run.leases) || Object.keys(run.leases).length || attempt.invocationObserved !== true) reject();
+    if (store.hasUnresolvedOwnership({ ...run, attempts: run.attempts.filter((/** @type {any} */ item) => item.id !== attempt.id) })) reject();
+    if (attempt.snapshotHash !== stableHash([]) || attempt.outputHash !== stableHash([]) || attempt.observationId != null || attempt.acceptanceId != null) reject();
+    const produced = [run.observations ?? [], run.evidence, run.reviews, run.plans, run.verifications];
+    if (produced.some((items) => !Array.isArray(items) || items.some((/** @type {any} */ artifact) => artifact.attemptId === attempt.id || artifact.boundaryId === boundary.id || artifact.producer?.attemptId === attempt.id || artifact.producer?.boundaryId === boundary.id))) reject();
+    const permits = run.permits.filter((/** @type {any} */ permit) => permit.attemptId === attempt.id);
+    if (permits.length !== 1) reject();
+    const permit = permits[0], invocation = permit.invocation;
+    if (permit.status !== "completed" || permit.runId !== run.runId || permit.boundaryId !== boundary.id || !isRecord(invocation) || !isRecord(attempt.invocation) || stableHash(attempt.invocation) !== stableHash(invocation)) reject();
+    if (!isNonEmpty(invocation.sessionId) || !isNonEmpty(invocation.turnId) || !isNonEmpty(invocation.toolUseId) || !isNonEmpty(invocation.model) || !isNonEmpty(invocation.cwd) || !isNonEmpty(invocation.at) || !isHash(invocation.policyHash) || invocation.policyHash !== run.policyHash || !isRecord(invocation.rawToolInput)) reject();
+    if (run.permits.filter((/** @type {any} */ item) => item.invocation?.sessionId === invocation.sessionId && item.invocation.turnId === invocation.turnId && item.invocation.toolUseId === invocation.toolUseId).length !== 1) reject();
+    if (invocation.sessionId !== run.rootSessionId || attempt.sessionId !== invocation.sessionId || attempt.actorId !== invocation.sessionId || attempt.callerActorId !== invocation.sessionId || permit.actorId !== invocation.sessionId || boundary.actorId !== invocation.sessionId || invocation.model !== run.coordinator.model || invocation.reasoning !== run.coordinator.reasoning || await store.canonicalDirectory(invocation.cwd) !== run.root) reject();
+    if (permit.toolName !== invocation.rawToolName || boundary.toolName !== invocation.rawToolName || !isHash(permit.toolInputHash) || permit.toolInputHash !== stableHash(invocation.rawToolInput) || stableHash(permit.toolInput) !== permit.toolInputHash || stableHash(boundary.toolInput) !== permit.toolInputHash) reject();
+    const adapter = permit.adapter, knownAdapter = getAdapterCatalog().find((item) => item.adapterId === adapter?.adapterId && item.toolNames.includes(invocation.rawToolName));
+    if (!knownAdapter || !attempt.adapter || stableHash(attempt.adapter) !== stableHash(adapter) || adapter.capability !== knownAdapter.capability || adapter.effect !== knownAdapter.effect || adapter.observationLevel !== knownAdapter.observationLevel || adapter.rawToolName !== invocation.rawToolName || stableHash(adapter.rawToolInput) !== permit.toolInputHash || adapter.toolInputHash !== stableHash({ name: invocation.rawToolName, input: invocation.rawToolInput })) reject();
+    // The immutable normalized PostToolUse hash is retained; recovery never imports
+    // or reconstructs a transcript to supply missing completion evidence.
+    const postEventKey = eventKey({ kind: "hook", hookEventName: "PostToolUse", sessionId: invocation.sessionId, turnId: invocation.turnId, toolUseId: invocation.toolUseId });
+    const postEventHash = run.eventKeys?.[postEventKey];
+    if (!isHash(postEventHash)) reject();
+    const receipt = { id: newId("recovery"), kind: "host-attempt-recovery", runId: run.runId, attemptId: attempt.id, boundaryId: boundary.id, permitId: permit.id,
+      postEventKey, postEventHash, invocationHash: stableHash(invocation), originalSessionId: run.rootSessionId, originalModel: run.coordinator.model, originalReasoning: run.coordinator.reasoning,
+      operatorSessionId: observer.sessionId, operatorModel: observer.model, operatorReasoning: observer.reasoning, root: run.root,
+      originalPolicyHash: invocation.policyHash, originalRunPolicyHash: run.policyHash, originalRuntimeHash: isHash(run.capabilityPreflight?.runtimeHash) ? run.capabilityPreflight.runtimeHash : null,
+      recoveryPolicyHash: POLICY_HASH, recoveryRuntimeHash: RUNTIME_HASH, previousStatus: attempt.status, status: "failed", reason: input.reason, at: nowIso() };
+    run.recoveryReceipts ??= []; run.recoveryReceipts.push(receipt);
+    attempt.status = "failed"; attempt.recoveryReceiptId = receipt.id;
+    const unfinished = store.hasUnresolvedOwnership(run);
+    run.leasePreserved = unfinished; entry.finished = !unfinished;
+    await store.writeRegistry(home, registry);
+    return run;
+  });
+}
+
 /** Extract only inline host-returned content, never operator-supplied paths.
  * @param {any} output */
 function observedBlocks(output) {
-  /** @type {Array<{type:string,text?:string,data?:Buffer,mimeType?:string}>} */ const blocks = [];
+  /** @type {Array<{type:string,text?:string,data?:Buffer,mimeType?:string,declaredMimeType?:string}>} */ const blocks = [];
   let total = 0;
   const addText = (/** @type {string} */ text) => {
     const size = Buffer.byteLength(text);
@@ -1591,9 +1660,9 @@ function observedBlocks(output) {
       }
       if (!["image/png", "image/jpeg", "image/webp"].includes(mimeType) || typeof encoded !== "string" || encoded.length > 12 * 1024 * 1024 || !/^[A-Za-z0-9+/]+={0,2}$/u.test(encoded)) throw new GovernanceError("Observation image encoding is unsupported", "observation_invalid");
       const data = Buffer.from(encoded, "base64");
-      const valid = mimeType === "image/png" ? data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) : mimeType === "image/jpeg" ? data[0] === 255 && data[1] === 216 && data[2] === 255 : data.subarray(0,4).toString() === "RIFF" && data.subarray(8,12).toString() === "WEBP";
-      if (!valid || !data.length || data.length > 8 * 1024 * 1024 || blocks.filter((block) => block.type === "image").length >= 8) throw new GovernanceError("Observation image bytes are invalid or exceed the limit", "observation_invalid");
-      total += data.length; blocks.push({ type: "image", mimeType, data }); return;
+      const effectiveMimeType = data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) ? "image/png" : data[0] === 255 && data[1] === 216 && data[2] === 255 ? "image/jpeg" : data.subarray(0,4).toString() === "RIFF" && data.subarray(8,12).toString() === "WEBP" ? "image/webp" : null;
+      if (!effectiveMimeType || !data.length || data.length > 8 * 1024 * 1024 || blocks.filter((block) => block.type === "image").length >= 8) throw new GovernanceError("Observation image bytes are invalid or exceed the limit", "observation_invalid");
+      total += data.length; blocks.push({ type: "image", mimeType: effectiveMimeType, ...(mimeType !== effectiveMimeType ? { declaredMimeType: mimeType } : {}), data }); return;
     }
     if (typeof value.text === "string") addText(value.text);
     if (Array.isArray(value.content)) visit(value.content, depth + 1);
@@ -1629,7 +1698,7 @@ async function persistObservation(runDirectory, run, event) {
     const extension = block.type === "text" ? "txt" : block.mimeType === "image/png" ? "png" : block.mimeType === "image/jpeg" ? "jpg" : "webp";
     const name = `${index}.${extension}`;
     const artifact = await store.writeImmutablePrivate(join(directory, name), block.type === "text" ? /** @type {string} */ (block.text) : /** @type {Buffer} */ (block.data));
-    artifacts.push({ name, type: block.type, mimeType: block.mimeType ?? "text/plain", sha256: artifact.sha256, size: artifact.size });
+    artifacts.push({ name, type: block.type, mimeType: block.mimeType ?? "text/plain", ...(block.declaredMimeType ? { declaredMimeType: block.declaredMimeType } : {}), sha256: artifact.sha256, size: artifact.size });
   }
   const stamp = await acceptanceStamp(run, attempt, "observation");
   const manifest = { id, runId: run.runId, kind: "host-observation", attemptId: attempt.id, boundaryId: boundary.id, invocation: permit.invocation, adapter: permit.adapter, result: classifyToolResult(permit.adapter, output), outputHash, criterionIds: boundary.requirementIds, candidateHash: permit.candidateHash, stamp, artifacts, source: "actual-host-output", createdAt: nowIso() };

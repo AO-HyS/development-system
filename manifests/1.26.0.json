@@ -67,7 +67,7 @@
       "sourcePath": "catalog/0.46.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "543cb6cdd8314d3aacf110f9dde2c3767e4dfde37fc395afb9364985518594b0",
+      "sha256": "d15c316f32a46f0d081e1947165ac28bdb0bb5f2f73d09e1db4fa47a1aefe1fc",
       "expectedMirrorOf": null
     },
     {
@@ -310,7 +310,7 @@
       "sourcePath": "artifacts/1.26.0/runtime-source-provenance.json",
       "destination": ".codex/development-system/runtime-source-provenance.json",
       "harness": "codex",
-      "sha256": "a8cb2b32ec108cbd5830345b0ac01a4224b899bf0f0523d035dda0dc4b04c1f9",
+      "sha256": "e7d868435c707a6953b8fbaab3256f4034b9cb69aaf2af74f6c7cbb1032d94fd",
       "expectedMirrorOf": null
     },
     {
@@ -445,7 +445,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/cli.mjs",
       "destination": ".codex/development-system/governance-runtime/cli.mjs",
       "harness": "codex",
-      "sha256": "d53794c4344fe9ba6c01b0c679913519ad6532f67e8c3ec03fa567bbd8fc290e",
+      "sha256": "f65eb61cef606b01e37b5f2a0bf4c6d44699f8973240838c9758393938b73544",
       "expectedMirrorOf": null
     },
     {
@@ -454,7 +454,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/command-reference.mjs",
       "destination": ".codex/development-system/governance-runtime/command-reference.mjs",
       "harness": "codex",
-      "sha256": "84a6641534525e2d80ed95810ea44489e0bc98d4fb73ed4acc07bba4b77f4348",
+      "sha256": "63ba32656206b89623a8ac3bbdbe209e2ddc5488950d328b7b400b4503ace1c5",
       "expectedMirrorOf": null
     },
     {
@@ -463,7 +463,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/core.mjs",
       "destination": ".codex/development-system/governance-runtime/core.mjs",
       "harness": "codex",
-      "sha256": "20e7a3f87ff307f1e8ef13549a54318725cf69964e98189ca1aacad6ded6d33c",
+      "sha256": "814aa4fc21c91beef8a6dc5bdf86bf1621ec7d801a63063e899412de1aaed07d",
       "expectedMirrorOf": null
     },
     {
@@ -472,7 +472,7 @@
       "sourcePath": "artifacts/1.26.0/governance-runtime/errors.mjs",
       "destination": ".codex/development-system/governance-runtime/errors.mjs",
       "harness": "codex",
-      "sha256": "1ba4a789c1f57605314e05b98caa936db7ad7bc1cb7e02639525301f93476aa0",
+      "sha256": "dede0beca224047b355ddcd342c71e406122afa783c40d13c9f22c6fabcc6619",
       "expectedMirrorOf": null
     },
     {

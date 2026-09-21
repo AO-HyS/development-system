@@ -108,8 +108,8 @@
     },
     {
       "path": "test/governance-recovery-cli.test.mjs",
-      "sha256": "d46fb3f5ec9ff13f44abfefb7dc316420c5f47add6232fe09e4826cd02503667",
-      "reason": "Parent reviewed real schema missing-reason diagnostics, reachable help, strict command grammar, safe field redaction and bounded image-sized hook transport. Isolated HOME; no invented host certification.",
+      "sha256": "b2b3c7ed92cc37b81b90a3f47408e97e1ad4ac10bbeeb9d7152b931990dfe001",
+      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes: retained schema diagnostics, safe redaction and bounded transport; added recover-host-attempt schema, explicit run requirement, exact hook control availability and rejection of composed/unknown arguments. Isolated HOME; no host certification claimed.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     },
@@ -122,8 +122,8 @@
     },
     {
       "path": "test/governance-recovery-core.test.mjs",
-      "sha256": "373ac5e1e9ecd334f43d4165cc2a68839e6feb3f60a56ca2a3c3cf4e8d60588d",
-      "reason": "Parent reviewed actual OS lifecycle fixtures for audit independence, missing/stale images, runtime-byte freshness, mixed deterministic and visual evidence, failed visual assessment, final asset integrity, preserved ownership, recovery and disjoint dispatch. Provider identity remains explicitly simulated.",
+      "sha256": "144b501f4073bd7b72142ef55badceca475867215dd3b914f212beda888ba65c",
+      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes after correcting two fixture gaps: consistent historical run/invocation policy and nonempty prior history. Regressions preserve mismatched-MIME bytes and original hash without acceptance, retain safe failure ownership, exercise explicit CLI recovery preserving four terminated role attempts, one plan and two reviews, reject ambiguous provenance/ownership without mutation, and require a fresh empty successor. Existing acceptance tests remain; identity and signature fixtures explicitly do not claim actual host image acceptance.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
       "reviewedContent": true
     },

@@ -35,6 +35,7 @@ const messages = Object.freeze({
   observation_stale: ["Observed output no longer matches the current candidate.", "Capture new output from the current candidate before independent assessment."],
   observation_missing: ["Required observed text or images are unavailable.", "Capture complete output through the supported host adapter; do not import a passing assessment."],
   recovery_ownership: ["This run cannot be recovered by the unstarted-run operation.", "Use the same observed repository root. Any existing attempts or leases require their normal ownership and termination flow."],
+  recovery_host_attempt: ["This host attempt does not satisfy administrative recovery requirements.", "Inspect status for the closed blocked or interrupted run. Recovery requires exact completed host invocation evidence, no declared managed paths, no acceptance artifacts, and no other unresolved ownership; it does not prove absence of external effects."],
   task_kind: ["The declared task kind is unsupported.", "Choose implementation or audit using schema begin."],
   activation: ["The supplied activation does not match the observed host identity.", "Use the current observed root session; do not supply another actor's identity."],
   base: ["The declared base revision does not match the repository.", "Refresh the current repository revision and contract, then run preflight."],
@@ -56,7 +57,7 @@ const messages = Object.freeze({
 
 const fields = new Set(["command", "input", "run", "boundary", "home", "sessionId", "contract", "contract.id", "contract.root", "contract.baseSha", "contract.endpoint", "contract.authorization", "contract.sources", "contract.tickets", "contract.criteria", "contract.capacity", "contract.taskKind", "contract.requiredCapabilities", "proposal", "proposal.toolName", "proposal.toolInput", "proposal.route", "proposal.readSet", "proposal.writeSet", "transition", "transition.to", "transition.reason", "transition.boundaryId", "outcome", "outcome.status", "outcome.reason", "outcome.boundaryId", "recovery.reason", "requiredCapabilities"]);
 const capabilities = new Set(["shell", "patch", "linear-read", "linear-write", "computer-use"]);
-for (const field of ["activation.sessionId", "contract.criteria.evidenceKind", "proposal.phase", "proposal.action", "proposal.objective", "proposal.requirementIds", "proposal.sourceIds", "proposal.dependsOn"]) fields.add(field);
+for (const field of ["activation.sessionId", "contract.criteria.evidenceKind", "proposal.phase", "proposal.action", "proposal.objective", "proposal.requirementIds", "proposal.sourceIds", "proposal.dependsOn", "recovery.attemptId"]) fields.add(field);
 
 /** @param {unknown} error @param {{operation:string}} context */
 export function safeGovernanceError(error, { operation }) {

@@ -49,12 +49,32 @@ observed Astra assessment that receives those exact current images and text.
 Successful tool invocation does not satisfy product criteria. Missing, stale or
 incomplete evidence cannot be imported as a passing result.
 
+The operational browser probe exposed a host image declared as PNG whose actual
+bytes were JPEG. Supported inline image signatures determine the persisted MIME
+and extension; a differing supported declaration is retained as provenance.
+The original output hash and image bytes remain unchanged. Unknown formats,
+external image URLs and oversized/invalid carriers remain rejected. Failed
+capture retains ownership and reports a bounded diagnostic without exposing
+arbitrary provider or exception text.
+
 Finished runs without unresolved ownership are historical, not active bindings.
 An observed session at the same canonical repository root may recover an
 unstarted run with zero attempts and leases. Recovery appends provenance and
 closes blocked; it does not impersonate the prior session, erase evidence or
 claim acceptance. Audit task kinds omit writing and integration but retain
 independent planning review, final review and criterion evidence.
+
+`recover-host-attempt` is a separate administrative recovery for a closed
+blocked/interrupted run. It requires an observed same-root operator and a
+non-process host attempt with an exact completed permit and matching recorded
+PostToolUse, reconciled empty managed paths, no writes/leases, no produced
+acceptance or observation and no other unresolved ownership. It appends recovery
+provenance and marks only that attempt failed. The blocked outcome, original
+owner, permits, events, plans and reviews remain historical. Empty managed paths
+do not prove an opaque browser call had no external effects. Recovery neither
+replays the call nor imports evidence; a successor run needs fresh current
+governance and actual observations. Existing process or unobserved ownership
+remains blocked. Repeated recovery cannot create another receipt.
 
 Tests and scenarios use isolated HOME. A maintenance operation uses ordinary
 host authorization and does not claim that the defective runtime certifies its

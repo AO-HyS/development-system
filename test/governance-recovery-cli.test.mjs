@@ -21,6 +21,9 @@ test("recovery help exposes usable complete transition and blocked-close inputs 
   }
   assert.equal(parseGovernanceArguments(["--help"]).command, "help");
   assert.equal((await runGovernance(["help", "begin", "--json"])).result.commands.begin.input.requiredCapabilities.includes("shell"), true);
+  const recovery = await runGovernance(["schema", "recover-host-attempt", "--json"]);
+  assert.equal(recovery.code, 0);
+  assert.deepEqual(Object.keys(recovery.result.commands['recover-host-attempt'].input).sort(), ['attemptId', 'reason']);
 });
 
 test("read-only recovery commands retain the exact control grammar without exempting execution", async (t) => {
@@ -34,6 +37,11 @@ test("read-only recovery commands retain the exact control grammar without exemp
   }
   assert.equal(await isGovernanceControlCommand(`node '${cli}' execute --home '${home}' --input-json '{}'`, { home }), false);
   assert.throws(() => parseGovernanceArguments(["recover", "--input-json", '{"reason":"obsolete intake"}']));
+  assert.throws(() => parseGovernanceArguments(["recover-host-attempt", "--input-json", '{"attemptId":"capture","reason":"completed failed capture"}']));
+  const recovery = `node '${cli}' recover-host-attempt --home '${home}' --run failed-run --input-json '{"attemptId":"capture","reason":"completed failed capture"}' --json`;
+  assert.equal(await isGovernanceControlCommand(recovery, { home }), true);
+  assert.equal(await isGovernanceControlCommand(`${recovery}; true`, { home }), false);
+  assert.throws(() => parseGovernanceArguments(['recover-host-attempt', '--run', 'failed-run', '--input-json', '{}', '--force']));
 });
 
 test("safe errors retain actionable known causes but never echo provider text or unknown fields", () => {

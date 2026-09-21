@@ -196,6 +196,17 @@ is available only from an observed session at the same root, with zero previous
 attempts and leases. It records both identities and closes blocked without
 rewriting the old owner or erasing receipts. Existing ownership needs its normal
 termination and recovery flow.
+
+For a historical closed blocked/interrupted run whose ordinary host capture
+failed after a recorded exact PostToolUse, inspect status and use
+`recover-host-attempt --run ID --input-json '{"attemptId":"capture-attempt","reason":"Close completed failed capture; capture fresh evidence in a successor"}' --json`.
+This command requires a currently observed operator at the same root, completed
+invocation provenance, reconciled empty managed paths, no process/writes/leases,
+no produced observation or acceptance, and no other unresolved ownership. It
+marks only the selected attempt failed and appends a recovery receipt, retaining
+the run's blocked outcome and original history. It does not replay a browser
+action, import an image, or make old evidence current. Opaque browser effects
+remain distinct from managed file ownership. Use a fresh run for new acceptance.
 Accepted requires current criterion evidence for every ticket, independent
 plan and final review, no gating findings or live/recovery ownership, a passing
 closure judgment and the authorized endpoint. The Stop hook requests bounded

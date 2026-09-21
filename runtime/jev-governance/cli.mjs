@@ -5,13 +5,13 @@ import { open } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRun, classifyBoundary, prepareAction, advancePhase, closeRun, getRun, resolveRunDirectory, preflightRun, recoverUnstartedRun, safeAttemptDiagnostic } from "./core.mjs";
+import { createRun, classifyBoundary, prepareAction, advancePhase, closeRun, getRun, resolveRunDirectory, preflightRun, recoverUnstartedRun, recoverHostAttempt, safeAttemptDiagnostic } from "./core.mjs";
 import { readSessionObservation } from "./store.mjs";
 import { launchGovernedProcess } from "./executor.mjs";
 import { GovernanceError, safeGovernanceError } from "./errors.mjs";
 import { REFERENCE_COMMANDS, commandReference, formatReference } from "./command-reference.mjs";
 
-export const GOVERNANCE_COMMANDS = Object.freeze(["begin", "preflight", "classify", "prepare", "status", "advance", "close", "recover", ...REFERENCE_COMMANDS]);
+export const GOVERNANCE_COMMANDS = Object.freeze(["begin", "preflight", "classify", "prepare", "status", "advance", "close", "recover", "recover-host-attempt", ...REFERENCE_COMMANDS]);
 export const EXECUTION_COMMAND = "execute";
 const safeId = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/u;
 export class GovernanceInputError extends GovernanceError {
@@ -48,7 +48,7 @@ export function parseGovernanceArguments(argv) {
   if (command !== "status" && !reference && Boolean(options["--input"]) === Boolean(options["--input-json"])) invalid("Exactly one of --input or --input-json is required.", "invalid_argument", "input");
   if (options["--input-json"] && Buffer.byteLength(options["--input-json"]) > 1024 * 1024) invalid("Inline input exceeds 1 MiB.");
   if (command === "prepare" && !options["--boundary"]) invalid("--boundary is required.");
-  if (command === "recover" && !options["--run"]) invalid("Recovery requires an explicit run.", "invalid_argument", "run");
+  if (["recover", "recover-host-attempt"].includes(command) && !options["--run"]) invalid("Recovery requires an explicit run.", "invalid_argument", "run");
   return { command, options, json, topic };
 }
 
@@ -103,6 +103,11 @@ export async function runGovernance(argv) {
       if (command === "recover") {
         if (Object.keys(input).some((key) => key !== "reason") || typeof input.reason !== "string" || !input.reason.trim()) invalid("Recovery requires only a reason.", "invalid", "recovery.reason");
         result = await recoverUnstartedRun({ home, runId: options["--run"], sessionId, reason: input.reason });
+      } else if (command === "recover-host-attempt") {
+        if (Object.keys(input).some((key) => !["attemptId", "reason"].includes(key))) invalid("Host recovery accepts only attemptId and reason.", "invalid", "input");
+        if (typeof input.attemptId !== "string" || !safeId.test(input.attemptId)) invalid("Host recovery requires a safe attempt identifier.", "invalid", "recovery.attemptId");
+        if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.length > 2048) invalid("Host recovery requires a bounded reason.", "invalid", "recovery.reason");
+        result = await recoverHostAttempt({ home, runId: options["--run"], sessionId, attemptId: input.attemptId, reason: input.reason });
       } else if (command === "begin" || command === "preflight") {
         if (options["--run"] && options["--run"] !== input.id) invalid("--run must match the contract id.");
         result = command === "begin" ? await createRun({ home, contract: input, activation }) : await preflightRun({ home, contract: input, activation });
@@ -117,19 +122,19 @@ export async function runGovernance(argv) {
         else result = await launchGovernedProcess({ home, runDirectory, sessionId, launch: input, inputPath: options["--input"] });
       }
     }
-    if (["begin", "advance", "close", "status", "recover"].includes(command) && result?.runId) {
+    if (["begin", "advance", "close", "status", "recover", "recover-host-attempt"].includes(command) && result?.runId) {
       result = { runId: result.runId, root: result.root, rootSessionId: result.rootSessionId, coordinator: result.coordinator,
         endpoint: result.endpoint, phase: result.phase, outcome: result.outcome, revision: result.revision, capacity: result.capacity,
         criteria: result.criteria, tickets: result.tickets, leases: result.leases,
-        attempts: result.attempts.slice(-20).map((/** @type {any} */ attempt) => ({ id: attempt.id, role: attempt.role, actorId: attempt.actorId, status: attempt.status, acceptanceId: attempt.acceptanceId ?? null, failure: safeAttemptDiagnostic(attempt)?.message ?? null, failureDiagnostic: safeAttemptDiagnostic(attempt),
+        attempts: result.attempts.slice(-20).map((/** @type {any} */ attempt) => ({ id: attempt.id, role: attempt.role, actorId: attempt.actorId, status: attempt.status, acceptanceId: attempt.acceptanceId ?? null, ...(attempt.recoveryReceiptId ? { recoveryReceiptId: attempt.recoveryReceiptId } : {}), failure: safeAttemptDiagnostic(attempt)?.message ?? null, failureDiagnostic: safeAttemptDiagnostic(attempt),
           ...(attempt.process ? { process: { sessionId: attempt.sessionId ?? null, provider: attempt.observed?.provider ?? "unknown", model: attempt.observed?.model ?? "unknown", reasoning: attempt.observed?.reasoning ?? null, exitCode: attempt.process.exitCode, terminated: attempt.process.terminated } } : {}) })),
         boundaries: result.boundaries.filter((/** @type {any} */ boundary) => boundary.phase === result.phase).slice(-20).map((/** @type {any} */ boundary) => ({ id: boundary.id, action: boundary.action, verdict: boundary.verdict, judgmentId: boundary.judgmentId })),
         plans: result.plans.map((/** @type {any} */ plan) => ({ id: plan.id, actorId: plan.actorId, summary: plan.summary, criterionIds: plan.criterionIds, invalidated: plan.invalidated === true })),
         reviews: result.reviews.map((/** @type {any} */ review) => ({ id: review.id, kind: review.kind, verdict: review.verdict, invalidated: review.invalidated === true })),
         evidence: result.evidence.map((/** @type {any} */ evidence) => ({ id: evidence.id, criterionId: evidence.criterionId, outcome: evidence.outcome, invalidated: evidence.invalidated === true })),
         observations: (result.observations ?? []).map((/** @type {any} */ observation) => ({ id: observation.id, criterionIds: observation.criterionIds, candidateHash: observation.candidateHash, manifestHash: observation.manifestHash, result: observation.result, source: observation.source,
-          artifacts: (observation.artifacts ?? []).map((/** @type {any} */ artifact) => ({ type: artifact.type, mimeType: artifact.mimeType, sha256: artifact.sha256, size: artifact.size })) })),
-        recoveryReceipts: (result.recoveryReceipts ?? []).map((/** @type {any} */ receipt) => ({ id: receipt.id, originalSessionId: receipt.originalSessionId, operatorSessionId: receipt.operatorSessionId, at: receipt.at })),
+          artifacts: (observation.artifacts ?? []).map((/** @type {any} */ artifact) => ({ type: artifact.type, mimeType: artifact.mimeType, ...(artifact.declaredMimeType ? { declaredMimeType: artifact.declaredMimeType } : {}), sha256: artifact.sha256, size: artifact.size })) })),
+        recoveryReceipts: (result.recoveryReceipts ?? []).map((/** @type {any} */ receipt) => ({ id: receipt.id, originalSessionId: receipt.originalSessionId, operatorSessionId: receipt.operatorSessionId, ...(receipt.attemptId ? { attemptId: receipt.attemptId, boundaryId: receipt.boundaryId, permitId: receipt.permitId, previousStatus: receipt.previousStatus, status: receipt.status } : {}), at: receipt.at })),
         unresolvedFindings: result.findings.filter((/** @type {any} */ finding) => !finding.resolved) };
     }
     const receipt = { ok: true, operation: command, ...result };

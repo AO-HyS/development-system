@@ -1007,7 +1007,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.26.0/skills/internal/coding-orchestration",
           "destination": ".codex/skills/coding-orchestration",
-          "folderSha256": "6cd838ce97ac61a2f71387abb4da4406b8c8da7a032a9f28164f85d6cbcfbb2d",
+          "folderSha256": "029371dcd805c0b02b44e3475978b525c8675f9ea100d79e6d53d05c92255538",
           "expectedMirrorOf": null,
           "adapterContract": "authorized-initiative-orchestration-v2"
         },
@@ -1016,7 +1016,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.26.0/skills/internal/coding-orchestration",
           "destination": ".agents/skills/coding-orchestration",
-          "folderSha256": "6cd838ce97ac61a2f71387abb4da4406b8c8da7a032a9f28164f85d6cbcfbb2d",
+          "folderSha256": "029371dcd805c0b02b44e3475978b525c8675f9ea100d79e6d53d05c92255538",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "adapterContract": "authorized-initiative-orchestration-v2"
         }
