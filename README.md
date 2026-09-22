@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-## Release 1.26.0 / catalog 0.46.0
+## Release 1.27.0 / catalog 0.46.0
 
 Sol coordinates the complete feature from its spec and all linked tickets.
 Fast researchers collect source facts; Astra XHigh authors the plan and a
@@ -14,8 +14,14 @@ limited to operationally verified surfaces; unsupported tools and identity gaps
 remain explicit. Installation does not establish runtime influence. The former
 advisory CLI is compatible and the experimental controller remains disabled.
 
-See [the release decision](docs/adr/0047-whole-flow-jev-governance.md),
-[validation and supported surfaces](docs/releases/1.26.0-validation.md),
+An optional `hostRoot` preserves the authentic conversation directory while
+`root` identifies a registered integration worktree of the same repository.
+Candidate identity, HEAD, ownership and path scope remain enforced; writers
+still use a third workspace. See [the worktree decision](docs/adr/0050-separate-host-and-integration-roots.md).
+
+See [the governance decision](docs/adr/0047-whole-flow-jev-governance.md),
+[current validation](docs/releases/1.27.0-validation.md),
+[supported host surfaces](docs/releases/1.26.0-validation.md),
 [the execution recipe](artifacts/1.26.0/skills/internal/coding-orchestration/references/jev-governance.md)
 and [the spec/ticket contract](artifacts/1.26.0/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
 
@@ -85,7 +91,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.26.0/aohys-development-system-1.26.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.27.0/aohys-development-system-1.27.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -116,7 +122,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.26.0
+./bin/development-system setup --version 1.27.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
 ./bin/development-system audit-skills --version 0.46.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"

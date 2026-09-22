@@ -45,9 +45,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "92427dbb2545e3b1aa791b1c0cc358fc116712c2f732d27f72c45238287467f9",
-      "reason": "Parent reviewed the four current package/manifest version pins changed to 1.26.1. Catalog0.46.0, immutable1.26.0 intake skills and reviewer artifact, hashes, model and visual assertions remain unchanged.",
-      "issue": "User-authorized orphan governance lock repair 1.26.1",
+      "sha256": "9bf3114ffd0cf9613ae21f272c2578a3cf686dad19e59c17f91dd506e9f0a5aa",
+      "reason": "Parent and independent Astra reviewed exactly four current version pins changed from 1.26.1 to 1.27.0. Catalog, immutable historical sources, hashes and visual reviewer assertions unchanged.",
+      "issue": "User-authorized separate host and integration roots 1.27.0",
       "reviewedContent": true
     },
     {
@@ -139,6 +139,13 @@
       "sha256": "bb3c4e8d50861a7b6cbdab34e9aec3eb712de669fa8fdd0c9d899f4ed879181d",
       "reason": "Parent and independent Astra reviewer reviewed exact 19 regression tests: real process death, actual concurrent exclusion, conservative legacy ownership, resumable interrupted archival, replacement protection, and real isolated hook ingress preserving run bytes and leases. Execution flags and exact errors prevent false passes; archive assertions require original orphan bytes and completed receipt. Independent review also verified the installed hook executes the validated Node despite incompatible PATH node.",
       "issue": "User-authorized orphan governance lock repair 1.26.1",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-integration-root.test.mjs",
+      "sha256": "7e6b4d3042998d7c34ab1e882e0b53a8841e09745932645046e53d7c7d79af5a",
+      "reason": "Parent and independent Astra reviewed exact content: real divergent Git worktree lifecycle preserves dirty host bytes; explicit hook ingress, protected paths, moves, identity drift, actual raw process exit and termination, concurrent root ownership, storage failure, administrative recovery and legacy compatibility fail closed. Synthetic classifier/provider metadata is explicitly distinguished from real processes and files. No operational host certification claimed.",
+      "issue": "User-authorized separate host and integration roots 1.27.0",
       "reviewedContent": true
     }
   ]

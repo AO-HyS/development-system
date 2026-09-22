@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.0",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.26.1",
+  "decision": "docs/adr/0050-separate-host-and-integration-roots.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}
