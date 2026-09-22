@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "allowedChanges": [
     {
+      "path": "test/governance-codex-permissions.test.mjs",
+      "sha256": "f00342864471b420e0ea46f61edef298b3c1d4fdf947a5952496fa9831778ceb",
+      "reason": "Parent reviewed exact staged content: rejects missing, managed or incompatible requirements and unsafe observed permission metadata; actual isolated subprocess RPC verifies initialize ordering, response validation, no private errors, timeout and confirmed PID termination. Synthetic provider responses are not live host certification.",
+      "issue": "User-authorized explicit Astra writer permission corrections 1.27.3",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-astra-writer.test.mjs",
+      "sha256": "e9ee2d9b0b3cafc404986ac4dcb50ce74833c5637c7ce49acbd97995dcb9e150",
+      "reason": "Parent reviewed the exact staged content: explicit profile acceptance and wrong-profile rejection, mandatory writer restrictions, duplicate and conflicting command options, prompt data isolation, and read-only reviewer compatibility. Existing assertions unchanged; no operational enforcement inferred from fixtures.",
+      "issue": "User-authorized explicit Astra writer maintenance 1.27.3",
+      "reviewedContent": true
+    },
+    {
       "path": "test/orchestration.test.mjs",
       "sha256": "916488f7ec2da37ebe2cb84fa6ffd721658a9e661b82c9c146dd1bce6aeecbdc",
       "reason": "Parent and workflow_runtime independently reviewed exact classifier test content: strict malformed-answer validation retained, escaped credentials redacted, exact request hash preserved, diagnostic mutation isolated and hard-failure precedence asserted. Existing timeout and malformed-response cases strengthened; no validator or success assertion weakened.",
@@ -143,9 +157,9 @@
     },
     {
       "path": "test/governance-integration-root.test.mjs",
-      "sha256": "7e6b4d3042998d7c34ab1e882e0b53a8841e09745932645046e53d7c7d79af5a",
-      "reason": "Parent and independent Astra reviewed exact content: real divergent Git worktree lifecycle preserves dirty host bytes; explicit hook ingress, protected paths, moves, identity drift, actual raw process exit and termination, concurrent root ownership, storage failure, administrative recovery and legacy compatibility fail closed. Synthetic classifier/provider metadata is explicitly distinguished from real processes and files. No operational host certification claimed.",
-      "issue": "User-authorized separate host and integration roots 1.27.0",
+      "sha256": "fd14081905105cf388bba54b76f8d4ce6c8bc92f07dd6a55f05161020e81ffd2",
+      "reason": "Parent reviewed exact additive draft: preserves every existing split-root and legacy assertion; adds public executor Astra modes for accepted owned delta, rejected outside-scope delta, mismatched and missing actual identity, real PID termination, separate permitted integration and unchanged dirty host. Malformed binding leaves durable state unchanged and cannot spawn. Synthetic provider identities do not claim operational sandbox evidence.",
+      "issue": "User-authorized explicit Astra writer maintenance 1.27.3",
       "reviewedContent": true
     }
   ]

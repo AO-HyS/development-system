@@ -1,5 +1,14 @@
 # AOHYS Development System
 
+## Local maintenance candidate 1.27.3
+
+This checkout adds explicitly selected Astra XHigh writing and research while
+retaining catalog 0.46.1 and existing default routes. Codex writers use a separate
+candidate workspace, restrictive permissions, a managed-policy preflight and the
+same observed identity, scope reconciliation and independent review requirements.
+See [the decision](docs/adr/0052-explicit-astra-writer.md). This is a local candidate;
+the published installation URL below remains the last published release.
+
 ## Release 1.27.1 / catalog 0.46.1
 
 Sol coordinates the complete feature from its spec and all linked tickets.
