@@ -45,9 +45,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "76b9d08f4892d6af4330289c133f1dad0bde80a478d7ad6b95a3dd16a2b5dffa",
-      "reason": "Parent reviewed current release pins 1.26.0/catalog0.46.0. Historical visual skills remain1.22.1, current governed intake sources and explicit artifact hashes validated; no visual quality assertion removed.",
-      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "sha256": "92427dbb2545e3b1aa791b1c0cc358fc116712c2f732d27f72c45238287467f9",
+      "reason": "Parent reviewed the four current package/manifest version pins changed to 1.26.1. Catalog0.46.0, immutable1.26.0 intake skills and reviewer artifact, hashes, model and visual assertions remain unchanged.",
+      "issue": "User-authorized orphan governance lock repair 1.26.1",
       "reviewedContent": true
     },
     {
@@ -132,6 +132,13 @@
       "sha256": "ff4ad2bfdae4a75fb6353dc27e3f2491b4d2c2f2ad0207e699a21b750255522c",
       "reason": "Parent and independent Astra final_review reviewed exact bytes. Retains review-context and rejected-finding integrity assertions; adds actual launcher argument-builder regressions for variadic image parsing, negative reproduction without the prompt separator, exact single/multiple image paths and order, and zero-image research/review options and schema. Parser fixtures do not claim host certification; a separate installed CLI probe verified the same actual JPEG reaches an observed evaluator.",
       "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-lock-recovery.test.mjs",
+      "sha256": "bb3c4e8d50861a7b6cbdab34e9aec3eb712de669fa8fdd0c9d899f4ed879181d",
+      "reason": "Parent and independent Astra reviewer reviewed exact 19 regression tests: real process death, actual concurrent exclusion, conservative legacy ownership, resumable interrupted archival, replacement protection, and real isolated hook ingress preserving run bytes and leases. Execution flags and exact errors prevent false passes; archive assertions require original orphan bytes and completed receipt. Independent review also verified the installed hook executes the validated Node despite incompatible PATH node.",
+      "issue": "User-authorized orphan governance lock repair 1.26.1",
       "reviewedContent": true
     }
   ]

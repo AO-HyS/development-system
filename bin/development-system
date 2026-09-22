@@ -35,4 +35,9 @@ if [ "$node_major" -lt 22 ]; then
   exit 127
 fi
 
+if ! "$node_runtime" --input-type=module -e 'import { DatabaseSync } from "node:sqlite"; const db = new DatabaseSync(":memory:"); db.exec("BEGIN IMMEDIATE; ROLLBACK;"); db.close();' >/dev/null 2>&1; then
+  echo "Development System preflight: working node:sqlite support is required (Node.js 22.13+ on 22.x, or 23.4+)." >&2
+  exit 127
+fi
+
 exec "$node_runtime" "$script_directory/development-system.mjs" "$@"
