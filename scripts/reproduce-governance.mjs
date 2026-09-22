@@ -1,10 +1,10 @@
 // @ts-check
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const home = await mkdtemp(resolve(tmpdir(), "aohys-governance-setup-"));
@@ -42,12 +42,12 @@ step(["setup", "--version", "1.24.0", "--source-commit", sourceCommit]);
 // A malformed operator configuration must abort the upgrade and restore its
 // previous contract; setup cannot silently replace the operator's file.
 await writeFile(hooks, "{ deliberately malformed operator hooks\n");
-step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit], 1);
+step(["setup", "--version", "1.26.1", "--source-commit", sourceCommit], 1);
 assert.equal(step(["audit"]).contractVersion, "1.24.0");
 assert.equal(await readFile(hooks, "utf8"), "{ deliberately malformed operator hooks\n");
 await writeFile(hooks, priorHooks);
 
-const setup = step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit]);
+const setup = step(["setup", "--version", "1.26.1", "--source-commit", sourceCommit]);
 assert.equal(setup.governance.ok, true);
 assert.equal(setup.governance.operationalEnforcement, "not-established-by-installation");
 assert.equal(step(["governance-hooks-audit"]).ok, true);
@@ -57,14 +57,39 @@ const engine = resolve(home, ".codex/development-system/governance-runtime/hook-
 await writeFile(engine, "// deliberately drifted isolated engine\n");
 assert.equal(step(["audit"]).status, "drifted");
 step(["validate"], 1);
-step(["setup", "--version", "1.26.0", "--source-commit", sourceCommit]);
+step(["setup", "--version", "1.26.1", "--source-commit", sourceCommit]);
 assert.equal(step(["validate"]).status, "healthy");
 assert.equal(await readFile(hooks, "utf8"), installedHooks);
+// Exercise the installed artifact, not just the source module. A killed owner
+// must not wedge a later operation in this isolated HOME.
+const storeUrl = pathToFileURL(resolve(home, ".codex/development-system/governance-runtime/store.mjs")).href;
+const owner = spawn(process.execPath, ["--input-type=module", "-e", `
+  import { withHomeLock } from ${JSON.stringify(storeUrl)};
+  await withHomeLock(${JSON.stringify(home)}, async () => {
+    process.send({ held: true });
+    await new Promise(resolve => setTimeout(resolve, 30000));
+  });
+`], { stdio: ["ignore", "ignore", "inherit", "ipc"] });
+const stopped = new Promise(resolve => owner.once("close", (code, signal) => resolve({ code, signal })));
+try {
+  await new Promise((resolveReady, reject) => {
+    owner.once("message", resolveReady);
+    owner.once("error", reject);
+    owner.once("exit", () => reject(new Error("Installed lock owner exited before acquisition")));
+  });
+  owner.kill("SIGKILL");
+  assert.equal((await stopped).signal, "SIGKILL");
+  const installedStore = await import(storeUrl);
+  assert.equal(await installedStore.withHomeLock(home, async () => "recovered"), "recovered");
+} finally {
+  if (owner.exitCode === null && owner.signalCode === null) owner.kill("SIGKILL");
+  await stopped;
+}
 assert.equal(step(["rollback"]).toVersion, "1.24.0");
 assert.equal(await readFile(hooks, "utf8"), priorHooks);
 step(["sync-skills", "--version", "0.44.0", "--source-commit", sourceCommit]);
 assert.equal(step(["validate"]).status, "healthy");
 assert.equal(await readFile(unrelated, "utf8"), "preserve user work\n");
 console.log(JSON.stringify({ ok: true, operation: "governance-installation-scenario", home,
-  checks: ["upgrade", "failed-upgrade-restoration", "unrelated-hooks", "drift", "failed-validation", "reinstall", "contract-and-hooks-rollback", "prior-catalog", "unrelated-files"],
+  checks: ["upgrade", "failed-upgrade-restoration", "unrelated-hooks", "drift", "failed-validation", "reinstall", "installed-owner-crash-recovery", "contract-and-hooks-rollback", "prior-catalog", "unrelated-files"],
   operationalEnforcement: "not-established-by-installation" }));

@@ -2,6 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve, relative, sep } from "node:path";
+import { assertLockRuntimeAvailable } from "./runtime-requirements.mjs";
 
 const marker = "AOHYS_JEV_GOVERNANCE=1";
 const events = ["PreToolUse", "PostToolUse", "SessionStart", "SubagentStart", "SubagentStop", "Stop", "Interrupt"];
@@ -42,7 +43,7 @@ async function atomic(path, contents) {
 /** @param {string} home */
 function definitions(home) {
   const { engine } = paths(home);
-  const command = `${marker} node ${quote(engine)} --home ${quote(resolve(home))}`;
+  const command = `${marker} ${quote(process.execPath)} ${quote(engine)} --home ${quote(resolve(home))}`;
   return Object.fromEntries(events.map((event) => [event, {
     ...(["PreToolUse", "PostToolUse"].includes(event) ? { matcher: ".*" } : {}),
     hooks: [{ type: "command", command, timeout: event === "Interrupt" ? 3 : 15, statusMessage: "Checking Jev governance" }],
@@ -84,6 +85,7 @@ export async function auditGovernanceHooks({ home }) {
 
 /** @param {{home:string}} options */
 export async function enableGovernanceHooks({ home }) {
+  await assertLockRuntimeAvailable();
   home = resolve(home);
   const files = paths(home);
   for (const path of Object.values(files)) await regularPath(home, path);

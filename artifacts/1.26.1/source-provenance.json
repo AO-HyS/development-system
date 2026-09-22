@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.26.1",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.26.0",
+  "decision": "docs/adr/0049-process-owned-governance-locks.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}

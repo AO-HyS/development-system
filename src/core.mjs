@@ -579,6 +579,8 @@ async function rollbackTarget(home, state) {
  * @param {{home: string, version: string, sourceCommit?: string}} options
  */
 export async function installVersion(options) {
+  const { assertLockRuntimeAvailable } = await import("./runtime-requirements.mjs");
+  await assertLockRuntimeAvailable();
   const home = resolve(options.home);
   await mkdir(home, { recursive: true });
   const manifest = await loadVersionManifest(options.version);
