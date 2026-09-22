@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-## Release 1.27.0 / catalog 0.46.0
+## Release 1.27.1 / catalog 0.46.1
 
 Sol coordinates the complete feature from its spec and all linked tickets.
 Fast researchers collect source facts; Astra XHigh authors the plan and a
@@ -19,11 +19,18 @@ An optional `hostRoot` preserves the authentic conversation directory while
 Candidate identity, HEAD, ownership and path scope remain enforced; writers
 still use a third workspace. See [the worktree decision](docs/adr/0050-separate-host-and-integration-roots.md).
 
+Jev requests now retain complete artifacts once and resolve typed references,
+including dependencies on approved boundaries. The envelope allows 96 KiB;
+complete sources and cumulative changed context retain separate 64 KiB limits.
+Read-only status exposes ordered plan packets without private transcript paths.
+See [the packing decision](docs/adr/0051-lossless-jev-request-packing.md).
+Actual provider verification after installation remains pending.
+
 See [the governance decision](docs/adr/0047-whole-flow-jev-governance.md),
-[current validation](docs/releases/1.27.0-validation.md),
+[current validation](docs/releases/1.27.1-validation.md),
 [supported host surfaces](docs/releases/1.26.0-validation.md),
-[the execution recipe](artifacts/1.26.0/skills/internal/coding-orchestration/references/jev-governance.md)
-and [the spec/ticket contract](artifacts/1.26.0/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
+[the execution recipe](artifacts/1.27.1/skills/internal/coding-orchestration/references/jev-governance.md)
+and [the spec/ticket contract](artifacts/1.27.1/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -91,7 +98,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.27.0/aohys-development-system-1.27.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.27.1/aohys-development-system-1.27.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -122,10 +129,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.27.0
+./bin/development-system setup --version 1.27.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.46.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.46.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

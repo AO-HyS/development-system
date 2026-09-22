@@ -45,9 +45,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "9bf3114ffd0cf9613ae21f272c2578a3cf686dad19e59c17f91dd506e9f0a5aa",
-      "reason": "Parent and independent Astra reviewed exactly four current version pins changed from 1.26.1 to 1.27.0. Catalog, immutable historical sources, hashes and visual reviewer assertions unchanged.",
-      "issue": "User-authorized separate host and integration roots 1.27.0",
+      "sha256": "0bb2b5831c609278fe41fa9353da54528fbde4f185eb6b5c9788ec4394c3d7a9",
+      "reason": "Parent and independent Astra reviewed exactly six current release/catalog pin substitutions for 1.27.1 and 0.46.1. Immutable historical sources, hashes and all visual reviewer assertions remain unchanged.",
+      "issue": "User-authorized 1.27.1 lossless Jev request packing release",
       "reviewedContent": true
     },
     {
@@ -94,9 +94,9 @@
     },
     {
       "path": "test/governance-runtime-jev.test.mjs",
-      "sha256": "d4fb45d5c704ac98cc8f0b9e79beec3c9a827b3fb9ba1c2bdbf1da465d940d4d",
-      "reason": "Parent reviewed exact unavailable-provider result extension with code and actual transportAttempted=true. Existing malformed, source overflow and complete changed-hunk assertions remain.",
-      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "sha256": "a954d4752bf6ac59e865c84dcb462636ab6ab658f02ccf52d3431a7cd25c4b4e",
+      "reason": "Parent and independent Astra reviewer reviewed exact bytes: complete artifact history and uniquely bound references, fail-closed malformed projections before transport, UTF-8 envelope 98304/+1, independent source/changed-context limits 65536, and criteria 200/201. Existing provider and changed-hunk assertions retained; simulated transport is not operational evidence.",
+      "issue": "User-authorized 1.27.1 lossless Jev request packing and plan visibility repair",
       "reviewedContent": true
     },
     {
@@ -108,9 +108,9 @@
     },
     {
       "path": "test/governance-recovery-cli.test.mjs",
-      "sha256": "b2b3c7ed92cc37b81b90a3f47408e97e1ad4ac10bbeeb9d7152b931990dfe001",
-      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes: retained schema diagnostics, safe redaction and bounded transport; added recover-host-attempt schema, explicit run requirement, exact hook control availability and rejection of composed/unknown arguments. Isolated HOME; no host certification claimed.",
-      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "sha256": "afceb720c13a2999b6dcfae064d3d813a83348fa36f042ce160f7d9e72f46af2",
+      "reason": "Parent and independent Astra reviewer reviewed exact bytes: status preserves complete ordered plan packets and explicit producer fields, excludes transcriptPath, and leaves run/registry bytes and revision unchanged. Existing diagnostics and recovery assertions retained. Isolated HOME; no host certification claimed.",
+      "issue": "User-authorized 1.27.1 lossless Jev request packing and plan visibility repair",
       "reviewedContent": true
     },
     {
@@ -122,9 +122,9 @@
     },
     {
       "path": "test/governance-recovery-core.test.mjs",
-      "sha256": "144b501f4073bd7b72142ef55badceca475867215dd3b914f212beda888ba65c",
-      "reason": "Parent and independent fresh Astra plan_review reviewed exact bytes after correcting two fixture gaps: consistent historical run/invocation policy and nonempty prior history. Regressions preserve mismatched-MIME bytes and original hash without acceptance, retain safe failure ownership, exercise explicit CLI recovery preserving four terminated role attempts, one plan and two reviews, reject ambiguous provenance/ownership without mutation, and require a fresh empty successor. Existing acceptance tests remain; identity and signature fixtures explicitly do not claim actual host image acceptance.",
-      "issue": "User-authorized 1.26.0 operational recovery and NutriPlan production unblock",
+      "sha256": "119b57e8226e330cff1139c7b0b6612692b86ed08c8ca33f333528ccd26008cf",
+      "reason": "Parent and independent Astra reviewer reviewed exact bytes: plan-return resolves full canonical artifact references without weakened existing producer/freshness assertions; public lifecycle preserves approved boundary dependencies and rejects eight missing, duplicate, denied or inconsistent binding cases before transport. Existing recovery and acceptance regressions retained; synthetic provider metadata is not operational proof.",
+      "issue": "User-authorized 1.27.1 lossless Jev request packing and plan visibility repair",
       "reviewedContent": true
     },
     {

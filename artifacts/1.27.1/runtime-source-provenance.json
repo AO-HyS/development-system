@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.1",
+  "activeMode": "parent-owned-governance",
+  "sources": [
+    {
+      "sourcePath": "runtime/jev-governance/adapters.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/adapters.mjs",
+      "destination": ".codex/development-system/governance-runtime/adapters.mjs",
+      "sha256": "2ccd86b161e9c60410cfc737632897638e30ca4fc8468398b86238f624c45b29"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/cli.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/cli.mjs",
+      "destination": ".codex/development-system/governance-runtime/cli.mjs",
+      "sha256": "133608fffc9fa2e02f23596ac30b7aa0d606c52da95fa27f2779983c3cc6d36d"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/command-reference.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/command-reference.mjs",
+      "destination": ".codex/development-system/governance-runtime/command-reference.mjs",
+      "sha256": "2cb8af1ae1e5fdcffbaf0e844a4f7701d7a7a420badc9fd0866fc0ff9f83d3f5"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/core.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/core.mjs",
+      "destination": ".codex/development-system/governance-runtime/core.mjs",
+      "sha256": "4fa864f832ccb9f8283db2b05e906383e2a35f722d27bfad7b323cd9357eda3c"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/errors.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/errors.mjs",
+      "destination": ".codex/development-system/governance-runtime/errors.mjs",
+      "sha256": "469bc7cc4da72d959c55bb63c06758d5f470226067995e0995455cf569c2e43a"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/executor.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/executor.mjs",
+      "destination": ".codex/development-system/governance-runtime/executor.mjs",
+      "sha256": "293a4484c965510d8d26a921679117ac1cf5f43fc0403af75b756653d81229e9"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook-launcher.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/hook-launcher.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook-launcher.mjs",
+      "sha256": "207a481460bdc036f292445b2ba0a3d2c7369e72b7b913dc4f47643da0e83472"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/hook.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook.mjs",
+      "sha256": "4a20d5b19c9fda30502db125264431130e229f5468ed7557229003de782611d4"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/jev.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/jev.mjs",
+      "destination": ".codex/development-system/governance-runtime/jev.mjs",
+      "sha256": "97cb23242f354f4d3ed8a0735b0d4e31fc2a94ef4306b3475178c928530eab9f"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/opencode.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/opencode.mjs",
+      "destination": ".codex/development-system/governance-runtime/opencode.mjs",
+      "sha256": "bd50cd076b0ea025fd05504ce1c147f07c14221579a1bf396e6dcdb2e706359e"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/policy.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/policy.mjs",
+      "destination": ".codex/development-system/governance-runtime/policy.mjs",
+      "sha256": "c22ec50e3d54c5e1af46b877f1bc6800e43c3f3d9b4188eb28f665dc2511383a"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/schemas.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/schemas.mjs",
+      "destination": ".codex/development-system/governance-runtime/schemas.mjs",
+      "sha256": "be85aa96a08642e9867a04e026f7ef7d16e1f2dbe495fd014e2fea9ee30b8889"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/store.mjs",
+      "artifactPath": "artifacts/1.27.1/governance-runtime/store.mjs",
+      "destination": ".codex/development-system/governance-runtime/store.mjs",
+      "sha256": "6a1728d3cc5319d6ba55b794287ca0a4a22d6fde6821e58cd50715045131a0df"
+    }
+  ],
+  "operationalEvidence": "Focused regressions use isolated HOME and simulated provider identities; actual provider verification after installation remains required."
+}

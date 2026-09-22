@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.1",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.27.0",
+  "decision": "docs/adr/0051-lossless-jev-request-packing.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}

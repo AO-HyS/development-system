@@ -65,6 +65,17 @@ test("invalid CLI arguments return a structured failure and leave diagnostics re
   assert.equal((await runGovernance(["examples", "close", "--json"])).code, 0);
 });
 
+test("status documents complete retained plan packets and rejects mutation input", async () => {
+  const schema = await runGovernance(["schema", "status", "--json"]);
+  assert.equal(schema.code, 0);
+  assert.equal(schema.result.commands.status.input, null);
+  assert.match(schema.result.commands.status.notes.join(" "), /id, readSet, writeSet, dependsOn/);
+  assert.match(schema.result.commands.status.notes.join(" "), /attemptId, boundaryId, candidateHash and source/);
+  assert.match(schema.result.commands.status.notes.join(" "), /never updates retained state/);
+  const result = await runGovernance(["status", "--run", "closed-run", "--input-json", '{"phase":"plan"}', "--json"]);
+  assert.equal(result.code, 1); assert.equal(result.result.error.code, "invalid_argument");
+});
+
 test("real incomplete transition and close schemas identify the missing reason", () => {
   for (const [validate, input, field] of [
     [validateTransition, { to: "research", boundaryId: "current" }, "transition.reason"],

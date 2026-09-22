@@ -413,7 +413,13 @@ test('plan returns expose the actual dependency-bound artifact and reject wrong,
   let request;
   const result = await classifyBoundary({ runDirectory: f.runDirectory, proposal, env, transport: async value => { request = JSON.parse(value.body); return transport(value); } });
   assert.equal(result.verdict, 'pass');
-  const dependency = request.state.completed.requiredDependencies[0], artifact = request.state.completed.returnedArtifacts[0];
+  assert.deepEqual(request.state.completed.requiredDependencyIds, [planner]);
+  const dependency = request.state.completed.dependencies.find(item => item.id === planner);
+  const reference = request.state.completed.returnedArtifactRefs[0];
+  const artifact = request.state.completed.plans.find(item => item.id === reference.id && item.kind === reference.kind);
+  assert.equal(request.state.completed.returnedArtifactRefs.length, 1);
+  assert.equal(Object.hasOwn(request.state.completed, 'returnedArtifacts'), false);
+  assert.equal(Object.hasOwn(request.state.completed, 'requiredDependencies'), false);
   assert.equal(dependency.role, 'planner'); assert.equal(dependency.acceptanceId, artifact.id);
   assert.equal(artifact.attemptId, planner); assert.equal(artifact.role, 'planner'); assert.equal(artifact.source, 'process-output'); assert.equal(artifact.current, true);
   assert.equal(artifact.actorId, dependency.actorId); assert.equal(artifact.sessionId, dependency.sessionId); assert.equal(artifact.boundaryId, dependency.boundaryId);
@@ -438,6 +444,80 @@ test('plan returns expose the actual dependency-bound artifact and reject wrong,
     const changed = await getRun({ runDirectory: f.runDirectory }); changed.plans[0].summary = 'Different plan after request'; await saveRun(f.runDirectory, changed);
     return transport(value);
   } }), error => error.code === 'stale');
+});
+
+test('approved control boundaries remain usable dependencies while unresolved or stale judgment bindings stop before transport', async t => {
+  const f = await fixture(t); await f.begin();
+  const prerequisite = await f.classified('intake-review', 'coordinator');
+  const original = await getRun({ runDirectory: f.runDirectory });
+  const boundary = original.boundaries.find(entry => entry.id === prerequisite.id);
+  const judgment = original.judgments.find(entry => entry.id === boundary.judgmentId);
+  const proposal = await f.proposal('intake-review', 'coordinator', { dependsOn: [prerequisite.id] });
+  let calls = 0;
+  for (const [label, mutate] of [
+    ['missing-boundary', run => { run.boundaries = []; }],
+    ['ambiguous-boundary', run => { run.boundaries.push(structuredClone(boundary)); }],
+    ['missing-judgment', run => { run.judgments = []; }],
+    ['ambiguous-judgment', run => { run.judgments.push(structuredClone(judgment)); }],
+    ['unapproved-judgment', run => { run.judgments[0].verdict = 'insufficient'; }],
+    ['wrong-boundary-binding', run => { run.judgments[0].boundaryId = 'other-boundary'; }],
+    ['wrong-run-binding', run => { run.judgments[0].runId = 'other-run'; }],
+    ['stale-input-binding', run => { run.judgments[0].inputHash = '0'.repeat(64); }],
+  ]) {
+    const candidate = structuredClone(original); mutate(candidate); await saveRun(f.runDirectory, candidate);
+    const rejected = await classifyBoundary({ runDirectory: f.runDirectory, proposal: { ...proposal, id: label }, env, transport: async () => { calls++; throw Error('Unresolved boundary reached transport'); } });
+    assert.equal(rejected.verdict, 'insufficient', label);
+    assert.equal(rejected.code, 'context_unavailable', label); assert.equal(rejected.transportAttempted, false, label);
+  }
+  assert.equal(calls, 0);
+  await saveRun(f.runDirectory, original);
+  let request;
+  const approved = await classifyBoundary({ runDirectory: f.runDirectory, proposal, env, transport: async value => { request = JSON.parse(value.body); return transport(value); } });
+  assert.equal(approved.verdict, 'pass');
+  assert.deepEqual(request.state.completed.requiredDependencyIds, [prerequisite.id]);
+  assert.deepEqual(request.state.completed.dependencies, [{ id: prerequisite.id, kind: 'boundary', boundary, judgment }]);
+  assert.deepEqual(request.state.completed.returnedArtifactRefs, []);
+  const advanced = await advancePhase({ runDirectory: f.runDirectory, transition: { to: 'research', reason: 'Approved exact boundary dependency retained', boundaryId: proposal.id } });
+  assert.equal(advanced.phase, 'research');
+  assert.deepEqual(advanced.boundaries.find(entry => entry.id === prerequisite.id), boundary);
+  assert.deepEqual(advanced.judgments.find(entry => entry.id === judgment.id), judgment);
+});
+
+test('historical status exposes complete ordered plan packets and producer references without mutating closed blocked state', async t => {
+  const f = await fixture(t); await f.begin();
+  const intake = await f.classified('intake-review', 'coordinator');
+  await advancePhase({ runDirectory: f.runDirectory, transition: { to: 'research', reason: 'Start exact fixture research', boundaryId: intake.id } });
+  const research = await f.processOutput('research-dispatch', 'researcher', 'C1 requires exact candidate.txt inspection and a subsequent independent review.');
+  const returned = await f.classified('research-return', 'coordinator', { dependsOn: [research] });
+  await advancePhase({ runDirectory: f.runDirectory, transition: { to: 'plan', reason: 'Research retained', boundaryId: returned.id } });
+  const packets = [
+    { id: 'inspect', readSet: ['spec.md', 'candidate.txt'], writeSet: [], dependsOn: [] },
+    { id: 'review', readSet: ['candidate.txt'], writeSet: ['review-notes.md'], dependsOn: ['inspect'] },
+  ];
+  const planner = await f.processOutput('plan-author', 'planner', { kind: 'plan', summary: 'Inspect C1 and independently review all recorded evidence. COMPLETE PLAN TAIL', criterionIds: ['C1'], packets });
+  await closeRun({ runDirectory: f.runDirectory, outcome: { status: 'blocked', reason: 'Independent review remains pending', boundaryId: 'retained-status-fixture' } });
+  const before = await getRun({ runDirectory: f.runDirectory });
+  const runPath = join(f.runDirectory, 'run.json'), registryPath = join(f.home, '.development-system/governance/registry.json');
+  const runBytes = await readFile(runPath), registryBytes = await readFile(registryPath);
+  const receipt = await runGovernance(['status', '--home', f.home, '--run', f.contract.id, '--json']);
+  assert.equal(receipt.code, 0, receipt.output);
+  const status = JSON.parse(receipt.output), storedPlan = before.plans[0];
+  assert.deepEqual(Object.keys(status.coordinator).sort(), ['actorId', 'model', 'provider', 'reasoning', 'role', 'sessionId']);
+  assert.equal(status.phase, 'closed'); assert.equal(status.outcome.status, 'blocked');
+  assert.equal(status.revision, before.revision); assert.equal(status.plans.length, 1);
+  assert.equal(status.plans[0].attemptId, planner);
+  assert.deepEqual(status.plans[0], {
+    id: storedPlan.id, actorId: storedPlan.actorId, attemptId: storedPlan.attemptId, boundaryId: storedPlan.boundaryId,
+    candidateHash: storedPlan.candidateHash, source: storedPlan.source, summary: storedPlan.summary,
+    criterionIds: ['C1'], invalidated: false, packets,
+  });
+  for (const packet of status.plans[0].packets) assert.deepEqual(Object.keys(packet).sort(), ['dependsOn', 'id', 'readSet', 'writeSet']);
+  assert.equal(storedPlan.command.executable.endsWith('fixture-provider'), true, 'the retained artifact contains private process details');
+  assert.equal(receipt.output.includes(storedPlan.command.executable), false);
+  assert.equal(receipt.output.includes(f.sessionEvent.transcriptPath), false);
+  assert.deepEqual(await readFile(runPath), runBytes);
+  assert.deepEqual(await readFile(registryPath), registryBytes);
+  assert.deepEqual(await getRun({ runDirectory: f.runDirectory }), before);
 });
 
 test('malformed review preserves exact rejected findings and safe field diagnostics; correction context separates terminated failure from acceptance', async t => {
