@@ -30,7 +30,7 @@
     "measure:test": "node --test test/measure-development-run-current.test.mjs",
     "smoke:repositories": "node ./scripts/smoke-repository-audits.mjs",
     "scenario": "node ./scripts/reproduce-installation.mjs && node ./scripts/reproduce-skills.mjs && node ./scripts/reproduce-lifecycle.mjs && node ./scripts/reproduce-repository-preparation.mjs && node --test test/development-system-next-scenario.test.mjs test/harness-scenario.test.mjs test/benchmark-scenario.test.mjs test/delivery-preview.test.mjs && node ./scripts/reproduce-governance.mjs",
-    "test": "node --test --test-concurrency=4 test/*.test.mjs",
+    "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "test:acceptance": "node --test test/installation-scenario.test.mjs test/lifecycle-scenario.test.mjs",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "validate:global": "python3 ./scripts/validate-development-system.py --repos-root ..",

@@ -289,7 +289,7 @@ test("current evidence stays provisional and resolution stays receipt-required w
   assert.equal(result.authority.dispatchAuthorized, false);
 });
 
-test("current fast-execution requests advisory Flash High through OpenCode and requires a receipt", () => {
+test("current fast-execution requests advisory Luna High through Codex and requires a receipt", () => {
   const result = resolveModelRoute({
     roster: agentRoster,
     capability: "mechanical-execution",
@@ -297,23 +297,23 @@ test("current fast-execution requests advisory Flash High through OpenCode and r
   });
   assert.equal(result.valid, true);
   assert.equal(result.selected.id, "advisory-fast-execution");
-  assert.equal(result.selected.harness, "opencode");
-  assert.equal(result.selected.requestedModel, "opencode-go/deepseek-v4.1-flash");
+  assert.equal(result.selected.harness, "codex");
+  assert.equal(result.selected.requestedModel, "gpt-6-luna");
   assert.equal(result.selected.reasoning, "high");
   assert.equal(result.selected.resolvedModel, null);
   assert.equal(result.selected.resolvedModelStatus, "receipt-required");
-  assert.equal(result.selected.serviceTier, null);
+  assert.deepEqual(result.selected.serviceTier, { tier: "priority", label: "fast", status: "runtime-required" });
   assert.deepEqual(result.selected.invocation, {
-    command: "opencode",
+    command: "codex",
     args: [
-      "run",
-      "--pure",
+      "exec",
+      "--strict-config",
       "--model",
-      "opencode-go/deepseek-v4.1-flash",
-      "--variant",
-      "high",
-      "--format",
-      "json",
+      "gpt-6-luna",
+      "--config",
+      'model_reasoning_effort="high"',
+      "--config",
+      'service_tier="priority"',
     ],
   });
   assert.equal(result.authority.dispatchAuthorized, false);
@@ -332,7 +332,9 @@ test("resolveModelRoute accepts installed aliases for the matching capability sl
 
 test("unsupported harnesses fail closed instead of routing to Codex", () => {
   const malformed = structuredClone(agentRoster);
-  malformed.routes[1].candidates[0].harness = "magiccli";
+  const fastRoute = malformed.routes.find((route) => route.capability === "mechanical-execution" && route.routeSlot === "fast-execution");
+  assert.ok(fastRoute, "current mechanical fast route must exist");
+  fastRoute.candidates[0].harness = "magiccli";
   const result = resolveModelRoute({ roster: malformed, capability: "mechanical-execution", routeSlot: "fast-execution" });
   assert.equal(result.valid, false);
   assert.equal(result.blocked, true);

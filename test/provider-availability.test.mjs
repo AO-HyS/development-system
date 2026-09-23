@@ -7,7 +7,7 @@ import { readProviderFailures, recordProviderFailure } from "../src/provider-ava
 import { resolveModelRoute } from "../src/model-routing.mjs";
 import { agentRoster } from "../src/agent-roster.mjs";
 
-test("a host quota failure blocks the sole Flash candidate without fallback until its expiry", async () => {
+test("a host quota failure blocks the sole Luna candidate without fallback until its expiry", async () => {
   const home = await mkdtemp(resolve(tmpdir(), "ds-provider-"));
   const now = Date.parse("2026-09-04T22:00:00Z");
   const observation = { candidateId: "advisory-fast-execution", reason: "quota-exhausted", observedAt: new Date(now).toISOString(), expiresAt: new Date(now + 60000).toISOString(), evidenceRef: "private/provider-response.json" };
@@ -24,9 +24,10 @@ test("a host quota failure blocks the sole Flash candidate without fallback unti
     ]);
     const restored = route(await readProviderFailures(home, now + 60000));
     assert.equal(restored.valid, true);
-    assert.equal(restored.selected.model, "opencode-go/deepseek-v4.1-flash");
-    assert.equal(restored.selected.harness, "opencode");
+    assert.equal(restored.selected.model, "gpt-6-luna");
+    assert.equal(restored.selected.harness, "codex");
     assert.equal(restored.selected.reasoning, "high");
+    assert.deepEqual(restored.selected.serviceTier, { tier: "priority", label: "fast", status: "runtime-required" });
     assert.equal(restored.selected.resolvedModel, null);
     const before = await readFile(resolve(home, ".development-system/private/runtime/provider-availability.json"), "utf8");
     await assert.rejects(recordProviderFailure({ home, observation: { ...observation, reason: "maybe unavailable" }, now }), /Unsupported/);

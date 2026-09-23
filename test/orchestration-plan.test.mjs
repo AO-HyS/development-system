@@ -63,12 +63,12 @@ test("trivial mechanical work stays single-lane but uses the fast route", () => 
   assert.equal(result.valid, true);
   assert.equal(result.mode, "direct");
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer"]);
-  assert.equal(result.lanes[0].model.requested, "opencode-go/deepseek-v4.1-flash");
+  assert.equal(result.lanes[0].model.requested, "gpt-6-luna");
   assert.equal(result.lanes[0].model.resolved, null);
   assert.equal(result.lanes[0].modelRoute.routeSlot, "fast-execution");
-  assert.equal(result.lanes[0].modelRoute.chain[0].model, "opencode-go/deepseek-v4.1-flash");
+  assert.equal(result.lanes[0].modelRoute.chain[0].model, "gpt-6-luna");
   assert.equal(result.lanes[0].modelRoute.chain[0].reasoning, "high");
-  assert.equal(result.lanes[0].modelRoute.chain[0].harness, "opencode");
+  assert.equal(result.lanes[0].modelRoute.chain[0].harness, "codex");
   assert.equal(result.lanes[0].modelRoute.chain.length, 1);
   assert.deepEqual(result.lanes[0].expectedOutputs, baseContract.expectedOutputs);
   assert.deepEqual(result.lanes[0].authorizationBoundaries, baseContract.authorizationBoundaries);
@@ -82,10 +82,10 @@ test("explicit structured review follows the fast chain then protected correctio
   assert.equal(result.mode, "sequential");
   assert.deepEqual(result.lanes.map((lane) => lane.id), ["writer", "review-test-value", "correction", "review-objective-verification"]);
   assert.deepEqual(result.lanes.map((lane) => lane.role), ["fast_implementer", "reviewer", "fast_implementer", "reviewer"]);
-  assert.equal(result.lanes[0].model.requested, "opencode-go/deepseek-v4.1-flash");
+  assert.equal(result.lanes[0].model.requested, "gpt-6-luna");
   assert.equal(result.lanes[0].model.resolved, null);
   assert.deepEqual(result.lanes[0].modelRoute.chain.map(({ model, reasoning, harness }) => ({ model, reasoning, harness })), [
-    { model: "opencode-go/deepseek-v4.1-flash", reasoning: "high", harness: "opencode" },
+    { model: "gpt-6-luna", reasoning: "high", harness: "codex" },
   ]);
   assert.equal(result.lanes[0].modelRoute.subordinate, true);
   assert.equal(result.lanes[0].modelRoute.runtimeRouting, true);
@@ -344,9 +344,9 @@ test("authorized graphs cannot escape task scope or choose their own writer rout
   });
   assert.equal(routed.valid, true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.role === "fast_implementer"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/deepseek-v4.1-flash"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
-  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain.length === 1 && lane.agent.modelRoute.chain[0].model === "opencode-go/deepseek-v4.1-flash" && lane.agent.modelRoute.chain[0].reasoning === "high"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "gpt-6-luna"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.harness === "codex"), true);
+  assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.modelRoute.chain.length === 1 && lane.agent.modelRoute.chain[0].model === "gpt-6-luna" && lane.agent.modelRoute.chain[0].reasoning === "high" && lane.agent.modelRoute.chain[0].serviceTier?.tier === "priority"), true);
   assert.equal(routed.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 
   const specialistProtected = planOrchestration({
@@ -878,8 +878,8 @@ test("parallel writers advertise the current first fast-route candidate model an
     },
   });
   assert.equal(result.valid, true, result.errors?.join("; "));
-  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.harness === "opencode"), true);
-  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "opencode-go/deepseek-v4.1-flash"), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.harness === "codex"), true);
+  assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.requestedModel === "gpt-6-luna"), true);
   assert.equal(result.parallelWork.lanes.every((lane) => lane.agent.resolvedModel === null), true);
 });
 
