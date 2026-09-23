@@ -12,7 +12,7 @@ async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "jev-advisory-release-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const atom = { id: "candidate", objective: "Review shared appointment ownership", readSet: ["src/appointments"], writeSet: ["src/appointments/editor.ts"], dependsOn: [], acceptanceIds: ["preserve-owner"] };
-  const context = { runId: "synthetic-run", baseSha: "a".repeat(40), rootModel: "gpt-5.6-sol", phase: "implementation", verifiedAtomIds: [] };
+  const context = { runId: "synthetic-run", baseSha: "a".repeat(40), rootModel: "gpt-6-sol", phase: "implementation", verifiedAtomIds: [] };
   const atomFile = join(root, "atom.json"), contextFile = join(root, "run.json"), activeFile = join(root, "active.json");
   await writeFile(atomFile, JSON.stringify(atom));
   await writeFile(contextFile, JSON.stringify(context));
@@ -31,7 +31,7 @@ function fakeCredential(t) {
 function responseFor(request) {
   const routes = Object.keys(request.questions.route.criteria);
   const answers = Object.fromEntries(Object.keys(request.questions).filter((key) => key !== "route").map((key) => [key, { type: "noul", noul: key === "semantic_overlap" ? 0.9 : 0.1 }]));
-  answers.route = { type: "choice", choice: "deepseek_exact", confidence: 1, probabilities: Object.fromEntries(routes.map((route) => [route, route === "deepseek_exact" ? 1 : 0])) };
+  answers.route = { type: "choice", choice: "exact_implementation", confidence: 1, probabilities: Object.fromEntries(routes.map((route) => [route, route === "exact_implementation" ? 1 : 0])) };
   return new Response(JSON.stringify({ model: "jev-1.13.0", answers, usage: { input_tokens: 10, output_tokens: 5 } }));
 }
 
@@ -53,11 +53,96 @@ test("classification forwards active write ownership and binds its receipt to th
   assert.equal(result.semanticOverlap, 0.9);
   assert.equal(result.stateHash, createHash("sha256").update(JSON.stringify(requests[0].state)).digest("hex"));
   assert.equal(result.actionable, false);
+  assert.equal(result.classificationStatus, "succeeded");
+  assert.equal(result.policyVersion, "1.3.0");
+  assert.equal(result.proposedRoute, "exact_implementation");
+  assert.deepEqual(Object.keys(requests[0].questions.route.criteria).sort(), ["astra_xhigh_decision", "blocked_dependency", "browser_executor", "exact_implementation", "general_implementation", "read_only_mapper", "root_direct", "specialist_review"].sort());
   assert.equal(result.appliedRoute, null);
   assert.equal(JSON.parse(await readFile(receiptFile, "utf8")).stateHash, result.stateHash);
 
   await run(f.args);
   assert.deepEqual(requests[1].state.activeAtoms, []);
+});
+
+test("active advisory status reports requested GPT-6 profiles and unknown actual identity", async (t) => {
+  const f = await fixture(t);
+  const { result } = await run(["advisory-status", "--home", f.root, "--json"]);
+  assert.equal(result.version, "1.29.0");
+  assert.equal(result.policyVersion, "1.3.0");
+  assert.deepEqual(result.modelProfile.newSessionDefault, { model: "gpt-6-sol", effort: "high", tier: "default", identity: "requested" });
+  assert.equal(result.modelProfile.exactImplementation.model, "gpt-6-luna");
+  assert.equal(result.modelProfile.generalImplementation.model, "gpt-6-sol");
+  assert.equal(result.modelProfile.actualModel, null);
+  assert.equal(result.automaticExecution, false);
+});
+
+test("stale policy receipt is rejected and a current failed classification permits explicit parent continuation", async (t) => {
+  const f = await fixture(t);
+  fakeCredential(t);
+  t.mock.method(globalThis, "fetch", async (_url, options) => responseFor(JSON.parse(options.body)));
+  const receiptFile = join(f.root, "success.json");
+  const { result: success } = await run([...f.args, "--receipt", receiptFile]);
+  const staleFile = join(f.root, "stale.json");
+  await writeFile(staleFile, JSON.stringify({ ...success, policyVersion: "1.2.0-candidate.3" }));
+  const decisionArgs = ["record-route-decision", "--atom", f.atomFile, "--run-context", f.contextFile, "--home", f.root, "--chosen-route", "general_implementation", "--rationale", "Parent selects general implementation after inspecting context", "--json"];
+  await assert.rejects(run([...decisionArgs, "--route-receipt", staleFile]), /current advisory receipt/);
+
+  t.mock.restoreAll();
+  t.mock.method(globalThis, "fetch", async () => { throw new Error("private provider detail"); });
+  const failedFile = join(f.root, "failed.json");
+  await assert.rejects(run([...f.args, "--receipt", failedFile]), /classification failed/i);
+  const failed = JSON.parse(await readFile(failedFile, "utf8"));
+  assert.equal(failed.classificationStatus, "failed");
+  assert.equal(failed.failureCode, "provider_failure");
+  assert.equal(failed.proposedRoute, null);
+  assert.equal(failed.judgments, null);
+  assert.equal(JSON.stringify(failed).includes("private provider detail"), false);
+  const { result: decision } = await run([...decisionArgs, "--route-receipt", failedFile]);
+  assert.equal(decision.classificationStatus, "failed");
+  assert.equal(decision.classificationFailureCode, "provider_failure");
+  assert.equal(decision.proposedRoute, null);
+  assert.equal(decision.chosenRoute, "general_implementation");
+  assert.equal(decision.authorizationGranted, false);
+  assert.equal(decision.executionObserved, false);
+});
+
+test("classification failures create bound sanitized receipts for missing credential and malformed provider response", async (t) => {
+  const f = await fixture(t);
+  const previous = process.env.TYPESAFE_API_KEY;
+  delete process.env.TYPESAFE_API_KEY;
+  t.after(() => { if (previous === undefined) delete process.env.TYPESAFE_API_KEY; else process.env.TYPESAFE_API_KEY = previous; });
+  const missingFile = join(f.root, "missing-key.json");
+  await assert.rejects(run([...f.args, "--receipt", missingFile]), /TYPESAFE_API_KEY/);
+  const missing = JSON.parse(await readFile(missingFile, "utf8"));
+  assert.equal(missing.failureCode, "credential_missing");
+  assert.equal(missing.runId, f.context.runId);
+  assert.equal(missing.atomId, f.atom.id);
+  assert.equal(missing.policyVersion, "1.3.0");
+  process.env.TYPESAFE_API_KEY = "synthetic-advisory-test-credential";
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ invalid: "secret provider payload" })));
+  const malformedFile = join(f.root, "malformed.json");
+  await assert.rejects(run([...f.args, "--receipt", malformedFile]), /invalid route answer/);
+  const malformed = JSON.parse(await readFile(malformedFile, "utf8"));
+  assert.equal(malformed.failureCode, "malformed_response");
+  assert.equal(JSON.stringify(malformed).includes("secret provider payload"), false);
+  assert.equal(malformed.packetHash, missing.packetHash);
+  assert.equal(malformed.runContextHash, missing.runContextHash);
+});
+
+test("provider timeout creates a failed receipt and does not dispatch or retry", async (t) => {
+  const f = await fixture(t);
+  fakeCredential(t);
+  let requests = 0;
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    requests += 1;
+    return new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+  });
+  const receiptFile = join(f.root, "timeout.json");
+  await assert.rejects(run([...f.args, "--receipt", receiptFile]), /Jev request timed out/);
+  const receipt = JSON.parse(await readFile(receiptFile, "utf8"));
+  assert.equal(receipt.failureCode, "timeout");
+  assert.equal(receipt.actionable, false);
+  assert.equal(requests, 1);
 });
 
 test("invalid active ownership fails before provider access or receipt creation", async (t) => {

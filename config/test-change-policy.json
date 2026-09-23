@@ -87,9 +87,9 @@
     },
     {
       "path": "test/jev-advisory-release.test.mjs",
-      "sha256": "12000c46a58734182b37578818c1de30116650bd8bdcd9ad36f87de3790cc96f",
-      "reason": "Parent reviewed exact test diff: current profile assertions updated to Sol High, Flash High, native Astra XHigh and no fallback; historical snapshots and acceptance gates preserved. New adviser regression intercepts active write sets, rejects malformed ownership before provider access and verifies direct legacy controller refusal without side effects.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "sha256": "90920a184a17b8f42a6a7dd465c65ef26a3020747e151cf9f56d1fa44a1ba01c",
+      "reason": "Parent reviewed current route/state binding, stale receipt rejection, sanitized timeout/provider/credential failures and nonauthorizing parent continuation; original assertions retained.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
       "reviewedContent": true
     },
     {
@@ -108,9 +108,9 @@
     },
     {
       "path": "test/governance-installation.test.mjs",
-      "sha256": "1f8a442a75ebbe17e9c6236d1a3521b2f348b76c649c54f3b0546a5d7528a2b1",
-      "reason": "Parent authored and reviewed five behavioral regressions: preserve unrelated hooks, idempotency, exact rollback, failed contract rollback recovery, missing engine, concurrent operator change refusal, and symlink boundary. No existing acceptance assertion removed.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "173c829da92b72a7a0202c5ffeab9b8d18f869b5001a7858130bdef909f49ac2",
+      "reason": "Parent reviewed owned-handler migration, exact rollback, empty groups, malformed stale recovery history, drift and symlink refusal; original assertions retained.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
       "reviewedContent": true
     },
     {
@@ -164,9 +164,9 @@
     },
     {
       "path": "test/governance-lock-recovery.test.mjs",
-      "sha256": "bb3c4e8d50861a7b6cbdab34e9aec3eb712de669fa8fdd0c9d899f4ed879181d",
-      "reason": "Parent and independent Astra reviewer reviewed exact 19 regression tests: real process death, actual concurrent exclusion, conservative legacy ownership, resumable interrupted archival, replacement protection, and real isolated hook ingress preserving run bytes and leases. Execution flags and exact errors prevent false passes; archive assertions require original orphan bytes and completed receipt. Independent review also verified the installed hook executes the validated Node despite incompatible PATH node.",
-      "issue": "User-authorized orphan governance lock repair 1.26.1",
+      "sha256": "b75695db4a9af3a6f21824e58b4023baf7168a70c64f5fb0696710e7c988c409",
+      "reason": "Parent reviewed valid legacy fixtures with schemaVersion, runId, root and session registry mapping required by registeredRuns. Original Stop behavior, session progress, retained history and leases assertions remain; runtime validation is unchanged.",
+      "issue": "User-authorized advisory restoration full verification 1.29.0",
       "reviewedContent": true
     },
     {
@@ -181,6 +181,27 @@
       "sha256": "757c2469038b949f3a9dd2dd71fd91fb65f125e1be36547296dc2bcb891bf799",
       "reason": "Parent and independent Astra reviewer approved exact regression content: concurrent passive hooks preserve registry bytes, real identity changes serialize without loss, checksum and schema failures reject, exact pwd remains required for shell capability. Isolated HOME only; no operational enforcement inferred.",
       "issue": "User-authorized urgent local governance contention repair 1.27.4",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/advisory-execution-mode.test.mjs",
+      "sha256": "9db7da3f8db03c33eff40c8a67ae0379947fc4bb79756c7750dc316d5c08825c",
+      "reason": "Parent reviewed explicit historical version compatibility and future declared mode independent of launcher presence.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/advisory-installation-transition.test.mjs",
+      "sha256": "5cf1ae086dbc34096172f5122e9d18a3b77fbcff4d59556177dbf52d4e71c5c2",
+      "reason": "Parent reviewed isolated real install/reinstall/rollback, historical hook preservation, failed skill-sync compensation and all-backup preflight before mutation. Parent accepted same-version repair retention after skill failure, tested nonzero exit and intact original rollback boundary.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/report-notebook.test.mjs",
+      "sha256": "0684f62cb5a0a811987e59e8401e3997683693f01a7ab05f9178cb35febd5234",
+      "reason": "Parent reviewed preserved user report candidate tests, new release imports, visible verdict and anchor behavior, CSP hashes, batch questions and refusal of unsafe requests. Independent review correction: encoded path separators are refused and question writes stay inside .questions.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
       "reviewedContent": true
     }
   ]

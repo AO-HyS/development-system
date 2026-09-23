@@ -66,6 +66,83 @@ function merge(config, home) {
   return { ...config, hooks };
 }
 
+/** Remove only marker-owned handlers. Preserve the original bytes when none exist.
+ * @param {any} config
+ */
+function withoutManaged(config) {
+  const hooks = { ...config.hooks };
+  let removed = 0;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) throw new Error(`Malformed hook list: ${event}`);
+    hooks[event] = groups.flatMap((/** @type {any} */ group) => {
+      if (!group || typeof group !== "object" || !Array.isArray(group.hooks)) throw new Error(`Malformed hook group: ${event}`);
+      const retained = group.hooks.filter((/** @type {any} */ hook) => !managed(hook));
+      const groupRemoved = group.hooks.length - retained.length;
+      removed += groupRemoved;
+      if (groupRemoved === 0) return [group];
+      return retained.length ? [{ ...group, hooks: retained }] : [];
+    });
+  }
+  return { config: { ...config, hooks }, removed };
+}
+
+/** @param {string} home */
+async function advisoryInstalled(home) {
+  const path = resolve(home, ".development-system/installed-manifest.json");
+  await regularPath(home, path);
+  const contents = await optional(path);
+  return contents !== null && JSON.parse(contents).executionMode === "advisory-parent-execution";
+}
+
+/** @param {{home:string}} options */
+export async function prepareAdvisoryHookTransition({ home }) {
+  home = resolve(home);
+  const files = paths(home);
+  for (const path of [files.hooks, files.state]) await regularPath(home, path);
+  const before = { hooks: await optional(files.hooks), state: await optional(files.state) };
+  const result = withoutManaged(parseConfig(before.hooks));
+  const after = result.removed > 0
+    ? { hooks: JSON.stringify(result.config, null, 2) + "\n", state: before.state }
+    : before;
+  return { before, after, changed: result.removed > 0, removed: result.removed };
+}
+
+/** @param {{home:string, before:{hooks:string|null,state:string|null}, after:{hooks:string|null,state:string|null}}} options */
+export async function applyAdvisoryHookTransition({ home, before, after }) {
+  home = resolve(home);
+  const files = paths(home);
+  for (const path of [files.hooks, files.state]) await regularPath(home, path);
+  if (await optional(files.hooks) !== before.hooks || await optional(files.state) !== before.state) {
+    throw new Error("Advisory transition refuses hooks changed after preflight");
+  }
+  if (before.hooks === after.hooks && before.state === after.state) return;
+  try {
+    if (before.hooks !== after.hooks) await atomic(files.hooks, after.hooks);
+    if (before.state !== after.state) await atomic(files.state, after.state);
+  } catch (error) {
+    const observed = { hooks: await optional(files.hooks), state: await optional(files.state) };
+    if ((observed.hooks !== after.hooks && observed.hooks !== before.hooks) ||
+      (observed.state !== after.state && observed.state !== before.state)) {
+      throw new Error("Advisory transition failed and hook files changed concurrently", { cause: error });
+    }
+    if (observed.hooks !== before.hooks) await atomic(files.hooks, before.hooks);
+    if (observed.state !== before.state) await atomic(files.state, before.state);
+    throw error;
+  }
+}
+
+/** @param {{home:string, expected:{hooks:string|null,state:string|null}, restore:{hooks:string|null,state:string|null}}} options */
+export async function restoreAdvisoryHookTransition({ home, expected, restore }) {
+  home = resolve(home);
+  const files = paths(home);
+  for (const path of [files.hooks, files.state]) await regularPath(home, path);
+  if (await optional(files.hooks) !== expected.hooks || await optional(files.state) !== expected.state) {
+    throw new Error("Advisory rollback refuses to overwrite hooks changed after installation");
+  }
+  if (expected.hooks !== restore.hooks) await atomic(files.hooks, restore.hooks);
+  if (expected.state !== restore.state) await atomic(files.state, restore.state);
+}
+
 /** Config audit is deliberately not a claim of trusted or executed hooks. @param {{home:string}} options */
 export async function auditGovernanceHooks({ home }) {
   home = resolve(home);
@@ -73,20 +150,26 @@ export async function auditGovernanceHooks({ home }) {
   const problems = [];
   try {
     for (const path of Object.values(files)) await regularPath(home, path);
-    if (!(await lstat(files.engine)).isFile()) problems.push("Governance launcher is not a regular file");
     const config = parseConfig(await optional(files.hooks));
-    for (const [event, expected] of Object.entries(definitions(home))) {
-      const groups = config.hooks?.[event];
-      if (!Array.isArray(groups) || groups.filter((group) => JSON.stringify(group) === JSON.stringify(expected)).length !== 1) problems.push(`Managed ${event} definition missing or drifted`);
+    if (await advisoryInstalled(home)) {
+      if (withoutManaged(config).removed > 0) problems.push("Advisory installation retains managed Jev hooks");
+    } else {
+      if (!(await lstat(files.engine)).isFile()) problems.push("Governance launcher is not a regular file");
+      for (const [event, expected] of Object.entries(definitions(home))) {
+        const groups = config.hooks?.[event];
+        if (!Array.isArray(groups) || groups.filter((group) => JSON.stringify(group) === JSON.stringify(expected)).length !== 1) problems.push(`Managed ${event} definition missing or drifted`);
+      }
     }
   } catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-  return { ok: problems.length === 0, operation: "governance-hooks-audit", status: problems.length ? "invalid" : "installed", trust: "host-verification-required", operationalEnforcement: "not-established-by-installation", paths: files, problems };
+  const advisory = await advisoryInstalled(home).catch(() => false);
+  return { ok: problems.length === 0, operation: "governance-hooks-audit", status: problems.length ? "invalid" : advisory ? "disabled" : "installed", trust: "host-verification-required", operationalEnforcement: "not-established-by-installation", paths: files, problems };
 }
 
 /** @param {{home:string}} options */
 export async function enableGovernanceHooks({ home }) {
   await assertLockRuntimeAvailable();
   home = resolve(home);
+  if (await advisoryInstalled(home)) throw new Error("Advisory mode does not allow governance-hooks-enable");
   const files = paths(home);
   for (const path of Object.values(files)) await regularPath(home, path);
   if (!(await lstat(files.engine)).isFile()) throw new Error("Install the governance runtime before its hooks");

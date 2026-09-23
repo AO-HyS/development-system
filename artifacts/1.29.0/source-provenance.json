@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.29.0",
+  "mode": "advisory-parent-execution",
+  "previousContract": "1.28.0",
+  "decision": "docs/adr/0055-advisory-execution-restoration.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "explicit-gpt6-derivative-of-1.24.0",
+  "reportSource": "fb6b5dd968281cd1a5c5563b940047102982a2fa"
+}

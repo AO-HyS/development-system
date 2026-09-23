@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "1.3.0",
+  "classifier": {
+    "provider": "typesafe-ai",
+    "model": "jev-1.13.0",
+    "mode": "advisory",
+    "credentialEnvironmentVariable": "TYPESAFE_API_KEY",
+    "maxRequestBytes": 32768,
+    "timeoutMs": 5000,
+    "thresholdStatus": "uncalibrated"
+  },
+  "routes": {
+    "exact_implementation": {
+      "adapter": "native",
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "tier": "priority"
+    },
+    "general_implementation": {
+      "adapter": "native",
+      "model": "gpt-6-sol",
+      "effort": "medium",
+      "tier": "default"
+    },
+    "astra_xhigh_decision": {
+      "adapter": "native",
+      "model": "gpt-6-astra",
+      "effort": "xhigh",
+      "role": "decision-plan-review"
+    },
+    "read_only_mapper": {
+      "adapter": "native",
+      "role": "code_mapper",
+      "model": "gpt-6-luna",
+      "effort": "high",
+      "tier": "priority"
+    },
+    "browser_executor": {
+      "adapter": "native",
+      "role": "computer_use_runner",
+      "requires": ["browser", "vision-or-computer-use"],
+      "availability": "verify-at-dispatch"
+    },
+    "specialist_review": {
+      "adapter": "native",
+      "role": "reviewer",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "root_direct": {
+      "adapter": "root"
+    },
+    "blocked_dependency": {
+      "adapter": "none"
+    }
+  }
+}
