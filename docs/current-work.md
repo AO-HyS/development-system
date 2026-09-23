@@ -22,7 +22,7 @@ lifecycle extensions, catalog 0.48.0 and the customized HTML reports. Published
 immutable versions are unchanged.
 
 Release 1.29.1 is published from 72d64aa1469d3e9b53a0c5ee2271468291705765;
-PR #104 merged. Its exact package is globally installed and pinned in all six
+PR #104 merged. Its exact package is globally installed and pinned in all seven
 product/benchmark consumers. Audit is healthy; Jev hooks are disabled. The
 advisory component remains the unchanged 1.29.0 recipe inside package 1.29.1.
 Full verify passed 887 tests under Node 22; scenario passed installation, drift,
@@ -43,8 +43,9 @@ unrelated global guards and customized report bytes remain unchanged.
 - Ten inactive canonical products are clean on local develop with 1.29.1
   metadata/adapters. Casa Roca, Eteria and Barber pin the published package;
   frozen installs and normal hooks passed. Product remotes were not changed.
-  The active three retain current branches and work; only managed DS guidance
-  changed. Private archives preserve 602 inactive-repo untracked files.
+  The active three retain current branches and work; only DS guidance and the
+  old AOHYS DS dependency/lock entry changed. Private archives preserve 602
+  inactive-repo untracked files.
 - Historical Barber and NutriPlan base worktrees still have live servers and
   are retained; they are separate from the three prepared trial worktrees.
 
