@@ -6,6 +6,14 @@ Current user instructions override skill guidelines. Preserve platform security
 requirements and repository protections. If guidance blocks authorized work,
 identify its exact file and instruction and explain why it applies.
 
+## Workspace and task continuity
+
+Follow [the branch-first workflow](docs/workflow/branch-first.md). Use the
+canonical checkout; new tasks start from updated `develop`, and resumed tasks
+keep their existing branch. Worktrees require an explicit request for that task,
+including experiments. Preserve pending work before switching branches. Read and
+update `docs/current-work.md` so a resumed session does not restart the work.
+
 ## Canonical-source rules
 
 - Treat `artifacts/` and `manifests/` as immutable published contract versions. Change behavior in a new semantic version rather than rewriting a published version.

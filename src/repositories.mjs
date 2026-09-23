@@ -783,14 +783,16 @@ require another grill. Use \`coding-orchestration\` or an already selected
 \`orchestrate-work\` method for useful delegation, integration and verification.
 A bounded worker executes its packet without restarting parent routing.
 
-For non-trivial implementation, recover every authorized ticket linked by the
-spec and activate the installed governed Jev recipe. New sessions default to Sol
-High; fast researchers gather facts, Astra XHigh authors the plan, and a
-different fresh Astra reviews it. Bounded exact writing uses Flash High. Jev
-checks each lifecycle boundary; deterministic permits enforce the observed
-route, current evidence, dependencies and ownership. Use only supported host
-adapters and report capability gaps. Backend and other nonvisual features follow
-the same criterion coverage and acceptance chain.
+For nontrivial implementation, follow the installed
+\`coding-orchestration/references/jev-advisory.md\` recipe. Keep the selected
+parent. New sessions request Sol 6 High; Luna 6 High priority gathers bounded
+facts, Astra 6 XHigh plans, and a different fresh Astra 6 XHigh reviews the
+plan. Sol 6 Medium writes general packets, Luna 6 High priority writes exact
+packets, and an independent Astra 6 XHigh reviews the integrated result. Jev
+advises at useful decisions; the parent dispatches through native host tools.
+No per-tool or Stop gate is active. Preserve observed model identity and report
+capability gaps. Backend and other nonvisual features need the same criterion
+coverage and acceptance chain.
 
 Explicit discovery or definition can use \`$wayfinder\`, \`$grill-with-docs\`,
 \`$working-backwards\`, \`$to-spec\` or \`$to-tickets\` when available. Ordinary work
@@ -818,7 +820,7 @@ policy and report missing behavioral evidence to the parent before widening it.
 Use the local construction recipes and existing components for screens, forms
 and authorized server operations. Simplification, review of test value,
 correction and objective verification are responsibilities. Tiny direct work
-stays with the parent; governed features retain their independent Astra plan
+stays with the parent; nontrivial features retain their independent Astra plan
 and final reviews. Select additional specialists by affected risk and preserve
 the parent's final judgment. Reject weakened assertions
 and unsupported green-check claims. File counts and style scores are not gates.
@@ -1106,24 +1108,31 @@ async function prepareRepository(options, mode) {
   if (options.confirm !== mode) throw new Error(`${mode}-repository requires --confirm ${mode}`);
   const repository = resolve(options.repository);
   for (const path of [...managedFiles, ...retiredManagedFiles]) await assertManagedPathSafe(repository, path);
+  /** @type {any} */
+  let existingContract;
+  try {
+    existingContract = JSON.parse(await readFile(resolve(repository, managedFiles[0]), "utf8"));
+  } catch (error) {
+    if (!isMissing(error) && !(error instanceof SyntaxError)) throw error;
+    if (error instanceof SyntaxError && mode === "initialize") throw new Error("Repository has an invalid managed contract; use normalize-repository");
+  }
   if (mode === "initialize") {
-    try {
-      const existing = JSON.parse(await readFile(resolve(repository, managedFiles[0]), "utf8"));
-      if (existing.contractVersion !== contractVersion || existing.preparation?.mode !== "initialize") {
-        throw new Error("Repository already has a different managed contract; use normalize-repository");
-      }
-    } catch (error) {
-      if (!isMissing(error) && !(error instanceof SyntaxError)) throw error;
-      if (error instanceof SyntaxError) {
-        throw new Error("Repository has an invalid managed contract; use normalize-repository");
-      }
+    if (existingContract && (existingContract.contractVersion !== contractVersion || existingContract.preparation?.mode !== "initialize")) {
+      throw new Error("Repository already has a different managed contract; use normalize-repository");
     }
   }
   const audit = await auditRepository({ repository });
+  const contract = repositoryContract(audit, mode);
+  // Product-specific extensions survive normalization; generated lifecycle policy wins.
+  if (existingContract?.lifecycle && typeof existingContract.lifecycle === "object" && !Array.isArray(existingContract.lifecycle)) {
+    for (const [key, value] of Object.entries(existingContract.lifecycle)) {
+      if (!(key in contract.lifecycle)) {
+        /** @type {Record<string, unknown>} */ (contract.lifecycle)[key] = value;
+      }
+    }
+  }
   const outputs = {
-    [managedFiles[0]]: repositoryContractContents(
-      repositoryContract(audit, mode),
-    ),
+    [managedFiles[0]]: repositoryContractContents(contract),
     [managedFiles[1]]: adapterContentsWithProviderReadiness(audit, "codex"),
   };
   /** @type {string[]} */

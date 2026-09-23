@@ -84,8 +84,8 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 25. As Alejandro, I want one writer by default, so that agents do not conflict over shared files.
 26. As Alejandro, I want parallel writers only on disjoint surfaces, so that concurrency has a real benefit and clear ownership.
 27. As Alejandro, I want the orchestrator to retain integration responsibility, so that delegated work still reaches one coherent result.
-28. As Alejandro, I want agents reused for the same ownership, so that context and cost are not repeatedly discarded.
-29. As Alejandro, I want worktrees used only when explicitly requested or benchmark-authorized, so that normal work remains simple.
+28. As Alejandro, I want agents reused for the same ownership but never shared between experiment variants or repositories, so that continuity does not contaminate comparisons.
+29. As Alejandro, I want worktrees used only when explicitly requested for that task, including benchmarks, so that normal work stays in the canonical repository on a task branch created from `develop`.
 30. As Alejandro, I want every change reviewed confrontationally, so that the reviewer tries to disprove correctness instead of endorsing the implementer.
 31. As Alejandro, I want review context isolated from implementation context, so that the reviewer is not anchored by the implementer's conclusions.
 32. As Alejandro, I want the Foul/adversarial-reviewer capability mapped per harness, so that independent review does not depend on one product-specific mechanism.
@@ -192,7 +192,7 @@ El primer rollout preparará NutriPlan, The Barber Central y AOHYS. Escuela 360 
 * It authorizes edits, tests, commits, push, PR and preview. It excludes merge, release and production.
 * It may incorporate newly discovered work only when that work blocks the terminal slice. Non-blocking findings become visible follow-ups.
 * Reversible controversial technical decisions continue and are recorded with rationale, alternatives and rollback. Economic activations, destructive/irreversible actions and extraordinary paid usage are hard stops.
-* Worktrees are opt-in. Benchmark fixtures may use explicitly authorized temporary worktrees.
+* Follow `docs/workflow/branch-first.md`: use the canonical checkout, start new task branches from updated `develop`, preserve pending work, and resume existing work. A worktree requires an explicit request for that task, including benchmark fixtures.
 
 ### Orchestration and agents
 
@@ -327,7 +327,7 @@ contract is [release-surface-classification.md](release-surface-classification.m
 * Applying Wayfinder automatically because an initiative is large.
 * Declaring a universal winning model before repeatable benchmarks.
 * Converting every code change into mandatory TDD or full browser QA.
-* Using worktrees outside explicit user requests or authorized benchmarks.
+* Creating worktrees or replacement clones without an explicit request for that task, including benchmarks.
 * Modifying non-priority repositories before their own audit/rollout phase.
 
 ## Further Notes
