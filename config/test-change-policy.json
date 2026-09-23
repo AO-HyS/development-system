@@ -161,6 +161,13 @@
       "reason": "Parent reviewed exact additive draft: preserves every existing split-root and legacy assertion; adds public executor Astra modes for accepted owned delta, rejected outside-scope delta, mismatched and missing actual identity, real PID termination, separate permitted integration and unchanged dirty host. Malformed binding leaves durable state unchanged and cannot spawn. Synthetic provider identities do not claim operational sandbox evidence.",
       "issue": "User-authorized explicit Astra writer maintenance 1.27.3",
       "reviewedContent": true
+    },
+    {
+      "path": "test/governance-passive-contention.test.mjs",
+      "sha256": "757c2469038b949f3a9dd2dd71fd91fb65f125e1be36547296dc2bcb891bf799",
+      "reason": "Parent and independent Astra reviewer approved exact regression content: concurrent passive hooks preserve registry bytes, real identity changes serialize without loss, checksum and schema failures reject, exact pwd remains required for shell capability. Isolated HOME only; no operational enforcement inferred.",
+      "issue": "User-authorized urgent local governance contention repair 1.27.4",
+      "reviewedContent": true
     }
   ]
 }
