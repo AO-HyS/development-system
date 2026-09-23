@@ -1,0 +1,132 @@
+{
+  "sourceCommit": "fb6b5dd968281cd1a5c5563b940047102982a2fa",
+  "sourceDirectory": "artifacts/1.28.0/skills/internal/working-backwards",
+  "importedDirectory": "artifacts/1.29.0/skills/internal/working-backwards",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "62495484915b0cc6d22918fe14a5c7cdc07743bf2cc3450aaec43c29765a4b9e",
+      "sourceSha256": "abf34ce5b99c9f1e352f94b6549ac782de20fa5444dd706f301f0a96f44eb4ad"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "sha256": "731705a4010374e2d2f81455fb3f0d05840f0301fa5079af5bd0c07f70886fb5"
+    },
+    {
+      "path": "assets/atkinson-hyperlegible-next-latin.woff2",
+      "sha256": "18b2a1a39a2fa298b0ba5390aca68462669826c90925656f1c1f6796e0e1bbaf"
+    },
+    {
+      "path": "assets/bricolage-grotesque-latin.woff2",
+      "sha256": "a756882d8a7802ebd4663b4544a62ebedafc7227c1c159ab95eea61393af3f8e"
+    },
+    {
+      "path": "assets/licenses/atkinson-OFL.txt",
+      "sha256": "474a034e99845062f661855caaa505880d0e9009deddc2727a92795eab374955"
+    },
+    {
+      "path": "assets/licenses/bricolage-OFL.txt",
+      "sha256": "923f4ddf0fd39f9b7794ab0df7332f3d95dc43e8ad7ec2289d6d9e8491177f51"
+    },
+    {
+      "path": "assets/licenses/mermaid-MIT.txt",
+      "sha256": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80"
+    },
+    {
+      "path": "assets/licenses/monaspace-OFL.txt",
+      "sha256": "b9dd377b71ceaf06d49a511a3c7e5c9b1561c31c750bf6e98b0ed4a16c2f8ad0"
+    },
+    {
+      "path": "assets/licenses/panzoom-MIT.txt",
+      "sha256": "db74524b3ab3853bcfc7300dade1f5e0176e59ed3c0cff43848a2c300091a22c"
+    },
+    {
+      "path": "assets/mermaid.min.js",
+      "sha256": "14fdd79d3b02a877a6b98bf9fa8bfc7bacd7d6de3dde49fb95319c45cc7b1a34"
+    },
+    {
+      "path": "assets/monaspace-neon-latin-400.woff2",
+      "sha256": "d90b15f2bab28d1ee0b11a3e45ab2b3b5f1d0ca898ae047ab40172d25730343c"
+    },
+    {
+      "path": "assets/monaspace-neon-latin-600.woff2",
+      "sha256": "8331226e8f74e9fb952b377e1290950eaa9bc265ef15f0b001f9ad1426520292"
+    },
+    {
+      "path": "assets/panzoom.min.js",
+      "sha256": "3ce354ef7b493efb62a4d4acaaf86fa2d6027eb629857a4e144041de1a112c1e"
+    },
+    {
+      "path": "assets/report-evidence.css",
+      "sha256": "9c061520599dec705dae2b13807048e315e5e9a7b232b5eeb66ed6e9221567b6"
+    },
+    {
+      "path": "assets/report-notebook.js",
+      "sha256": "ea99331b2937746db95f44f73b10fa83efb2bf41c96ee5889498e64d5ed1d7a6"
+    },
+    {
+      "path": "assets/report.css",
+      "sha256": "54480ba77db90bc60beb6597ba92370a1c75cd58fb1ccd36850ad4a8790f44d4"
+    },
+    {
+      "path": "assets/visual-document.css",
+      "sha256": "dc0c12e458239348748daddf1b19cfebcf8e7863538148f5a9bbc71efd4196e7"
+    },
+    {
+      "path": "examples/orchestrator-audit-goals.json",
+      "sha256": "eb045413613fba4685f3458f4b089f19b0b18f69ec2dc69c9a2b6154edcaa923"
+    },
+    {
+      "path": "report-reference.md",
+      "sha256": "12fbed3e61735cf9ee538be5ba126899865bd792cda0b2a5ec6249adb92ff9e1"
+    },
+    {
+      "path": "scripts/preview-report.mjs",
+      "sha256": "77ef029e302b527bf71529a0153e4bdafe98f57c5cacbc4ee9357d66c7c125c9"
+    },
+    {
+      "path": "scripts/reader-live.mjs",
+      "sha256": "f19503e878c2c0a994c7f64ed2f3e3094638c964e91453b8159779c3c2e001b5",
+      "sourceSha256": "60be3aa41aa3602b836d479e1bf8aad087dcd198ce89ab50a0a27147662b1197"
+    },
+    {
+      "path": "scripts/report-evidence.mjs",
+      "sha256": "5acd82f765deb5200fc0764e9626f46e088906afe832f1404851ad73820911d2"
+    },
+    {
+      "path": "scripts/t3-reader.mjs",
+      "sha256": "e8b49e3f676d7c44b974a4d87d6fa6fc611773413956f2c4884167f1dd6b01b6"
+    },
+    {
+      "path": "scripts/t3-report.mjs",
+      "sha256": "ac3c84b3d45699cfc4d21219fae935502d1e48f87453f6bdc88d75c033974f3e"
+    },
+    {
+      "path": "scripts/t3-workflow.mjs",
+      "sha256": "df7718b500d95d4cc3b7600bd16a9a050cc7ed23428f10ac10c844d7c8603618"
+    },
+    {
+      "path": "scripts/topic-questions.mjs",
+      "sha256": "2d0fe40cf28d6b908ed63fa97b9f10d47873d9b01b3b2bd3ca3e7d4423eeca2b"
+    },
+    {
+      "path": "scripts/visual-document.mjs",
+      "sha256": "ef6643eba805be7f636a883b1b51973b8b44bb52949f175542fce263efda7ec5",
+      "sourceSha256": "9993522a9486f21b3c2f061c43f4361b2875d05c339fb44552823ee1b1043841"
+    }
+  ],
+  "integrationCorrections": [
+    {
+      "path": "scripts/visual-document.mjs",
+      "reason": "JSDoc number annotation for strict typecheck; runtime bytes otherwise unchanged."
+    },
+    {
+      "path": "scripts/reader-live.mjs",
+      "reason": "Reject decoded path separators and confine question writes to .questions; independent review finding with endpoint regression."
+    },
+    {
+      "path": "SKILL.md",
+      "reason": "Preserve definition and report flow, update implementation handoff to parent-owned advisory execution."
+    }
+  ]
+}

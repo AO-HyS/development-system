@@ -284,9 +284,9 @@ test("Stop continuation recovers its orphan lock while retaining the incomplete 
   const home = join(root, "home");
   const runDirectory = join(home, ".development-system", "governance", "runs", "pending");
   await mkdir(runDirectory, { recursive: true });
-  const run = { id: "pending", phase: "research", outcome: null, attempts: [], leases: {}, judgments: [], plans: [], reviews: [], evidence: [] };
+  const run = { schemaVersion: 1, runId: "pending", root, rootSessionId: "pending-session", phase: "research", outcome: null, attempts: [], leases: {}, judgments: [], plans: [], reviews: [], evidence: [] };
   await writeSnapshot(join(runDirectory, "run.json"), { schemaVersion: 1, run });
-  await writeRegistry(home, { revision: 0, sessions: {}, runs: { pending: { rootSessionId: "pending-session", runDirectory, finished: false } } });
+  await writeRegistry(home, { revision: 0, sessions: {}, runs: { pending: { runId: "pending", root, rootSessionId: "pending-session", runDirectory, finished: false } } });
   await deadPid(t, join(runDirectory, ".adapter-stop.lock"));
   const result = await handleHook({ hook_event_name: "Stop", session_id: "pending-session" }, { home });
   assert.equal(result.decision, "block");
@@ -301,9 +301,9 @@ test("real hook launcher recovers a legacy orphan and preserves unrelated runs a
   const governance = join(home, ".development-system", "governance");
   const runDirectory = join(governance, "runs", "retained");
   await mkdir(runDirectory, { recursive: true });
-  const retained = { schemaVersion: 1, run: { id: "retained", phase: "implementation", attempts: [{ id: "prior", status: "running" }], leases: { "product.txt": "prior" }, events: [{ type: "retain-history" }] } };
+  const retained = { schemaVersion: 1, run: { schemaVersion: 1, runId: "retained", root, rootSessionId: "other-session", phase: "implementation", attempts: [{ id: "prior", status: "running" }], leases: { "product.txt": "prior" }, events: [{ type: "retain-history" }] } };
   await writeSnapshot(join(runDirectory, "run.json"), retained);
-  await writeRegistry(home, { revision: 0, sessions: {}, runs: { retained: { rootSessionId: "other-session", runDirectory, finished: false } } });
+  await writeRegistry(home, { revision: 0, sessions: {}, runs: { retained: { runId: "retained", root, rootSessionId: "other-session", runDirectory, finished: false } } });
   const priorRun = await readFile(join(runDirectory, "run.json"));
   const pid = await deadPid(t, join(root, "terminated.lock"));
   await writeFile(join(governance, "registry.lock"), JSON.stringify({ pid, acquiredAt: new Date().toISOString() }));
@@ -323,7 +323,7 @@ test("real hook launcher recovers a legacy orphan and preserves unrelated runs a
   assert.deepEqual(JSON.parse(stdout), {});
   const registry = await readRegistry(home);
   assert.ok(registry.sessions["recovery-fixture"], "Session registration must actually progress after recovery");
-  assert.deepEqual(registry.runs.retained, { rootSessionId: "other-session", runDirectory, finished: false });
+  assert.deepEqual(registry.runs.retained, { runId: "retained", root, rootSessionId: "other-session", runDirectory, finished: false });
   assert.deepEqual(await readFile(join(runDirectory, "run.json")), priorRun);
   assert.deepEqual(await readSnapshot(join(runDirectory, "run.json"), "retained"), retained);
   t.diagnostic("Synthetic host metadata in an isolated HOME; real launcher and filesystem behavior, not production identity certification.");

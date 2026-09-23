@@ -1,36 +1,27 @@
 # AOHYS Development System
 
-## Release 1.27.1 / catalog 0.46.1
+## Release 1.29.0 / catalog 0.48.0
 
-Sol coordinates the complete feature from its spec and all linked tickets.
-Fast researchers collect source facts; Astra XHigh authors the plan and a
-separate fresh Astra reviews it. Bounded Flash writers execute disjoint packets.
-Jev evaluates every lifecycle boundary, and the governance runtime enforces
-current permits, scope, dependencies, independent review and evidence.
-The selected parent stays fixed; there is no silent provider fallback.
+Jev advises at meaningful routing and correction decisions; the selected parent
+executes with native tools and owns acceptance. Installation removes only owned
+Jev tool and Stop hooks, preserving other guards and historical run records.
+Classification failure is recorded and permits a justified parent continuation;
+it never becomes a successful judgment or grants authority.
 
-Codex hooks require trust and observed session binding. Enforcement claims are
-limited to operationally verified surfaces; unsupported tools and identity gaps
-remain explicit. Installation does not establish runtime influence. The former
-advisory CLI is compatible and the experimental controller remains disabled.
+New sessions request Sol 6 High normal. Luna 6 High priority supplies research
+and exact/mechanical writing; Sol 6 Medium handles general writing. Astra 6 XHigh
+authors the plan, with separate independent plan and final reviews. Actual host
+identity and tier remain distinct from requested settings. No OpenCode default.
 
-An optional `hostRoot` preserves the authentic conversation directory while
-`root` identifies a registered integration worktree of the same repository.
-Candidate identity, HEAD, ownership and path scope remain enforced; writers
-still use a third workspace. See [the worktree decision](docs/adr/0050-separate-host-and-integration-roots.md).
+The user's field-notebook HTML reports are included, with margin questions,
+persistent browser drafts and revisioned batch submission. The active document
+command and installed helper both use this renderer. Sanitized temporary tunnels
+remain the default report-sharing surface.
 
-Jev requests now retain complete artifacts once and resolve typed references,
-including dependencies on approved boundaries. The envelope allows 96 KiB;
-complete sources and cumulative changed context retain separate 64 KiB limits.
-Read-only status exposes ordered plan packets without private transcript paths.
-See [the packing decision](docs/adr/0051-lossless-jev-request-packing.md).
-Actual provider verification after installation remains pending.
-
-See [the governance decision](docs/adr/0047-whole-flow-jev-governance.md),
-[current validation](docs/releases/1.27.1-validation.md),
-[supported host surfaces](docs/releases/1.26.0-validation.md),
-[the execution recipe](artifacts/1.27.1/skills/internal/coding-orchestration/references/jev-governance.md)
-and [the spec/ticket contract](artifacts/1.27.1/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
+See [the advisory decision](docs/adr/0055-advisory-execution-restoration.md),
+[the report decision](docs/adr/0056-field-notebook-report-and-margin-questions.md),
+[the execution recipe](artifacts/1.29.0/skills/internal/coding-orchestration/references/jev-advisory.md)
+and [package installation and recovery](docs/package-distribution.md).
 
 Exact instructions are the default across models: ordered actions, expected
 observations, bounded corrections and resumable handoffs. Outcome delegation
@@ -98,15 +89,15 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.27.1/aohys-development-system-1.27.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.29.0/aohys-development-system-1.29.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
-`setup` installs the contract, profiles, governance runtime, merged hooks and skills.
-`governance-hooks-audit` checks installed definitions; host trust and operational
-evidence are separate. `governance-hooks-rollback` restores prior hooks safely.
+`setup` installs the advisory contract, profiles and skills, and removes only managed Jev hooks.
+`governance-hooks-audit` confirms managed Jev hooks are disabled; live host
+behavior is checked separately. `rollback` restores the actual prior profile.
 It preserves credentials and does not rewrite the host's selected model.
-For new local Codex sessions, set only `model = "gpt-5.6-sol"` and
+For new local Codex sessions, set only `model = "gpt-6-sol"` and
 `model_reasoning_effort = "high"` in the existing host config, preserving its
 MCP, authentication and other settings. Repository-local settings may override
 that default and must agree. Restarting an existing conversation is unnecessary.
@@ -129,10 +120,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.27.1
+./bin/development-system setup --version 1.29.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.46.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.48.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -308,7 +299,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → for this candidate, `install --version 1.22.1`, `sync-skills --version 0.43.1`, then `guardrails-enable`
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.29.0`; audit advisory hooks and the paired catalog 0.48.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

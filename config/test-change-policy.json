@@ -2,6 +2,34 @@
   "schemaVersion": 1,
   "allowedChanges": [
     {
+      "path": "test/governance-gpt6-fast-profiles.test.mjs",
+      "sha256": "fbb3733d55d539f3ead1af3ad76b199516ba86467cb46d972067577f378315f1",
+      "reason": "Parent reviewed exact new profile, argv and tier tests: explicit Sol/Luna routes, fixed Astra reviews, mandatory Luna priority, duplicate/unsafe options rejected, and requested tier never substituted for missing provider observation. Existing assertions unchanged; fixtures do not establish live delivery.",
+      "issue": "User-authorized GPT-6 profile migration and one benchmark",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-coordinator-effort.test.mjs",
+      "sha256": "ce01e5bcda2b31cebb81c89d3ebb11e72a96387118ce89bf6a53d75ac4a01a91",
+      "reason": "Parent reviewed exact isolated hook/CLI protocol: later same-thread effort confirmation, pending denies work but allows turn handoff, stale and replay rejection, fresh retry, restart persistence, audit transition and current final review preserved without changing acceptance epoch. Synthetic model identities and Jev answers are explicit fixture evidence, not live certification.",
+      "issue": "User-authorized phase effort adaptation without restarting the coordinator",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-codex-permissions.test.mjs",
+      "sha256": "f00342864471b420e0ea46f61edef298b3c1d4fdf947a5952496fa9831778ceb",
+      "reason": "Parent reviewed exact staged content: rejects missing, managed or incompatible requirements and unsafe observed permission metadata; actual isolated subprocess RPC verifies initialize ordering, response validation, no private errors, timeout and confirmed PID termination. Synthetic provider responses are not live host certification.",
+      "issue": "User-authorized explicit Astra writer permission corrections 1.27.3",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-astra-writer.test.mjs",
+      "sha256": "e9ee2d9b0b3cafc404986ac4dcb50ce74833c5637c7ce49acbd97995dcb9e150",
+      "reason": "Parent reviewed the exact staged content: explicit profile acceptance and wrong-profile rejection, mandatory writer restrictions, duplicate and conflicting command options, prompt data isolation, and read-only reviewer compatibility. Existing assertions unchanged; no operational enforcement inferred from fixtures.",
+      "issue": "User-authorized explicit Astra writer maintenance 1.27.3",
+      "reviewedContent": true
+    },
+    {
       "path": "test/orchestration.test.mjs",
       "sha256": "916488f7ec2da37ebe2cb84fa6ffd721658a9e661b82c9c146dd1bce6aeecbdc",
       "reason": "Parent and workflow_runtime independently reviewed exact classifier test content: strict malformed-answer validation retained, escaped credentials redacted, exact request hash preserved, diagnostic mutation isolated and hard-failure precedence asserted. Existing timeout and malformed-response cases strengthened; no validator or success assertion weakened.",
@@ -9,10 +37,17 @@
       "reviewedContent": true
     },
     {
+      "path": "test/evidence-routing.test.mjs",
+      "sha256": "1eaf306275d742e0eee8057eb6277cac3686bbda9bc773343da147c8901ab60e",
+      "reason": "Parent reviewed the intentional new fast-writer expectation from Flash to Luna 6 High priority. All independent Astra media, Computer Use and visual-review checks remain unchanged; requested profiles remain distinct from runtime observation.",
+      "issue": "User-authorized GPT-6 profile migration",
+      "reviewedContent": true
+    },
+    {
       "path": "test/agent-roster.test.mjs",
-      "sha256": "1896aab8600d64a4cfce55cbd0425e720db568612a0aea44f2ed5e186bcb2ac3",
-      "reason": "Parent reviewed exact diff against intentional 1.25 routing change: explicit fast Luna researcher and code mapping alias, retained Sol coordinator, Flash writer, Astra planning and all specialist review profiles; no runtime identity or fallback assertions weakened.",
-      "issue": "User-authorized replaceable fast research and independent Astra planning in 1.25.0",
+      "sha256": "4faac2781ac4531d6c215c36cd70a100a2937a607c81e2a287275dc7ae912ad9",
+      "reason": "Parent reviewed exact current-roster assertions for Sol 6 High coordination, Sol 6 Medium general writing, Luna 6 High priority fast writing/research, and unchanged Astra XHigh planning/review. Alias equality, no fallback, provisional identity and immutable historical release assertions remain intact.",
+      "issue": "User-authorized GPT-6 profile migration",
       "reviewedContent": true
     },
     {
@@ -23,52 +58,10 @@
       "reviewedContent": true
     },
     {
-      "path": "test/orchestration-compact.test.mjs",
-      "sha256": "c9b1d720a6701aa0a2ed275a56819eb3b8eb541952d85b4fdf116df54d6e80b6",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/orchestration-plan.test.mjs",
-      "sha256": "813501752d1d326b6405358d76e521852f24ba243e513ad4f621155174711d4f",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/provider-availability.test.mjs",
-      "sha256": "12a7ca08f3c7c29feb63db13c28b341cd84b7a21e070db208404578967083c31",
-      "reason": "Parent independently reviewed exact diff: current profile literals and manifest/catalog source pins reflect 1.24.0; historical versions unchanged. Ownership tampering remains a real mutation, provider exhaustion fails closed without fallback, and runtime identity remains unproven by configuration. No behavioral acceptance gate removed.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/visual-grill.test.mjs",
-      "sha256": "0bb2b5831c609278fe41fa9353da54528fbde4f185eb6b5c9788ec4394c3d7a9",
-      "reason": "Parent and independent Astra reviewed exactly six current release/catalog pin substitutions for 1.27.1 and 0.46.1. Immutable historical sources, hashes and all visual reviewer assertions remain unchanged.",
-      "issue": "User-authorized 1.27.1 lossless Jev request packing release",
-      "reviewedContent": true
-    },
-    {
       "path": "test/jev-advisory-release.test.mjs",
-      "sha256": "12000c46a58734182b37578818c1de30116650bd8bdcd9ad36f87de3790cc96f",
-      "reason": "Parent reviewed exact test diff: current profile assertions updated to Sol High, Flash High, native Astra XHigh and no fallback; historical snapshots and acceptance gates preserved. New adviser regression intercepts active write sets, rejects malformed ownership before provider access and verifies direct legacy controller refusal without side effects.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/evidence-routing.test.mjs",
-      "sha256": "6b7361d703d7d8344d7148dfd976e2a65f3f80265a0de81d7396e7261d53bcd1",
-      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
-      "path": "test/model-routing.test.mjs",
-      "sha256": "ab4be0494e0d484d998e7d64af1546dba202bf6213e1173b5ec13fd156820e63",
-      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
+      "sha256": "90920a184a17b8f42a6a7dd465c65ef26a3020747e151cf9f56d1fa44a1ba01c",
+      "reason": "Parent reviewed current route/state binding, stale receipt rejection, sanitized timeout/provider/credential failures and nonauthorizing parent continuation; original assertions retained.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
       "reviewedContent": true
     },
     {
@@ -80,9 +73,9 @@
     },
     {
       "path": "test/governance-installation.test.mjs",
-      "sha256": "1f8a442a75ebbe17e9c6236d1a3521b2f348b76c649c54f3b0546a5d7528a2b1",
-      "reason": "Parent authored and reviewed five behavioral regressions: preserve unrelated hooks, idempotency, exact rollback, failed contract rollback recovery, missing engine, concurrent operator change refusal, and symlink boundary. No existing acceptance assertion removed.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "173c829da92b72a7a0202c5ffeab9b8d18f869b5001a7858130bdef909f49ac2",
+      "reason": "Parent reviewed owned-handler migration, exact rollback, empty groups, malformed stale recovery history, drift and symlink refusal; original assertions retained.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
       "reviewedContent": true
     },
     {
@@ -136,16 +129,79 @@
     },
     {
       "path": "test/governance-lock-recovery.test.mjs",
-      "sha256": "bb3c4e8d50861a7b6cbdab34e9aec3eb712de669fa8fdd0c9d899f4ed879181d",
-      "reason": "Parent and independent Astra reviewer reviewed exact 19 regression tests: real process death, actual concurrent exclusion, conservative legacy ownership, resumable interrupted archival, replacement protection, and real isolated hook ingress preserving run bytes and leases. Execution flags and exact errors prevent false passes; archive assertions require original orphan bytes and completed receipt. Independent review also verified the installed hook executes the validated Node despite incompatible PATH node.",
-      "issue": "User-authorized orphan governance lock repair 1.26.1",
+      "sha256": "b75695db4a9af3a6f21824e58b4023baf7168a70c64f5fb0696710e7c988c409",
+      "reason": "Parent reviewed valid legacy fixtures with schemaVersion, runId, root and session registry mapping required by registeredRuns. Original Stop behavior, session progress, retained history and leases assertions remain; runtime validation is unchanged.",
+      "issue": "User-authorized advisory restoration full verification 1.29.0",
       "reviewedContent": true
     },
     {
       "path": "test/governance-integration-root.test.mjs",
-      "sha256": "7e6b4d3042998d7c34ab1e882e0b53a8841e09745932645046e53d7c7d79af5a",
-      "reason": "Parent and independent Astra reviewed exact content: real divergent Git worktree lifecycle preserves dirty host bytes; explicit hook ingress, protected paths, moves, identity drift, actual raw process exit and termination, concurrent root ownership, storage failure, administrative recovery and legacy compatibility fail closed. Synthetic classifier/provider metadata is explicitly distinguished from real processes and files. No operational host certification claimed.",
-      "issue": "User-authorized separate host and integration roots 1.27.0",
+      "sha256": "fd14081905105cf388bba54b76f8d4ce6c8bc92f07dd6a55f05161020e81ffd2",
+      "reason": "Parent reviewed exact additive draft: preserves every existing split-root and legacy assertion; adds public executor Astra modes for accepted owned delta, rejected outside-scope delta, mismatched and missing actual identity, real PID termination, separate permitted integration and unchanged dirty host. Malformed binding leaves durable state unchanged and cannot spawn. Synthetic provider identities do not claim operational sandbox evidence.",
+      "issue": "User-authorized explicit Astra writer maintenance 1.27.3",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-passive-contention.test.mjs",
+      "sha256": "757c2469038b949f3a9dd2dd71fd91fb65f125e1be36547296dc2bcb891bf799",
+      "reason": "Parent and independent Astra reviewer approved exact regression content: concurrent passive hooks preserve registry bytes, real identity changes serialize without loss, checksum and schema failures reject, exact pwd remains required for shell capability. Isolated HOME only; no operational enforcement inferred.",
+      "issue": "User-authorized urgent local governance contention repair 1.27.4",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/advisory-execution-mode.test.mjs",
+      "sha256": "9db7da3f8db03c33eff40c8a67ae0379947fc4bb79756c7750dc316d5c08825c",
+      "reason": "Parent reviewed explicit historical version compatibility and future declared mode independent of launcher presence.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/advisory-installation-transition.test.mjs",
+      "sha256": "5cf1ae086dbc34096172f5122e9d18a3b77fbcff4d59556177dbf52d4e71c5c2",
+      "reason": "Parent reviewed isolated real install/reinstall/rollback, historical hook preservation, failed skill-sync compensation and all-backup preflight before mutation. Parent accepted same-version repair retention after skill failure, tested nonzero exit and intact original rollback boundary.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/report-notebook.test.mjs",
+      "sha256": "0684f62cb5a0a811987e59e8401e3997683693f01a7ab05f9178cb35febd5234",
+      "reason": "Parent reviewed preserved user report candidate tests, new release imports, visible verdict and anchor behavior, CSP hashes, batch questions and refusal of unsafe requests. Independent review correction: encoded path separators are refused and question writes stay inside .questions.",
+      "issue": "User-authorized advisory restoration and HTML report preservation 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/model-routing.test.mjs",
+      "sha256": "6723f22c876dbce83404135bfac7acf61e9f60c5040de94d78be17ea4e9c1f9c",
+      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
+      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/orchestration-compact.test.mjs",
+      "sha256": "78fec0d61f74e4677f03df17b11aa189efc33b81fd818ad2d8a7cab66d8c5b0f",
+      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
+      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/orchestration-plan.test.mjs",
+      "sha256": "9846a1720b940d1aa46897d71d9e8b6001fb4dc96217d27bdbf4b8468c124638",
+      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
+      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/provider-availability.test.mjs",
+      "sha256": "61c295e3960c00531c070388bf234671bc8207c73dda03b83503078ea0e45e3e",
+      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
+      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/visual-grill.test.mjs",
+      "sha256": "70122efa9a06f73f4896f4021c8a8833a447e584e94b1e2a1c17ec52733b2c6f",
+      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
+      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
       "reviewedContent": true
     }
   ]

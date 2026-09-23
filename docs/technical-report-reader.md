@@ -19,6 +19,33 @@ Metadata example:
 }
 ```
 
+Since 1.29.0 reports render as a field notebook. Optional document fields shape
+the opening:
+
+```json
+{
+  "document": {
+    "verdict": "La preparación está lista.",
+    "reference": "DS-0922",
+    "signals": [{ "tone": "ok", "label": "Resultado", "text": "lista" }],
+    "findings": [{ "title": "Entorno listo", "detail": "Accesos verificados.", "status": "verified" }]
+  }
+}
+```
+
+Without `verdict`, a bold opening sentence of up to 170 characters or a summary
+of up to 150 becomes the verdict; longer text stays prose. Signal tones are
+`ok`, `warn` and `risk`. Finding statuses are `verified`, `estimated`
+and `pending`. Keep verdicts factual; they are read first.
+
+Readers can click any paragraph, list item, table, chart or code block and ask
+a question in the margin. Drafts persist in the browser; "Send" delivers them
+as one batch. Under `reader-live`, the batch is stored with a revision in
+`<workspace>/.questions/<report>/responses.json`, plus one receipt file per
+submission, and the CLI prints the event. Opened as a file, the report offers
+copy and download instead. Read the stored batch and answer each question
+against its quoted excerpt.
+
 Use `status` for the report's observed editorial state, not a production claim
 inferred from successful tests. Put conclusions first, diagrams beside the
 explanation they support, measurement limits beside numbers, and one concrete
@@ -31,8 +58,8 @@ Reports omit implementation authority and an empty artifact rail. A current
 managed report can be regenerated; unrelated output files are preserved.
 HTML is disposable; Markdown and evidence remain the canonical sources.
 
-Keep private reports outside repositories and synchronized folders. Deliver a
-file link; use authorized Computer Use for visual verification. Browser access
+Keep private reports outside repositories and synchronized folders. Deliver the sanitized HTML through the authorized temporary tunnel, with a local
+file link as fallback. Use authorized Computer Use for visual verification. Browser access
 restrictions remain in force. The renderer embeds fonts and Mermaid, makes no
-network requests, escapes Markdown and binds executable code to a CSP hash.
+network requests beyond same-origin question delivery, escapes Markdown and binds executable code to a CSP hash.
 Opening a report never installs software or grants release authority.

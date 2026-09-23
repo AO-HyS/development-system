@@ -17,6 +17,7 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPackageSource, packageFileBytes, verifyPackageFile } from "./package-source.mjs";
 import { validateSkillCatalog } from "./skills.mjs";
+import { applyAdvisoryHookTransition, prepareAdvisoryHookTransition, restoreAdvisoryHookTransition } from "./governance-installation.mjs";
 
 /**
  * @typedef {object} Harness
@@ -42,6 +43,7 @@ import { validateSkillCatalog } from "./skills.mjs";
  * @property {{repository: string, commit: string}} source
  * @property {Harness[]} supportedHarnesses
  * @property {Artifact[]} artifacts
+ * @property {"advisory-parent-execution" | "governed-hook-execution"=} executionMode
  * @property {string=} installedAt
  */
 
@@ -73,6 +75,7 @@ import { validateSkillCatalog } from "./skills.mjs";
  * @property {InstallState | null} previousState
  * @property {ContractManifest | null} previousInstalledManifest
  * @property {SnapshotFile[]} files
+ * @property {{before:{hooks:string|null,state:string|null},after:{hooks:string|null,state:string|null}}=} advisoryHookTransition
  */
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -82,6 +85,15 @@ const stateFilename = "state.json";
 const commitPattern = /^[a-f0-9]{40}$/;
 const hashPattern = /^[a-f0-9]{64}$/;
 const snapshotIdPattern = /^\d+-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/** @param {ContractManifest} manifest */
+export function executionMode(manifest) {
+  const [, major, minor] = /^(\d+)\.(\d+)\.(\d+)$/.exec(manifest.contractVersion) ?? [];
+  const newer = Number(major) > 1 || (Number(major) === 1 && Number(minor) >= 29);
+  if (newer) return manifest.executionMode;
+  return Number(major) > 1 || (Number(major) === 1 && Number(minor) >= 25)
+    ? "governed-hook-execution" : "advisory-parent-execution";
+}
 
 /** @param {string | Buffer} contents */
 function sha256(contents) {
@@ -214,6 +226,12 @@ async function validateManifest(manifest) {
   if (manifest.source?.commit !== "$INSTALL_COMMIT") {
     errors.push("source.commit must be resolved from $INSTALL_COMMIT during installation");
   }
+  const [, modeMajor, modeMinor] = /^(\d+)\.(\d+)\.(\d+)$/.exec(manifest.contractVersion) ?? [];
+  const requiresMode = Number(modeMajor) > 1 || (Number(modeMajor) === 1 && Number(modeMinor) >= 29);
+  if (requiresMode && !["advisory-parent-execution", "governed-hook-execution"].includes(manifest.executionMode ?? "")) {
+    errors.push("executionMode must explicitly declare a recognized mode from 1.29.0 onward");
+  }
+  if (!requiresMode && manifest.executionMode !== undefined) errors.push("historical manifests must not declare executionMode");
 
   const harnesses = new Set((manifest.supportedHarnesses ?? []).map((harness) => harness.id));
   const contractVersion = /^(\d+)\.(\d+)\.(\d+)$/.exec(manifest.contractVersion);
@@ -400,8 +418,9 @@ function statePaths(home) {
  * @param {InstallState | null} previousState
  * @param {ContractManifest | null} previousInstalledManifest
  * @param {string[]} destinations
+ * @param {Snapshot["advisoryHookTransition"]} advisoryHookTransition
  */
-async function createSnapshot(home, previousState, previousInstalledManifest, destinations) {
+async function createSnapshot(home, previousState, previousInstalledManifest, destinations, advisoryHookTransition) {
   const paths = statePaths(home);
   const id = `${Date.now()}-${randomUUID()}`;
   const snapshotRoot = resolve(paths.snapshots, id);
@@ -429,7 +448,7 @@ async function createSnapshot(home, previousState, previousInstalledManifest, de
   }
 
   /** @type {Snapshot} */
-  const snapshot = { id, previousState, previousInstalledManifest, files };
+  const snapshot = { id, previousState, previousInstalledManifest, files, ...(advisoryHookTransition ? { advisoryHookTransition } : {}) };
   const snapshotSha256 = await writeJsonAtomic(resolve(snapshotRoot, "snapshot.json"), snapshot);
   return { id, sha256: snapshotSha256 };
 }
@@ -504,6 +523,48 @@ async function validateSnapshotForRollback(snapshot, currentVersion) {
   if (observedDestinations.size !== allowedDestinations.size) {
     throw new Error("Rollback snapshot does not cover all managed destinations");
   }
+  if (snapshot.advisoryHookTransition) {
+    if (executionMode(currentManifest) !== "advisory-parent-execution" ||
+      ![snapshot.advisoryHookTransition.before, snapshot.advisoryHookTransition.after].every((value) =>
+        value && (value.hooks === null || typeof value.hooks === "string") &&
+        (value.state === null || typeof value.state === "string") &&
+        Object.keys(value).sort().join(",") === "hooks,state")) {
+      throw new Error("Rollback snapshot has invalid advisory hook transition");
+    }
+  }
+}
+
+/** Validate every backup before changing a destination. @param {string} home @param {Snapshot} snapshot */
+async function prepareSnapshotRestore(home, snapshot) {
+  const snapshotRoot = resolve(statePaths(home).snapshots, snapshot.id);
+  /** @type {Map<string, Buffer>} */
+  const backups = new Map();
+  for (const file of snapshot.files) {
+    await assertNoSymlinkInManagedPath(home, file.destination);
+    if (!file.existed || !file.backupPath) continue;
+    if (isAbsolute(file.backupPath)) throw new Error(`Rollback backup path must be relative: ${file.backupPath}`);
+    const backup = resolve(snapshotRoot, file.backupPath);
+    if (backup === snapshotRoot || !backup.startsWith(`${snapshotRoot}${sep}`)) throw new Error(`Rollback backup path escapes its snapshot: ${file.backupPath}`);
+    await assertNoSymlinkInManagedPath(home, relative(resolve(home), backup));
+    const contents = await readFile(backup);
+    if (sha256(contents) !== file.sha256) throw new Error(`Rollback backup integrity mismatch: ${file.destination}`);
+    backups.set(file.destination, contents);
+  }
+  if (snapshot.advisoryHookTransition) {
+    await prepareAdvisoryHookTransition({ home });
+    const { after } = snapshot.advisoryHookTransition;
+    const currentHooks = await readOptionalHookBytes(home);
+    if (currentHooks.hooks !== after.hooks || currentHooks.state !== after.state) {
+      throw new Error("Advisory rollback refuses to overwrite hooks changed after installation");
+    }
+  }
+  return backups;
+}
+
+/** @param {string} home */
+async function readOptionalHookBytes(home) {
+  const read = async (/** @type {string} */ path) => readFile(path, "utf8").catch((/** @type {any} */ error) => { if (isMissingFileError(error)) return null; throw error; });
+  return { hooks: await read(resolve(home, ".codex/hooks.json")), state: await read(resolve(home, ".development-system/governance-hooks.json")) };
 }
 
 /** @param {string} home @param {string} snapshotId */
@@ -529,27 +590,18 @@ async function removeConsumedSnapshot(home, snapshotId) {
 /** @param {string} home @param {Snapshot} snapshot */
 async function restoreSnapshot(home, snapshot) {
   const paths = statePaths(home);
-  const snapshotRoot = resolve(paths.snapshots, snapshot.id);
+  const backups = await prepareSnapshotRestore(home, snapshot);
   for (const file of snapshot.files) {
-    await assertNoSymlinkInManagedPath(home, file.destination);
     const destination = resolveHomePath(home, file.destination);
-    if (file.existed && file.backupPath) {
-      if (isAbsolute(file.backupPath)) {
-        throw new Error(`Rollback backup path must be relative: ${file.backupPath}`);
-      }
-      const backup = resolve(snapshotRoot, file.backupPath);
-      if (backup !== snapshotRoot && !backup.startsWith(`${snapshotRoot}${sep}`)) {
-        throw new Error(`Rollback backup path escapes its snapshot: ${file.backupPath}`);
-      }
-      await assertNoSymlinkInManagedPath(home, relative(resolve(home), backup));
-      const contents = await readFile(backup);
-      if (sha256(contents) !== file.sha256) {
-        throw new Error(`Rollback backup integrity mismatch: ${file.destination}`);
-      }
-      await writeFileAtomic(destination, contents);
+    if (file.existed) {
+      await writeFileAtomic(destination, /** @type {Buffer} */ (backups.get(file.destination)));
     } else {
       await unlinkIfPresent(destination);
     }
+  }
+
+  if (snapshot.advisoryHookTransition) {
+    await restoreAdvisoryHookTransition({ home, expected: snapshot.advisoryHookTransition.after, restore: snapshot.advisoryHookTransition.before });
   }
 
   if (snapshot.previousInstalledManifest) {
@@ -608,9 +660,17 @@ export async function installVersion(options) {
   for (const destination of destinations) {
     await assertNoSymlinkInManagedPath(home, destination);
   }
-  const snapshotReference = await createSnapshot(home, currentState, currentManifest, destinations);
+  const advisory = executionMode(manifest) === "advisory-parent-execution"
+    ? await prepareAdvisoryHookTransition({ home }) : null;
+  const advisoryHookTransition = advisory ? { before: advisory.before, after: advisory.after } : undefined;
+  const snapshotReference = await createSnapshot(home, currentState, currentManifest, destinations, advisoryHookTransition);
+  let hookTransitionApplied = false;
 
   try {
+    if (advisoryHookTransition) {
+      await applyAdvisoryHookTransition({ home, ...advisoryHookTransition });
+      hookTransitionApplied = true;
+    }
     const nextDestinations = new Set(manifest.artifacts.map((artifact) => artifact.destination));
     for (const artifact of canonicalCurrentManifest?.artifacts ?? []) {
       if (!nextDestinations.has(artifact.destination)) {
@@ -646,6 +706,7 @@ export async function installVersion(options) {
   } catch (error) {
     const snapshot = await readSnapshot(home, snapshotReference);
     await validateSnapshotForRollback(snapshot, options.version);
+    if (!hookTransitionApplied) delete snapshot.advisoryHookTransition;
     await restoreSnapshot(home, snapshot);
     await removeConsumedSnapshot(home, snapshotReference.id);
     throw error;
@@ -655,6 +716,7 @@ export async function installVersion(options) {
     ok: true,
     operation: "install",
     version: options.version,
+    executionMode: executionMode(manifest),
     sourceCommit: commit,
     previousVersion,
     reinstalled,
@@ -731,6 +793,7 @@ export async function auditInstallation(options) {
       },
       supportedHarnesses: installedManifest.supportedHarnesses,
       artifacts: installedManifest.artifacts,
+      ...(installedManifest.executionMode !== undefined ? { executionMode: installedManifest.executionMode } : {}),
     };
     const expectedCanonicalShape = {
       schemaVersion: canonicalManifest.schemaVersion,
@@ -738,6 +801,7 @@ export async function auditInstallation(options) {
       source: canonicalManifest.source,
       supportedHarnesses: canonicalManifest.supportedHarnesses,
       artifacts: canonicalManifest.artifacts,
+      ...(canonicalManifest.executionMode !== undefined ? { executionMode: canonicalManifest.executionMode } : {}),
     };
     if (JSON.stringify(installedCanonicalShape) !== JSON.stringify(expectedCanonicalShape)) {
       problems.push("installed manifest diverges from the canonical version manifest");
@@ -812,6 +876,7 @@ export async function auditInstallation(options) {
     operation: "audit",
     status: problems.length === 0 ? "healthy" : "drifted",
     contractVersion: installedManifest.contractVersion,
+    executionMode: canonicalManifest ? executionMode(canonicalManifest) : null,
     source: installedManifest.source,
     artifacts,
     mirrors,

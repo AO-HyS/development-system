@@ -18,16 +18,21 @@ pnpm ds audit-skills
 to the selected HOME. Use `--home /absolute/isolated-home` to test it first.
 There is no postinstall hook and ordinary product deployment never runs setup.
 A contract upgrade followed by failed skill synchronization rolls the contract
-back; a reinstall of the current version retains that version. Skill sync has
+back, including its hook transition. A reinstall of the current version retains
+contract and advisory hook repairs even if later skill synchronization fails;
+it still reports setup failure and keeps the original version rollback boundary.
+Skill sync has
 its own transactional recovery. Failed setup is reported as failure.
 
-Starting with contract 1.25.0, setup also merges the Jev governance hooks into
-the chosen HOME, preserving unrelated handlers. `governance-hooks-audit`
-checks their installed definitions. Codex must separately trust the exact hook
-definitions and demonstrate their execution; installation alone does not prove
-that agent actions are governed. A bound run uses the installed governance CLI
-and the capability limits documented in its recipe. The historical automatic
-controller remains disabled.
+Contract 1.29.0 explicitly selects advisory-parent-execution. Both setup and
+install remove only marker-owned Jev handlers, preserving unrelated guards,
+settings and historical recovery records. The snapshot records actual hook
+bytes for rollback; reinstall retains the original rollback boundary.
+`governance-hooks-audit` expects Jev hooks to be disabled, and explicit
+`governance-hooks-enable` refuses under this profile. Historical 1.25–1.28
+contracts retain their original governed behavior; they are not the default.
+The automatic controller remains disabled. Installation is not proof of host
+discovery, actual model identity or accepted product behavior.
 
 The tarball contains committed runtime files, historical manifests/artifacts
 needed for recovery, and a provenance marker with source commit, version, file
@@ -51,11 +56,11 @@ source commit. Rollback restores only managed paths and retains unrelated HOME
 files. Skills becoming present is not proof they influenced a model; runtime
 receipts and relevant visible acceptance remain distinct.
 
-`rollback` restores the hook configuration before removing its governed
-runtime. It refuses to overwrite later operator changes and restores the
-installed hooks if contract rollback fails. `governance-hooks-rollback` is the
-explicit hook-only recovery command. Preserve the exact previous package and
-its catalog when recovering the complete installation.
+`rollback` preflights all contract backups and advisory hook drift before
+changing destinations, then restores the actual pre-install configuration.
+It never synthesizes enforcement merely because an older contract supported it.
+`governance-hooks-rollback` retains its strict historical hook-only semantics.
+Preserve the exact previous package and catalog for complete recovery.
 
 Maintainers prepare new immutable versions, commit reviewed changes, then run
 `pnpm release:pack --output <private-directory>`. The builder refuses dirty

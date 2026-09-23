@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.4",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.27.3",
+  "decision": "docs/adr/0053-passive-governance-contention.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}

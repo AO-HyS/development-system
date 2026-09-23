@@ -11,6 +11,7 @@ import * as legacy from '../artifacts/1.26.1/governance-runtime/core.mjs';
 import * as legacyStore from '../artifacts/1.26.1/governance-runtime/store.mjs';
 import { readRegistry, readSnapshot, registryPath } from '../runtime/jev-governance/store.mjs';
 import { handleHook } from '../runtime/jev-governance/hook.mjs';
+import { codexArguments } from '../runtime/jev-governance/codex.mjs';
 
 // Jev answers and host/provider model identities below are synthetic test inputs.
 // Git worktrees, PIDs, process exits, filesystem failures and value checks are real.
@@ -565,6 +566,139 @@ test('v1 single-root authority stays v1 and published 1.26.1 rejects v2 run and 
   const event = await single.permit(inspect);
   const actual = await exec('pwd', [], { cwd: single.root, env: { PATH: process.env.PATH, HOME: single.home } });
   assert.equal((await single.post(event, actual.stdout)).status, 'completed');
+});
+
+async function prepareAstraWriter(f, candidateRoot) {
+  const id = 'astra-writer', launch = { attemptId: id, candidateRoot };
+  const p = await f.classified('writer-dispatch', 'writer', {
+    attemptId: id, readSet: ['spec.md'], writeSet: ['src/value.mjs'],
+    route: { role: 'writer', provider: 'codex', model: 'gpt-6-astra', reasoning: 'xhigh', capabilities: [] },
+    toolName: 'Bash', toolInput: { command: `node ${quote(cli)} execute --home ${quote(f.home)} --input-json ${quote(JSON.stringify(launch))}` },
+  });
+  return { id, p, launch, candidateRoot, event: await f.permit(p) };
+}
+
+test('public executor reconciles an isolated Astra writer, scope violations and unobserved model identity', { timeout: 120000 }, async t => {
+  for (const mode of ['good', 'outside-scope', 'wrong-model', 'missing-context']) await t.test(mode, async child => {
+    const f = await fixture(child), before = await f.hostSnapshot();
+    await f.begin(); await f.implementation();
+    const candidateRoot = await f.worktree('astra-writer');
+    const packet = await prepareAstraWriter(f, candidateRoot);
+    assert.notEqual(candidateRoot, f.root); assert.notEqual(candidateRoot, f.hostRoot);
+    const bin = join(f.base, 'bin'), provider = join(bin, 'codex'), invocationPath = join(f.base, 'synthetic-codex-invocation.json');
+    await mkdir(bin);
+    // Only the provider identity and its transcript are synthetic. The public
+    // executor launches this actual process and reconciles its real file writes,
+    // OS PID and exit; this fixture makes no live-provider or sandbox claim.
+    const providerProgram = `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+if (process.argv[2] === 'app-server') {
+  require('node:readline').createInterface({ input: process.stdin }).on('line', line => {
+    const request = JSON.parse(line);
+    if (request.method === 'initialize') process.stdout.write(JSON.stringify({ id: request.id, result: { userAgent: 'synthetic-permissions-fixture' } }) + '\\n');
+    else if (request.method === 'configRequirements/read') process.stdout.write(JSON.stringify({ id: request.id, result: { requirements: null } }) + '\\n');
+  });
+} else {
+const mode = ${JSON.stringify(mode)}, sessionId = 'synthetic-astra-' + mode;
+fs.writeFileSync(${JSON.stringify(invocationPath)}, JSON.stringify({ pid: process.pid, cwd: process.cwd(), argv: process.argv.slice(2) }));
+fs.writeFileSync(path.join(process.cwd(), 'src/value.mjs'), 'export const value = 3;\\n');
+if (mode === 'outside-scope') fs.writeFileSync(path.join(process.cwd(), 'src/other.mjs'), 'export const other = 3;\\n');
+const directory = path.join(process.env.CODEX_HOME, 'sessions');
+fs.mkdirSync(directory, { recursive: true });
+const records = [{ type: 'session_meta', payload: { id: sessionId, source: 'exec', model_provider: 'openai', cwd: process.cwd() } }];
+if (mode !== 'missing-context') records.push({ type: 'turn_context', payload: {
+  model: mode === 'wrong-model' ? 'gpt-5.6-sol' : 'gpt-6-astra', effort: 'xhigh', cwd: process.cwd(), approval_policy: 'never',
+  sandbox_policy: { type: 'workspace-write', network_access: false, exclude_tmpdir_env_var: true, exclude_slash_tmp: true },
+  permission_profile: { type: 'managed', network: 'restricted', file_system: { type: 'restricted', entries: [
+    { path: { type: 'special', value: { kind: 'root' } }, access: 'read' },
+    { path: { type: 'path', path: process.cwd() }, access: 'write' },
+  ] } },
+} });
+fs.writeFileSync(path.join(directory, 'rollout-' + sessionId + '.jsonl'), records.map(record => JSON.stringify(record)).join('\\n') + '\\n');
+process.stdout.write(JSON.stringify({ type: 'thread.started', thread_id: sessionId }) + '\\n');
+process.stdout.write(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'Synthetic Codex identity fixture wrote src/value.mjs in the isolated candidate.' } }) + '\\n');
+}
+`;
+    await writeFile(provider, providerProgram); await chmod(provider, 0o700);
+    const program = `const { launchGovernedProcess } = await import(${JSON.stringify(executorUrl)}); const result = await launchGovernedProcess(${JSON.stringify({ home: f.home, runDirectory: f.runDirectory, sessionId: f.session, launch: packet.launch })}); process.stdout.write(JSON.stringify(result));`;
+    const actual = await exec(process.execPath, ['--input-type=module', '-e', program], {
+      env: { ...process.env, HOME: f.home, CODEX_HOME: join(f.home, '.codex'), PATH: `${bin}:${process.env.PATH}` }, timeout: 20000,
+    });
+    const result = JSON.parse(actual.stdout), invoked = JSON.parse(await readFile(invocationPath, 'utf8'));
+    assert.equal(result.exitCode, 0, actual.stderr); assert.equal(result.exitSignal, null);
+    assert.equal(result.cancelled, false); assert.equal(result.ok, mode === 'good');
+    assert.equal(result.identityObserved, ['good', 'outside-scope'].includes(mode));
+    assert.equal(result.permissionPreflight.terminated, true);
+    assert.throws(() => process.kill(Number(result.permissionPreflight.processId), 0), { code: 'ESRCH' });
+    if (['good', 'outside-scope'].includes(mode)) assert.deepEqual(result.permissionObservation, {
+      approvalPolicy: 'never', sandboxType: 'workspace-write', networkAccess: false, excludeTmpdirEnvVar: true,
+      excludeSlashTmp: true, extraWritableRoots: [], candidateRoot, profileConfined: true,
+    });
+    else assert.equal(result.permissionObservation, null);
+    assert.equal(result.integrated, false);
+    assert.equal(invoked.cwd, candidateRoot);
+    assert.equal(invoked.argv[invoked.argv.indexOf('--sandbox') + 1], 'workspace-write');
+    assert.equal(await readFile(join(candidateRoot, 'src/value.mjs'), 'utf8'), 'export const value = 3;\n');
+    assert.equal(await readFile(join(f.root, 'src/value.mjs'), 'utf8'), 'export const value = 1;\n');
+    const pending = await f.state(), attempt = pending.attempts.find(value => value.id === packet.id);
+    assert.equal(pending.phase, 'implementation');
+    assert.equal(pending.boundaries.some(value => value.action === 'integrate'), false);
+    assert.equal(attempt.process.candidateRoot, candidateRoot); assert.equal(attempt.process.command.executable, provider);
+    assert.equal(attempt.process.processId, String(invoked.pid)); assert.equal(attempt.process.terminated, true);
+    assert.equal(attempt.process.exitCode, 0); assert.equal(attempt.status, mode === 'good' ? 'awaiting-post' : 'failed');
+    assert.throws(() => process.kill(invoked.pid, 0), { code: 'ESRCH' });
+    assert.deepEqual(await f.hostSnapshot(), before);
+    assert.equal((await f.post(packet.event, actual.stdout)).status, mode === 'good' ? 'completed' : 'failed');
+    if (mode === 'outside-scope') {
+      assert.deepEqual(result.changedPaths, ['src/other.mjs', 'src/value.mjs']);
+      assert.deepEqual(result.outsideScope, ['src/other.mjs']);
+      assert.equal(result.integration, 'rejected-outside-scope');
+      assert.equal(await readFile(join(f.root, 'src/other.mjs'), 'utf8'), 'export const other = 1;\n');
+    }
+    if (mode === 'good') {
+      assert.deepEqual(result.changedPaths, ['src/value.mjs']); assert.deepEqual(result.outsideScope, []);
+      assert.deepEqual(attempt.changedPaths, ['src/value.mjs']);
+      assert.equal(attempt.observed.model, 'gpt-6-astra'); assert.equal(attempt.observed.reasoning, 'xhigh');
+      assert.equal(result.integration, 'parent-review-required');
+      await f.advance('writer-return', 'integration', [packet.id]);
+      const p = await patchProposal(f, patch(join(f.root, 'src/value.mjs')), ['src/value.mjs'], { action: 'integrate', dependsOn: [packet.id] });
+      assert.equal((await f.classify(p)).verdict, 'pass');
+      const integrationPermit = await f.permit(p);
+      assert.equal(await readFile(join(f.root, 'src/value.mjs'), 'utf8'), 'export const value = 1;\n');
+      await writeFile(join(f.root, 'src/value.mjs'), await readFile(join(candidateRoot, 'src/value.mjs')));
+      assert.equal((await f.post(integrationPermit)).status, 'completed');
+      assert.equal(await readFile(join(f.root, 'src/value.mjs'), 'utf8'), 'export const value = 3;\n');
+    }
+    assert.deepEqual(await f.hostSnapshot(), before);
+  });
+});
+
+test('Astra writer binding rejects malformed commands without persisting authority or spawning a process', { timeout: 60000 }, async t => {
+  const f = await fixture(t); await f.begin(); await f.implementation();
+  const candidateRoot = await f.worktree('astra-writer'), packet = await prepareAstraWriter(f, candidateRoot);
+  const provider = join(f.base, 'must-not-run-codex'), marker = join(f.base, 'unexpected-spawn');
+  await writeFile(provider, `#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(marker)}, 'unexpected process');\n`);
+  await chmod(provider, 0o700);
+  const argv = codexArguments({ role: 'writer', model: 'gpt-6-astra', reasoning: 'xhigh', candidateRoot, prompt: 'Change only src/value.mjs.' });
+  const before = await readFile(join(f.runDirectory, 'run.json'));
+  const beforePrompt = (...args) => [...argv.slice(0, -2), ...args, ...argv.slice(-2)];
+  const wrongRoot = [...argv]; wrongRoot[wrongRoot.indexOf('--cd') + 1] = f.hostRoot;
+  const missingRestriction = argv.filter((value, index) => value !== 'sandbox_workspace_write.network_access=false' && !(value === '-c' && argv[index + 1] === 'sandbox_workspace_write.network_access=false'));
+  for (const malformed of [
+    beforePrompt('--sandbox', 'danger-full-access'),
+    beforePrompt('--add-dir', f.hostRoot),
+    beforePrompt('-c', 'sandbox_workspace_write.network_access=true'),
+    beforePrompt('-c', 'model_reasoning_effort="high"'),
+    beforePrompt('--ignore-user-config'),
+    wrongRoot, missingRestriction,
+  ]) {
+    await assert.rejects(current.bindProcessCandidate({ runDirectory: f.runDirectory, attemptId: packet.id, candidateRoot, command: { executable: provider, argv: malformed } }), /does not pin the designated profile/);
+    assert.deepEqual(await readFile(join(f.runDirectory, 'run.json')), before);
+    const attempt = (await f.state()).attempts.find(value => value.id === packet.id);
+    assert.equal(attempt.processBinding, undefined); assert.equal(attempt.process, null);
+    await assert.rejects(readFile(marker), { code: 'ENOENT' });
+  }
 });
 
 test('legacy unresolved launch and process bindings conservatively reserve writer roots', { timeout: 60000 }, async t => {

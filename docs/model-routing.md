@@ -1,4 +1,4 @@
-# Model routing operator contract (1.17.0)
+# Model routing operator contract (1.29.0)
 
 **The model selected when the conversation starts remains the orchestrator.**
 The parent chooses agents and effort from available native capabilities. The
@@ -6,15 +6,17 @@ roster and Codex role TOMLs contain recommendations/requested defaults; they do
 not prove a served model or force a provider chain. No extra coordinator is added.
 
 Edit `config/agent-roster.json` for suggestions, then publish a new snapshot.
-The preliminary [local worker screen](https://github.com/AO-HyS/development-system/blob/v1.17.0/docs/model-screen-2026-09-10.md) favors trying
-Terra Low or Sol Low priority for bounded Codex implementation, and GLM High
-for OpenCode. These are single-sample suggestions, not universal specialist
-rankings. Existing named profiles remain usable; a parent can explicitly select
+New sessions request Sol 6 High normal; Luna 6 High priority provides research
+and exact/mechanical writing, Sol 6 Medium general writing, and Astra 6 XHigh
+planning and separate independent reviews. Jev advises at meaningful routing
+and correction decisions; the parent executes through native tools. Existing
+named profiles remain usable; a parent can explicitly select
 an available model through generic native delegation when a fixed profile does
 not match its task. A profile's old default never replaces the starting parent.
 
-Codex and OpenCode remain ordinary supported routes. Devin is explicitly enabled
-for the user's SWE-2 experiment, not restored as an automatic fallback. Factory
+Codex is the current default. OpenCode is not recommended for new work; historical
+explicit routes remain available. Devin is limited to the user's explicit SWE-2
+experiment, not an automatic fallback. Factory
 and Droid remain retired. Every descendant of that SWE lane stays SWE, including
 critics/browser roles when capable. Missing capability is reported, not silently
 filled by Codex or Go. T3 uses the model and tools of its selected underlying

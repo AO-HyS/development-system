@@ -178,17 +178,17 @@ test("capability gaps limit evidence without blocking independent work and CLI m
 
 test("current release retains visual quality skills, updates governed intake, and pins its Astra XHigh visual reviewer with explicit hashes", async () => {
   const packageJson = JSON.parse(readFileSync(resolve(repositoryRoot, "package.json"), "utf8"));
-  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.27.1.json"), "utf8"));
-  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.46.1.json"), "utf8"));
-  assert.equal(packageJson.version, "1.27.1");
-  assert.equal(packageJson.contractVersion, "1.27.1");
-  assert.equal(manifest.contractVersion, "1.27.1");
-  assert.equal(catalog.catalogVersion, "0.46.1");
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "manifests/1.29.0.json"), "utf8"));
+  const catalog = JSON.parse(readFileSync(resolve(repositoryRoot, "catalog/0.48.0.json"), "utf8"));
+  assert.equal(packageJson.version, "1.29.0");
+  assert.equal(packageJson.contractVersion, "1.29.0");
+  assert.equal(manifest.contractVersion, "1.29.0");
+  assert.equal(catalog.catalogVersion, "0.48.0");
   assert.deepEqual(await validateSkillCatalog(catalog, repositoryRoot), []);
 
   for (const name of ["drive-development-flow", "grill-with-docs", "design-direction", "design-quality"]) {
     const skill = catalog.skills.find((entry) => entry.logicalName === name);
-    const version = ["drive-development-flow", "grill-with-docs"].includes(name) ? "1.26.0" : "1.22.1";
+    const version = ["drive-development-flow", "grill-with-docs"].includes(name) ? "1.29.0" : "1.22.1";
     assert.equal(skill.source.path, `artifacts/${version}/skills/internal/${name}`);
     assert.equal(skill.variants.every((variant) => variant.sourceDirectory === skill.source.path), true);
     assert.equal(skill.variants.every((variant) => /^[a-f0-9]{64}$/u.test(variant.folderSha256)), true);

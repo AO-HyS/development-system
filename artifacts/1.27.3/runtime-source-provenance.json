@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.3",
+  "activeMode": "parent-owned-governance",
+  "sources": [
+    {
+      "sourcePath": "runtime/jev-governance/adapters.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/adapters.mjs",
+      "destination": ".codex/development-system/governance-runtime/adapters.mjs",
+      "sha256": "2ccd86b161e9c60410cfc737632897638e30ca4fc8468398b86238f624c45b29"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/cli.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/cli.mjs",
+      "destination": ".codex/development-system/governance-runtime/cli.mjs",
+      "sha256": "133608fffc9fa2e02f23596ac30b7aa0d606c52da95fa27f2779983c3cc6d36d"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/codex.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/codex.mjs",
+      "destination": ".codex/development-system/governance-runtime/codex.mjs",
+      "sha256": "2fe26455c6a27d9cc46758761d9e0dec6c676455b6c69b4c813535b7ca075222"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/command-reference.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/command-reference.mjs",
+      "destination": ".codex/development-system/governance-runtime/command-reference.mjs",
+      "sha256": "2cb8af1ae1e5fdcffbaf0e844a4f7701d7a7a420badc9fd0866fc0ff9f83d3f5"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/core.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/core.mjs",
+      "destination": ".codex/development-system/governance-runtime/core.mjs",
+      "sha256": "7061b159362221556dc9fa209ce1fd39a831905c06c7e1f3e60dea3e0135702b"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/errors.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/errors.mjs",
+      "destination": ".codex/development-system/governance-runtime/errors.mjs",
+      "sha256": "469bc7cc4da72d959c55bb63c06758d5f470226067995e0995455cf569c2e43a"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/executor.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/executor.mjs",
+      "destination": ".codex/development-system/governance-runtime/executor.mjs",
+      "sha256": "bb29c0407e254e595ec9cc2f72204082400b1297fac5aaadcffa68c9ac604aad"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook-launcher.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/hook-launcher.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook-launcher.mjs",
+      "sha256": "207a481460bdc036f292445b2ba0a3d2c7369e72b7b913dc4f47643da0e83472"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/hook.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/hook.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook.mjs",
+      "sha256": "4a20d5b19c9fda30502db125264431130e229f5468ed7557229003de782611d4"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/jev.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/jev.mjs",
+      "destination": ".codex/development-system/governance-runtime/jev.mjs",
+      "sha256": "fa1e7b1e7bf792ee4bd5ff899c09df8e52d348a76a42ba4badae2256ba446e06"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/opencode.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/opencode.mjs",
+      "destination": ".codex/development-system/governance-runtime/opencode.mjs",
+      "sha256": "bd50cd076b0ea025fd05504ce1c147f07c14221579a1bf396e6dcdb2e706359e"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/policy.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/policy.mjs",
+      "destination": ".codex/development-system/governance-runtime/policy.mjs",
+      "sha256": "bad5e6d130c610ffe99638c14726abe7f8f7c109a0a5e520168a9e63a583bd9b"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/schemas.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/schemas.mjs",
+      "destination": ".codex/development-system/governance-runtime/schemas.mjs",
+      "sha256": "be85aa96a08642e9867a04e026f7ef7d16e1f2dbe495fd014e2fea9ee30b8889"
+    },
+    {
+      "sourcePath": "runtime/jev-governance/store.mjs",
+      "artifactPath": "artifacts/1.27.3/governance-runtime/store.mjs",
+      "destination": ".codex/development-system/governance-runtime/store.mjs",
+      "sha256": "6a1728d3cc5319d6ba55b794287ca0a4a22d6fde6821e58cd50715045131a0df"
+    }
+  ],
+  "operationalEvidence": "Isolated fixtures establish deterministic behavior only. Actual provider identity, sandbox boundaries and governed execution require separate current operational evidence."
+}

@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   auditInstallation,
   installVersion,
+  executionMode,
   rollbackInstallation,
   validateInstallation,
   validateRepository,
@@ -238,7 +239,7 @@ export async function run(argv) {
     const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
     let governance;
     try {
-      if (manifest.artifacts.some((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === "governance-runtime-hook-launcher-mjs")) {
+      if (executionMode(manifest) === "governed-hook-execution" && manifest.artifacts.some((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === "governance-runtime-hook-launcher-mjs")) {
         governance = await enableGovernanceHooks({ home: options.home });
       }
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
@@ -261,7 +262,11 @@ export async function run(argv) {
   } else if (command === "validate") {
     result = await validateInstallation({ home: options.home });
   } else if (command === "rollback") {
-    result = await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
+    const installation = await auditInstallation({ home: options.home });
+    if (installation.status === "unsafe") throw new Error(installation.problems.join("; "));
+    result = installation.executionMode === "advisory-parent-execution"
+      ? await rollbackInstallation({ home: options.home })
+      : await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
   } else if (command === "audit-skills" || command === "sync-skills") {
     const catalog = await readSkillCatalog(options.version);
     if (command === "audit-skills") {

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.27.3",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.27.1",
+  "decision": "docs/adr/0052-explicit-astra-writer.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}
