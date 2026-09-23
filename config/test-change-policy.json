@@ -37,10 +37,17 @@
       "reviewedContent": true
     },
     {
+      "path": "test/evidence-routing.test.mjs",
+      "sha256": "1eaf306275d742e0eee8057eb6277cac3686bbda9bc773343da147c8901ab60e",
+      "reason": "Parent reviewed the intentional new fast-writer expectation from Flash to Luna 6 High priority. All independent Astra media, Computer Use and visual-review checks remain unchanged; requested profiles remain distinct from runtime observation.",
+      "issue": "User-authorized GPT-6 profile migration",
+      "reviewedContent": true
+    },
+    {
       "path": "test/agent-roster.test.mjs",
-      "sha256": "1896aab8600d64a4cfce55cbd0425e720db568612a0aea44f2ed5e186bcb2ac3",
-      "reason": "Parent reviewed exact diff against intentional 1.25 routing change: explicit fast Luna researcher and code mapping alias, retained Sol coordinator, Flash writer, Astra planning and all specialist review profiles; no runtime identity or fallback assertions weakened.",
-      "issue": "User-authorized replaceable fast research and independent Astra planning in 1.25.0",
+      "sha256": "4faac2781ac4531d6c215c36cd70a100a2937a607c81e2a287275dc7ae912ad9",
+      "reason": "Parent reviewed exact current-roster assertions for Sol 6 High coordination, Sol 6 Medium general writing, Luna 6 High priority fast writing/research, and unchanged Astra XHigh planning/review. Alias equality, no fallback, provisional identity and immutable historical release assertions remain intact.",
+      "issue": "User-authorized GPT-6 profile migration",
       "reviewedContent": true
     },
     {
