@@ -2,10 +2,12 @@
 
 ## Objective and boundaries
 
-Prepare exactly three user-launched orchestrator runs: Astra XHigh, Sol XHigh,
-Sol Max. One run each, 600 seconds for the whole task. No trial has started.
-Do not launch, poll, recreate environments, add variants or create worktrees.
-The user will notify completion before analysis.
+Prepare five user-launched orchestrator runs: Astra XHigh, Sol Medium, Sol High,
+Sol XHigh and Sol Max. One run each, with no time limit. No trial has started.
+The user explicitly authorized exactly two additional isolated environments
+for Sol Medium and Sol High. Preserve the original three; no other worktrees.
+Do not launch or poll trials. The user will notify completion before analysis.
+Actor-facing prompts describe only the normal NutriPlan product task.
 
 Preserve active branches, product files and processes in AOHYS, Opportunity OS
 and NutriPlan. Only their Development System configuration may change. Ten
@@ -22,7 +24,7 @@ lifecycle extensions, catalog 0.48.0 and the customized HTML reports. Published
 immutable versions are unchanged.
 
 Release 1.29.1 is published from 72d64aa1469d3e9b53a0c5ee2271468291705765;
-PR #104 merged. Its exact package is globally installed and pinned in all seven
+PR #104 merged. Its exact package is globally installed and pinned in all nine
 product/benchmark consumers. Audit is healthy; Jev hooks are disabled. The
 advisory component remains the unchanged 1.29.0 recipe inside package 1.29.1.
 Full verify passed 887 tests under Node 22; scenario passed installation, drift,
@@ -47,19 +49,23 @@ unrelated global guards and customized report bytes remain unchanged.
   old AOHYS DS dependency/lock entry changed. Private archives preserve 602
   inactive-repo untracked files.
 - Historical Barber and NutriPlan base worktrees still have live servers and
-  are retained; they are separate from the three prepared trial worktrees.
+  are retained; they are separate from the five prepared trial worktrees.
 
 ## Benchmark handoff
 
 Private preparation root:
 ~/.development-system/private/benchmarks/orchestrator-manual-129-20260923/.
-Read readiness.json, preparation.json, contract.md and each saved prompt.
+Analyst metadata: readiness.json and preparation.json. Actor-facing task and
+individual environment packets: ~/.development-system/private/tasks/nutriplan-inspiration/.
 Roots under AO/.worktrees/nutri-orch-{variant}-129 are clean at the identical
 prepared commit bb569b823a9b7ccf7d69902725da323251247cb6, based on product
 revision 48dd5266d928feb457648ec78e29bc5201be21c8. Each has its own env, backend,
 synthetic accounts, ports, Chrome host/window and photo inputs. Keep them alive.
-Browser login/reload and simultaneous tab-scoped recording preflight passed;
-this is infrastructure evidence, not acceptance of the unimplemented card.
+Browser login/reload passed in all five; the simultaneous tab-scoped recording
+preflight from the original three is retained. This is infrastructure evidence,
+not acceptance of the unimplemented card. The two added environments passed
+frozen installs, build, typecheck, HTTP auth, isolation and process attribution.
+Their receipts are pair-preparation-receipt.json and pair-browser-handoff.json.
 
 Task: an inspiration-card form and new Convex entity in NutriPlan. Only the
 orchestrator model/effort changes. Fresh exclusive agents per variant; Luna
@@ -77,7 +83,13 @@ Earlier continuity is preserved in current-work-before-final-summary.md.
 Final report uses the existing notebook helper/tunnel; keep it concise,
 preserve comments and omit tunnel lifetime prose.
 
-Final preparation records are version-aligned; HTTP health and synthetic login
-passed again after the dependency update. Readiness is authoritative in the
-private receipt. Deliver the three prompts inline and wait for the user.
+The original three records are version-aligned; HTTP health and synthetic login
+passed after the dependency update. The two newly authorized environments are
+prepared at the identical revision. Readiness is authoritative in the private
+receipt. Deliver the five natural-task prompts, then wait for the user without
+launching or observing their tasks. Actor packets are entorno-a (Astra XHigh),
+entorno-b (Sol Medium), entorno-c (Sol High), entorno-d (Sol XHigh), entorno-e
+(Sol Max). Model/effort selection belongs to the user interface, not the prompts.
+The former timed protocol is preserved only under extension-five/history;
+current instructions and the static handoff generator contain no deadline.
 PR #102 was closed as superseded by #103; its 27 report files are preserved.
