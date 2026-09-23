@@ -1,5 +1,29 @@
 # Technical Reader Design System
 
+## Field-notebook reports, version 1.28.0
+
+Standalone reports (`presentation: "report"`) supersede the 1.8.1 paper below
+with a field notebook. Canonical workflow Readers are unchanged. Source of the
+direction: `docs/design/technical-report-brief.md` and ADR 0052.
+
+- Warm memo paper `#f7f6e8` with a 24px dot grid, ink `#141516`, kraft chrome
+  `#e7d3b4`/`#7d3f16`. Three status colors only: green `#2e8a3d` verified,
+  amber `#d49a10` estimated, vermilion `#c8361b` pending and the caret. Night:
+  paper `#1a1a18`, ink `#ece8d9`, lifted status colors. Theme persists per browser.
+- Bricolage Grotesque 700 for display, numerals and the verdict; Atkinson
+  Hyperlegible for 18px/1.7 prose at a 68ch measure; Monaspace Neon for code.
+  All embedded; no network fonts.
+- First viewport: stamp line (type · date · reference), title, one verdict,
+  summary, signal row, numbered findings with drawn SVG marks. Conclusion first.
+- Numbered contents rail and section numerals. No boxes or cards; space,
+  baselines and hairline rules separate.
+- The right margin holds questions. Hovering or keyboard-picking a block shows
+  an "ask" pill; the composer and saved notes sit beside their block, and the
+  tray docks inside the margin (fixed below 1180px). Drafts persist locally and
+  send as one batch.
+- Rejected in review: tape, handwriting fonts, hatched charts, unicode icons.
+  Use SVG for every icon.
+
 ## Visual documents, version 1.8.1
 
 The operator's PR Lens report is the pinned reference for standalone completion,

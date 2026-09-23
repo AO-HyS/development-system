@@ -147,6 +147,13 @@
       "reason": "Parent and independent Astra reviewed exact content: real divergent Git worktree lifecycle preserves dirty host bytes; explicit hook ingress, protected paths, moves, identity drift, actual raw process exit and termination, concurrent root ownership, storage failure, administrative recovery and legacy compatibility fail closed. Synthetic classifier/provider metadata is explicitly distinguished from real processes and files. No operational host certification claimed.",
       "issue": "User-authorized separate host and integration roots 1.27.0",
       "reviewedContent": true
+    },
+    {
+      "path": "test/report-notebook.test.mjs",
+      "sha256": "35d650f2b26b2062146522db97fa2cceecc17389e65422f10ca0f0e8d9a46f87",
+      "reason": "Parent reviewed exact new-file content: asserts verdict selection and prose fallback, status marks, numbering, data-q anchors, embedded fonts, CSP script-hash binding, managed regeneration, and the question endpoint's revisioned 0600 storage with 409, 403, 400, 415, 404, 405 and symlink refusals. New file only; no existing test or assertion changed.",
+      "issue": "User-authorized field-notebook report redesign and margin questions 1.28.0",
+      "reviewedContent": true
     }
   ]
 }

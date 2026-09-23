@@ -1,6 +1,6 @@
 # AOHYS Development System
 
-## Release 1.27.1 / catalog 0.46.1
+## Release 1.28.0 / catalog 0.47.0
 
 Sol coordinates the complete feature from its spec and all linked tickets.
 Fast researchers collect source facts; Astra XHigh authors the plan and a
@@ -26,8 +26,16 @@ Read-only status exposes ordered plan packets without private transcript paths.
 See [the packing decision](docs/adr/0051-lossless-jev-request-packing.md).
 Actual provider verification after installation remains pending.
 
+Standalone technical reports now read as a field notebook: the verdict at
+display scale, status marks, numbered findings with verification glyphs, a
+numbered contents index and a night theme. Click any paragraph, finding, table
+or chart to write a question in the margin; drafts stay in the browser and a
+local Reader server stores each batch as a revisioned receipt. Every earlier
+report capability remains. See [the report decision](docs/adr/0052-field-notebook-report-and-margin-questions.md)
+and [the report guide](docs/technical-report-reader.md).
+
 See [the governance decision](docs/adr/0047-whole-flow-jev-governance.md),
-[current validation](docs/releases/1.27.1-validation.md),
+[current validation](docs/releases/1.28.0-validation.md),
 [supported host surfaces](docs/releases/1.26.0-validation.md),
 [the execution recipe](artifacts/1.27.1/skills/internal/coding-orchestration/references/jev-governance.md)
 and [the spec/ticket contract](artifacts/1.27.1/skills/internal/coding-orchestration/references/spec-ticket-contract.md).
@@ -98,7 +106,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.27.1/aohys-development-system-1.27.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.28.0/aohys-development-system-1.28.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -129,10 +137,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.27.1
+./bin/development-system setup --version 1.28.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.46.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.47.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

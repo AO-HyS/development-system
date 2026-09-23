@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.28.0",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.27.1",
+  "decision": "docs/adr/0052-field-notebook-report-and-margin-questions.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0",
+  "changedSurface": "skills/internal/working-backwards",
+  "addedFiles": [
+    "assets/bricolage-grotesque-latin.woff2",
+    "assets/licenses/bricolage-OFL.txt",
+    "assets/report-notebook.js"
+  ],
+  "changedFiles": [
+    "assets/report-evidence.css",
+    "assets/visual-document.css",
+    "scripts/reader-live.mjs",
+    "scripts/report-evidence.mjs",
+    "scripts/t3-reader.mjs",
+    "scripts/visual-document.mjs"
+  ]
+}
