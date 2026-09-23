@@ -9,6 +9,11 @@ const WRITER_CONFIG = Object.freeze([
   "sandbox_workspace_write.exclude_slash_tmp=true",
 ]);
 
+/** New Luna 6 child routes require Fast; historical routes keep their argv. */
+export function requiredCodexServiceTier(model) {
+  return model === "gpt-6-luna" ? "priority" : null;
+}
+
 /** Keep the positional prompt outside Codex's variadic image option.
  * Explicit --sandbox selects the legacy policy even with inherited
  * default_permissions; pin every writable-root/network expansion for writers.
@@ -16,8 +21,10 @@ const WRITER_CONFIG = Object.freeze([
  * https://learn.chatgpt.com/docs/permissions
  * @param {{role?:string,model:string,reasoning:string|null,candidateRoot:string,schemaPath?:string|null,imagePaths?:string[],prompt:string}} input */
 export function codexArguments({ role, model, reasoning, candidateRoot, schemaPath, imagePaths = [], prompt }) {
+  const tier = requiredCodexServiceTier(model);
   return ["exec", "--json", "--sandbox", role === "writer" ? "workspace-write" : "read-only", "--model", model,
     "-c", `model_reasoning_effort="${reasoning}"`,
+    ...(tier ? ["-c", `service_tier="${tier}"`] : []),
     ...(role === "writer" ? WRITER_CONFIG.flatMap((config) => ["-c", config]) : []), "--cd", candidateRoot,
     ...(schemaPath ? ["--output-schema", schemaPath] : []), ...imagePaths.flatMap((path) => ["--image", path]), "--", prompt];
 }
@@ -31,7 +38,8 @@ export function matchesCodexCommand(argv, { role, model, reasoning, candidateRoo
   if (!Array.isArray(argv) || argv.some((arg) => typeof arg !== "string" || arg.includes("\0")) || argv[0] !== "exec") return false;
   const writer = role === "writer";
   const effort = `model_reasoning_effort="${reasoning}"`;
-  const allowedConfig = new Set([effort, ...(writer ? WRITER_CONFIG : [])]);
+  const tier = requiredCodexServiceTier(model);
+  const allowedConfig = new Set([effort, ...(tier ? [`service_tier="${tier}"`] : []), ...(writer ? WRITER_CONFIG : [])]);
   const configs = new Set();
   /** @type {Map<string,string|true>} */ const options = new Map();
   /** @type {string[]} */ const imagePaths = [];
@@ -67,9 +75,9 @@ export function matchesCodexCommand(argv, { role, model, reasoning, candidateRoo
     if (writer || flag.startsWith("-") || index !== argv.length - 1 || ["resume", "fork", "review", "help"].includes(flag)) return false;
     prompt = flag;
   }
-  if (options.get("--model") !== model || options.get("--sandbox") !== (writer ? "workspace-write" : "read-only") || !configs.has(effort)) return false;
+  if (options.get("--model") !== model || options.get("--sandbox") !== (writer ? "workspace-write" : "read-only") || !configs.has(effort) || tier && !configs.has(`service_tier="${tier}"`)) return false;
   if (options.has("--cd") && options.get("--cd") !== candidateRoot) return false;
-  if (!writer) return true;
+  if (!writer) return configs.size === allowedConfig.size;
   if (!delimited || prompt === undefined || !options.has("--json") || options.get("--cd") !== candidateRoot || configs.size !== allowedConfig.size) return false;
   const expected = codexArguments({ role, model, reasoning, candidateRoot, schemaPath: /** @type {string|undefined} */ (options.get("--output-schema")), imagePaths, prompt });
   return argv.length === expected.length && argv.every((arg, index) => arg === expected[index]);

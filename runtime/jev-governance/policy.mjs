@@ -18,6 +18,10 @@ export const JEV_MAX_CRITERIA = 200;
 export const ASTRA = Object.freeze({ provider: "codex", model: "gpt-6-astra", reasoning: "xhigh" });
 export const FLASH = Object.freeze({ provider: "opencode-go", model: "opencode-go/deepseek-v4.1-flash", reasoning: "high" });
 export const LUNA = Object.freeze({ provider: "codex", model: "gpt-5.6-luna", reasoning: "high" });
+export const LUNA_6_HIGH = Object.freeze({ provider: "codex", model: "gpt-6-luna", reasoning: "high" });
+export const LUNA_6_MAX = Object.freeze({ provider: "codex", model: "gpt-6-luna", reasoning: "max" });
+export const SOL_6_LOW = Object.freeze({ provider: "codex", model: "gpt-6-sol", reasoning: "low" });
+export const SOL_6_MEDIUM = Object.freeze({ provider: "codex", model: "gpt-6-sol", reasoning: "medium" });
 
 /** `opencode` and `opencode-go` name the same governed provider.
  * @param {string} left @param {string} right */
@@ -226,13 +230,13 @@ export function profileFor(role, route, observedCoordinator = null) {
       return { ok: true, reason: "observed coordinator profile" };
     }
     case "researcher":
-      return matches(LUNA) || matches(FLASH) || matches(ASTRA) ? { ok: true, reason: "approved explicit research profile" } : { ok: false, reason: "researcher requires approved Luna/high, Flash/high or Astra/xhigh" };
+      return matches(LUNA_6_HIGH) || matches(LUNA) || matches(FLASH) || matches(ASTRA) ? { ok: true, reason: "approved explicit research profile" } : { ok: false, reason: "researcher requires approved Luna/high, Flash/high or Astra/xhigh" };
     case "planner":
       return matches(ASTRA) ? { ok: true, reason: "planner requires Astra xhigh" } : { ok: false, reason: "planner requires gpt-6-astra/xhigh" };
     case "plan-reviewer":
       return matches(ASTRA) ? { ok: true, reason: "plan reviewer requires Astra xhigh" } : { ok: false, reason: "plan reviewer requires gpt-6-astra/xhigh" };
     case "writer":
-      return matches(FLASH) || matches(ASTRA) ? { ok: true, reason: "approved explicit writer profile" } : { ok: false, reason: "writer requires opencode-go/deepseek-v4.1-flash/high or codex/gpt-6-astra/xhigh" };
+      return matches(SOL_6_LOW) || matches(SOL_6_MEDIUM) || matches(LUNA_6_HIGH) || matches(LUNA_6_MAX) || matches(FLASH) || matches(ASTRA) ? { ok: true, reason: "approved explicit writer profile" } : { ok: false, reason: "writer requires an approved exact Sol, Luna, Flash or Astra profile" };
     case "reviewer":
       return matches(ASTRA) ? { ok: true, reason: "reviewer requires Astra xhigh" } : { ok: false, reason: "reviewer requires gpt-6-astra/xhigh" };
     case "verifier":

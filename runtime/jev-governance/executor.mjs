@@ -12,7 +12,7 @@ import { bindProcessCandidate, buildObservationAssessmentInput, executionDescrip
 import { describeToolInvocation } from "./adapters.mjs";
 import { assertRunRoots, hostRootFor, readProcessRootIdentity, readPrivateArtifact, repositoryDelta, snapshotRepository } from "./store.mjs";
 import { collectOpenCodeObservation, flashArguments, FLASH_PROFILE, observedOpenCodeSession, workerEnvironment } from "./opencode.mjs";
-import { allowsCodexWriterRequirements, codexArguments, matchesCodexWriterPermissions } from "./codex.mjs";
+import { allowsCodexWriterRequirements, codexArguments, matchesCodexWriterPermissions, requiredCodexServiceTier } from "./codex.mjs";
 import { tokenizeExactCommand } from "./hook.mjs";
 import { parseGovernanceArguments } from "./cli.mjs";
 
@@ -239,6 +239,22 @@ export function codexResultText(events) {
   return typeof value === "string" ? value : "";
 }
 
+/** Host settings are an observation of the request, not proof of the service's
+ * charged tier. Missing or unrecognized fields stay unknown. Never infer Fast
+ * from the model, effort or command flags.
+ * @param {string|null} requested @param {any[]} records */
+export function codexTierObservation(requested, records) {
+  const tiers = records.flatMap((record) => {
+    const payload = record?.payload;
+    if (!(record?.type === "event_msg" && payload?.type === "thread_settings_applied") && record?.type !== "turn_context") return [];
+    const value = payload?.serviceTier ?? payload?.service_tier;
+    return value === "priority" || value === "default" ? [value] : [];
+  });
+  const distinct = [...new Set(tiers)];
+  if (distinct.length > 1 || requested && distinct.length && distinct[0] !== requested) invalid("Observed Codex service tier conflicts with the requested route.");
+  return { requested: requested ?? "unspecified", hostObserved: distinct[0] ?? "unknown", providerObserved: "unknown" };
+}
+
 /** Parse actual fresh Codex session metadata, not requested flags.
  * @param {string} stdout @param {string} cwd @param {any} route @param {NodeJS.ProcessEnv} env */
 async function observeCodex(stdout, cwd, route, env) {
@@ -261,6 +277,7 @@ async function observeCodex(stdout, cwd, route, env) {
   if (found.length !== 1) invalid("Codex transcript provenance is ambiguous.");
   const file = await open(found[0], constants.O_RDONLY | constants.O_NOFOLLOW);
   let sessionSeen = false, observed = false;
+  /** @type {any[]} */ const tierRecords = [];
   /** @type {any} */ let permissionObservation = null;
   try {
     const stat = await file.stat();
@@ -269,9 +286,12 @@ async function observeCodex(stdout, cwd, route, env) {
     const lines = createInterface({ input: stream, crlfDelay: Infinity });
     try {
       for await (const line of lines) {
-        if (line.length > 2 * 1024 * 1024 || !/"type"\s*:\s*"(?:session_meta|turn_context)"/u.test(line)) continue;
+        if (line.length > 2 * 1024 * 1024 || !/"type"\s*:\s*"(?:session_meta|turn_context|event_msg)"/u.test(line)) continue;
         let record; try { record = JSON.parse(line); } catch { continue; }
         const metadata = record.payload;
+        if (record.type === "turn_context" || record.type === "event_msg" && metadata?.type === "thread_settings_applied") {
+          tierRecords.push({ type: record.type, payload: { type: metadata?.type, serviceTier: metadata?.serviceTier, service_tier: metadata?.service_tier } });
+        }
         if (record.type === "session_meta" && metadata?.id === sessionId) {
           if (metadata.forked_from_id || typeof metadata.source !== "string" || metadata.model_provider !== "openai") invalid("Codex process did not provide fresh OpenAI session provenance.");
           sessionSeen = true;
@@ -292,7 +312,9 @@ async function observeCodex(stdout, cwd, route, env) {
   } finally { await file.close(); }
   if (!sessionSeen || !observed) invalid("Codex model and effort could not be observed.");
   const output = codexResultText(events);
-  return { provider: "openai", model: route.model, reasoning: route.reasoning, sessionId, output, ...(route.role === "writer" ? { permissionObservation } : {}) };
+  return { provider: "openai", model: route.model, reasoning: route.reasoning, sessionId, output,
+    serviceTierObservation: codexTierObservation(requiredCodexServiceTier(route.model), tierRecords),
+    ...(route.role === "writer" ? { permissionObservation } : {}) };
 }
 
 /** @param {string} candidateRoot */
@@ -403,7 +425,7 @@ export async function launchGovernedProcess({ home, runDirectory, sessionId, lau
     /** @type {string[]} */ let changed = [];
     /** @type {any[]} */ let files = [];
     let readScopeChanged = false, reconciliationFailed = false;
-    /** @type {{provider:string,model:string,reasoning:string|null,output:string,sessionId?:string,permissionObservation?:any}} */
+    /** @type {{provider:string,model:string,reasoning:string|null,output:string,sessionId?:string,permissionObservation?:any,serviceTierObservation?:any}} */
     let observed = { provider: "unknown", model: "unknown", reasoning: "unknown", output: "Provider identity could not be established from actual process metadata." };
     try {
       observed = check ? { provider: "local", model: "deterministic-check", reasoning: null, sessionId: `check_${result.pid}_${launch.attemptId}`, output: result.stdout } : flash ? await collectOpenCodeObservation({ executable, sessionId: observedOpenCodeSession(result.stdout), candidateRoot, env }) : await observeCodex(result.stdout, candidateRoot, proposal.route, env);
@@ -422,6 +444,7 @@ export async function launchGovernedProcess({ home, runDirectory, sessionId, lau
       attemptId: launch.attemptId, candidateRoot, changedPaths: changed, outsideScope, candidateHash: stableHash(files),
       exitCode: result.exitCode, exitSignal: result.exitSignal, reconciliationFailed: readScopeChanged || reconciliationFailed || result.overflow, cancelled: result.terminated, identityObserved: observed.model === proposal.route.model,
       ...(codex && writer ? { permissionPreflight, permissionObservation: observed.permissionObservation ?? null } : {}),
+      ...(codex ? { serviceTierObservation: observed.serviceTierObservation ?? { requested: requiredCodexServiceTier(proposal.route.model) ?? "unspecified", hostObserved: "unknown", providerObserved: "unknown" } } : {}),
       integration: outsideScope.length ? "rejected-outside-scope" : "parent-review-required", integrated: false };
   } finally {
     await lock.close();
