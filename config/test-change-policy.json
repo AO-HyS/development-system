@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "allowedChanges": [
     {
+      "path": "test/governance-gpt6-fast-profiles.test.mjs",
+      "sha256": "fbb3733d55d539f3ead1af3ad76b199516ba86467cb46d972067577f378315f1",
+      "reason": "Parent reviewed exact new profile, argv and tier tests: explicit Sol/Luna routes, fixed Astra reviews, mandatory Luna priority, duplicate/unsafe options rejected, and requested tier never substituted for missing provider observation. Existing assertions unchanged; fixtures do not establish live delivery.",
+      "issue": "User-authorized GPT-6 profile migration and one benchmark",
+      "reviewedContent": true
+    },
+    {
+      "path": "test/governance-coordinator-effort.test.mjs",
+      "sha256": "ce01e5bcda2b31cebb81c89d3ebb11e72a96387118ce89bf6a53d75ac4a01a91",
+      "reason": "Parent reviewed exact isolated hook/CLI protocol: later same-thread effort confirmation, pending denies work but allows turn handoff, stale and replay rejection, fresh retry, restart persistence, audit transition and current final review preserved without changing acceptance epoch. Synthetic model identities and Jev answers are explicit fixture evidence, not live certification.",
+      "issue": "User-authorized phase effort adaptation without restarting the coordinator",
+      "reviewedContent": true
+    },
+    {
       "path": "test/governance-codex-permissions.test.mjs",
       "sha256": "f00342864471b420e0ea46f61edef298b3c1d4fdf947a5952496fa9831778ceb",
       "reason": "Parent reviewed exact staged content: rejects missing, managed or incompatible requirements and unsafe observed permission metadata; actual isolated subprocess RPC verifies initialize ordering, response validation, no private errors, timeout and confirmed PID termination. Synthetic provider responses are not live host certification.",

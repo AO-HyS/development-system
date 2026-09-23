@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.28.0",
+  "mode": "parent-owned-governance",
+  "previousContract": "1.27.4",
+  "decision": "docs/adr/0054-gpt6-fast-and-effort.md",
+  "legacyController": "disabled",
+  "advisoryRuntime": "unchanged-compatible-1.24.0"
+}
