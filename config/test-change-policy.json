@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "allowedChanges": [
     {
+      "path": "test/repository-advisory-profile.test.mjs",
+      "sha256": "dbedf80b508c0d891a603f19889180676a4d80155b03ece5ae826ea537088969",
+      "reason": "Parent reviewed exact isolated initialize and normalize roundtrip: generated advisory model and Jev guidance, absence of obsolete active governed permits and Flash, preservation of a custom product lifecycle field and package bytes, and repeat normalization idempotence.",
+      "issue": "workspace-readiness-1291",
+      "reviewedContent": true
+    },
+    {
       "path": "test/governance-gpt6-fast-profiles.test.mjs",
       "sha256": "fbb3733d55d539f3ead1af3ad76b199516ba86467cb46d972067577f378315f1",
       "reason": "Parent reviewed exact new profile, argv and tier tests: explicit Sol/Luna routes, fixed Astra reviews, mandatory Luna priority, duplicate/unsafe options rejected, and requested tier never substituted for missing provider observation. Existing assertions unchanged; fixtures do not establish live delivery.",
@@ -52,9 +59,9 @@
     },
     {
       "path": "test/anti-slop-contract.test.mjs",
-      "sha256": "9f8b9f520771438867ae255041e6d561c7da495a62fec05cd546be18201d857b",
-      "reason": "Parent reviewed proportional-execution text assertion update: tiny work remains parent-owned while governed features now explicitly require independent Astra plan and final reviews. All planner phases, behavioral evidence, immutable historical sources and installer boundaries remain asserted.",
-      "issue": "User-authorized 1.25.0 whole-flow Jev governance and production installation",
+      "sha256": "751a5d826ac77b7715940b4650d6eca64f78b0d3b5cdaf6a349b18d669ad3ded",
+      "reason": "Parent reviewed exact advisory wording update: nontrivial features still require independent Astra plan and final reviews. All other planner, behavioral evidence, immutable historical source and installer assertions remain unchanged.",
+      "issue": "workspace-readiness-1291",
       "reviewedContent": true
     },
     {
@@ -199,9 +206,9 @@
     },
     {
       "path": "test/visual-grill.test.mjs",
-      "sha256": "70122efa9a06f73f4896f4021c8a8833a447e584e94b1e2a1c17ec52733b2c6f",
-      "reason": "Parent reviewed exact current-release expectations: GPT-6 Sol coordination, Luna High Codex priority fast route and 1.29.0/catalog 0.48.0. Historical assertions, unsupported harness refusal, quota failure without fallback, caller authority boundaries and Astra XHigh visual review remain intact.",
-      "issue": "User-authorized advisory restoration and GPT-6 profile 1.29.0",
+      "sha256": "209076b2bf737ec3f702d9aa960b3a02734ac684e7f40e44afcb981c3076578e",
+      "reason": "Parent approved the exact mechanical current-release expectation update from 1.29.0 to 1.29.1 for manifest path and package/contract/manifest assertions; historical 1.29.0 skill sources and visual assertions remain intact.",
+      "issue": "workspace-readiness-1291",
       "reviewedContent": true
     }
   ]

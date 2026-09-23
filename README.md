@@ -1,6 +1,11 @@
 # AOHYS Development System
 
-## Release 1.29.0 / catalog 0.48.0
+## Release 1.29.1 / catalog 0.48.0
+
+Repository initialization and normalization now generate the same advisory
+workflow as the installed runtime. Re-running preparation preserves custom
+lifecycle extensions and does not restore the obsolete governed/Flash routing.
+The model roster, catalog and customized HTML report remain unchanged.
 
 Jev advises at meaningful routing and correction decisions; the selected parent
 executes with native tools and owns acceptance. Installation removes only owned
@@ -89,7 +94,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.29.0/aohys-development-system-1.29.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.29.1/aohys-development-system-1.29.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -120,7 +125,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.29.0
+./bin/development-system setup --version 1.29.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
 ./bin/development-system audit-skills --version 0.48.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
@@ -299,7 +304,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.29.0`; audit advisory hooks and the paired catalog 0.48.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.29.1`; audit advisory hooks and the paired catalog 0.48.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

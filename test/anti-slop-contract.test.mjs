@@ -1219,7 +1219,7 @@ test("repository preparation retains the explicit planner contract and surfaces 
   assert.equal(contract.antiSlop.activation, "explicit-orchestration-plan-only");
   assert.equal(contract.antiSlop.ordinaryWork, "parent-owned-responsibilities-with-proportional-review-not-mandatory-lanes");
   assert.match(adapter, /responsibilities\. Tiny direct work\nstays with the parent/);
-  assert.match(adapter, /governed features retain their independent Astra plan\nand final reviews/);
+  assert.match(adapter, /nontrivial features retain their independent Astra plan\nand final reviews/);
   assert.match(adapter, /Test edits are closed by default/);
   assert.match(adapter, /File counts and style scores are not gates/);
   assert.match(adapter, /Planner output never performs writes/);
