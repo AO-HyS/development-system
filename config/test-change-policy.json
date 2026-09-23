@@ -93,13 +93,6 @@
       "reviewedContent": true
     },
     {
-      "path": "test/evidence-routing.test.mjs",
-      "sha256": "6b7361d703d7d8344d7148dfd976e2a65f3f80265a0de81d7396e7261d53bcd1",
-      "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
-      "issue": "User-authorized 1.24.0 winning advisory production rollout",
-      "reviewedContent": true
-    },
-    {
       "path": "test/model-routing.test.mjs",
       "sha256": "ab4be0494e0d484d998e7d64af1546dba202bf6213e1173b5ec13fd156820e63",
       "reason": "Parent independently reviewed exact diff. Current profile pins Flash High and native Astra XHigh while receipt and authority assertions remain. Historical controller keeps 1.23.5 identity in injected-runtime tests; its acceptance gates remain unchanged and live entry point denial has separate regression coverage.",
