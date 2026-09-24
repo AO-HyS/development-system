@@ -40,23 +40,24 @@ feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.
 - Read-only audit of all product repositories' agent instructions (results
   reported to the user; no repository changed).
 
-## Publication and rollout — 2026-09-24
+## Publication and rollout — 2026-09-24 (complete)
 
-- Published development prerelease v1.31.0 (tag on e694986, asset
-  aohys-development-system-1.31.0.tgz, sha256 c8ae8448…7e9b). Operator HOME
-  reinstalled from the downloaded package; audit/guardrails/skills healthy.
-- Primary repos (development-steward list): eteria PR #279 and casa-roca
-  PR #138 target develop (package pin, adapter version pin, host-neutral
-  guidance; casa-roca drops its stale CLAUDE.md). normalize-repository was not
-  used: its template would regress the 2026-09-23 manual guidance alignment.
-- the-barber-central: branch chore/development-system-1.31.0 committed locally
-  (e9b7a636); push blocked by its pre-push typecheck, whose wrangler types
-  include private apps/*/.env.local names under turbo strict env mode.
-- aohys (develop, 443 pending files incl. .codex/development-system) and
-  nutri-plan (active T3 coordinator branch, 714 pending files) untouched.
-- casa-roca's VS Code auto-migration diff is preserved privately
-  (preserved/casa-roca-vscode-settings.patch); lint-staged cannot stage the
-  ignored .vscode path.
+- Published development prerelease v1.31.0 (tag on e694986, asset sha256
+  c8ae8448…7e9b). Operator HOME reinstalled from the downloaded package.
+- Production (user-authorized): eteria #279 -> develop, #280 -> main, Release
+  Train deployed production (6fe465a). the-barber-central #338 -> develop
+  (includes the local typecheck fix: wrangler types ignore dotenv), #339 ->
+  main, Release Train deployed production (e60a7011). casa-roca #138 ->
+  develop, #139 -> main (6f6c089); the dashboard Vercel project has no Git link
+  (Hobby plan cannot connect the private org repo), so production was deployed
+  with the Vercel CLI from a clean export of 6f6c089; Ready and aliased,
+  /sign-in 200. casa-roca-public was unaffected by this release.
+- nutri-plan #493 squash-merged to develop (4e12c96a) from a user-authorized
+  temporary worktree, now removed; the active T3 task's checkout is untouched.
+  Not promoted to production. aohys left for later.
+- normalize-repository was not used: its template regresses the 2026-09-23
+  manual guidance alignment. casa-roca's VS Code auto-migration diff is kept
+  privately (preserved/casa-roca-vscode-settings.patch).
 
 ## Pending (user)
 
@@ -64,8 +65,8 @@ feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.
   exa, mercadopago, mobbin, Notion. GitHub plugin needs
   GITHUB_PERSONAL_ACCESS_TOKEN (gh CLI works meanwhile).
 - Optional T3 provider instance whose binaryPath is the private Headroom shim.
-- Decide: remove repository tests; publish 1.31.0; repository instruction
-  cleanups; Claude subagent roster; cross-CLI computer use.
+- Decide: Vercel Pro (or another route) to restore casa-roca dashboard Git
+  deployments; Claude subagent roster; cross-CLI computer use.
 
 ## Evidence and processes
 
