@@ -3,59 +3,53 @@
 ## Objective — 2026-09-24
 
 Give Claude Code (Opus 5.5, including T3's Claude provider) parity with the
-Codex setup: same personal rules and skills, the destructive-command guard,
-optional Headroom transport, and one-to-one plugins/MCP servers. Research the
-current Opus 5.5 and Claude Code practices, and audit agent instructions across
-the product repositories. Deferred by the user: a Claude subagent roster and
-cross-CLI delegation (e.g. Codex/OpenAI computer use invoked from Claude).
+Codex setup using links, not second copies: same personal rules and skills,
+destructive-command guard, optional Headroom transport, one-to-one plugins/MCP
+servers, minimal added context. User direction: do not author, update or run
+tests; deferred: Claude subagent roster and cross-CLI computer use via Codex.
 
 ## Root and branch
 
 Canonical root /Users/corrortiz/Documents/AO/development-system, branch
-feat/claude-code-parity-1.31.0. It is stacked on
-feat/headroom-observed-delivery-1.30.0 (tag v1.30.1, installed, pushed, not
-merged into develop or main); starting from develop would have dropped the
-installed 1.30.x artifacts. No worktree or clone was created. The previous
-task's narrative is in that branch's docs/current-work.md.
+feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.0
+(v1.30.1 is installed and pushed but not in develop or main). No worktree/clone.
 
 ## Completed
 
-- Release 1.31.0 / catalog 0.50.0 (ADR 0058): `claude` harness, 104 skill
-  mirrors in .claude/skills, generated .claude/CLAUDE.md (shared rules
-  verbatim, Claude host profile, Opus 5.5 practices), guard `--harness claude`,
-  guardrails for ~/.claude/settings.json (schema 3, schema 2 compatible),
-  runtime/headroom/claude.mjs. Scan budget raised 512 → 768.
-- Builder check and typecheck pass. Isolated HOME: upgrade 1.30.1 → 1.31.0,
-  audit healthy, skill audit only lacks operational evidence (same class as
-  the 1.30.1 baseline), mirrors identical, foreign symlinks preserved,
-  guardrail enable/probe/rollback byte-identical, v2 → v3 migration.
-- Operator HOME: installed 1.31.0 from the local checkout, guardrails enabled
-  (Codex entry unchanged, Claude entry added). Codex config.toml, 18 role
-  TOMLs, hooks.json and AGENTS.md match the pre-change fingerprints. The guard
-  blocked real Claude Code Bash calls in this session (loaded and enforcing).
-- Operator configuration outside the manifest: 11 official plugins (github,
-  vercel, sentry, cloudflare, stripe, expo, convex, linear, posthog, exa,
-  mercadopago); user MCPs auggie, mobbin, expect (broken npx cache moved to
-  private); instructionFiles = claude-md-and-agents-md; impeccable hook
-  command repaired; 14 non-catalog skills linked; 5 dangling skill links moved
-  to private backup. Backups of prior Claude settings are private.
-- Headroom: real `claude -p` runs through claude.mjs and the private T3 shim
-  (stream-json) completed with 2 proxied requests each. Counters descriptive.
+- Release 1.31.0 / catalog 0.50.0 (ADR 0058), unpublished: Claude skill variants
+  install as relative links to the canonical copies; the shared
+  ~/.codex/AGENTS.md gains a short "Claude Code host" section; guard accepts
+  `--harness claude` and guards Bash|Monitor from the canonical engine;
+  runtime/headroom/claude.mjs sits next to cli.mjs. Independent review findings
+  were corrected. Builder check and typecheck pass.
+- Operator HOME: 1.31.0 installed and healthy (an earlier 1.31.0 layout was
+  rolled back to 1.30.1 with its installing commit's code, then reinstalled).
+  ~/.claude/CLAUDE.md -> ../.codex/AGENTS.md (Claude confirmed it loads).
+  Guardrails healthy for Codex and Claude; the guard blocks real Claude calls.
+  Codex config.toml, 18 role TOMLs and hooks.json unchanged; AGENTS.md changed
+  only by the appended Claude section.
+- Operator configuration: plugins github, vercel, sentry, cloudflare, stripe,
+  expo, convex, linear, exa; MCPs auggie, mobbin, expect, posthog, mercadopago
+  (Codex had those two as MCP only); instructionFiles =
+  claude-md-and-agents-md; impeccable hook repaired; 14 non-catalog skills
+  linked; dangling links and superseded files kept under private backup.
+  Context: 281 skills, 21 MCP servers (was 449 skills with posthog plugin).
+- Headroom: private T3 shim runs Claude through the installed launcher
+  (stream-json, 2 proxied requests per call); management subcommands skip the
+  proxy; another base URL is refused.
+- Read-only audit of all product repositories' agent instructions (results
+  reported to the user; no repository changed).
 
-## Pending
+## Pending (user)
 
-- Independent review of the 1.31.0 diff and the repository instruction audit
-  (read-only) are running; apply material corrections, re-check, commit, push.
-- User actions: OAuth for vercel, sentry, cloudflare, stripe, expo, linear,
-  posthog, exa, mercadopago, mobbin, Notion (via /mcp or claude.ai); GitHub
-  plugin needs GITHUB_PERSONAL_ACCESS_TOKEN or stays on the gh CLI; optional
-  T3 provider instance pointing binaryPath at the private Headroom shim.
-- Decisions: posthog plugin adds ~170 skills of context; whether to publish a
-  1.31.0 prerelease/PR; Claude subagent roster; cross-CLI computer use.
+- OAuth in /mcp: vercel, sentry, cloudflare, stripe, expo, linear, posthog,
+  exa, mercadopago, mobbin, Notion. GitHub plugin needs
+  GITHUB_PERSONAL_ACCESS_TOKEN (gh CLI works meanwhile).
+- Optional T3 provider instance whose binaryPath is the private Headroom shim.
+- Decide: remove repository tests; publish 1.31.0; repository instruction
+  cleanups; Claude subagent roster; cross-CLI computer use.
 
 ## Evidence and processes
 
-Private: ~/.development-system/private/releases/1.31.0-claude/ (config,
-shim, operator-before.sha256, broken links) and
-~/.development-system/private/runs/headroom-claude/. No owned background
-processes remain after each Headroom run.
+Private: ~/.development-system/private/releases/1.31.0-claude/ and
+~/.development-system/private/runs/headroom-claude/. No owned processes remain.
