@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.30.0",
+  "previousContract": "1.29.1",
+  "decision": "docs/adr/0057-headroom-observed-delivery.md",
+  "executionMode": "advisory-parent-execution",
+  "jevAdvisory": "1.29.0-retained",
+  "roleRoster": "all-13-routes-and-18-native-model-profiles-retained-from-1.29.0",
+  "report": "customized-working-backwards-field-notebook-retained-byte-identically"
+}

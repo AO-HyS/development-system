@@ -1,37 +1,42 @@
 # AOHYS Development System
 
-## Release 1.29.1 / catalog 0.48.0
+## Release 1.30.0 / catalog 0.49.0
 
-Repository initialization and normalization now generate the same advisory
-workflow as the installed runtime. Re-running preparation preserves custom
-lifecycle extensions and does not restore the obsolete governed/Flash routing.
-The model roster, catalog and customized HTML report remain unchanged.
+Headroom delivery is an explicit, same-account opt-in for local Codex worker
+invocations. It retains the configured Codex binary and `CODEX_HOME`, uses
+lossless/cache-conservative settings, and records actual native usage separately
+from proxy counters. Requested model settings and observed runtime identities are
+reported separately. The release makes no causal savings claim; provider cache
+reuse does not promise byte-identical requests. See
+[ADR 0057](docs/adr/0057-headroom-observed-delivery.md).
 
-Jev advises at meaningful routing and correction decisions; the selected parent
-executes with native tools and owns acceptance. Installation removes only owned
-Jev tool and Stop hooks, preserving other guards and historical run records.
-Classification failure is recorded and permits a justified parent continuation;
-it never becomes a successful judgment or grants authority.
+The native browser integration includes an invocation-scoped override for the
+documented CUA launcher and browser/computer surface declaration through the
+supported process configuration. It preserves other MCP entries and guards and
+makes no security bypass. The advisory parent execution, full GPT-6 role roster,
+independent reviews, Jev advisory 1.29.0 and customized field-notebook reports
+continue.
 
-New sessions request Sol 6 High normal. Luna 6 High priority supplies research
-and exact/mechanical writing; Sol 6 Medium handles general writing. Astra 6 XHigh
-authors the plan, with separate independent plan and final reviews. Actual host
-identity and tier remain distinct from requested settings. No OpenCode default.
+Automated tests are not written, changed, generated or run by default unless the
+user explicitly asks. Existing build, type and lint checks remain available;
+behavior claims need observed behavior evidence, and a requested visual result
+still needs real browser review and independent critique. Existing test files and
+CI protections remain intact.
 
-The user's field-notebook HTML reports are included, with margin questions,
-persistent browser drafts and revisioned batch submission. The active document
-command and installed helper both use this renderer. Sanitized temporary tunnels
-remain the default report-sharing surface.
+An explicitly selected new Codex T3 coordinator thread can request Sol 6 High
+through its supported invocation setting. This is a per-thread choice; it does
+not rewrite the current session's parent or global role mappings. Actual runtime
+model identity and service tier remain separate evidence.
 
-See [the advisory decision](docs/adr/0055-advisory-execution-restoration.md),
-[the report decision](docs/adr/0056-field-notebook-report-and-margin-questions.md),
-[the execution recipe](artifacts/1.29.0/skills/internal/coding-orchestration/references/jev-advisory.md)
+See the [advisory decision](docs/adr/0055-advisory-execution-restoration.md),
+[report decision](docs/adr/0056-field-notebook-report-and-margin-questions.md),
+[execution recipe](artifacts/1.30.0/skills/internal/coding-orchestration/references/jev-advisory.md)
 and [package installation and recovery](docs/package-distribution.md).
 
-Exact instructions are the default across models: ordered actions, expected
-observations, bounded corrections and resumable handoffs. Outcome delegation
-requires an explicit reason. Capability limits change task size and guidance,
-not acceptance or provider authorization. See ADR 0037 and coding-orchestration.
+Exact instructions remain the default across models: ordered actions, expected
+observations, bounded corrections and resumable handoffs. Capability limits
+change task size and guidance, not acceptance or provider authorization. See
+ADR 0037 and coding-orchestration.
 
 ## RÁPIDO → BIEN → BARATO
 
@@ -94,7 +99,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.29.1/aohys-development-system-1.29.1.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.30.0/aohys-development-system-1.30.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -102,10 +107,10 @@ pnpm exec aohys-development-system setup
 `governance-hooks-audit` confirms managed Jev hooks are disabled; live host
 behavior is checked separately. `rollback` restores the actual prior profile.
 It preserves credentials and does not rewrite the host's selected model.
-For new local Codex sessions, set only `model = "gpt-6-sol"` and
-`model_reasoning_effort = "high"` in the existing host config, preserving its
-MCP, authentication and other settings. Repository-local settings may override
-that default and must agree. Restarting an existing conversation is unnecessary.
+For an explicitly selected new T3 coordinator thread, request Sol 6 High through
+the supported per-thread setting. This does not replace the current session
+parent or require a global model-config change. Record the actual runtime model
+and service tier separately when observable.
 
 `pnpm ds advisory-status --json` reports the installed adviser profile and
 whether a credential is available, without printing it or calling a provider.
@@ -125,10 +130,10 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.29.1
+./bin/development-system setup --version 1.30.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.48.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.49.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -304,7 +309,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.29.1`; audit advisory hooks and the paired catalog 0.48.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.30.0`; audit advisory hooks and the paired catalog 0.49.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
