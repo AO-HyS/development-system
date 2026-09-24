@@ -40,6 +40,24 @@ feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.
 - Read-only audit of all product repositories' agent instructions (results
   reported to the user; no repository changed).
 
+## Publication and rollout — 2026-09-24
+
+- Published development prerelease v1.31.0 (tag on e694986, asset
+  aohys-development-system-1.31.0.tgz, sha256 c8ae8448…7e9b). Operator HOME
+  reinstalled from the downloaded package; audit/guardrails/skills healthy.
+- Primary repos (development-steward list): eteria PR #279 and casa-roca
+  PR #138 target develop (package pin, adapter version pin, host-neutral
+  guidance; casa-roca drops its stale CLAUDE.md). normalize-repository was not
+  used: its template would regress the 2026-09-23 manual guidance alignment.
+- the-barber-central: branch chore/development-system-1.31.0 committed locally
+  (e9b7a636); push blocked by its pre-push typecheck, whose wrangler types
+  include private apps/*/.env.local names under turbo strict env mode.
+- aohys (develop, 443 pending files incl. .codex/development-system) and
+  nutri-plan (active T3 coordinator branch, 714 pending files) untouched.
+- casa-roca's VS Code auto-migration diff is preserved privately
+  (preserved/casa-roca-vscode-settings.patch); lint-staged cannot stage the
+  ignored .vscode path.
+
 ## Pending (user)
 
 - OAuth in /mcp: vercel, sentry, cloudflare, stripe, expo, linear, posthog,
