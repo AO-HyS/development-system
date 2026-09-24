@@ -12,10 +12,13 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const guardCatalogVersion = "0.50.0";
 /** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.50.0 engine understands --harness claude. */
 const legacyCodexCatalogVersion = "0.13.0";
-/** Codex hooks also cover T3 Codex threads; Claude Code reads its user settings. */
+/**
+ * Codex hooks also cover T3 Codex threads; Claude Code reads its user settings. Both run the
+ * canonical engine: the Claude skill variant is a link to it, and links are not managed paths.
+ */
 const adapters = /** @type {const} */ ([
-  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", matcher: "Bash|exec", label: "Codex" },
-  { key: "claude", config: ".claude/settings.json", engine: ".claude/skills/global-agent-guardrails/scripts/command-guard.mjs", matcher: "Bash|Monitor", label: "Claude Code" },
+  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec", label: "Codex" },
+  { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor", label: "Claude Code" },
 ]);
 
 /** @param {unknown} error */
@@ -137,21 +140,16 @@ function paths(home) {
     codexEngine: insideHome(home, adapters[0].engine),
     claudeConfig: insideHome(home, adapters[1].config),
     claudeEngine: insideHome(home, adapters[1].engine),
+    claudeSkill: insideHome(home, adapters[1].installed),
     state: insideHome(home, stateRelative),
   };
-}
-
-/** @param {string} path */
-async function engineInstalled(path) {
-  return Boolean((await lstat(path).catch((error) => { if (missing(error)) return null; throw error; }))?.isFile());
 }
 
 /** Codex is always managed; Claude Code only once its catalogued guard skill is installed. */
 /** @param {ReturnType<typeof paths>} managed */
 async function activeAdapters(managed) {
   const all = adapterPaths(managed);
-  const claude = all.find((adapter) => adapter.key === "claude");
-  return claude && await engineInstalled(claude.enginePath) ? all : all.filter((adapter) => adapter.key !== "claude");
+  return await existsFile(managed.claudeSkill) ? all : all.filter((adapter) => adapter.key !== "claude");
 }
 
 /** @param {string} version */
