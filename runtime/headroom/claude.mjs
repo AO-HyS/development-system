@@ -17,6 +17,10 @@ const FLAGS = [
   '--compressor', 'smart_crusher,search,log,tabular,config,html',
 ];
 const PASSTHROUGH = new Set(['--version', '-v', '-V', '--help', '-h']);
+// Management subcommands send no model requests, so they skip the proxy.
+const MANAGEMENT = new Set(['auth', 'mcp', 'plugin', 'plugins', 'doctor', 'update', 'install', 'config', 'setup-token', 'migrate-installer']);
+/** Children started in their own process group; an interactive child stays in the terminal's group. */
+const grouped = new WeakSet();
 const SIGNALS = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 const stamp = () => new Date().toISOString();
 
@@ -100,7 +104,7 @@ function completion(child) {
 /** @param {import('node:child_process').ChildProcess | undefined} child @param {NodeJS.Signals | 0} signal */
 function signalGroup(child, signal) {
   if (!child?.pid) return false;
-  try { process.kill(-child.pid, signal); return true; }
+  try { process.kill(grouped.has(child) ? -child.pid : child.pid, signal); return true; }
   catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ESRCH') return false; throw error; }
 }
 
@@ -149,7 +153,13 @@ async function main() {
   const config = JSON.parse(await readFile(path.resolve(options[1]), 'utf8'));
   const claude = requireAbsolute(config, 'claudeBinary');
   await access(claude, constants.X_OK);
-  const passthrough = args.length === 1 && PASSTHROUGH.has(args[0]);
+  const passthrough = (args.length === 1 && PASSTHROUGH.has(args[0])) || MANAGEMENT.has(args[0] ?? '');
+  const interactive = process.stdin.isTTY === true;
+  if (!passthrough) {
+    for (const key of ['ANTHROPIC_BASE_URL', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_USE_FOUNDRY']) {
+      if (process.env[key]) throw new Error(`${key} is set; refusing to replace another Claude transport`);
+    }
+  }
 
   /** @type {import('node:child_process').ChildProcess | undefined} */
   let proxy;
@@ -179,7 +189,12 @@ async function main() {
     return shutdownTask;
   };
   /** @param {NodeJS.Signals} signal */
-  const onSignal = signal => { interrupted ??= signal; beginShutdown().catch(() => {}); };
+  const onSignal = signal => {
+    // In a terminal, Ctrl-C reaches Claude directly and interrupts the turn, not the session.
+    if (interactive && signal === 'SIGINT') return;
+    interrupted ??= signal;
+    beginShutdown().catch(() => {});
+  };
   for (const signal of SIGNALS) process.on(signal, onSignal);
   try {
     /** @type {NodeJS.ProcessEnv} */
@@ -202,6 +217,7 @@ async function main() {
         cwd: receipt, env: proxyEnvironment(path.join(receipt, 'state')), detached: true,
         stdio: ['ignore', log.fd, log.fd],
       });
+      grouped.add(proxy);
       proxyDone = completion(proxy);
       proxyDone.catch(() => {});
       proxyDone.then(
@@ -228,7 +244,8 @@ async function main() {
       });
     }
     if (interrupted || proxyFailure) throw new Error(proxyFailure ?? `interrupted by ${interrupted}`);
-    claudeChild = spawn(claude, args, { env: childEnv, detached: true, stdio: 'inherit' });
+    claudeChild = spawn(claude, args, { env: childEnv, detached: !interactive, stdio: 'inherit' });
+    if (!interactive) grouped.add(claudeChild);
     claudeDone = completion(claudeChild);
     claudeDone.catch(() => {});
     const result = await Promise.race([
@@ -236,6 +253,7 @@ async function main() {
       shutdownFinished.then(() => ({ code: null, signal: interrupted })),
     ]);
     if (receipt) await writePrivate(path.join(receipt, 'exit.json'), { closedAt: stamp(), exitCode: result.code, signal: result.signal });
+    if (proxyFailure) console.error(`headroom claude launcher: ${proxyFailure}; private receipt: ${receipt}`);
     process.exitCode = proxyFailure ? 1 : interrupted ? 128 + (os.constants.signals[interrupted] ?? 1)
       : result.code ?? (result.signal ? 128 + (os.constants.signals[result.signal] ?? 1) : 1);
   } finally {

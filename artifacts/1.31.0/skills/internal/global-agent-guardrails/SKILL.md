@@ -10,7 +10,7 @@ This skill is the operator guide for the executable destructive-command policy. 
 ## Contract
 
 - Codex and T3 Code share the Codex `PreToolUse` adapter.
-- Claude Code uses a `PreToolUse` Bash hook in its user settings.
+- Claude Code uses a `PreToolUse` Bash|Monitor hook in its user settings.
 - Existing Codex hooks and Claude Code settings are merged, never replaced.
 - Factory settings, skills, logs, and executables are outside the current runtime and are never read or changed.
 - The guard fails closed when a matched shell tool has malformed or missing command input.
@@ -39,6 +39,6 @@ Audit must prove all of the following:
 - the installed policy engine matches the current catalogued skill bytes;
 - a harmless command is allowed;
 - representative dangerous commands are blocked;
-- rollback restores exact prior Codex and Claude Code configuration bytes without touching Factory.
+- rollback restores exact prior Codex bytes and prior Claude Code settings bytes, or removes only the managed Claude Code hook when Claude Code rewrote its settings, without touching Factory.
 
 Do not claim T3 Code has an independent hook runtime: each T3 thread inherits the adapter of its Codex or Claude Code provider.

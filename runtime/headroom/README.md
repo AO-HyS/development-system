@@ -42,9 +42,12 @@ be used when the bundled paths differ. Other MCP servers retain their config.
 `claude.mjs` applies the same proxy profile to Claude Code. Its private JSON
 configuration needs absolute `claudeBinary`, `headroomBinary` and `runRoot`
 paths. Invoke `node claude.mjs --config /private/config.json -- <claude
-arguments>`, or point T3's Claude provider `binaryPath` at a shim that forwards
-`"$@"` the same way. The launcher keeps the caller's working directory, account
-login, model and effort. It sets only `ANTHROPIC_BASE_URL` (without `/v1`) and
-keeps MCP tool search enabled with `ENABLE_TOOL_SEARCH`. Version and help
-invocations skip the proxy. Receipts follow the Codex launcher's format and
+arguments>`, or point T3's Claude provider `binaryPath` at a shim whose last line
+is `exec node .../claude.mjs --config ... -- "$@"`. The launcher keeps the
+caller's working directory, account login, model and effort. It sets only
+`ANTHROPIC_BASE_URL` (without `/v1`) and keeps MCP tool search enabled with
+`ENABLE_TOOL_SEARCH`. It refuses to start when another base URL or a Bedrock,
+Vertex or Foundry transport is configured. Version, help and management
+subcommands (auth, mcp, plugin, doctor, update) skip the proxy. In a terminal,
+Claude stays in the foreground process group so Ctrl-C interrupts the turn. Receipts follow the Codex launcher's format and
 make no claim about observed model identity or savings.

@@ -82,7 +82,8 @@ if (codexProfile.length !== 6 || !codexProfile[1].startsWith("New sessions reque
   || !codexProfile[5].startsWith("For nontrivial delivery, provide a readable HTML report")) {
   throw new Error("Advisory development profile paragraphs changed");
 }
-const identityRule = codexProfile[4].slice(0, codexProfile[4].indexOf("Astra planning and review stay XHigh.")).trimEnd();
+const identityRule = `${codexProfile[4].slice(0, codexProfile[4].indexOf("Astra planning and review stay XHigh.")).trimEnd()}
+Effort changes do not establish cache reuse without provider evidence.`;
 // Only the Codex roster and Jev paragraphs are host-specific; the other profile rules carry over verbatim.
 const claudeProfile = `## Claude Code host profile
 
@@ -94,13 +95,14 @@ host; do not claim they ran unless a Codex invocation was launched and observed.
 No Claude subagent roster is installed yet. Choose native subagents by role and
 report requested and observed model identity separately.
 
-Map the advisory profile by role, not model name. Bounded source mapping uses a
+Map the Codex roles by function, not model name. Bounded source mapping uses a
 fast subagent. Architecture planning and independent review use a distinct fresh
-reviewer at high or xhigh effort. General and mechanical writing proceed at the
-session effort. Skill text that names Codex tools maps to Claude Code equivalents:
-spawn_agent to Agent, apply_patch to Edit or Write, update_plan to the task list.
-Report a capability Claude Code lacks, such as Codex native browser or computer
-use, as a gap; do not silently substitute a provider.
+subagent on the most capable available model. General and mechanical writing stay
+with the parent or a bounded worker. Tiny deterministic edits proceed directly
+with relevant repository checks. Skill text that names Codex tools maps to Claude
+Code equivalents: spawn_agent to Agent, apply_patch to Edit or Write, update_plan
+to the task list. Report a capability Claude Code lacks, such as Codex native
+browser or computer use, as a gap; do not silently substitute a provider.
 
 ${codexProfile[3]}
 
@@ -110,9 +112,10 @@ ${codexProfile[5]}
 
 ## Opus 5.5 working practices
 
-Opus 5.5 always thinks; effort is the control. Keep medium for normal coding and
-raise to high or xhigh where it measurably helps, such as architecture plans and
-independent reviews. Do not add "think carefully" instructions. Take the whole
+Opus 5.5 always thinks; effort is the control, and the user or host sets it.
+Medium suits normal coding. Recommend high or xhigh (/effort) where it measurably
+helps, such as architecture plans and independent reviews; never claim an effort
+level that was not observed. Do not add "think carefully" instructions. Take the whole
 task with its finish line and continue until it is met. Stop to ask only at the
 user's named checkpoints, for destructive or outward-facing operations, or for
 genuine blockers. A text-only turn is a progress report, not completion. End a
@@ -169,10 +172,10 @@ const guardTransforms = {
     `if (harness !== "codex" && harness !== "claude") throw new Error("hook requires --harness codex or claude");`),
   "SKILL.md": text => [
     ["for Codex and T3 Code.", "for Codex, Claude Code and T3 Code."],
-    ["- Existing Codex hooks are merged, never replaced.", "- Claude Code uses a `PreToolUse` Bash hook in its user settings.\n- Existing Codex hooks and Claude Code settings are merged, never replaced."],
+    ["- Existing Codex hooks are merged, never replaced.", "- Claude Code uses a `PreToolUse` Bash|Monitor hook in its user settings.\n- Existing Codex hooks and Claude Code settings are merged, never replaced."],
     ["Enabling requires the catalogued Codex `global-agent-guardrails` skill to be installed first.", "Enabling requires the catalogued Codex and Claude `global-agent-guardrails` skills to be installed first."],
     ["- the exact managed Codex hook entry exists alongside pre-existing entries;", "- the exact managed Codex and Claude Code hook entries exist alongside pre-existing entries;"],
-    ["- rollback restores exact prior Codex configuration bytes without touching Factory.", "- rollback restores exact prior Codex and Claude Code configuration bytes without touching Factory."],
+    ["- rollback restores exact prior Codex configuration bytes without touching Factory.", "- rollback restores exact prior Codex bytes and prior Claude Code settings bytes, or removes only the managed Claude Code hook when Claude Code rewrote its settings, without touching Factory."],
     ["Do not claim T3 Code has an independent hook runtime: it is a Codex client surface and inherits the Codex adapter.", "Do not claim T3 Code has an independent hook runtime: each T3 thread inherits the adapter of its Codex or Claude Code provider."],
   ].reduce((current, [from, to]) => replaceOnce(current, from, to), text),
 };

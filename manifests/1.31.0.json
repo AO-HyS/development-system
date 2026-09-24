@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.50.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "5d2841597610484a4c52b063bb2460f9156cbef2e4f9067f889c434b42436095",
+      "sha256": "c9ed57bfe4536fe077d732e1b7c53d029d2b92d65778f122bfc2381dac2c7d28",
       "expectedMirrorOf": null
     },
     {
@@ -575,7 +575,7 @@
       "sourcePath": "artifacts/1.31.0/runtime/headroom/README.md",
       "destination": ".codex/development-system/runtime/headroom/README.md",
       "harness": "codex",
-      "sha256": "30c292ffc592e45ebf22317926282354ce8479a022d3730d39e8c55656dbbade",
+      "sha256": "a07ef19a06dd98f3c26f1a449ef9c988744bd151001c47072e7afb0d3e04186b",
       "expectedMirrorOf": null
     },
     {
@@ -602,7 +602,7 @@
       "sourcePath": "artifacts/1.31.0/headroom-runtime-provenance.json",
       "destination": ".codex/development-system/headroom-runtime-provenance.json",
       "harness": "codex",
-      "sha256": "b1ca73a854b42221b90f17542abfe2bf4cb24d2dde4dc2dcb120e6d4f4beb012",
+      "sha256": "77320d4d3e76d05bf5db51d96701a9566cf2dd3d87e5e50465600ef71ee9c5d7",
       "expectedMirrorOf": null
     },
     {
@@ -611,7 +611,7 @@
       "sourcePath": "artifacts/1.31.0/global-claude-instructions.md",
       "destination": ".claude/CLAUDE.md",
       "harness": "claude",
-      "sha256": "26a72ea0b397d2dbd57bf7a4be02d63e6e56341cd2423a547b3cd8199189d2d7",
+      "sha256": "3cbd266778a38e6824be0175aef621bb07a68994aa7f55b798ce77fe68cd3341",
       "expectedMirrorOf": null
     },
     {
@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
       "destination": ".claude/development-system/runtime/headroom/claude.mjs",
       "harness": "claude",
-      "sha256": "610bc4132d6b652068d11dbf1e2e45a13f7cfe6cdd8c91fcc5f5ccc63d3e3355",
+      "sha256": "fa98d7729ddcb338ffd214ad020b1137ef40cedc089623dbe82aa970427399b7",
       "expectedMirrorOf": null
     }
   ],

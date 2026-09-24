@@ -68,13 +68,14 @@ host; do not claim they ran unless a Codex invocation was launched and observed.
 No Claude subagent roster is installed yet. Choose native subagents by role and
 report requested and observed model identity separately.
 
-Map the advisory profile by role, not model name. Bounded source mapping uses a
+Map the Codex roles by function, not model name. Bounded source mapping uses a
 fast subagent. Architecture planning and independent review use a distinct fresh
-reviewer at high or xhigh effort. General and mechanical writing proceed at the
-session effort. Skill text that names Codex tools maps to Claude Code equivalents:
-spawn_agent to Agent, apply_patch to Edit or Write, update_plan to the task list.
-Report a capability Claude Code lacks, such as Codex native browser or computer
-use, as a gap; do not silently substitute a provider.
+subagent on the most capable available model. General and mechanical writing stay
+with the parent or a bounded worker. Tiny deterministic edits proceed directly
+with relevant repository checks. Skill text that names Codex tools maps to Claude
+Code equivalents: spawn_agent to Agent, apply_patch to Edit or Write, update_plan
+to the task list. Report a capability Claude Code lacks, such as Codex native
+browser or computer use, as a gap; do not silently substitute a provider.
 
 Keep one writer per surface; parallelize only disjoint eligible work. Preserve
 historical runs and unresolved ownership without treating them as new-run gates.
@@ -83,6 +84,7 @@ The obsolete automatic controller remains disabled. OpenCode is not a default.
 
 A roster requests model, effort and speed; actual host/provider metadata establishes
 observed identity and tier. Report missing metadata as unknown. No silent fallback.
+Effort changes do not establish cache reuse without provider evidence.
 
 For nontrivial delivery, provide a readable HTML report using the installed
 working-backwards report helper, including behavior passed/failed/not reached,
@@ -94,9 +96,10 @@ transcripts outside its served directory. A report is not acceptance evidence.
 
 ## Opus 5.5 working practices
 
-Opus 5.5 always thinks; effort is the control. Keep medium for normal coding and
-raise to high or xhigh where it measurably helps, such as architecture plans and
-independent reviews. Do not add "think carefully" instructions. Take the whole
+Opus 5.5 always thinks; effort is the control, and the user or host sets it.
+Medium suits normal coding. Recommend high or xhigh (/effort) where it measurably
+helps, such as architecture plans and independent reviews; never claim an effort
+level that was not observed. Do not add "think carefully" instructions. Take the whole
 task with its finish line and continue until it is met. Stop to ask only at the
 user's named checkpoints, for destructive or outward-facing operations, or for
 genuine blockers. A text-only turn is a progress report, not completion. End a

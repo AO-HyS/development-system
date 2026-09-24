@@ -7,7 +7,7 @@
       "sourcePath": "runtime/headroom/README.md",
       "artifactPath": "artifacts/1.31.0/runtime/headroom/README.md",
       "destination": ".codex/development-system/runtime/headroom/README.md",
-      "sha256": "30c292ffc592e45ebf22317926282354ce8479a022d3730d39e8c55656dbbade"
+      "sha256": "a07ef19a06dd98f3c26f1a449ef9c988744bd151001c47072e7afb0d3e04186b"
     },
     {
       "sourcePath": "runtime/headroom/cli.mjs",
@@ -25,7 +25,7 @@
       "sourcePath": "runtime/headroom/claude.mjs",
       "artifactPath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
       "destination": ".claude/development-system/runtime/headroom/claude.mjs",
-      "sha256": "610bc4132d6b652068d11dbf1e2e45a13f7cfe6cdd8c91fcc5f5ccc63d3e3355"
+      "sha256": "fa98d7729ddcb338ffd214ad020b1137ef40cedc089623dbe82aa970427399b7"
     }
   ],
   "usageEvidence": "Native usage includes the parent and every actual descendant; keep it separate from proxy counters.",
