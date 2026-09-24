@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.31.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "9a289120330d8a55b96b8378f7775af53cb6b58f33fe618a4670a2e310383ced",
+      "sha256": "e633e2f56a0e0b34b967779eee64a9b353a1d7cb2202a1feddcbd0349348f397",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.50.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "c9ed57bfe4536fe077d732e1b7c53d029d2b92d65778f122bfc2381dac2c7d28",
+      "sha256": "0f4b25098313348b7a2b2a41b1b057375740e5aa15ec9660a2e113dba0f6763b",
       "expectedMirrorOf": null
     },
     {
@@ -284,10 +284,10 @@
     {
       "id": "personal-codex-instructions.codex",
       "logicalName": "personal-codex-instructions",
-      "sourcePath": "artifacts/1.30.0/global-codex-instructions.md",
+      "sourcePath": "artifacts/1.31.0/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "d73d3199e408dd9bc6058a365b6e22127e8df281cd67cdd1a74c13d49198ca37",
+      "sha256": "5adca68a67a3fcfe63d4a12374fb129e9fd149b24b5a045e56358209cd880072",
       "expectedMirrorOf": null
     },
     {
@@ -602,23 +602,14 @@
       "sourcePath": "artifacts/1.31.0/headroom-runtime-provenance.json",
       "destination": ".codex/development-system/headroom-runtime-provenance.json",
       "harness": "codex",
-      "sha256": "77320d4d3e76d05bf5db51d96701a9566cf2dd3d87e5e50465600ef71ee9c5d7",
+      "sha256": "062916718791a3794250b7b910fef7facd0760ab885c5d3748ef312088031131",
       "expectedMirrorOf": null
     },
     {
-      "id": "personal-claude-instructions.claude",
-      "logicalName": "personal-claude-instructions",
-      "sourcePath": "artifacts/1.31.0/global-claude-instructions.md",
-      "destination": ".claude/CLAUDE.md",
-      "harness": "claude",
-      "sha256": "3cbd266778a38e6824be0175aef621bb07a68994aa7f55b798ce77fe68cd3341",
-      "expectedMirrorOf": null
-    },
-    {
-      "id": "runtime--claude-development-system-runtime-headroom-claude-mjs.claude",
-      "logicalName": "runtime--claude-development-system-runtime-headroom-claude-mjs",
+      "id": "runtime--codex-development-system-runtime-headroom-claude-mjs.claude",
+      "logicalName": "runtime--codex-development-system-runtime-headroom-claude-mjs",
       "sourcePath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
-      "destination": ".claude/development-system/runtime/headroom/claude.mjs",
+      "destination": ".codex/development-system/runtime/headroom/claude.mjs",
       "harness": "claude",
       "sha256": "fa98d7729ddcb338ffd214ad020b1137ef40cedc089623dbe82aa970427399b7",
       "expectedMirrorOf": null

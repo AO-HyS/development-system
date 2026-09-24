@@ -143,7 +143,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/ask-matt",
           "destination": ".claude/skills/ask-matt",
           "folderSha256": "2573e1b4a9921e6720ab4da121c40f9ee302d0f9cbbe28037204fb7c40863e11",
-          "expectedMirrorOf": "ask-matt.codex"
+          "expectedMirrorOf": "ask-matt.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -173,7 +174,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/diagnosing-bugs",
           "destination": ".claude/skills/diagnosing-bugs",
           "folderSha256": "3eaddfa5b028a2d4ca47731bb7a64cae28a0e8cb1ca802d201e754a1cc23d5a3",
-          "expectedMirrorOf": "diagnosing-bugs.codex"
+          "expectedMirrorOf": "diagnosing-bugs.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -203,7 +205,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/wayfinder",
           "destination": ".claude/skills/wayfinder",
           "folderSha256": "fa164901a041cab31d281288ea4b5af5aeb0a0d557b586cf6b341998a3fb3eb3",
-          "expectedMirrorOf": "wayfinder.codex"
+          "expectedMirrorOf": "wayfinder.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -233,7 +236,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/triage",
           "destination": ".claude/skills/triage",
           "folderSha256": "69a9c32839882c53bf8cae65b53ab309e75b873960144fc7cd55e3215adbf9ed",
-          "expectedMirrorOf": "triage.codex"
+          "expectedMirrorOf": "triage.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -263,7 +267,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/improve-codebase-architecture",
           "destination": ".claude/skills/improve-codebase-architecture",
           "folderSha256": "86096700ab48a5fb3d8b8dd73b60b4474925d63e4b3585ec07e5979a04e9ce2d",
-          "expectedMirrorOf": "improve-codebase-architecture.codex"
+          "expectedMirrorOf": "improve-codebase-architecture.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -293,7 +298,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/setup-matt-pocock-skills",
           "destination": ".claude/skills/setup-matt-pocock-skills",
           "folderSha256": "570d12b3caf6c468d77e0aba8602efc7a5346697a77cb5372f623cf67247784b",
-          "expectedMirrorOf": "setup-matt-pocock-skills.codex"
+          "expectedMirrorOf": "setup-matt-pocock-skills.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -323,7 +329,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/tdd",
           "destination": ".claude/skills/tdd",
           "folderSha256": "2da488cb71308948f58928bbbae6d55d060d5414d5bb3ec7ee7d4bb73c670442",
-          "expectedMirrorOf": "tdd.codex"
+          "expectedMirrorOf": "tdd.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -353,7 +360,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/grilling",
           "destination": ".claude/skills/grilling",
           "folderSha256": "d5833e50e0081bbf5133b6c6b61aa8ba9ffae66e9071404b61e45b18f4cdb57e",
-          "expectedMirrorOf": "grilling.codex"
+          "expectedMirrorOf": "grilling.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -383,7 +391,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/domain-modeling",
           "destination": ".claude/skills/domain-modeling",
           "folderSha256": "2cc88b237a4704f9fe2057492024856a48ea803a5b9257b1c1e3174eb1f13a09",
-          "expectedMirrorOf": "domain-modeling.codex"
+          "expectedMirrorOf": "domain-modeling.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -413,7 +422,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/codebase-design",
           "destination": ".claude/skills/codebase-design",
           "folderSha256": "826e65f8d718794b0647dd50122d3c388c6e860c608d6aa313d7d716ff535933",
-          "expectedMirrorOf": "codebase-design.codex"
+          "expectedMirrorOf": "codebase-design.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -443,7 +453,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/to-spec",
           "destination": ".claude/skills/to-spec",
           "folderSha256": "f525dab8b9bd3961aa4813d8568ef6184f6e24aad5a020e129165ca6c220f836",
-          "expectedMirrorOf": "to-spec.codex"
+          "expectedMirrorOf": "to-spec.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -473,7 +484,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/to-tickets",
           "destination": ".claude/skills/to-tickets",
           "folderSha256": "5c1691ddf02291d5189213f8ffc82d2b05451131929bbc9e99052f912a05c300",
-          "expectedMirrorOf": "to-tickets.codex"
+          "expectedMirrorOf": "to-tickets.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -503,7 +515,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/implement",
           "destination": ".claude/skills/implement",
           "folderSha256": "1a7a56bca542f46ff8e42fa5ddd293dab21b38b6dad57e1bf3e76d12e41c5fc2",
-          "expectedMirrorOf": "implement.codex"
+          "expectedMirrorOf": "implement.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -538,7 +551,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/code-review",
           "destination": ".claude/skills/code-review",
           "folderSha256": "eb197c4efca5622963a9b07ff2395a1571a4eb9b788e13f15e881ac9210b5360",
-          "expectedMirrorOf": "code-review.codex"
+          "expectedMirrorOf": "code-review.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -568,7 +582,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/resolving-merge-conflicts",
           "destination": ".claude/skills/resolving-merge-conflicts",
           "folderSha256": "9072fa5a56004c0c6abfa073dfb2629c9ac49118d38406b65f6313f0b8f45711",
-          "expectedMirrorOf": "resolving-merge-conflicts.codex"
+          "expectedMirrorOf": "resolving-merge-conflicts.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -598,7 +613,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/wizard",
           "destination": ".claude/skills/wizard",
           "folderSha256": "fd918004158f826ab85f20a69b75677be74dcbcea19066c4f2511b52fcd5af3a",
-          "expectedMirrorOf": "wizard.codex"
+          "expectedMirrorOf": "wizard.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -628,7 +644,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/prototype",
           "destination": ".claude/skills/prototype",
           "folderSha256": "c4efd5e0f1c302b6225be83e8e42abdb05e13fde900484e4e2240e90b4e83eb6",
-          "expectedMirrorOf": "prototype.codex"
+          "expectedMirrorOf": "prototype.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -658,7 +675,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/research",
           "destination": ".claude/skills/research",
           "folderSha256": "b1976e3b4a7cdcee2f7ade52c0cf072bafdbac9cf3284568cab1aa258e584e69",
-          "expectedMirrorOf": "research.codex"
+          "expectedMirrorOf": "research.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -688,7 +706,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/grill-me",
           "destination": ".claude/skills/grill-me",
           "folderSha256": "14c292fe16c0aed833cbbabb0983515c8d665fb6061d9755b13dba870363323b",
-          "expectedMirrorOf": "grill-me.codex"
+          "expectedMirrorOf": "grill-me.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -718,7 +737,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/handoff",
           "destination": ".claude/skills/handoff",
           "folderSha256": "fe287d0ae54ed66c99522e272af1020323ba4d4698ef60fe1fa63f042dffd313",
-          "expectedMirrorOf": "handoff.codex"
+          "expectedMirrorOf": "handoff.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -748,7 +768,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/teach",
           "destination": ".claude/skills/teach",
           "folderSha256": "d9fbfb966d425f19cdbeb34cceab6ead62041ccacd00da29b55412333cf9748a",
-          "expectedMirrorOf": "teach.codex"
+          "expectedMirrorOf": "teach.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -778,7 +799,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/to-questionnaire",
           "destination": ".claude/skills/to-questionnaire",
           "folderSha256": "560491db9f48174ca9f7b5dd1444bc9c3cb7ac2d9e3e673e48289ef3221f164e",
-          "expectedMirrorOf": "to-questionnaire.codex"
+          "expectedMirrorOf": "to-questionnaire.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -808,7 +830,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/wait-what",
           "destination": ".claude/skills/wait-what",
           "folderSha256": "d8c5157780c8b4933f887639779f807c51f18e0564bf6236e1a4cb2c793bd73c",
-          "expectedMirrorOf": "wait-what.codex"
+          "expectedMirrorOf": "wait-what.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -843,7 +866,8 @@
           "sourceDirectory": "artifacts/1.21.0/skills/internal/writing-for-agents",
           "destination": ".claude/skills/writing-for-agents",
           "folderSha256": "76930e1840b808f0e69835431955045755379041202bf26ff1219199edd87230",
-          "expectedMirrorOf": "writing-for-agents.codex"
+          "expectedMirrorOf": "writing-for-agents.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -873,7 +897,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/claude-handoff",
           "destination": ".claude/skills/claude-handoff",
           "folderSha256": "a10e11149e9528724c89c3fc060a79602df73ea37d3e54498363b5bfedadd358",
-          "expectedMirrorOf": "claude-handoff.codex"
+          "expectedMirrorOf": "claude-handoff.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -903,7 +928,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/loop-me",
           "destination": ".claude/skills/loop-me",
           "folderSha256": "35bbb6c42c82d9e828df5a07224289a39e54b3d0825689337f71224fe69ac975",
-          "expectedMirrorOf": "loop-me.codex"
+          "expectedMirrorOf": "loop-me.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -933,7 +959,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/retro",
           "destination": ".claude/skills/retro",
           "folderSha256": "482c9a4e65f781f7202cf8c07a7b10276f5db0e02a2be28bd8bf36e28565f848",
-          "expectedMirrorOf": "retro.codex"
+          "expectedMirrorOf": "retro.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -963,7 +990,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/setup-ts-deep-modules",
           "destination": ".claude/skills/setup-ts-deep-modules",
           "folderSha256": "f5e00a15b6051b0b875a3eb90f398184894e2039d871b31972ec45b039ecdaac",
-          "expectedMirrorOf": "setup-ts-deep-modules.codex"
+          "expectedMirrorOf": "setup-ts-deep-modules.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -993,7 +1021,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/writing-beats",
           "destination": ".claude/skills/writing-beats",
           "folderSha256": "72f5a763b2f22caaa8752d17cfda4348f3ea858a617a80fd48041d157d0e7608",
-          "expectedMirrorOf": "writing-beats.codex"
+          "expectedMirrorOf": "writing-beats.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1023,7 +1052,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/writing-fragments",
           "destination": ".claude/skills/writing-fragments",
           "folderSha256": "8e1db53eb63bb8859da8838356353f0f3fc0e328c61537557a7b3bbf3a2d8f32",
-          "expectedMirrorOf": "writing-fragments.codex"
+          "expectedMirrorOf": "writing-fragments.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1053,7 +1083,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/writing-shape",
           "destination": ".claude/skills/writing-shape",
           "folderSha256": "993da7a7ab4f92c0746d0261165271773bc3d253ec78871a22af4e6f42272e2e",
-          "expectedMirrorOf": "writing-shape.codex"
+          "expectedMirrorOf": "writing-shape.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1083,7 +1114,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/git-guardrails-claude-code",
           "destination": ".claude/skills/git-guardrails-claude-code",
           "folderSha256": "8d9c6499217ae7cebd8aba75d529bcb96e54a80e91157976149c502075fc31ab",
-          "expectedMirrorOf": "git-guardrails-claude-code.codex"
+          "expectedMirrorOf": "git-guardrails-claude-code.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1113,7 +1145,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/migrate-to-shoehorn",
           "destination": ".claude/skills/migrate-to-shoehorn",
           "folderSha256": "292b384215d803b52e07a7f463586a4a4e9d1ad89ac0019600ec80af258a648d",
-          "expectedMirrorOf": "migrate-to-shoehorn.codex"
+          "expectedMirrorOf": "migrate-to-shoehorn.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1143,7 +1176,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/scaffold-exercises",
           "destination": ".claude/skills/scaffold-exercises",
           "folderSha256": "30b24d603cdb7e0c82263f264e0a9b52f01188683f7083df88512457b5a9ecb6",
-          "expectedMirrorOf": "scaffold-exercises.codex"
+          "expectedMirrorOf": "scaffold-exercises.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1173,7 +1207,8 @@
           "sourceDirectory": "artifacts/1.5.15/skills/upstream/setup-pre-commit",
           "destination": ".claude/skills/setup-pre-commit",
           "folderSha256": "3b77ee3d6c0d69ecb5fcb700a84b857976dec4f9312b3ec249c79ff27a765328",
-          "expectedMirrorOf": "setup-pre-commit.codex"
+          "expectedMirrorOf": "setup-pre-commit.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1203,7 +1238,8 @@
           "sourceDirectory": "artifacts/1.30.0/skills/internal/implement-spec",
           "destination": ".claude/skills/implement-spec",
           "folderSha256": "ea2553cb923ba4072a568b0e9b4e81eb8009508c71583571e9a030b928f0a89c",
-          "expectedMirrorOf": "implement-spec.codex"
+          "expectedMirrorOf": "implement-spec.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1233,7 +1269,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/flow-code-review",
           "destination": ".claude/skills/flow-code-review",
           "folderSha256": "8f685473d1d14df9a5fa21d5522955422e11b8b3eb2ca1ae3bc428664e8c11ab",
-          "expectedMirrorOf": "flow-code-review.codex"
+          "expectedMirrorOf": "flow-code-review.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1263,7 +1300,8 @@
           "sourceDirectory": "artifacts/1.30.0/skills/internal/flow-implement",
           "destination": ".claude/skills/flow-implement",
           "folderSha256": "39609bbb1ca87079040e030552883059b7e4fc844e363ef8b25896d134f07ed3",
-          "expectedMirrorOf": "flow-implement.codex"
+          "expectedMirrorOf": "flow-implement.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1293,7 +1331,8 @@
           "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
           "destination": ".claude/skills/flow-qa",
           "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
-          "expectedMirrorOf": "flow-qa.codex"
+          "expectedMirrorOf": "flow-qa.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1323,7 +1362,8 @@
           "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
           "destination": ".claude/skills/flow-research",
           "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
-          "expectedMirrorOf": "flow-research.codex"
+          "expectedMirrorOf": "flow-research.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1361,7 +1401,8 @@
           "sourceDirectory": "artifacts/1.30.0/skills/internal/drive-development-flow",
           "destination": ".claude/skills/drive-development-flow",
           "folderSha256": "0be2f1421348e3b45548ecf7e632b450ce06954fd2b4c9759ad22dc8d8dd2e45",
-          "expectedMirrorOf": "drive-development-flow.codex"
+          "expectedMirrorOf": "drive-development-flow.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1402,6 +1443,7 @@
           "destination": ".claude/skills/coding-orchestration",
           "folderSha256": "a70349726174e48edd1b816464b24027fb8472c53b57bb5d2ffae969f72e4272",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
+          "install": "symlink",
           "adapterContract": "authorized-initiative-orchestration-v2"
         }
       ]
@@ -1432,7 +1474,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/pstack-engineering",
           "destination": ".claude/skills/pstack-engineering",
           "folderSha256": "8f0d56be82840ba0143081c1c44e1448bfd20a1834cd0ab08a64b356b8fd771a",
-          "expectedMirrorOf": "pstack-engineering.codex"
+          "expectedMirrorOf": "pstack-engineering.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1462,7 +1505,8 @@
           "sourceDirectory": "artifacts/1.29.0/skills/internal/grill-with-docs",
           "destination": ".claude/skills/grill-with-docs",
           "folderSha256": "2a93ce91c214c58eaa78e4371fb0f23eea87b66fdc89f5af596e269164271d43",
-          "expectedMirrorOf": "grill-with-docs.codex"
+          "expectedMirrorOf": "grill-with-docs.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1493,7 +1537,8 @@
           "sourceDirectory": "artifacts/1.10.0/skills/internal/measure-development-run",
           "destination": ".claude/skills/measure-development-run",
           "folderSha256": "3a2f0e4a31f653e9f9d01b20561ac6c524b5c8e1c8fe229708cc44a3b1c2ed18",
-          "expectedMirrorOf": "measure-development-run.codex"
+          "expectedMirrorOf": "measure-development-run.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1523,7 +1568,8 @@
           "sourceDirectory": "artifacts/1.5.7/skills/internal/orchestration-pilot",
           "destination": ".claude/skills/orchestration-pilot",
           "folderSha256": "dfbb5ffb541415606f528f4bbfa80e598a4cd9e4c2526d15d4dc4eff97bdab40",
-          "expectedMirrorOf": "orchestration-pilot.codex"
+          "expectedMirrorOf": "orchestration-pilot.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1567,7 +1613,8 @@
             "scripts/reader-live.mjs",
             "scripts/t3-report.mjs"
           ],
-          "expectedMirrorOf": "working-backwards.codex"
+          "expectedMirrorOf": "working-backwards.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1597,7 +1644,8 @@
           "sourceDirectory": "artifacts/1.17.0/skills/internal/parallel-work",
           "destination": ".claude/skills/parallel-work",
           "folderSha256": "11ab3b06a00e18145ebc9317e28cd3f3dd34fda46d89964aae8975b5df159af3",
-          "expectedMirrorOf": "parallel-work.codex"
+          "expectedMirrorOf": "parallel-work.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1627,7 +1675,8 @@
           "sourceDirectory": "artifacts/1.5.0/skills/internal/release-train",
           "destination": ".claude/skills/release-train",
           "folderSha256": "7e73ade85112d1cf40b15745d48522653df44d72825fdcd92449364106462f9a",
-          "expectedMirrorOf": "release-train.codex"
+          "expectedMirrorOf": "release-train.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1657,7 +1706,8 @@
           "sourceDirectory": "artifacts/1.5.0/skills/internal/check-in",
           "destination": ".claude/skills/check-in",
           "folderSha256": "7b7eabac9da4ab9ce8a0b9e4f658abc369b69daa28943b47f2f322ed718d75f0",
-          "expectedMirrorOf": "check-in.codex"
+          "expectedMirrorOf": "check-in.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1687,7 +1737,8 @@
           "sourceDirectory": "artifacts/1.5.0/skills/internal/linear-hygiene",
           "destination": ".claude/skills/linear-hygiene",
           "folderSha256": "1040fd6c67e0ba1959d6aafb6be1e0981d9d187389b7cdf3f3c1a36c4df2edae",
-          "expectedMirrorOf": "linear-hygiene.codex"
+          "expectedMirrorOf": "linear-hygiene.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1717,7 +1768,8 @@
           "sourceDirectory": "artifacts/1.5.11/skills/internal/development-steward",
           "destination": ".claude/skills/development-steward",
           "folderSha256": "24e72cad59217d41b848f28df5ecba7fc16407520330c7acda956ed3443efe00",
-          "expectedMirrorOf": "development-steward.codex"
+          "expectedMirrorOf": "development-steward.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1747,7 +1799,8 @@
           "sourceDirectory": "artifacts/1.5.0/skills/internal/convex-guardian",
           "destination": ".claude/skills/convex-guardian",
           "folderSha256": "08f9cc36ca7489f6bfc4f596702a70b6c93cf29eec8adb5a0c8fc9f8db7bf05a",
-          "expectedMirrorOf": "convex-guardian.codex"
+          "expectedMirrorOf": "convex-guardian.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1777,7 +1830,8 @@
           "sourceDirectory": "artifacts/1.5.0/skills/internal/posthog-observability",
           "destination": ".claude/skills/posthog-observability",
           "folderSha256": "cdc99ea49bc79d6298bfc3ec3ec5749f53a370a257ddfd331f5e1e514d33cbf3",
-          "expectedMirrorOf": "posthog-observability.codex"
+          "expectedMirrorOf": "posthog-observability.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1807,7 +1861,8 @@
           "sourceDirectory": "artifacts/1.5.17/skills/internal/simplify-code",
           "destination": ".claude/skills/simplify-code",
           "folderSha256": "a3c236924387752d13d8d865e99308135d7e6e234189dec6cfc74b56738614de",
-          "expectedMirrorOf": "simplify-code.codex"
+          "expectedMirrorOf": "simplify-code.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1837,7 +1892,8 @@
           "sourceDirectory": "artifacts/1.20.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
           "folderSha256": "2ae973e244e901c149e566efddb18d8406d18a36199fb6b66a5b96a523a310be",
-          "expectedMirrorOf": "behavioral-evidence.codex"
+          "expectedMirrorOf": "behavioral-evidence.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1881,7 +1937,8 @@
           "executableFiles": [
             "scripts/install.mjs"
           ],
-          "expectedMirrorOf": "install-anti-slop.codex"
+          "expectedMirrorOf": "install-anti-slop.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1911,7 +1968,8 @@
           "sourceDirectory": "artifacts/1.18.1/skills/internal/create-product-verification",
           "destination": ".claude/skills/create-product-verification",
           "folderSha256": "c821e8192dd24da8a504a139fbf0e9e457af7c5101be9d891f8dbac6c119f3c5",
-          "expectedMirrorOf": "create-product-verification.codex"
+          "expectedMirrorOf": "create-product-verification.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1941,7 +1999,8 @@
           "sourceDirectory": "artifacts/1.18.1/skills/internal/maintain-product-verification",
           "destination": ".claude/skills/maintain-product-verification",
           "folderSha256": "5f5335c4ebd6976a957bc4db0309e179412e4c5a52dd200c04d025ae88359794",
-          "expectedMirrorOf": "maintain-product-verification.codex"
+          "expectedMirrorOf": "maintain-product-verification.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -1977,7 +2036,8 @@
           "executableFiles": [
             "scripts/exa-search.mjs"
           ],
-          "expectedMirrorOf": "exa-search.codex"
+          "expectedMirrorOf": "exa-search.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2013,7 +2073,8 @@
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
-          "expectedMirrorOf": "global-agent-guardrails.codex"
+          "expectedMirrorOf": "global-agent-guardrails.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2043,7 +2104,8 @@
           "sourceDirectory": "artifacts/1.1.0/skills/internal/decisions",
           "destination": ".claude/skills/decisions",
           "folderSha256": "5faf8ac351f87752084523fe8ecbec5778aeb1776f1ed55b1bd22ef869fa30f1",
-          "expectedMirrorOf": "decisions.codex"
+          "expectedMirrorOf": "decisions.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2073,7 +2135,8 @@
           "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
           "destination": ".claude/skills/setup-help",
           "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
-          "expectedMirrorOf": "setup-help.codex"
+          "expectedMirrorOf": "setup-help.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2106,7 +2169,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-accessibility",
           "destination": ".claude/skills/better-accessibility",
           "folderSha256": "2e5d41fa387ce7674a34c56f0141d38d51f95456eab185423c3f25020aacf827",
-          "expectedMirrorOf": "better-accessibility.codex"
+          "expectedMirrorOf": "better-accessibility.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2139,7 +2203,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-colors",
           "destination": ".claude/skills/better-colors",
           "folderSha256": "0096ef15e9426779c82a3ce54125f47e7b3089d73741117a4e34caaf7bc150a3",
-          "expectedMirrorOf": "better-colors.codex"
+          "expectedMirrorOf": "better-colors.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2177,7 +2242,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/better-interface",
           "destination": ".claude/skills/better-interface",
           "folderSha256": "a5df711a4b4aace777e2f76d69a30595278ad07fa12e9329fd7496f6ca00f0e1",
-          "expectedMirrorOf": "better-interface.codex"
+          "expectedMirrorOf": "better-interface.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2210,7 +2276,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-layout",
           "destination": ".claude/skills/better-layout",
           "folderSha256": "92ae8dcaa2fa5aa28daf69b18c97f9602e4b95f016c56174de54704823e243d0",
-          "expectedMirrorOf": "better-layout.codex"
+          "expectedMirrorOf": "better-layout.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2243,7 +2310,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-typography",
           "destination": ".claude/skills/better-typography",
           "folderSha256": "8d55cca2deaf3a7d0363f355005bf10e1dab5ca7314fcd54dd4281cdc4904314",
-          "expectedMirrorOf": "better-typography.codex"
+          "expectedMirrorOf": "better-typography.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2276,7 +2344,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-ui",
           "destination": ".claude/skills/better-ui",
           "folderSha256": "cb7acb6973bc020d85b1fa477e8f7bf3e557d849849255fb26f58316699d7f2a",
-          "expectedMirrorOf": "better-ui.codex"
+          "expectedMirrorOf": "better-ui.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2309,7 +2378,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-writing",
           "destination": ".claude/skills/better-writing",
           "folderSha256": "facb02ef39130c4da67ad858b0ab019af1bd9b61730e27d923e2160bc3299c1d",
-          "expectedMirrorOf": "better-writing.codex"
+          "expectedMirrorOf": "better-writing.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2347,7 +2417,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/break",
           "destination": ".claude/skills/break",
           "folderSha256": "f04529e15a1e8fb4a1676b2682edd888cff7de527f4d5ac9dcffe5958ede5b00",
-          "expectedMirrorOf": "break.codex"
+          "expectedMirrorOf": "break.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2385,7 +2456,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/explain-interface",
           "destination": ".claude/skills/explain-interface",
           "folderSha256": "7db028a0037c1418883772d0850cdb1c9f7e4e7c25ff0f70bd8bca216417fcfa",
-          "expectedMirrorOf": "explain-interface.codex"
+          "expectedMirrorOf": "explain-interface.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2423,7 +2495,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/interface-review",
           "destination": ".claude/skills/interface-review",
           "folderSha256": "f8b9f61c806dd12fe8c61676ccf323d04114ead8058454284e0600030a62329b",
-          "expectedMirrorOf": "interface-review.codex"
+          "expectedMirrorOf": "interface-review.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2461,7 +2534,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/variant",
           "destination": ".claude/skills/variant",
           "folderSha256": "3dd288e9be67a6e2043255bce4b0bdd5181b70431d6f5ccf5e213e9a1a1a56c1",
-          "expectedMirrorOf": "variant.codex"
+          "expectedMirrorOf": "variant.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2499,7 +2573,8 @@
           "sourceDirectory": "artifacts/1.18.1/skills/internal/make-interfaces-feel-better",
           "destination": ".claude/skills/make-interfaces-feel-better",
           "folderSha256": "d7d68d085115a433399be141ca928c2e536ab0f0f93a570bd52d6eb15a580612",
-          "expectedMirrorOf": "make-interfaces-feel-better.codex"
+          "expectedMirrorOf": "make-interfaces-feel-better.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2537,7 +2612,8 @@
           "sourceDirectory": "artifacts/1.8.0/skills/internal/show-me",
           "destination": ".claude/skills/show-me",
           "folderSha256": "4a9255751add666b831654bfbf8a52f6622c1bb8440267197df94c5ad7b7169a",
-          "expectedMirrorOf": "show-me.codex"
+          "expectedMirrorOf": "show-me.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2575,7 +2651,8 @@
           "sourceDirectory": "artifacts/1.6.0/skills/internal/pr-lens",
           "destination": ".claude/skills/pr-lens",
           "folderSha256": "9be6c8d19850d25a47dd139d3f8504925ceb7a58fe168aad440caf6826eda073",
-          "expectedMirrorOf": "pr-lens.codex"
+          "expectedMirrorOf": "pr-lens.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -2600,7 +2677,8 @@
           "sourceDirectory": "artifacts/1.22.1/skills/internal/design-quality",
           "destination": ".claude/skills/design-quality",
           "folderSha256": "f9d92c3006ca4e47fb82abb2355157627e514b412f49c2db8dcc0c4749588d1d",
-          "expectedMirrorOf": "design-quality.codex"
+          "expectedMirrorOf": "design-quality.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2630,7 +2708,8 @@
           "sourceDirectory": "artifacts/1.20.0/skills/internal/evidence-capture",
           "destination": ".claude/skills/evidence-capture",
           "folderSha256": "8ffcf9b8b80b4e1dca75c11b3965ea76f30e6c64d7b5effcd359282d9a4a942c",
-          "expectedMirrorOf": "evidence-capture.codex"
+          "expectedMirrorOf": "evidence-capture.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2688,7 +2767,8 @@
           "executableFiles": [
             "scripts/impeccable"
           ],
-          "expectedMirrorOf": "impeccable.codex"
+          "expectedMirrorOf": "impeccable.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2741,7 +2821,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/adapt",
           "destination": ".claude/skills/adapt",
           "folderSha256": "8a2af64fb46da1b1e7abb76fece241203de7177ddedee8b2ca6645490a896ec8",
-          "expectedMirrorOf": "adapt.codex"
+          "expectedMirrorOf": "adapt.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2794,7 +2875,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/animate",
           "destination": ".claude/skills/animate",
           "folderSha256": "43305de0a90436d38a08671f40cfe4a2f03e0c75d1c909d081976441099fdf17",
-          "expectedMirrorOf": "animate.codex"
+          "expectedMirrorOf": "animate.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2847,7 +2929,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/audit",
           "destination": ".claude/skills/audit",
           "folderSha256": "e2c44678bf3cc2891c4a236f85a8d0e73673906869b5f058b5f9f01fb883ef86",
-          "expectedMirrorOf": "audit.codex"
+          "expectedMirrorOf": "audit.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2900,7 +2983,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/bolder",
           "destination": ".claude/skills/bolder",
           "folderSha256": "e8c5c7eb87b3a044664a73640ba9641292d793f6e5976ffb62bbb2c773ae84e5",
-          "expectedMirrorOf": "bolder.codex"
+          "expectedMirrorOf": "bolder.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -2953,7 +3037,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/clarify",
           "destination": ".claude/skills/clarify",
           "folderSha256": "ea877a91d79fc25d7ac40c6bf89a4e6c58d8cfc2e8f4869bb32044f64e51f367",
-          "expectedMirrorOf": "clarify.codex"
+          "expectedMirrorOf": "clarify.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3006,7 +3091,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/colorize",
           "destination": ".claude/skills/colorize",
           "folderSha256": "439015d62609f25cba360b493fd85319e0e2bbe7f55fe6abe02c393a55c357d0",
-          "expectedMirrorOf": "colorize.codex"
+          "expectedMirrorOf": "colorize.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3059,7 +3145,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/critique",
           "destination": ".claude/skills/critique",
           "folderSha256": "3caadc40906f8b493034c5fad8daab1eb438e2c0b890c493486bb571d4bcbc75",
-          "expectedMirrorOf": "critique.codex"
+          "expectedMirrorOf": "critique.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3112,7 +3199,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/delight",
           "destination": ".claude/skills/delight",
           "folderSha256": "e96b3e1aea2a44c6c6c94ebb46c52ac7db5919c05777f3be3db5ab01c4de415e",
-          "expectedMirrorOf": "delight.codex"
+          "expectedMirrorOf": "delight.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3165,7 +3253,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/distill",
           "destination": ".claude/skills/distill",
           "folderSha256": "cd4829d4a2427a3b650d00a380ee7666932164c11e526845f7e2fa99e6861ae5",
-          "expectedMirrorOf": "distill.codex"
+          "expectedMirrorOf": "distill.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3218,7 +3307,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/layout",
           "destination": ".claude/skills/layout",
           "folderSha256": "9e28a011dc2e7c6e651cf594e5073096c9e93266df90379545dccbbf6190c054",
-          "expectedMirrorOf": "layout.codex"
+          "expectedMirrorOf": "layout.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3271,7 +3361,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/optimize",
           "destination": ".claude/skills/optimize",
           "folderSha256": "df2a527e3aac7e377ac7a75d332a54ed55ff91b016000f7238d45ce4e4eb3381",
-          "expectedMirrorOf": "optimize.codex"
+          "expectedMirrorOf": "optimize.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3324,7 +3415,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/overdrive",
           "destination": ".claude/skills/overdrive",
           "folderSha256": "d46899bcc649f6fb5f315443ee45d9735a8ce2c32354b7221f9ef19d6b77c45f",
-          "expectedMirrorOf": "overdrive.codex"
+          "expectedMirrorOf": "overdrive.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3377,7 +3469,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/polish",
           "destination": ".claude/skills/polish",
           "folderSha256": "0aa532ac638ba8469427126faf3e40a1e5322979cdeead97eef7a3dc2b9b7c7a",
-          "expectedMirrorOf": "polish.codex"
+          "expectedMirrorOf": "polish.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3430,7 +3523,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/quieter",
           "destination": ".claude/skills/quieter",
           "folderSha256": "2abf72e25d8cf96049218ebd3ca80ef1429c81b24ba1926eca175a8831a52b11",
-          "expectedMirrorOf": "quieter.codex"
+          "expectedMirrorOf": "quieter.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3483,7 +3577,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/shape",
           "destination": ".claude/skills/shape",
           "folderSha256": "c40e180159988a4d4b3d708072168345c50a876b9d7fa22a4306c29187b90e29",
-          "expectedMirrorOf": "shape.codex"
+          "expectedMirrorOf": "shape.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3536,7 +3631,8 @@
           "sourceDirectory": "artifacts/1.11.0/skills/shortcuts/typeset",
           "destination": ".claude/skills/typeset",
           "folderSha256": "12bdbf0922183e035d68f8ab0a4587feb9b5ff2b34542e9913e117422a8e215b",
-          "expectedMirrorOf": "typeset.codex"
+          "expectedMirrorOf": "typeset.codex",
+          "install": "symlink"
         }
       ],
       "source": {
@@ -3578,7 +3674,8 @@
           "sourceDirectory": "artifacts/1.22.1/skills/internal/design-direction",
           "destination": ".claude/skills/design-direction",
           "folderSha256": "a574fddeedba8417540316fc70abcf3b434d0637dc8e7b8d35fb9a7e63235e41",
-          "expectedMirrorOf": "design-direction.codex"
+          "expectedMirrorOf": "design-direction.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3615,7 +3712,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/agent-browser",
           "destination": ".claude/skills/agent-browser",
           "folderSha256": "6a4f25c44328ec915217c4a0a6a498736026329b54654ac95545248afdf46df2",
-          "expectedMirrorOf": "agent-browser.codex"
+          "expectedMirrorOf": "agent-browser.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3652,7 +3750,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/animation-vocabulary",
           "destination": ".claude/skills/animation-vocabulary",
           "folderSha256": "503809fcefbcf8f326e903370f393e9e92d04a672ff637ddd006695202b43e85",
-          "expectedMirrorOf": "animation-vocabulary.codex"
+          "expectedMirrorOf": "animation-vocabulary.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3689,7 +3788,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/firecrawl",
           "destination": ".claude/skills/firecrawl",
           "folderSha256": "37844014e622a5dd8812ff0ec5ae986f6a80c836e49ef732ac4c7eec3318a9b8",
-          "expectedMirrorOf": "firecrawl.codex"
+          "expectedMirrorOf": "firecrawl.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3719,7 +3819,8 @@
           "sourceDirectory": "artifacts/1.30.0/skills/internal/orchestrate-work",
           "destination": ".claude/skills/orchestrate-work",
           "folderSha256": "a9546a90d6aa86c32055faa1d924be68e363cf4afc3c3b6969761c6f59a6adb3",
-          "expectedMirrorOf": "orchestrate-work.codex"
+          "expectedMirrorOf": "orchestrate-work.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3749,7 +3850,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/review-thread",
           "destination": ".claude/skills/review-thread",
           "folderSha256": "da5249f1d58387add6327bf5452ff5c09095b9544530442a1d82f928361cc5bd",
-          "expectedMirrorOf": "review-thread.codex"
+          "expectedMirrorOf": "review-thread.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3786,7 +3888,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/shadcn",
           "destination": ".claude/skills/shadcn",
           "folderSha256": "815c8ce5fc9d053547ab0989807fa34a397910d5eef0dd042bd6a0e0e8c8796e",
-          "expectedMirrorOf": "shadcn.codex"
+          "expectedMirrorOf": "shadcn.codex",
+          "install": "symlink"
         }
       ]
     },
@@ -3823,7 +3926,8 @@
           "sourceDirectory": "artifacts/1.18.0/skills/internal/vercel-react-best-practices",
           "destination": ".claude/skills/vercel-react-best-practices",
           "folderSha256": "e5291c4a756095912ae723e04a5a096aba39951244072208f4f974e7b37c1887",
-          "expectedMirrorOf": "vercel-react-best-practices.codex"
+          "expectedMirrorOf": "vercel-react-best-practices.codex",
+          "install": "symlink"
         }
       ]
     }

@@ -3,7 +3,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { constants } from "node:fs";
-import { cp, lstat, mkdir, open, readFile, readdir, readlink, realpath, rename, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, open, readFile, readdir, readlink, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { verifySkillProbeEvidenceAuthentication } from "./skill-evidence-auth.mjs";
@@ -326,7 +326,7 @@ async function entryIntegrityHash(root) {
 }
 
 /**
- * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, executableFiles?: string[], expectedMirrorOf: string | null, adapterContract?: string}} SkillVariant
+ * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, executableFiles?: string[], expectedMirrorOf: string | null, adapterContract?: string, install?: "symlink"}} SkillVariant
  * @typedef {{logicalName: string, physicalHarnesses?: string[], availabilityReason?: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
  * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: Array<string | string[]>}>}} SkillCatalog
  * @typedef {{catalogued?: boolean, loaded?: boolean, influenced?: boolean, catalogWarning?: boolean, catalogOverflow?: boolean, scannerErrors?: string[], command?: string, version?: string}} HarnessEvidence
@@ -778,6 +778,9 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
       if (!/^[a-f0-9]{64}$/.test(variant.folderSha256 ?? "")) {
         errors.push(`${variant.id} has invalid folderSha256`);
       }
+      if (variant.install !== undefined && (variant.install !== "symlink" || !variant.expectedMirrorOf)) {
+        errors.push(`${variant.id} install must be "symlink" on a declared mirror`);
+      }
       if (
         variant.executableFiles !== undefined &&
         (!Array.isArray(variant.executableFiles) || variant.executableFiles.length === 0 ||
@@ -1068,7 +1071,14 @@ export async function synchronizeSkillCatalog(options) {
         }
         const destination = resolveInsideHome(home, variant.destination);
         await mkdir(dirname(destination), { recursive: true });
-        await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+        if (variant.install === "symlink") {
+          // A linked mirror points at the installed copy it mirrors instead of duplicating it.
+          const original = variants.find((candidate) => candidate.id === variant.expectedMirrorOf);
+          if (!original) throw new Error(`${variant.id} links to missing variant ${variant.expectedMirrorOf}`);
+          await symlink(relative(dirname(destination), resolveInsideHome(home, original.destination)), destination);
+        } else {
+          await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+        }
       }
 
       const lock = {

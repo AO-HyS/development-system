@@ -58,24 +58,22 @@ failures, actual or unknown model identity, capabilities and retained authority.
 Correct the first mismatch in a bounded packet. Repeat only checks affected by
 changes or a required gate; implementation completion is not accepted behavior.
 
-## Claude Code host profile
+## Advisory development profile
 
-These personal rules are shared with Codex. In Claude Code the selected Claude
-session model is the parent and delegates with native Claude Code subagents
-under the same ownership, packet, review and evidence rules. The Sol, Astra and
-Luna roster, the Jev advisory runtime and Codex computer use belong to the Codex
-host; do not claim they ran unless a Codex invocation was launched and observed.
-No Claude subagent roster is installed yet. Choose native subagents by role and
-report requested and observed model identity separately.
+New sessions request Sol 6 High at normal speed; keep the already selected parent.
+For nontrivial work, Luna 6 High with requested priority collects bounded source
+facts before Astra 6 XHigh authors the implementation plan. A distinct fresh
+Astra 6 XHigh reviews requirements, evidence and the plan before writers start.
+Sol 6 Medium handles general writing; Luna 6 High priority handles exact and
+mechanical packets. Independent Astra 6 XHigh reviews the integrated result.
+Tiny deterministic edits proceed directly with relevant repository checks.
 
-Map the Codex roles by function, not model name. Bounded source mapping uses a
-fast subagent. Architecture planning and independent review use a distinct fresh
-subagent on the most capable available model. General and mechanical writing stay
-with the parent or a bounded worker. Tiny deterministic edits proceed directly
-with relevant repository checks. Skill text that names Codex tools maps to Claude
-Code equivalents: spawn_agent to Agent, apply_patch to Edit or Write, update_plan
-to the task list. Report a capability Claude Code lacks, such as Codex native
-browser or computer use, as a gap; do not silently substitute a provider.
+Follow coding-orchestration/references/jev-advisory.md. Jev advises at useful
+routing, decision and correction boundaries. The parent decides, dispatches with
+native host tools, integrates and verifies. No Jev per-tool or Stop gate is active.
+An unavailable or malformed classification records failure; the parent can
+continue authorized work with an explicit rationale. Advice never grants
+permission, proves execution, or substitutes for independent review and evidence.
 
 Keep one writer per surface; parallelize only disjoint eligible work. Preserve
 historical runs and unresolved ownership without treating them as new-run gates.
@@ -84,7 +82,9 @@ The obsolete automatic controller remains disabled. OpenCode is not a default.
 
 A roster requests model, effort and speed; actual host/provider metadata establishes
 observed identity and tier. Report missing metadata as unknown. No silent fallback.
-Effort changes do not establish cache reuse without provider evidence.
+Astra planning and review stay XHigh. Optional coordinator effort changes use the
+native host and retain actual observations; they require no Jev permission token
+and do not establish cache reuse without provider evidence.
 
 For nontrivial delivery, provide a readable HTML report using the installed
 working-backwards report helper, including behavior passed/failed/not reached,
@@ -93,18 +93,6 @@ margin questions, browser drafts and revisioned batch submission. Markdown is
 supplementary. Serve sanitized report assets through the authorized temporary
 tunnel; state its actual URL and availability/expiry. Keep secrets and private
 transcripts outside its served directory. A report is not acceptance evidence.
-
-## Opus 5.5 working practices
-
-Opus 5.5 always thinks; effort is the control, and the user or host sets it.
-Medium suits normal coding. Recommend high or xhigh (/effort) where it measurably
-helps, such as architecture plans and independent reviews; never claim an effort
-level that was not observed. Do not add "think carefully" instructions. Take the whole
-task with its finish line and continue until it is met. Stop to ask only at the
-user's named checkpoints, for destructive or outward-facing operations, or for
-genuine blockers. A text-only turn is a progress report, not completion. End a
-long run with what the user must decide first, then results and evidence. For
-UI work, name the specific design patterns to avoid.
 
 ## Automated tests and evidence
 
@@ -117,12 +105,23 @@ behavior gap and its smallest useful observation without adding a test suite.
 
 ## Headroom transport evidence
 
-Headroom is an explicit same-account per-invocation option. For Claude Code use
-the installed claude.mjs launcher: keep the Claude binary, login, model and
-effort, preserve caller arguments, and request lossless,
+Headroom is an explicit same-account per-invocation option. Keep the existing
+Codex binary and CODEX_HOME, preserve caller arguments, and request lossless,
 cache-conservative operation. Provider cache reuse can still change request
 bytes; do not promise byte identity. Keep native usage from the parent and every
 actual descendant separate from proxy counters, and separate requested model or
 tier from observed identity. Use launch/completion events instead of polling.
 Proxy counters and token deltas are descriptive; without complete controlled
 evidence, do not claim Headroom caused savings.
+
+## Claude Code host
+
+Claude Code reads this file through ~/.claude/CLAUDE.md, a link to it. There the
+selected Claude model is the parent; native subagents take roster roles by
+function, and Sol, Astra, Luna, Jev and Codex computer use run only through an
+observed Codex invocation. Codex tool names map to Claude Code equivalents:
+spawn_agent to Agent, apply_patch to Edit or Write, update_plan to the task list.
+The user or host sets effort; recommend a change rather than claiming one. Opus
+5.5 always thinks: do not add "think carefully", and hand over the whole task
+with its finish line. Headroom for Claude Code uses the installed claude.mjs
+launcher.

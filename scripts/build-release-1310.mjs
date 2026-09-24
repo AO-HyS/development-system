@@ -68,72 +68,28 @@ function replaceOnce(text, from, to) {
   return text.replace(from, to);
 }
 
-// Personal instructions for the Claude Code host: shared sections stay byte-identical to the Codex file.
-const codexInstructions = (await bytes("artifacts/1.30.0/global-codex-instructions.md")).toString();
-const profileStart = codexInstructions.indexOf("## Advisory development profile");
-const profileEnd = codexInstructions.indexOf("## Automated tests and evidence");
-const headroomStart = codexInstructions.indexOf("## Headroom transport evidence");
-if (profileStart < 0 || profileEnd < profileStart || headroomStart < profileEnd) throw new Error("Global instruction sections changed");
-const codexProfile = codexInstructions.slice(profileStart, profileEnd).trimEnd().split("\n\n");
-if (codexProfile.length !== 6 || !codexProfile[1].startsWith("New sessions request Sol 6 High")
-  || !codexProfile[2].startsWith("Follow coding-orchestration/references/jev-advisory.md")
-  || !codexProfile[3].startsWith("Keep one writer per surface")
-  || !codexProfile[4].startsWith("A roster requests model, effort and speed")
-  || !codexProfile[5].startsWith("For nontrivial delivery, provide a readable HTML report")) {
-  throw new Error("Advisory development profile paragraphs changed");
-}
-const identityRule = `${codexProfile[4].slice(0, codexProfile[4].indexOf("Astra planning and review stay XHigh.")).trimEnd()}
-Effort changes do not establish cache reuse without provider evidence.`;
-// Only the Codex roster and Jev paragraphs are host-specific; the other profile rules carry over verbatim.
-const claudeProfile = `## Claude Code host profile
+// One personal instruction file for both hosts: ~/.claude/CLAUDE.md links to ~/.codex/AGENTS.md.
+const sharedSource = (await bytes("artifacts/1.30.0/global-codex-instructions.md")).toString();
+const claudeHost = `## Claude Code host
 
-These personal rules are shared with Codex. In Claude Code the selected Claude
-session model is the parent and delegates with native Claude Code subagents
-under the same ownership, packet, review and evidence rules. The Sol, Astra and
-Luna roster, the Jev advisory runtime and Codex computer use belong to the Codex
-host; do not claim they ran unless a Codex invocation was launched and observed.
-No Claude subagent roster is installed yet. Choose native subagents by role and
-report requested and observed model identity separately.
-
-Map the Codex roles by function, not model name. Bounded source mapping uses a
-fast subagent. Architecture planning and independent review use a distinct fresh
-subagent on the most capable available model. General and mechanical writing stay
-with the parent or a bounded worker. Tiny deterministic edits proceed directly
-with relevant repository checks. Skill text that names Codex tools maps to Claude
-Code equivalents: spawn_agent to Agent, apply_patch to Edit or Write, update_plan
-to the task list. Report a capability Claude Code lacks, such as Codex native
-browser or computer use, as a gap; do not silently substitute a provider.
-
-${codexProfile[3]}
-
-${identityRule}
-
-${codexProfile[5]}
-
-## Opus 5.5 working practices
-
-Opus 5.5 always thinks; effort is the control, and the user or host sets it.
-Medium suits normal coding. Recommend high or xhigh (/effort) where it measurably
-helps, such as architecture plans and independent reviews; never claim an effort
-level that was not observed. Do not add "think carefully" instructions. Take the whole
-task with its finish line and continue until it is met. Stop to ask only at the
-user's named checkpoints, for destructive or outward-facing operations, or for
-genuine blockers. A text-only turn is a progress report, not completion. End a
-long run with what the user must decide first, then results and evidence. For
-UI work, name the specific design patterns to avoid.
-
+Claude Code reads this file through ~/.claude/CLAUDE.md, a link to it. There the
+selected Claude model is the parent; native subagents take roster roles by
+function, and Sol, Astra, Luna, Jev and Codex computer use run only through an
+observed Codex invocation. Codex tool names map to Claude Code equivalents:
+spawn_agent to Agent, apply_patch to Edit or Write, update_plan to the task list.
+The user or host sets effort; recommend a change rather than claiming one. Opus
+5.5 always thinks: do not add "think carefully", and hand over the whole task
+with its finish line. Headroom for Claude Code uses the installed claude.mjs
+launcher.
 `;
-const headroomClaude = replaceOnce(codexInstructions.slice(headroomStart),
-  "Headroom is an explicit same-account per-invocation option. Keep the existing\nCodex binary and CODEX_HOME, preserve caller arguments,",
-  "Headroom is an explicit same-account per-invocation option. For Claude Code use\nthe installed claude.mjs launcher: keep the Claude binary, login, model and\neffort, preserve caller arguments,");
-const claudeInstructions = codexInstructions.slice(0, profileStart) + claudeProfile
-  + codexInstructions.slice(profileEnd, headroomStart) + headroomClaude;
-await output(`${prefix}/global-claude-instructions.md`, claudeInstructions);
+const sharedInstructions = `${sharedSource.trimEnd()}\n\n${claudeHost}`;
+if (!sharedInstructions.startsWith(sharedSource.trimEnd())) throw new Error("Shared instructions did not preserve the previous text");
+await output(`${prefix}/global-codex-instructions.md`, sharedInstructions);
 
 const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toString();
 const contractBase = replaceOnce(contractSource, `# Development contract ${previous}`, `# Development contract ${version}`)
   .replace(`The paired skill catalog is ${previousCatalog}.`, `The paired skill catalog is ${catalogVersion}.`);
-const contract = `${contractBase.trimEnd()}\n\n## Claude Code harness\n\nClaude Code is a native harness. Catalog ${catalogVersion} mirrors every catalogued skill into .claude/skills with identical bytes. .claude/CLAUDE.md carries the shared personal rules adapted to the Claude host. The destructive-command guard covers Codex hooks and Claude Code user settings. Headroom per-invocation launch is available for Claude Code. Plugins, MCP servers and other Claude settings remain operator configuration outside this manifest. File installation does not prove discovery, loading or behavioral influence.\n`;
+const contract = `${contractBase.trimEnd()}\n\n## Claude Code harness\n\nClaude Code is a native harness. Catalog ${catalogVersion} links every catalogued skill into .claude/skills from its installed copy. ~/.claude/CLAUDE.md is an operator link to the shared ~/.codex/AGENTS.md, which carries a short Claude Code host section. The destructive-command guard covers Codex hooks and Claude Code user settings. Headroom per-invocation launch is available for Claude Code. Plugins, MCP servers and other Claude settings remain operator configuration outside this manifest. File installation does not prove discovery, loading or behavioral influence.\n`;
 if (contract.includes(`catalog is ${previousCatalog}`)) throw new Error("Contract kept the previous catalog reference");
 await output(`${prefix}/contract.md`, contract);
 
@@ -141,7 +97,7 @@ await output(`${prefix}/contract.md`, contract);
 /** @type {Array<{sourcePath: string, artifactPath: string, destination: string}>} */
 const runtimeOutputs = [
   { sourcePath: "runtime/headroom/README.md", artifactPath: `${prefix}/runtime/headroom/README.md`, destination: ".codex/development-system/runtime/headroom/README.md" },
-  { sourcePath: "runtime/headroom/claude.mjs", artifactPath: `${prefix}/runtime/headroom/claude.mjs`, destination: ".claude/development-system/runtime/headroom/claude.mjs" },
+  { sourcePath: "runtime/headroom/claude.mjs", artifactPath: `${prefix}/runtime/headroom/claude.mjs`, destination: ".codex/development-system/runtime/headroom/claude.mjs" },
 ];
 for (const item of runtimeOutputs) await output(item.artifactPath, await bytes(item.sourcePath));
 const provenance = JSON.parse((await bytes(`artifacts/${previous}/headroom-runtime-provenance.json`)).toString());
@@ -204,6 +160,7 @@ for (const skill of catalog.skills) {
     folderSha256: canonical.folderSha256,
     ...(canonical.executableFiles ? { executableFiles: canonical.executableFiles } : {}),
     expectedMirrorOf: canonical.id,
+    install: "symlink",
     ...(canonical.adapterContract ? { adapterContract: canonical.adapterContract } : {}),
   });
   if (skill.physicalHarnesses) skill.physicalHarnesses = [...skill.physicalHarnesses, "claude"];
@@ -222,6 +179,7 @@ const updated = new Map([
   ["skill-catalog", `catalog/${catalogVersion}.json`],
   ["runtime--codex-development-system-runtime-headroom-README-md", `${prefix}/runtime/headroom/README.md`],
   ["headroom-runtime-provenance", `${prefix}/headroom-runtime-provenance.json`],
+  ["personal-codex-instructions", `${prefix}/global-codex-instructions.md`],
 ]);
 for (const artifact of manifest.artifacts) {
   const replacement = updated.get(artifact.logicalName);
@@ -234,8 +192,7 @@ if (manifest.artifacts.filter((/** @type {{logicalName:string}} */ artifact) => 
   throw new Error("Previous manifest is missing a targeted artifact");
 }
 for (const [logicalName, sourcePath, destination] of [
-  ["personal-claude-instructions", `${prefix}/global-claude-instructions.md`, ".claude/CLAUDE.md"],
-  ["runtime--claude-development-system-runtime-headroom-claude-mjs", `${prefix}/runtime/headroom/claude.mjs`, ".claude/development-system/runtime/headroom/claude.mjs"],
+  ["runtime--codex-development-system-runtime-headroom-claude-mjs", `${prefix}/runtime/headroom/claude.mjs`, ".codex/development-system/runtime/headroom/claude.mjs"],
 ]) {
   manifest.artifacts.push({ id: `${logicalName}.claude`, logicalName, sourcePath, destination, harness: "claude", sha256: hash(await bytes(sourcePath)), expectedMirrorOf: null });
 }

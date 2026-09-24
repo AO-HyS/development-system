@@ -2,11 +2,12 @@
 
 ## Release 1.31.0 / catalog 0.50.0
 
-Release 1.31.0 adds Claude Code as a native harness. Catalog 0.50.0 mirrors
-every catalogued skill into `.claude/skills` with identical bytes, and
-`.claude/CLAUDE.md` carries the shared personal rules with a Claude host
-profile and Opus 5.5 working practices. The destructive-command guard now
-covers Claude Code user settings as well as Codex hooks, and
+Release 1.31.0 adds Claude Code as a native harness without a second copy of
+anything. Catalog 0.50.0 links every catalogued skill into `.claude/skills`
+from its installed copy. The shared `~/.codex/AGENTS.md` gains a short Claude
+Code host section, and `~/.claude/CLAUDE.md` is a link to it
+(`ln -s ../.codex/AGENTS.md ~/.claude/CLAUDE.md`). The destructive-command guard
+now covers Claude Code's Bash and Monitor tools, and
 `runtime/headroom/claude.mjs` launches Claude Code through the same
 per-invocation Headroom proxy profile. Plugins, MCP servers and other Claude
 settings stay operator configuration. See

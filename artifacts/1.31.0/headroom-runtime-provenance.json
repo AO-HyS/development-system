@@ -24,7 +24,7 @@
     {
       "sourcePath": "runtime/headroom/claude.mjs",
       "artifactPath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
-      "destination": ".claude/development-system/runtime/headroom/claude.mjs",
+      "destination": ".codex/development-system/runtime/headroom/claude.mjs",
       "sha256": "fa98d7729ddcb338ffd214ad020b1137ef40cedc089623dbe82aa970427399b7"
     }
   ],
