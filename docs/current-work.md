@@ -25,10 +25,12 @@ ahead of origin/develop). Old benchmark continuity and all pending edits were
 preserved by commit9f7a124 on fix/workspace-readiness-1.29.1; no worktree/clone
 was created. That branch retains the complete historical experiment narrative.
 
-Installed release remains1.29.1; advisory/runtime/roster component1.29.0, catalog
-0.48.0. ~/.codex_extra/development-system resolves to the shared installed
-directory. Credentials remain in their existing account locations. No provider
-identity inferred from a display name or symlink.
+Development prerelease1.30.0 was published and installed from621584a, with
+catalog0.49.0. Isolated setup and operator contract audit passed; operator
+config bytes and all18 agent TOMLs remained unchanged. Advisory/runtime/roster
+component remains1.29.0. The isolated skills audit correctly lacks operational
+host evidence; it is not a claim of loaded/influenced skills. Credentials remain
+in their existing account locations.
 
 Read-only source mappers completed. Astra XHigh authored the plan; a distinct
 fresh Astra reviewer approved it with one correction: explicitly set
@@ -84,7 +86,23 @@ The current NutriPlan localhost3001 server returns HTTP500; the new task must
 repair/verify its environment before accepting screens. Credential locators and
 the complete execution packet are private in nutriplan-task.md.
 
-Next: final review closeout, commit/package, isolated installation and audit,
-supported operator installation, actual T3 fresh-thread start and initial
-native model/delegation/transport observations. Never claim a CLI proxy setup
-proves T3 root transport or that a model catalog proves actual agent identity.
+Computer Use recovered through the existing native node_repl integration and
+documented @oai/cua plus @oai/sky APIs. Native T3 UI created a dedicated provider
+instance codex_nutriplan_headroom, sharing the existing CorrOrtiz shadow home,
+and new NutriPlan thread e54c9275-f623-4bd9-9da9-5e79fa2fe4c7 with Sol6High,
+standard tier, full access and the current canonical checkout. The actual first
+turn responded and read project guidance; a fresh screenshot confirms it.
+
+The first task launch exposed a Codex app-server argument-order defect: T3 adds
+MCP -c arguments after app-server, causing the earlier global provider/CUA -c
+arguments to be dropped. Headroom had zero requests. The task was interrupted
+through normal UI before reconfiguration; no saving was claimed. New immutable
+patch1.30.1 moves helper overrides after app-server while preserving T3 argument
+order and ordinary CLI behavior. Source syntax/typecheck passed. A real
+T3-shaped app-server config/read now confirms headroom_local, its current
+loopback URL, and the preserved T3 MCP entry. This still is not inference proof.
+
+Next: finish1.30.1 release integrity review, install/publish the corrected patch,
+resume the SAME T3 task using a fresh configured session, and observe the first
+proxy request/native model. Preserve task continuity and stop monitoring once
+startup is confirmed. Never claim configuration proves inference coverage.

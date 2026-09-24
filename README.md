@@ -1,6 +1,11 @@
 # AOHYS Development System
 
-## Release 1.30.0 / catalog 0.49.0
+## Release 1.30.1 / catalog 0.49.0
+
+Release 1.30.1 fixes Headroom argument placement for T3's `app-server` launch:
+the provider overrides now follow the subcommand, where Codex applies them.
+Ordinary `exec` argument ordering is unchanged. This fixes launch configuration;
+it does not establish transport coverage or provider usage.
 
 Headroom delivery is an explicit, same-account opt-in for local Codex worker
 invocations. It retains the configured Codex binary and `CODEX_HOME`, uses
@@ -99,7 +104,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.30.0/aohys-development-system-1.30.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.30.1/aohys-development-system-1.30.1.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -130,7 +135,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.30.0
+./bin/development-system setup --version 1.30.1
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
 ./bin/development-system audit-skills --version 0.49.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
@@ -309,7 +314,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.30.0`; audit advisory hooks and the paired catalog 0.49.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.30.1`; audit advisory hooks and the paired catalog 0.49.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
