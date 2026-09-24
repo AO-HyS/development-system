@@ -338,10 +338,20 @@ export async function rollbackGlobalGuardrails({ home }) {
     if (file.before !== null && before === null) throw new Error(`Guardrail snapshot contains invalid ${key} prior bytes`);
     const installed = Buffer.from(file.installed, "base64");
     const current = await readOptional(path);
-    if (current === null || !current.equals(installed)) {
+    if (current !== null && current.equals(installed)) {
+      entries.push({ path, before });
+    } else if (key === "claude" && current !== null) {
+      // Claude Code rewrites its user settings (plugins, preferences); remove only the managed hook.
+      const settings = parseObject(current, "Claude Code settings");
+      const preToolUse = /** @type {any[]} */ (Array.isArray(settings.hooks?.PreToolUse) ? settings.hooks.PreToolUse : []);
+      const hooks = { ...settings.hooks, PreToolUse: preToolUse.filter((entry) => !isManagedEntry(entry)) };
+      if (hooks.PreToolUse.length === 0) delete hooks.PreToolUse;
+      const next = { ...settings, hooks };
+      if (Object.keys(hooks).length === 0) delete next.hooks;
+      entries.push({ path, before: Buffer.from(`${JSON.stringify(next, null, 2)}\n`) });
+    } else {
       throw new Error(`Refusing guardrail rollback because ${key} configuration changed after activation`);
     }
-    entries.push({ path, before });
   }
   for (const { path, before } of entries) {
     if (before === null) await unlink(path).catch((error) => { if (!missing(error)) throw error; });
