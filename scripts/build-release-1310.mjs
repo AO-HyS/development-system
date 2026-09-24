@@ -156,6 +156,9 @@ const catalog = JSON.parse((await bytes(`catalog/${previousCatalog}.json`)).toSt
 catalog.catalogVersion = catalogVersion;
 catalog.supportedHarnesses.push({ id: "claude", adapter: "native" });
 catalog.supportedRoots.push(".claude/skills");
+// The new root adds one scanned entry per mirrored skill; keep headroom above the previous 512 budget.
+if (catalog.maxCatalogEntries !== 512) throw new Error("Unexpected previous catalog entry budget");
+catalog.maxCatalogEntries = 768;
 const guard = catalog.skills.find((/** @type {any} */ skill) => skill.logicalName === "global-agent-guardrails");
 if (!guard || guard.variants.length !== 1) throw new Error("Unexpected global-agent-guardrails catalog entry");
 const guardSource = guard.variants[0].sourceDirectory, guardTarget = `${prefix}/skills/internal/global-agent-guardrails`;

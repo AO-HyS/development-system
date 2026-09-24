@@ -21,7 +21,7 @@
     ".factory/skills",
     ".claude/skills"
   ],
-  "maxCatalogEntries": 512,
+  "maxCatalogEntries": 768,
   "operationalEvidenceSkills": [
     "research",
     "behavioral-evidence",
