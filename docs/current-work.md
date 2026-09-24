@@ -102,7 +102,33 @@ order and ordinary CLI behavior. Source syntax/typecheck passed. A real
 T3-shaped app-server config/read now confirms headroom_local, its current
 loopback URL, and the preserved T3 MCP entry. This still is not inference proof.
 
-Next: finish1.30.1 release integrity review, install/publish the corrected patch,
-resume the SAME T3 task using a fresh configured session, and observe the first
-proxy request/native model. Preserve task continuity and stop monitoring once
-startup is confirmed. Never claim configuration proves inference coverage.
+Completed: independent1.30.1 delta review passed; package/source31cb814,
+SHA256c2ea7fa31d8c63ff16b6509c0b17d4a3d64f6e577e5d3cdaa95e0c7d61bdd777.
+The new development prerelease is published at GitHub tagv1.30.1 and installed
+through its exact extracted package. Isolated upgrade/audit and operator
+upgrade/audit passed. All18 role TOMLs and operator account/config bytes still
+match the baseline. No automated tests were run or changed.
+
+The stopped task's exclusively owned wrapper53502 and its Codex/proxy children
+were terminated normally; all exited, leaving other T3 conversations intact.
+The SAME T3 thread was resumed through native UI at08:46UTC using a fresh
+app-server. Headroom invocation headroom-iI37VT, port55451, recorded4 completed
+requests for gpt-6-sol and0 failed requests at08:47UTC. This confirms initial
+coordinator transport, not complete future descendant coverage or causal savings.
+Native first-phase role observations were Sol6High root, two Luna6High mappers,
+Astra6XHigh architecture planner and Astra6XHigh QA planner. Service tier was
+requested standard; the native records did not expose an observed tier.
+
+Task title: NutriPlan integral · Resumen con visor · Sol High. Its resumed
+coordinator acknowledged continuity, the transport correction and the pending
+dependency repair. It owns subsequent product changes and DS dependency/lock
+adoption. No other product writer is assigned by this session. No result polling
+or background supervisor remains; do not stop its active Headroom process.
+
+Evidence: private native-first-turn.json, t3-launch-receipt.json,
+headroom-resume-observation.json, operator-preservation-1301.json and
+t3-resumed-clean.png. Sanitized HTML report is served at
+https://double-emissions-nut-vampire.trycloudflare.com/2a31c0cd7c20592af99b11cf2ed48441/public/development-1301/index.html
+until2026-09-24T14:45:32Z. HTTP200 and exact local bytes were verified; the
+embedded native screenshot loaded. Product acceptance/costs remain the new
+task's responsibility; this session completed release and observed launch.
