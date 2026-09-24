@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.31.0",
+  "optIn": "explicit-per-invocation-same-account",
+  "sources": [
+    {
+      "sourcePath": "runtime/headroom/README.md",
+      "artifactPath": "artifacts/1.31.0/runtime/headroom/README.md",
+      "destination": ".codex/development-system/runtime/headroom/README.md",
+      "sha256": "30c292ffc592e45ebf22317926282354ce8479a022d3730d39e8c55656dbbade"
+    },
+    {
+      "sourcePath": "runtime/headroom/cli.mjs",
+      "artifactPath": "artifacts/1.30.1/runtime/headroom/cli.mjs",
+      "destination": ".codex/development-system/runtime/headroom/cli.mjs",
+      "sha256": "8d7a3c03eaec46f7b8f3e6dc502453951941920a5484354a587a9d67f4c14c8f"
+    },
+    {
+      "sourcePath": "runtime/native-browser/overrides.mjs",
+      "artifactPath": "artifacts/1.30.0/runtime/native-browser/overrides.mjs",
+      "destination": ".codex/development-system/runtime/native-browser/overrides.mjs",
+      "sha256": "76648f8530366e2cf686a19fd1b45ef6ecf9be0b23390029c9f334847fdd34e0"
+    },
+    {
+      "sourcePath": "runtime/headroom/claude.mjs",
+      "artifactPath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
+      "destination": ".claude/development-system/runtime/headroom/claude.mjs",
+      "sha256": "610bc4132d6b652068d11dbf1e2e45a13f7cfe6cdd8c91fcc5f5ccc63d3e3355"
+    }
+  ],
+  "usageEvidence": "Native usage includes the parent and every actual descendant; keep it separate from proxy counters.",
+  "identityEvidence": "Requested model and service tier are separate from observed runtime identity and tier.",
+  "savingsClaim": "No causal savings claim from proxy counters or token deltas.",
+  "operationalEvidence": "Source checks and artifact hashes do not establish transport coverage, provider identity, browser readiness, or product acceptance."
+}

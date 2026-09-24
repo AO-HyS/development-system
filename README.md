@@ -1,5 +1,17 @@
 # AOHYS Development System
 
+## Release 1.31.0 / catalog 0.50.0
+
+Release 1.31.0 adds Claude Code as a native harness. Catalog 0.50.0 mirrors
+every catalogued skill into `.claude/skills` with identical bytes, and
+`.claude/CLAUDE.md` carries the shared personal rules with a Claude host
+profile and Opus 5.5 working practices. The destructive-command guard now
+covers Claude Code user settings as well as Codex hooks, and
+`runtime/headroom/claude.mjs` launches Claude Code through the same
+per-invocation Headroom proxy profile. Plugins, MCP servers and other Claude
+settings stay operator configuration. See
+[ADR 0058](docs/adr/0058-claude-code-harness.md).
+
 ## Release 1.30.1 / catalog 0.49.0
 
 Release 1.30.1 fixes Headroom argument placement for T3's `app-server` launch:
@@ -135,7 +147,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.30.1
+./bin/development-system setup --version 1.31.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
 ./bin/development-system audit-skills --version 0.49.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
@@ -314,7 +326,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.30.1`; audit advisory hooks and the paired catalog 0.49.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.31.0`; audit advisory hooks and the paired catalog 0.50.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

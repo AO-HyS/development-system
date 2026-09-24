@@ -749,7 +749,7 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
         !Array.isArray(skill.physicalHarnesses) ||
         skill.physicalHarnesses.length === 0 ||
         new Set(skill.physicalHarnesses).size !== skill.physicalHarnesses.length ||
-        skill.physicalHarnesses.some((harness) => !["codex", "factory"].includes(harness))
+        skill.physicalHarnesses.some((harness) => !["codex", "factory", "claude"].includes(harness))
       ) {
         errors.push(`${skill.logicalName} physicalHarnesses is invalid`);
       } else {
