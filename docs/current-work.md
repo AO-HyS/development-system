@@ -202,23 +202,21 @@ Opus low/medium/high, learning from outcomes.
 
 ## Pending (user)
 
-- Decide the nutri-plan develop -> main promotion (NUTRI-151 acceptance is
-  recorded as pending).
-
+- nutri-plan production waits until the user finishes the current redesign
+  work (user decision 2026-09-25); develop already pins 1.32.0.
 - OAuth in /mcp: vercel, sentry, cloudflare, stripe, expo, linear, posthog,
-  exa, mercadopago, mobbin, Notion, Gmail, Calendar, Drive.
+  exa, mercadopago, mobbin. Gmail, Calendar, Drive and Notion are not used.
 - Run phase 0 in a fresh thread with
-  private/verification/nutriplan-redesign-20260924/phase0-prompt.md. Evaluate
+  private/verification/nutriplan-redesign-20260924/phase0-prompt.md (updated
+  for 1.32.0; the :3013 server is stopped and the prompt starts one). Evaluate
   checkpoint A, then correct the system or continue (continue-prompt.md has
   phase 1 onward).
-- Decide: rewrite or leave the Test-authored commits on other nutri-plan
-  branches.
-- Decide: Vercel Pro (or another route) to restore casa-roca dashboard Git
-  deployments; cross-CLI computer use.
+- Closed by the user: Test-authored nutri-plan commits stay as they are; no
+  Vercel Pro (casa-roca dashboard keeps CLI deployments).
+- Cross-CLI computer use.
 
 ## Evidence and processes
 
 Private: ~/.development-system/private/releases/1.31.0-claude/ and
-~/.development-system/private/runs/headroom-claude/. A nutri-plan dashboard
-dev server on :3013 was started for the verifier check (left running for the
-redesign thread).
+~/.development-system/private/runs/headroom-claude/. No nutri-plan dev server
+is running.
