@@ -1,5 +1,15 @@
 # AOHYS Development System
 
+## Release 1.32.0 / catalog 0.50.0
+
+Release 1.32.0 packages the Claude Code orchestration roster: seventeen tiered
+subagent roles in `.claude/agents`, the orchestration rule in `.claude/rules` and
+the roster guard with its policy. The guard asks Jev which tier each packet needs
+and keeps tier memory of escalations; Fable 5.1 roles run only when Jev picks them
+or gives them a probability of at least 0.4, or a packet carries a `Fable scope:` line. Activate, check and undo the guard hooks
+with `claude-orchestration-enable`, `claude-orchestration-audit` and
+`claude-orchestration-rollback`. Catalog 0.50.0 is unchanged.
+
 ## Release 1.31.0 / catalog 0.50.0
 
 Release 1.31.0 adds Claude Code as a native harness without a second copy of
@@ -117,7 +127,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.31.0/aohys-development-system-1.31.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.32.0/aohys-development-system-1.32.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -148,7 +158,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.31.0
+./bin/development-system setup --version 1.32.0
 ./bin/development-system guardrails-enable
 pnpm run skills:probe
 ./bin/development-system audit-skills --version 0.50.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
@@ -327,7 +337,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.31.0`; audit advisory hooks and the paired catalog 0.50.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.32.0`; audit advisory hooks and the paired catalog 0.50.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
