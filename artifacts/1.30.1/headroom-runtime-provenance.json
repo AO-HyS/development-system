@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.30.1",
+  "optIn": "explicit-per-invocation-same-account",
+  "sources": [
+    {
+      "sourcePath": "runtime/headroom/README.md",
+      "artifactPath": "artifacts/1.30.0/runtime/headroom/README.md",
+      "destination": ".codex/development-system/runtime/headroom/README.md",
+      "sha256": "15503156cfafd1a511739292c0a59dd0d286d8d3dbc1c7d23c697582825bd740"
+    },
+    {
+      "sourcePath": "runtime/headroom/cli.mjs",
+      "artifactPath": "artifacts/1.30.1/runtime/headroom/cli.mjs",
+      "destination": ".codex/development-system/runtime/headroom/cli.mjs",
+      "sha256": "8d7a3c03eaec46f7b8f3e6dc502453951941920a5484354a587a9d67f4c14c8f"
+    },
+    {
+      "sourcePath": "runtime/native-browser/overrides.mjs",
+      "artifactPath": "artifacts/1.30.0/runtime/native-browser/overrides.mjs",
+      "destination": ".codex/development-system/runtime/native-browser/overrides.mjs",
+      "sha256": "76648f8530366e2cf686a19fd1b45ef6ecf9be0b23390029c9f334847fdd34e0"
+    }
+  ],
+  "usageEvidence": "Native usage includes the parent and every actual descendant; keep it separate from proxy counters.",
+  "identityEvidence": "Requested model and service tier are separate from observed runtime identity and tier.",
+  "savingsClaim": "No causal savings claim from proxy counters or token deltas.",
+  "operationalEvidence": "Source checks and artifact hashes do not establish transport coverage, provider identity, browser readiness, or product acceptance.",
+  "correction": "T3 app-server provider overrides follow the subcommand; ordinary exec ordering is unchanged."
+}

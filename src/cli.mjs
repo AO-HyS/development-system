@@ -27,6 +27,11 @@ import {
   enableGlobalGuardrails,
   rollbackGlobalGuardrails,
 } from "./guardrails.mjs";
+import {
+  auditClaudeOrchestration,
+  enableClaudeOrchestration,
+  rollbackClaudeOrchestration,
+} from "./claude-orchestration.mjs";
 import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
 import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
 import {
@@ -132,6 +137,9 @@ function formatHuman(result) {
   if (result.operation === "guardrails-enable") return `Global guardrails ${result.status}.`;
   if (result.operation === "guardrails-audit") return `Global guardrails ${result.status}.`;
   if (result.operation === "guardrails-rollback") return "Restored the prior global hook configuration.";
+  if (result.operation === "claude-orchestration-enable") return `Claude orchestration ${result.status}${result.changed ? "" : " (unchanged)"}.`;
+  if (result.operation === "claude-orchestration-audit") return `Claude orchestration ${result.status}.`;
+  if (result.operation === "claude-orchestration-rollback") return `Claude orchestration rollback ${result.status}.`;
   if (result.operation === "lifecycle-request") {
     const transition = /** @type {{status?: string, operation?: string} | undefined} */ (result.transition);
     return `Lifecycle transition ${transition?.status}: ${transition?.operation ?? result.selectedStage ?? "none"}.`;
@@ -291,6 +299,12 @@ export async function run(argv) {
     result = await auditGlobalGuardrails({ home: options.home });
   } else if (command === "guardrails-rollback") {
     result = await rollbackGlobalGuardrails({ home: options.home });
+  } else if (command === "claude-orchestration-enable") {
+    result = await enableClaudeOrchestration({ home: options.home });
+  } else if (command === "claude-orchestration-audit") {
+    result = await auditClaudeOrchestration({ home: options.home });
+  } else if (command === "claude-orchestration-rollback") {
+    result = await rollbackClaudeOrchestration({ home: options.home });
   } else if (command === "governance-hooks-enable") {
     result = await enableGovernanceHooks({ home: options.home });
   } else if (command === "governance-hooks-audit") {
@@ -507,7 +521,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

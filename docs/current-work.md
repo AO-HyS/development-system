@@ -1,72 +1,187 @@
-# Current work — 2026-09-23
+# Current work — Claude Code parity (Development System 1.31.0)
 
-## Objective and boundaries
+## Objective — 2026-09-24
 
-Prepare exactly three user-launched orchestrator runs: Astra XHigh, Sol XHigh,
-Sol Max. One run each, 600 seconds for the whole task. No trial has started.
-Do not launch, poll, recreate environments, add variants or create worktrees.
-The user will notify completion before analysis.
+Give Claude Code (Opus 5.5, including T3's Claude provider) parity with the
+Codex setup using links, not second copies: same personal rules and skills,
+destructive-command guard, optional Headroom transport, one-to-one plugins/MCP
+servers, minimal added context. User direction: do not author, update or run
+tests; deferred: Claude subagent roster and cross-CLI computer use via Codex.
 
-Preserve active branches, product files and processes in AOHYS, Opportunity OS
-and NutriPlan. Only their Development System configuration may change. Ten
-other canonical product repos are clean on local develop; Clinic Scribe and
-Codex Usage Widget source are preserved in local Git. Credentials stay private.
+## Root and branch
 
-## Development System
+Canonical root /Users/corrortiz/Documents/AO/development-system, branch
+feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.0
+(v1.30.1 is installed and pushed but not in develop or main). No worktree/clone.
 
-Canonical root: /Users/corrortiz/Documents/AO/development-system.
-Task branch: fix/workspace-readiness-1.29.1, from updated local develop at
-released 1.29.0. The reviewed patch fixes repository generation so normalization
-cannot restore obsolete governed/Flash/permit instructions. It preserves custom
-lifecycle extensions, catalog 0.48.0 and the customized HTML reports. Published
-immutable versions are unchanged.
+## Completed
 
-Packaging/install and dependency alignment are pending validation. Global CLI
-is still 1.29.0 at this checkpoint. Do not claim 1.29.1 installed until the final
-receipt confirms it. Never install archived 1.23 source. Selected model unchanged.
+- Release 1.31.0 / catalog 0.50.0 (ADR 0058), unpublished: Claude skill variants
+  install as relative links to the canonical copies; the shared
+  ~/.codex/AGENTS.md gains a short "Claude Code host" section; guard accepts
+  `--harness claude` and guards Bash|Monitor from the canonical engine;
+  runtime/headroom/claude.mjs sits next to cli.mjs. Independent review findings
+  were corrected. Builder check and typecheck pass.
+- Operator HOME: 1.31.0 installed and healthy (an earlier 1.31.0 layout was
+  rolled back to 1.30.1 with its installing commit's code, then reinstalled).
+  ~/.claude/CLAUDE.md -> ../.codex/AGENTS.md (Claude confirmed it loads).
+  Guardrails healthy for Codex and Claude; the guard blocks real Claude calls.
+  Codex config.toml, 18 role TOMLs and hooks.json unchanged; AGENTS.md changed
+  only by the appended Claude section.
+- Operator configuration: plugins github, vercel, sentry, cloudflare, stripe,
+  expo, convex, linear, exa; MCPs auggie, mobbin, expect, posthog, mercadopago
+  (Codex had those two as MCP only); instructionFiles =
+  claude-md-and-agents-md; impeccable hook repaired; 14 non-catalog skills
+  linked; dangling links and superseded files kept under private backup.
+  Context: 281 skills, 21 MCP servers (was 449 skills with posthog plugin).
+- Headroom: private T3 shim runs Claude through the installed launcher
+  (stream-json, 2 proxied requests per call); management subcommands skip the
+  proxy; another base URL is refused.
+- Read-only audit of all product repositories' agent instructions (results
+  reported to the user; no repository changed).
 
-## Cleanup
+## Publication and rollout — 2026-09-24 (complete)
 
-- All 51 historical linked Development System worktrees were retired through
-  normal Git removal after ownership checks and recoverable archival. Only its
-  canonical checkout remains; local branches and evidence are preserved.
-- Old canonical tracked work is on archive/canonical-pre129-20260923 at 5a7ce5b.
-  Its 215 untracked files are in the private recovery archive.
-- The obsolete local Jev hook was archived and is absent from this checkout.
-  The global destructive-command guard remains. Jev has no per-tool/Stop gate
-  or automatic controller.
-- Ten inactive canonical products are clean on develop. Casa Roca, Eteria and
-  Barber still need their dependencies moved from 1.26.1 to the validated patch.
-- Historical Barber and NutriPlan base worktrees still have live servers and
-  are retained; they are separate from the three prepared trial worktrees.
+- Published development prerelease v1.31.0 (tag on e694986, asset sha256
+  c8ae8448…7e9b). Operator HOME reinstalled from the downloaded package.
+- Production (user-authorized): eteria #279 -> develop, #280 -> main, Release
+  Train deployed production (6fe465a). the-barber-central #338 -> develop
+  (includes the local typecheck fix: wrangler types ignore dotenv), #339 ->
+  main, Release Train deployed production (e60a7011). casa-roca #138 ->
+  develop, #139 -> main (6f6c089); the dashboard Vercel project has no Git link
+  (Hobby plan cannot connect the private org repo), so production was deployed
+  with the Vercel CLI from a clean export of 6f6c089; Ready and aliased,
+  /sign-in 200. casa-roca-public was unaffected by this release.
+- nutri-plan #493 squash-merged to develop (4e12c96a) from a user-authorized
+  temporary worktree, now removed; the active T3 task's checkout is untouched.
+  Not promoted to production. aohys left for later.
+- normalize-repository was not used: its template regresses the 2026-09-23
+  manual guidance alignment. casa-roca's VS Code auto-migration diff is kept
+  privately (preserved/casa-roca-vscode-settings.patch).
 
-## Benchmark handoff
+## Claude cost diagnosis — 2026-09-25
 
-Private preparation root:
-~/.development-system/private/benchmarks/orchestrator-manual-129-20260923/.
-Read readiness.json, preparation.json, contract.md and each saved prompt.
-Roots under AO/.worktrees/nutri-orch-{variant}-129 share NutriPlan base
-48dd5266d928feb457648ec78e29bc5201be21c8. Each has its own env, backend,
-synthetic accounts, ports, Chrome host/window and photo inputs. Keep them alive.
-Browser login/reload and simultaneous tab-scoped recording preflight passed;
-this is infrastructure evidence, not acceptance of the unimplemented card.
+The nutri-plan redesign thread (T3 49431ab0, Claude session 739beec0) read
+~357M cached tokens: 377 full-size image Reads that stay in context, 21
+Opus general-purpose agents (up to 17 concurrent, depth 2) and a main thread
+that grew to ~490K without compaction. Jev, skills and Codex were not used.
+User-authorized operator changes (originals kept in
+private/releases/1.31.0-claude/preserved/20260925-claude-cost/):
+- T3 `claudeAgent` binaryPath -> the private Headroom shim, for every project.
+  Observed: a new Claude session has a loopback ANTHROPIC_BASE_URL and a live
+  claude.mjs process. No savings claim.
+- ~/.claude/settings.json env: CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS=4 (as
+  Codex max_threads), CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1.
+- Operator Claude roster (Codex-equivalent, not yet a release): 14 roles in
+  ~/.claude/agents generated by private/claude-orchestration/make-roster.py.
+  User mapping (2026-09-25), no Sonnet:
+  - Haiku: Explore (override, since the built-in now inherits Opus),
+    code-mapper, docs-researcher, mechanical-worker.
+  - Opus, low effort: exact-implementer, implementer, browser-qa.
+  - Opus, high effort: ui-implementer (user correction), planner,
+    senior-implementer, reviewer, visual-reviewer.
+  - Fable 5.1, high effort: plan-reviewer (overall plan and final result) and
+    security-reviewer.
+  - Coordinator: Opus 5.5 medium.
 
-Task: an inspiration-card form and new Convex entity in NutriPlan. Only the
-orchestrator model/effort changes. Fresh exclusive agents per variant; Luna
-High priority research/exact work, Astra XHigh plan and independent reviews,
-Sol Medium normal general writing as routed. No shared agents or candidate code.
-Tokens are extracted after completion from exact root/descendant thread IDs.
-Headroom stays outside this baseline.
+  Observed in a headless session: plan-reviewer resolved to claude-fable-5-1
+  with effort high. That session had ui-implementer at Opus low; it is now
+  high (policy 2026-09-25.4).
+  ~/.claude/rules/orchestration.md holds the routing table.
+- Guard hook private/claude-orchestration/roster-guard.mjs (PreToolUse
+  Agent|Read|screenshot, PostToolUse Agent). It refuses non-roster or
+  inherit-Opus agents and model overrides, and requires Owned paths/Done when
+  in writer packets. Jev classifies writer/planner dispatches (a strong
+  mismatch is refused once unless the packet has "Route rationale:"). Image
+  budgets: coordinator 2, ui/senior-implementer 5, visual-reviewer 12. Plugin
+  agents need model opus or haiku. Ledger with the
+  model each agent ran on: private/runs/claude-orchestration/ledger.jsonl.
+  Observed in a real headless session: general-purpose refused; code-mapper
+  ran on claude-haiku-4-5-20251001.
+- Jev integration fixed. Before, the guard sent Jev only the objective, so
+  context_sufficient came back ~0.11 and confidence ~0.35. Now it sends
+  exactContext, readSet/writeSet, riskSignals and the active writers, and it
+  records the chosen route (record-route-decision). Confidence is now
+  0.88-0.99. A writer packet with an open decision above 0.75 is refused.
+  One writer per surface: a writer whose owned paths overlap an active writer
+  is refused. SubagentStop is added to ~/.claude/settings.json and releases
+  it (backup in preserved/). Observed in a live headless e2e (/tmp/guard-e2e):
+  B was refused while A ran and allowed afterward; active-writers ended empty.
+- private/claude-orchestration/run-report.py <session> prints tokens and
+  estimated cost per agent, guard decisions and Jev lines. The costs are
+  estimates, not billing.
+- nutri-plan verification:
+  - compare.mjs is retired (retired/).
+  - ticket.mjs offers show/probe/shots/next/slices/mark/param over 146
+    tickets, each with one mock. `slices` groups them into 77 slices of at
+    most 4 tickets across 63 groups of shared files.
+  - The continue-prompt has a phase 0 to get the app compiling again, then
+    review-first slices, with Fable for the plan, security and final reviews.
+  - Observed 2026-09-25 after the develop merge (2276b59b):
+    `pnpm typecheck:focused` shows 195 errors in 69 files. Causes: the
+    canonical RBAC (#474) removed PERMISSIONS and hasPermission;
+    expectedUpdatedAt is now required; imports were lost in the merge.
+  - Git identity fixed at the user's request: the local Test override was
+    removed from nutri-plan, and the WIP and merge commits were re-authored
+    with commit-tree as Alejandro Ortiz Corro, keeping dates and messages.
+    HEAD is now 8ca2d5ad (WIP 0bf74cc4). The working tree was untouched: 52
+    dirty entries. Test-authored commits on other nutri-plan branches (some
+    pushed) were not rewritten; that is pending the user's decision.
+  - phase0-prompt.md: phase 0 only, with checkpoint A (plan + Fable verdict
+    + run-report + system notes) before any writer.
 
-## Evidence and next action
+## Jev tier selection and release 1.32.0 — 2026-09-25
 
-Private audit root:
-~/.development-system/private/workspace-audits/20260923/.
-Recovery receipts, env hashes, reviews and verification outcomes stay there.
-Earlier continuity is preserved in current-work-before-final-summary.md.
-Final report uses the existing notebook helper/tunnel; keep it concise,
-preserve comments and omit tunnel lifetime prose.
+Branch feat/claude-orchestration-1.32.0 (from the 1.31.0 state). User direction:
+Jev must never stall work, Fable only for very large specs (Codex/Astra
+unavailable), and Jev, not hardcoding, decides model and effort per task, with
+Opus low/medium/high, learning from outcomes.
+- Anti-stall (private guard, policy 2026-09-25.8): a packet (by Objective line)
+  is refused at most once for any reason; route refusals only for writers;
+  3 refusals per session, then advice only; Jev failure proceeds; a writer
+  hold expires after 5 min foreground without an agent id or 30 min idle
+  transcript (max 2 h); CLAUDE_ROSTER_GUARD=off. Fixed: descriptions with
+  spaces made every Jev classification fail (unsafe active-atom ids).
+- Tier: roles carry family and tier (haiku, opus_low, opus_medium, opus_high,
+  fable). New roles implementer-medium, planner-medium, reviewer-medium (17
+  agents). For implement/plan/review the guard asks Jev a tier question
+  directly (the runtime's questions are fixed) in parallel with route
+  classification, and refuses once pointing at the role at Jev's tier. Fable
+  roles run when Jev picks fable or gives p >= 0.4, else need a
+  "Fable scope:" line.
+- Memory: tier-memory.jsonl in the ledger directory; a dispatch repeated
+  later in the session at a higher tier for a similar objective counts as
+  escalated; Jev receives per-tier stats and up to 6 similar past packets.
+- Observed in isolation (/tmp/guardcheck7.py, own stateDir): typo -> haiku
+  (senior-implementer refused, retry proceeds); small diff review ->
+  opus_medium; small plan to plan-reviewer refused; 146-ticket final review ->
+  fable 0.9 (allowed; reviewer-medium refused toward Fable); after an
+  escalation opus_low -> opus_high, a similar packet in a new session got
+  opus_high. Latency 0.4-0.8 s. Anti-stall suite (/tmp/guardcheck5.py) still
+  behaves as designed.
+- Release 1.32.0 plan (planner, not yet reviewed): sources under claude/,
+  artifacts/1.32.0, claude-orchestration-enable/audit/rollback commands, ADR
+  0059, isolated-HOME verification, then tag/release/rollout. Needs updating
+  for 17 agents, policy .8 and the tier question.
 
-Finish version alignment, validation and independent review; deliver the three
-prompts inline and wait for the user. PR #102 is superseded by #103; its 27
-report files are preserved. Do not merge the old conflicting PR.
+## Pending (user)
+
+- OAuth in /mcp: vercel, sentry, cloudflare, stripe, expo, linear, posthog,
+  exa, mercadopago, mobbin, Notion. GitHub plugin needs
+  GITHUB_PERSONAL_ACCESS_TOKEN (gh CLI works meanwhile).
+- Run phase 0 in a fresh thread with
+  private/verification/nutriplan-redesign-20260924/phase0-prompt.md. Evaluate
+  checkpoint A, then correct the system or continue (continue-prompt.md has
+  phase 1 onward).
+- Decide: rewrite or leave the Test-authored commits on other nutri-plan
+  branches.
+- Release 1.32.0 authorized by the user ("hacer una liberación"); in progress.
+- Decide: Vercel Pro (or another route) to restore casa-roca dashboard Git
+  deployments; cross-CLI computer use.
+
+## Evidence and processes
+
+Private: ~/.development-system/private/releases/1.31.0-claude/ and
+~/.development-system/private/runs/headroom-claude/. A nutri-plan dashboard
+dev server on :3013 was started for the verifier check (left running for the
+redesign thread).
