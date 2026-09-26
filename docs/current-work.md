@@ -1,4 +1,31 @@
-# Current work — Development System 1.33.0 (less friction, real verification, reports that launch)
+# Current work — Development System 1.34.0 (Astra reviews and computer use through codex-review)
+
+Approved 2026-09-26: "hagamos la nueva versión: lleva lo de NutriPlan a
+Developer System y a de Barber Central" plus Astra as the computer-use default.
+Smoke tests only need launch, wait and wake. Root
+/Users/corrortiz/Documents/AO/development-system, branch
+feat/development-system-1.34.0 from develop 330c76f, PR #111.
+
+Done: codex-review.mjs (codex exec gpt-6-astra/xhigh read-only, background
+launch with no polling, receipts with observed model and effort from the Codex
+session log, 5 parallel reviews, 1 computer-use run, `Round rationale:` from
+round 4, `--computer-use`); Fable roles retired; reviewer, reviewer-medium,
+visual-reviewer and browser-qa need `Codex fallback:` and skip Jev; the Stop
+gate waits while a Codex run is pending; rule to split halted packets; builder
+1340 (89 artifacts, catalog 0.51.0). Live: review 1 (168 s; 1 High, 4 Medium;
+4 fixed in 99712ad, reservation race documented in ADR 0061), review 2 (184 s;
+1 Medium, only ESRCH marks a finished run, fixed in cbcdbfc), computer-use
+smoke (45 s, CUA initialized and woke the coordinator; no screenshot because
+Computer Use refuses the Codex app itself). Checks: release:prepare,
+typecheck, roster:check, check-no-tests.
+Round 3 (50 s): no findings, merge.
+Next: merge #111, main PR, v1.34.0 prerelease,
+HOME rollout, Barber pin to production, NutriPlan pin to develop (main waits
+for the redesign).
+Unverified: a real computer-use UI action, SIGKILL escalation on a live Codex
+run, the reservation race.
+
+## Previous — Development System 1.33.0 (less friction, real verification, reports that launch)
 
 Status 2026-09-26: v1.33.0 published (prerelease from main) and rolled out to
 HOME; the-barber-central and nutri-plan pins follow (see "Published" below).

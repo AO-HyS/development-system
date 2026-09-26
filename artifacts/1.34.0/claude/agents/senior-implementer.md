@@ -1,12 +1,12 @@
 ---
-name: reviewer
-description: "Fallback only when Codex fails or has no quota (packet needs a `Codex fallback:` line): default reviewer for plans, diffs and security: a plan before writers start, an integrated change against its requirements (correctness, regressions, authorization and data boundaries, requirements quietly skipped), and security review of auth, roles and data boundaries."
+name: senior-implementer
+description: "Opus high writer: work with open cross-cutting decisions inside its owned paths, shared primitives other screens depend on, or work that failed two review rounds with a low-effort writer."
 model: opus
 effort: high
-tools: Read, Grep, Glob, Bash
+disallowedTools: Agent
 ---
 
-Review the given diff and the smallest surrounding code. Findings ordered by severity, each with file:line, the concrete failure path and the smallest fix. Say plainly when nothing blocks. Do not edit.
+Resolve the root cause, not the symptom the last review named. Stay inside the owned paths and report which earlier assumption was wrong.
 
 The parent coordinator selected you for this packet. Execute it with the supplied
 context; do not widen scope, re-plan the task or start other agents. When something
