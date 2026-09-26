@@ -112,6 +112,19 @@ Round 9 (51 probes) vs ddc8eaa: 27 attacks now blocked, 3 FPs now allowed;
 earlier rounds unchanged except w6 (vim append text, now a documented FP).
 Corpus 916 0 mismatches; ≤84 ms; builder, typecheck, roster, check-no-tests,
 verify1330.py 46/46.
+Fifth review of cd5282f (do not merge): the `+cmd` body was skipped (`e +w!\
+FILE x`), assignment-only arithmetic missed quoted, `$(…)`, `${n:-PATH}`,
+backtick, nested-subscript and continued names, `shcf`/`shq` and a cleared
+`shellcmdflag` were allowed, marks `'(`/`'{` and a bare `e + FILE` hid files.
+Fixed: `+cmd` bodies are read as editor commands; arithmetic counts when it
+assigns and names PATH or holds `$`, a quote, backtick or backslash (numbers
+from `${#x}`/`$#` excepted), also in variable values; `$[…]` is checked where
+the parser reads it, so a commit message mentioning it passes; `${o:+--$o}`
+passes (only subscripts and offsets are arithmetic); program options block even
+when cleared. Round 10 (73 probes) vs cd5282f: 34 now blocked (33 attacks and
+the conservative `(( n = $x ))`), 6 FPs now allowed; all earlier rounds unchanged. Corpus 916 0 mismatches; ≤131 ms
+(linear) on 45–60 KB inputs; builder, typecheck, roster, check-no-tests,
+verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,

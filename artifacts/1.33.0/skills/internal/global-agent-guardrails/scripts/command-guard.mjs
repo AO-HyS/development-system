@@ -110,8 +110,6 @@ let catTouched = false;
 function parseScript(text, depth) {
   catTouched = false;
   const list = new Parser(text, depth).parseAll();
-  // The old `$[…]` arithmetic form is read as plain text, so a script using it is checked as a whole.
-  if (text.includes("$[") && CAT_ARITH_ASSIGN.test(text)) catTouched = true;
   if (!catTouched || catRedefined) return list;
   catRedefined = true;
   return new Parser(text, depth).parseAll();
@@ -119,14 +117,21 @@ function parseScript(text, depth) {
 
 /** PATH, zsh `path`, and the bash and zsh tables that define functions, commands and aliases by name (`BASH_CMDS[cat]=…`). */
 const CAT_LOOKUP_NAMES = /^(?:path|bash_cmds|bash_aliases|(?:dis_)?(?:functions|commands|aliases|galiases|saliases|builtins))$/iu;
+/** One of those names as a word in arithmetic text (`PATH`, `path[1]`). */
+const CAT_LOOKUP_WORD = new RegExp(String.raw`\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b`, "iu");
+/** An arithmetic assignment (`=`, `+=`, `<<=`, `++`, `--`), not a comparison (`==`, `!=`, `<=`, `>=`). */
+const ARITH_ASSIGN_OP = /(?:<<|>>|\*\*|[-+*/%&|^])=|(?<![=!<>])=(?!=)|\+\+|--/u;
 /**
- * Arithmetic text that assigns one of those names (`PATH=5`, `path[1]+=2`, `++PATH`, `PATH--`) or a name built by an
- * expansion (`$n = 5`). Reading one (`${#path}`, `PATH == 5`) does not count.
+ * Whether arithmetic text can assign one of those names: it assigns and names one (`PATH=5`, `path[1]+=2`, `++PATH`), or,
+ * unless `named`, it assigns and holds text that can build a name (`$n`, `${n:-PATH}`, a quote, a backtick or a backslash,
+ * as in `"PATH" = 5`). Reading (`n = ${#path} + $#`, `PATH == 5`) or assigning a plain name (`i += 1`) does not count.
+ * @param {string} text @param {boolean} [named] only a named assignment counts (a variable's value that arithmetic reads again)
  */
-const CAT_ARITH_ASSIGN = (() => {
-  const target = String.raw`(?:\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b|\$\{?[\w#@*!?-]*\}?)\s*(?:\[[^\][]*\]\s*)?`;
-  return new RegExp(String.raw`${target}(?:(?:[-+*/%&|^]|<<|>>|\*\*)?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${target}`, "iu");
-})();
+function assignsLookup(text, named = false) {
+  // A length (`${#path}`) or a special parameter (`$#`, `$?`) expands to a number.
+  const plain = text.replace(/\$\{#\w*(?:\[[@*]\])?\}|\$[#?$!]/gu, " 0 ");
+  return ARITH_ASSIGN_OP.test(plain) && (CAT_LOOKUP_WORD.test(plain) || (!named && /[$`"'\\]/u.test(plain)));
+}
 /** Precommand words that run the next word as the command (`command -p`, `builtin --`, zsh `noglob`, `nocorrect`, `-`). */
 const PRECOMMANDS = new Set(["builtin", "command", "noglob", "nocorrect", "-"]);
 
@@ -170,8 +175,14 @@ function changesCat(node) {
     default:
       // A nameref (`declare -n p=PATH`) assigns through another name.
       if (["declare", "typeset", "local"].includes(head.value) && rest.some((word) => /^-[A-Za-z]*n/u.test(word.value))) return true;
-      // `let` text and name subscripts are arithmetic (`let x=PATH=5`, `read 'a[PATH=5]'`).
-      return NAME_BUILTINS.has(head.value) && rest.some((word) => namesLookup(word) || CAT_ARITH_ASSIGN.test(word.value));
+      // `let` text and name subscripts are arithmetic (`let "PATH"=5`, `read 'a[PATH=5]'`), as is an integer's value
+      // (`declare -i x=PATH=5`).
+      return NAME_BUILTINS.has(head.value) && rest.some((word) => {
+        if (namesLookup(word)) return true;
+        if (head.value === "let") return assignsLookup(word.literal ? word.value : word.raw);
+        const [, subscript = "", value = ""] = /^[A-Za-z_]\w*(\[[^\]]*\])?(?:\+?=(.*))?$/su.exec(word.value) ?? [];
+        return assignsLookup(subscript) || assignsLookup(value, true);
+      });
   }
 }
 
@@ -217,6 +228,8 @@ class Parser {
     this.braceScan = null;
     /** Open if/while/until/for/select bodies and brace groups (function bodies included): their commands may not run. */
     this.branches = 0;
+    /** End of the last `$[…]` checked: a nested one lies inside it and was checked with it. */
+    this.bracketChecked = 0;
     if (depth > maxDepth) throw new Block("shell-nesting-depth");
   }
 
@@ -439,7 +452,7 @@ class Parser {
         if (match) {
           checkSubscriptCode(match[0]);
           // The subscript is arithmetic: `a[PATH=5]=1`.
-          if (CAT_ARITH_ASSIGN.test(match[0].slice(0, -1))) catTouched = true;
+          if (assignsLookup(match[0].slice(0, -1))) catTouched = true;
           this.i += match[0].length;
           if (this.peek() === "(") {
             this.i++;
@@ -458,6 +471,8 @@ class Parser {
             node.assigns.push(array);
           } else {
             const value = this.parseWord(false, true);
+            // Arithmetic reads a variable's value as arithmetic again (`n='PATH=5'; (( n ))`, `declare -i x; x=PATH=5`).
+            if (assignsLookup(value.literal ? value.value : value.raw, true)) catTouched = true;
             value.name = match[0].replace(/(?:\[[^\]]*\])?\+?=$/u, "");
             node.assigns.push(value);
           }
@@ -689,6 +704,17 @@ class Parser {
       markDynamic(word);
       return;
     }
+    if (next === "[" && this.i >= this.bracketChecked) {
+      // The old `$[…]` arithmetic form, read here as text, can still assign PATH (`$["PATH"=5]`).
+      let end = this.i + 1;
+      for (let depth = 0; end < this.s.length; end++) {
+        if (this.s[end] === "\\") end++;
+        else if (this.s[end] === "[") depth++;
+        else if (this.s[end] === "]" && --depth === 0) break;
+      }
+      this.bracketChecked = end;
+      if (assignsLookup(this.s.slice(this.i + 2, end))) catTouched = true;
+    }
     word.value += "$";
     this.i++;
   }
@@ -721,7 +747,7 @@ class Parser {
     }
     this.leave();
     // Arithmetic can assign PATH (`(( PATH = 5 ))` looks up `cat` in `./5`).
-    if (CAT_ARITH_ASSIGN.test(this.s.slice(start, this.i - 2))) catTouched = true;
+    if (assignsLookup(this.s.slice(start, this.i - 2))) catTouched = true;
     word.subs.push(...scratch.subs);
     markDynamic(word);
   }
@@ -759,8 +785,9 @@ class Parser {
     if (assigned) checkSubscriptCode(content.slice(assigned[0].length));
     // `${PATH:=…}`, `${path::=…}` (zsh) and `${(A)path=…}` change what `cat` runs.
     const target = /^(?:\([^)]*\))?([A-Za-z_]\w*)(?:\[[^\]]*\])?:{0,2}=/u.exec(content);
-    // Subscripts and `${x:offset}` are arithmetic (`${a[PATH=5]}`).
-    if ((target && CAT_LOOKUP_NAMES.test(target[1])) || CAT_ARITH_ASSIGN.test(content)) catTouched = true;
+    // Subscripts and `${x:offset:length}` are arithmetic (`${a[PATH=5]}`); the text after `:-`, `+`, `#` and the rest is a word.
+    const [, subscript = "", offset = ""] = /^(?:\([^)]*\))?[#!]?(?:\w+|[-@*#?$!])?(\[(?:[^\]\\]|\\.)*\])?(?::(?![-=+?])(.*))?/su.exec(content) ?? [];
+    if ((target && CAT_LOOKUP_NAMES.test(target[1])) || assignsLookup(subscript) || assignsLookup(offset)) catTouched = true;
     word.subs.push(...scratch.subs);
     if (content === "HOME") word.value += HOME;
     else markDynamic(word);
@@ -898,7 +925,7 @@ class Parser {
       const word = this.parseWord(false);
       if (!word.raw) throw new ParseError("unexpected token in [[");
       // The operands of `-eq`, `-lt` and the rest are arithmetic (`[[ PATH=5 -eq 1 ]]`).
-      if (CAT_ARITH_ASSIGN.test(word.value) || CAT_ARITH_ASSIGN.test(word.raw)) catTouched = true;
+      if (assignsLookup(word.literal ? word.value : word.raw)) catTouched = true;
       words.push(word);
     }
     return { type: "data", cond: true, words, redirects: this.parseRedirectsOnly() };
@@ -1848,9 +1875,10 @@ const EDITOR_FILE_NAMES = [
 ].map(([short, more]) => exName(short, more)).join("|");
 /**
  * An editor command that writes or opens a named file, after an optional line address (`:w FILE`, `%w FILE`, `1,$w!FILE`,
- * `:sav ++enc=x FILE`, `e +10 FILE`, `redir! > FILE`, `exe "w FILE"`).
+ * `:sav ++enc=x FILE`, `e +10 FILE`, `e + FILE`, `redir! > FILE`, `exe "w FILE"`). Group 1 holds the `+cmd` and `++opt`
+ * words, group 2 the file.
  */
-const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))(?:\+\+?(?:[^\s\\+]|\\.)(?:[^\s\\]|\\.)*\s+)*(?:>>?!?\s*)?([^\s|"']+)`, "gu");
+const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))((?:\+(?:[^\s\\]|\\.)*\s+)*)(?:>>?!?\s*)?([^\s|"']+)`, "gu");
 /** A shell command in an editor line: `:!cmd`, a range filter (`%!cmd`, `1,2!cmd`), `r !cmd`, `w !cmd`, `e !cmd`, `exe "!cmd"`. */
 const EDITOR_SHELL_ESCAPE = /(?:^|[|:\s"])(?:[%.$\d,'<>+-]*|(?:r|read)\s*|(?:e|edit|w|write)\s+)!(.*)$/u;
 /** Command modifiers and `:*do` loops that may come before an ex command (`sil!`, `vert`, `keepalt`, `bufdo`, `3verbose`). */
@@ -1861,17 +1889,18 @@ const EDITOR_MODIFIERS = String.raw`(?:(?:sil(?:e(?:n(?:t)?)?)?!?|uns\w*|vert\w*
  */
 const EDITOR_CODE = new RegExp(String.raw`\b(?:system|systemlist|writefile|delete|rename|mkdir|execute|feedkeys|job_start|jobstart|termopen|term_start|libcall|libcallnr|luaeval|pyeval|py3eval|pyxeval|perleval|rubyeval|chansend|setbufvar|setwinvar|settabvar|settabwinvar)\s*\(|(?:^|[|:])\s*${EDITOR_MODIFIERS}(?:lua\w*|py\w*|perl\w*|ruby\w*|mz\w*|tcl\w*|ter\w*|${[["sh", "ell"], ["so", "urce"], ["ru", "ntime"], ["mak", "e"], ["lmak", "e"], ["gr", "ep"], ["lgr", "ep"], ["grepa", "dd"], ["lgrepa", "dd"], ["cs", "cope"], ["lcs", "cope"], ["scs", "cope"]].map(([short, more]) => exName(short, more)).join("|")})\b|(?:^|[|:])\s*${EDITOR_MODIFIERS}exe(?:c|cu|cut|cute)?\s+(?!(["'])[^"']*\1\s*(?:\||$))`, "u");
 /**
- * A `:set` or `:let &` of an option that names a program or an expression the editor runs (`shell`, `makeprg`, `diffexpr`).
- * Clearing one (`set indentexpr=`) is allowed.
+ * A `:set` or `:let &` of an option that names a program or an expression the editor runs (`shell`, `shellcmdflag`,
+ * `makeprg`, `diffexpr`). Clearing an expression option (`set indentexpr=`) is allowed; clearing a shell option is not
+ * (an empty `shellcmdflag` makes `:!notes.txt` run the file as a script).
  */
-const EDITOR_PROGRAM_OPTION = new RegExp(String.raw`(?:^|\|)[\s:]*${EDITOR_MODIFIERS}(?:exe\w*\s+["'])?(?:se\w*|let)(?=\s)[^|]*?[\s&](?:[lg]:)?(?:sh|shell\w*|s(?:cf|p|rr|xq|xe)|mp|makeprg|gp|grepprg|ep|equalprg|fp|formatprg|kp|keywordprg|csprg|cscopeprg|\w*expr|\w*func|pex|dex|fex|inex|inde|fde|ccv|cfu|ofu|tfu)\s*[+^-]?=(?!\s*(?:\||$))`, "u");
+const EDITOR_PROGRAM_OPTION = new RegExp(String.raw`(?:^|\|)[\s:]*${EDITOR_MODIFIERS}(?:exe\w*\s+["'])?(?:se\w*|let)(?=\s)[^|]*?[\s&](?:[lg]:)?(?:(?:sh|shell\w*|s(?:hcf|hq|cf|p|rr|xq|xe)|mp|makeprg|gp|grepprg|ep|equalprg|fp|formatprg|kp|keywordprg|csprg|cscopeprg)\s*[+^-]?=|(?:\w*expr|\w*func|pex|dex|fex|inex|inde|fde|ccv|cfu|ofu|tfu)\s*[+^-]?=(?!\s*(?:\||$)))`, "u");
 /** A directory change inside the editor (`:cd`, `:lcd`, `:tcd`, `chdir()`, `autochdir`) moves the base of later relative file names. */
 const EDITOR_CD = /(?:^|[|:\s"'])(?:cd|chd(?:ir?)?|lcd|lch(?:d(?:ir?)?)?|tcd|tch(?:d(?:ir?)?)?)(?:!|\s|$)|\bchdir\s*\(|\b(?:acd|autochdir)\b/u;
 /**
  * A line address before an ex or ed command: numbers, `.`, `$`, `%`, `*`, marks, offsets, `/re/` or `?re?` searches and
  * the last search or substitute pattern (`\/`, `\?`, `\&`).
  */
-const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+*-]|'[\w<>[\]'`"^.]|\\[/?&]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
+const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+*-]|'[\w<>[\]'`"^.(){}]|\\[/?&]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
 
 /** Index just after the next unescaped `delimiter` at or after `from`, or the text length. @param {string} text @param {number} from @param {string} delimiter */
 function delimitedEnd(text, from, delimiter) {
@@ -1880,6 +1909,20 @@ function delimitedEnd(text, from, delimiter) {
     else if (text[k] === delimiter) return k + 1;
   }
   return text.length;
+}
+
+/**
+ * Record each file an editor command line writes or opens, and read each `+cmd` it runs on the opened file as a command
+ * (`e +w!\ FILE notes.txt` writes FILE). @param {string} text
+ * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
+ */
+function editorFiles(text, editor, ctx) {
+  for (const match of text.matchAll(EDITOR_FILE_COMMAND)) {
+    editor.write(match[2]);
+    for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
+      if (command && !command.startsWith("+")) editorScript(command.replace(/\\(.)/gsu, "$1"), false, false, editor, ctx);
+    }
+  }
 }
 
 /**
@@ -1926,7 +1969,7 @@ function editorScript(script, ed, typed, editor, ctx) {
       if (first) {
         first = false;
         if (!ed && EDITOR_CD.test(rest)) editor.moved = true;
-        for (const match of rest.matchAll(EDITOR_FILE_COMMAND)) editor.write(match[1]);
+        editorFiles(rest, editor, ctx);
         const escape = EDITOR_SHELL_ESCAPE.exec(rest);
         if (escape) evaluateShellText(escape[1], ctx);
         if (!ed) {
@@ -1940,7 +1983,7 @@ function editorScript(script, ed, typed, editor, ctx) {
       if (ed) break;
       // A later command after `|` may start with its own address (`let a=1|/x/w FILE`, `|'aw FILE`).
       const end = delimitedEnd(rest, 0, "|");
-      for (const match of rest.slice(0, end).matchAll(EDITOR_FILE_COMMAND)) editor.write(match[1]);
+      editorFiles(rest.slice(0, end), editor, ctx);
       rest = rest.slice(end);
     }
   }
