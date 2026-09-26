@@ -208,11 +208,28 @@ assertNoTestInstructions(`${prefix}/global-codex-instructions.md`, instructions)
 assert(!/\bFable\b/.test(instructions), "global instructions name Fable roles");
 await output(`${prefix}/global-codex-instructions.md`, instructions);
 
+// Orchestration contract: the 1.30.0 text with the preserve-existing-tests default replaced.
+const orchestrationSource = (await bytes("artifacts/1.30.0/orchestration-contract.md")).toString();
+const orchestration = replaceOnce(orchestrationSource,
+  `By default, do not create, modify, delete, generate, or run automated tests
+unless the user explicitly asks. Preserve existing test files and CI protections.
+Use applicable build, type, lint, static validation, or real behavior observation
+as required by the task. Do not make claims from test counts. Report a concrete
+behavior gap and its smallest useful observation without adding a test suite.`,
+  `No automated tests in any repository: do not create, run or restore them, and
+delete them when found (\`development-system check-no-tests\` enforces this).
+Preserve CI protections. Every task ends with real verification: computer use,
+the browser, and the repository's verification CLI and feature map; build, type,
+lint and static validation support it. Report a concrete behavior gap and its
+smallest useful real observation.`);
+assertNoTestInstructions(`${prefix}/orchestration-contract.md`, orchestration);
+await output(`${prefix}/orchestration-contract.md`, orchestration);
+
 const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toString();
 const contractBase = replaceOnce(
   replaceOnce(contractSource, `# Development contract ${previous}`, `# Development contract ${version}`),
   `The paired skill catalog is ${previousCatalog}.`, `The paired skill catalog is ${catalogVersion}.`);
-const contract = `${contractBase.trimEnd()}\n\n## No automated tests in any repository\n\nContract ${version} removes every remaining instruction that asked for automated tests, so the global instructions, the skills, the repository adapter and the anti-slop lanes carry one rule set: no automated tests; every task ends with real verification (computer use, the browser, the repository's verification CLI and feature map); reviews run on Astra XHigh through codex-review launched in the background, and Claude reviewers run only with a declared \`Codex fallback:\` line. The global instructions name real verification, lint, React Doctor and Astra reviews as the checks that answer different questions. Catalog ${catalogVersion} rewrites behavioral-evidence to independent real verification plus a check that the change adds no automated tests, without the test-change gate; setup-ts-deep-modules drops the tests-through-entry-points rule, its test folder and its example test; flow-implement, simplify-code and codebase-design drop their remaining test instructions; posthog-observability and its audit require passing real verification evidence (the verification CLI, the browser or computer use) before preparing a draft fix. setup-pre-commit, resolving-merge-conflicts, triage, to-spec, improve-codebase-architecture and agent-browser move to 1.34.1 copies that verify with lint, typecheck and real verification instead of test runs; migrate-to-shoehorn, a test-fixture migration skill, is retired and its installed copies are cleaned up. The Codex implementer and fast-implementer agents prove each change with real verification and never add automated tests, and the stack quality profiles replace the focused-tests oracle with real-verification. The generated repository adapter replaces the reviewed test-change policy and weakened-assertion review with the no-tests rule enforced by \`development-system check-no-tests\`, and its command list never names a script that runs automated tests. The anti-slop lanes keep their ids and order: behavior-first-evidence-design derives the real verification evidence from the objective, test-value-review confirms the change adds no automated tests and that real verification evidence exists, and the deletion pass and independent verification no longer mention test code. Setup now reports the original skill-sync error together with any rollback error. The earlier sections that describe Fable or Haiku roles are history: the Fable reviewers are retired and Haiku is not used. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.\n`;
+const contract = `${contractBase.trimEnd()}\n\n## No automated tests in any repository\n\nContract ${version} removes every remaining instruction that asked for automated tests, so the global instructions, the skills, the repository adapter and the anti-slop lanes carry one rule set: no automated tests; every task ends with real verification (computer use, the browser, the repository's verification CLI and feature map); reviews run on Astra XHigh through codex-review launched in the background, and Claude reviewers run only with a declared \`Codex fallback:\` line. The global instructions name real verification, lint, React Doctor and Astra reviews as the checks that answer different questions. Catalog ${catalogVersion} rewrites behavioral-evidence to independent real verification plus a check that the change adds no automated tests, without the test-change gate; setup-ts-deep-modules drops the tests-through-entry-points rule, its test folder and its example test; flow-implement, simplify-code and codebase-design drop their remaining test instructions; posthog-observability and its audit require passing real verification evidence (the verification CLI, the browser or computer use) before preparing a draft fix. setup-pre-commit, resolving-merge-conflicts, triage, to-spec, improve-codebase-architecture and agent-browser move to 1.34.1 copies that verify with lint, typecheck and real verification instead of test runs; migrate-to-shoehorn, a test-fixture migration skill, is retired and its installed copies are cleaned up. The orchestration contract replaces its preserve-existing-tests default with the same no-tests rule. The Codex implementer and fast-implementer agents prove each change with real verification and never add automated tests, and the stack quality profiles replace the focused-tests oracle with real-verification. The generated repository adapter replaces the reviewed test-change policy and weakened-assertion review with the no-tests rule enforced by \`development-system check-no-tests\`, and its command list never names a script that runs automated tests. The anti-slop lanes keep their ids and order: behavior-first-evidence-design derives the real verification evidence from the objective, test-value-review confirms the change adds no automated tests and that real verification evidence exists, and the deletion pass and independent verification no longer mention test code. Setup now reports the original skill-sync error together with any rollback error. The earlier sections that describe Fable or Haiku roles are history: the Fable reviewers are retired and Haiku is not used. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.\n`;
 assert(!contract.includes(`catalog is ${previousCatalog}`), "contract kept the previous paired catalog reference");
 assert(contract.includes(`The paired skill catalog is ${catalogVersion}.`), "contract lost the paired catalog reference");
 await output(`${prefix}/contract.md`, contract);
@@ -288,6 +305,7 @@ const updated = new Map([
   ["codex-agent-fast-implementer", `${prefix}/agents/codex/fast-implementer.toml`],
   ["codex-agent-implementer", `${prefix}/agents/codex/implementer.toml`],
   ["stack-quality-profiles", `${prefix}/quality/stack-quality-profiles.json`],
+  ["orchestration-contract", `${prefix}/orchestration-contract.md`],
 ]);
 for (const path of [`${prefix}/agents/codex/fast-implementer.toml`, `${prefix}/agents/codex/implementer.toml`, `${prefix}/quality/stack-quality-profiles.json`]) {
   assertNoTestInstructions(path, (await bytes(path)).toString());
@@ -317,12 +335,17 @@ if (manifest.artifacts.filter((/** @type {{logicalName:string}} */ artifact) => 
 assert(items.every(item => manifest.artifacts.some((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === item.logicalName)), "manifest is missing a Claude orchestration artifact");
 
 // Gardener check: no installed skill or manifest artifact tells an agent to write or run automated
-// tests. A sentence that negates the instruction ("do not write a regression test") is allowed.
+// tests. Negation is clause-scoped: a directive is allowed only when a negation precedes it in the
+// same clause ("do not write a regression test"); a later negation ("Write tests without mocks")
+// does not excuse it.
 const directiveTestInstructions = [
-  /npm run test\b/i, /pnpm test\b/i, /then tests\b/i, /focused tests/i, /A test covers/i, /test coverage/i,
-  /\b(?:add|write|create|require)s? (?:a |new |focused |more )?(?:unit |e2e |regression )?tests?\b/i,
+  /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi, /A test covers/gi, /test coverage/gi,
+  /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
+  /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
+  /\b(?:vitest|jest|playwright test|node --test|pytest)\b/gi,
 ];
-const negation = /\b(?:no|not|never|without|nor)\b|n't\b/i;
+/** @param {string} before */
+const negatedClause = before => /(?:\b(?:no|not|never|without|nor|avoid)\b|n't\b)[^.;:!?]{0,40}$/i.test(before);
 const instructionFiles = new Set(manifest.artifacts.map((/** @type {{sourcePath:string}} */ artifact) => resolve(root, artifact.sourcePath)));
 for (const directory of new Set(catalog.skills.flatMap((/** @type {any} */ skill) => skill.variants.map((/** @type {any} */ variant) => variant.sourceDirectory)))) {
   for (const file of await files(directory)) instructionFiles.add(file);
@@ -330,8 +353,9 @@ for (const directory of new Set(catalog.skills.flatMap((/** @type {any} */ skill
 /** @type {string[]} */ const directiveHits = [];
 for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml)$/.test(file)).sort()) {
   (await readFile(file, "utf8")).split("\n").forEach((line, index) => {
-    const sentence = line.split(/(?<=[.!?;])\s+/).find(part => directiveTestInstructions.some(pattern => pattern.test(part)) && !negation.test(part));
-    if (sentence) directiveHits.push(`${relative(root, file)}:${index + 1}: ${sentence.trim()}`);
+    const hit = directiveTestInstructions.some(pattern =>
+      [...line.matchAll(pattern)].some(match => !negatedClause(line.slice(0, match.index))));
+    if (hit) directiveHits.push(`${relative(root, file)}:${index + 1}: ${line.trim()}`);
   });
 }
 assert(directiveHits.length === 0, `instructions ask for automated tests:\n${directiveHits.join("\n")}`);

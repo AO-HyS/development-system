@@ -14,8 +14,28 @@ under artifacts/1.34.1/skills; repository adapter template and command
 selection; anti-slop lane texts; setup keeps the skill-sync error when the
 rollback throws; contract paragraph; README; Devin blueprints; implement-preview
 example.
-Next: Astra review through codex-review; PR to develop and then main; v1.34.1
-prerelease; HOME setup 1.34.1; product pins.
+Astra round 1 (do not merge; 2 High, 2 Medium) fixed in 5e8abc3: the Codex
+implementer and fast-implementer prompts, stack-quality-profiles
+(real-verification oracle) and six more skills (setup-pre-commit,
+resolving-merge-conflicts, triage, to-spec, improve-codebase-architecture,
+agent-browser) move to 1.34.1 copies; migrate-to-shoehorn retired with cleanup;
+Convex guardian and orchestration bundles ask for real verification; the
+adapter follows pnpm/npm/yarn/bun/turbo indirection to test scripts; the
+builder fails on any installed instruction that asks for tests. Isolated HOME
+1.34.1 audits healthy, and 1.34.0 -> 1.34.1 removes migrate-to-shoehorn.
+Scope decision (two-way): used repos are development-system, nutri-plan,
+the-barber-central, opportunity-os, aohys, casa-roca and eteria; the dormant
+repos stay untouched. Product branches chore/development-system-1.34.1 carry
+the docs alignment (reviewed by Astra) and get the 1.34.1 pin after the
+release; nutri-plan goes to develop only through plumbing (its checkout
+belongs to another thread).
+Astra round 2 (1 High, 3 Medium) fixed: the 1.30.0 orchestration contract
+("Preserve existing test files") is replaced by a 1.34.1 copy with the
+no-tests rule; the gardener checks each directive clause (negation only within
+its clause) and catches `pnpm run test` and similar; the adapter follows every
+turbo task and npm pre/post lifecycle scripts.
+Next: Astra round 3; PR to develop and then main; v1.34.1 prerelease; HOME
+setup 1.34.1; product pins, reviews and releases.
 
 ## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 

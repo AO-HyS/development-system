@@ -353,8 +353,12 @@ function isTestScript(name, scripts, seen = new Set()) {
   seen.add(name);
   const command = typeof scripts[name] === "string" ? scripts[name] : "";
   if (name === "test" || name.startsWith("test:") || testRunnerCommand.test(command)) return true;
-  return referencedScripts(command).some((script) =>
+  if (referencedScripts(command).some((script) =>
     script === "test" || script.startsWith("test:") || (script in scripts && isTestScript(script, scripts, seen))
+  )) return true;
+  // npm-style runners execute pre<name> and post<name> implicitly.
+  return [`pre${name}`, `post${name}`].some((lifecycle) =>
+    typeof scripts[lifecycle] === "string" && isTestScript(lifecycle, scripts, seen)
   );
 }
 
@@ -386,6 +390,20 @@ function referencedScripts(command) {
     skipOptions();
     if (manager === "yarn" && tokens[index] === "workspace") { index += 2; skipOptions(); }
     if (tokens[index] === "run" || tokens[index] === "run-script") { index += 1; skipOptions(); }
+    if (manager === "turbo") {
+      // turbo runs every task named on the command line.
+      while (index < tokens.length && tokens[index] !== "--") {
+        const token = tokens[index];
+        if (token.startsWith("-")) {
+          const takesValue = !token.includes("=") && valueOptions.has(token.split("=")[0]);
+          index += takesValue ? 2 : 1;
+          continue;
+        }
+        if (/^[\w:.-]+$/.test(token)) names.push(token);
+        index += 1;
+      }
+      continue;
+    }
     const script = tokens[index];
     if (script && /^[\w:.-]+$/.test(script)) names.push(script);
   }

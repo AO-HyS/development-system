@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "9ab170f2f7d0486dfe01e2618cd5e8516196d0cb294afb593081b62607a611fd",
+      "sha256": "28e870a2d6a8fe480159e248c5e5c2ee26b2e2e3b767309cceacf87d3bb198c1",
       "expectedMirrorOf": null
     },
     {
@@ -293,10 +293,10 @@
     {
       "id": "orchestration-contract.codex",
       "logicalName": "orchestration-contract",
-      "sourcePath": "artifacts/1.30.0/orchestration-contract.md",
+      "sourcePath": "artifacts/1.34.1/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "8b61c977530d7027997ef3ed165cab4338d2abc4d4f7f29d19bb37a0734e884b",
+      "sha256": "73dbdc0f693550e25439ac94e3d8553b829a0c67edc24c8501cebfb4b31f4f0e",
       "expectedMirrorOf": null
     },
     {
