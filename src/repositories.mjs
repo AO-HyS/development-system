@@ -375,10 +375,9 @@ function referencedScripts(command) {
   const names = [];
   for (const segment of command.split(/&&|\|\||[;|&]/)) {
     const tokens = segment.trim().split(/\s+/).filter(Boolean);
-    let index = tokens.findIndex((token) => /^(?:pnpm|npm|yarn|bun|turbo)$/.test(token));
+    let index = tokens.findIndex((token) => /^(?:pnpm|npm|yarn|bun|turbo|npx|pnpx|bunx)$/.test(token));
     if (index < 0) continue;
-    const manager = tokens[index];
-    index += 1;
+    let manager = "";
     const skipOptions = () => {
       while (index < tokens.length && tokens[index].startsWith("-")) {
         const option = tokens[index].split("=")[0];
@@ -387,7 +386,19 @@ function referencedScripts(command) {
         index += takesValue ? 2 : 1;
       }
     };
-    skipOptions();
+    // Executors (npx, pnpx, bunx, `<manager> exec|dlx|x`) run the inner command.
+    const skipExecutor = () => { index += 1; skipOptions(); if (tokens[index] === "--") index += 1; };
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (/^(?:npx|pnpx|bunx)$/.test(token)) { manager = token; skipExecutor(); continue; }
+      if (!/^(?:pnpm|npm|yarn|bun|turbo)$/.test(token)) { manager = ""; break; }
+      manager = token;
+      index += 1;
+      skipOptions();
+      if (manager !== "turbo" && /^(?:exec|dlx|x)$/.test(tokens[index] ?? "")) { skipExecutor(); continue; }
+      break;
+    }
+    if (!manager || /^(?:npx|pnpx|bunx)$/.test(manager)) continue;
     if (manager === "yarn" && tokens[index] === "workspace") { index += 2; skipOptions(); }
     if (tokens[index] === "run" || tokens[index] === "run-script") { index += 1; skipOptions(); }
     if (manager === "turbo") {
@@ -399,7 +410,9 @@ function referencedScripts(command) {
           index += takesValue ? 2 : 1;
           continue;
         }
-        if (/^[\w:.-]+$/.test(token)) names.push(token);
+        // `<package>#<task>` and `//#<task>` name the task after the last `#`.
+        const task = token.includes("#") ? token.slice(token.lastIndexOf("#") + 1) : token;
+        if (/^[\w:.-]+$/.test(task)) names.push(task);
         index += 1;
       }
       continue;

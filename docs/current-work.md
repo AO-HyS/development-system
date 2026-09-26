@@ -34,8 +34,15 @@ Astra round 2 (1 High, 3 Medium) fixed: the 1.30.0 orchestration contract
 no-tests rule; the gardener checks each directive clause (negation only within
 its clause) and catches `pnpm run test` and similar; the adapter follows every
 turbo task and npm pre/post lifecycle scripts.
-Next: Astra round 3; PR to develop and then main; v1.34.1 prerelease; HOME
-setup 1.34.1; product pins, reviews and releases.
+Astra round 3 (4 Medium) plus a High found on the isolated HOME (the Codex
+reviewer, test_runner, backend-specialist and code-mapper prompts still asked
+for or returned tests) fixed in 64a4595 and the adapter commit: 1.34.1 agent
+copies, coding-orchestration and vercel-react-best-practices move to 1.34.1
+copies, the gardener negation must sit directly before the action, and the
+adapter reads package-qualified turbo tasks and unwraps npx/pnpx/bunx and
+exec/dlx/x executors.
+Next: Astra round 4 (with a round rationale); PR to develop and then main;
+v1.34.1 prerelease; HOME setup 1.34.1; product pins, reviews and releases.
 
 ## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 
