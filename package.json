@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "1.33.0",
-  "contractVersion": "1.33.0",
+  "version": "1.34.0",
+  "contractVersion": "1.34.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -34,7 +34,7 @@
     "check:no-tests": "./bin/development-system check-no-tests",
     "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run validate:repository && pnpm run release:prepare",
-    "release:prepare": "node ./scripts/build-release-1330.mjs --check",
+    "release:prepare": "node ./scripts/build-release-1340.mjs --check",
     "release:pack": "node ./scripts/pack-distribution.mjs"
   },
   "engines": {
