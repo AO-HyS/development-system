@@ -809,7 +809,7 @@
       "sourcePath": "artifacts/1.34.0/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "5f2ced6440ab5b3e9dd52df1bf89477743132472574472c8d6f488a01ec8dfb7",
+      "sha256": "f620a56a1253ba75770ef9a202bdc0eec336108670406fc2bd3ef373b8123ffa",
       "expectedMirrorOf": null
     },
     {

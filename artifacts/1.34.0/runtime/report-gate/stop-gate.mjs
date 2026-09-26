@@ -238,7 +238,7 @@ function reviewPending(home) {
       const pid = Number(JSON.parse(readFileSync(join(directory, name), "utf8")).pid);
       if (!Number.isInteger(pid) || pid <= 0) return true;
       try { process.kill(pid, 0); } catch (error) {
-        if (!(error instanceof Error && "code" in error && error.code === "EPERM")) continue;
+        if (error instanceof Error && "code" in error && error.code === "ESRCH") continue;
       }
       return true;
     }
