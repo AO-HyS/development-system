@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "a67f6105201300b78622cac6b5680fe264d477f1cfadc7a100c6d5482233b575",
+      "sha256": "87e3048dcfe620a95785a6dcfbd014807ee93cf649f11225f5ff65cd9312c23f",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.52.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "147a3e8b34a4cf95c2be7866086b881184b29009ef19004239e681394e0bb3ce",
+      "sha256": "f325341d08d87ceb7db588bd53ca9eb08e8cf14398ea91e7e802ead6bd4b0123",
       "expectedMirrorOf": null
     },
     {
@@ -167,10 +167,10 @@
     {
       "id": "codex-agent.performance-auditor",
       "logicalName": "codex-agent-performance-auditor",
-      "sourcePath": "artifacts/1.26.0/agents/codex/performance-auditor.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/performance-auditor.toml",
       "destination": ".codex/agents/performance-auditor.toml",
       "harness": "codex",
-      "sha256": "67be1965e1346f63bcd1a9cbc2a1944d579e7d4849aff6c11c365a416e20e20d",
+      "sha256": "cc24be569cd2eed4ea6db46d5c9d0fdcf38e360ec12ea39a594b03f4b411b2a5",
       "expectedMirrorOf": null
     },
     {
@@ -257,10 +257,10 @@
     {
       "id": "architecture-reference-pack.codex",
       "logicalName": "architecture-reference-pack",
-      "sourcePath": "artifacts/1.5.10/architecture-reference-pack.md",
+      "sourcePath": "artifacts/1.34.1/architecture-reference-pack.md",
       "destination": ".codex/development-system/architecture-reference-pack.md",
       "harness": "codex",
-      "sha256": "6fc71793eb776668ceda2ffeff343654c8593c92004e0d246341867153602dee",
+      "sha256": "79ef4ce75b043b281817ac1688d135258ef7050ccb79494870a6d989e9603b2d",
       "expectedMirrorOf": null
     },
     {

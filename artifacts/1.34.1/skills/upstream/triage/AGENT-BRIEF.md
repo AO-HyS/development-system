@@ -27,7 +27,7 @@ Describe **what** the system should do, not **how** to implement it. The agent w
 
 ### Complete acceptance criteria
 
-The agent needs to know when it's done. Every agent brief must have concrete, testable acceptance criteria. Each criterion should be independently verifiable.
+The agent needs to know when it's done. Every agent brief must have concrete, verifiable acceptance criteria. Each criterion should be independently verifiable.
 
 - **Good:** "Running `gh issue list --label needs-triage` returns issues that have been through initial classification"
 - **Bad:** "Triage should work correctly"
@@ -58,9 +58,9 @@ Be specific about edge cases and error conditions.
 - Config shape: any new configuration options needed
 
 **Acceptance criteria:**
-- [ ] Specific, testable criterion 1
-- [ ] Specific, testable criterion 2
-- [ ] Specific, testable criterion 3
+- [ ] Specific, verifiable criterion 1
+- [ ] Specific, verifiable criterion 2
+- [ ] Specific, verifiable criterion 3
 
 **Out of scope:**
 - Thing that should NOT be changed or addressed in this issue

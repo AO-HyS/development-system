@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "2.0.0",
+  "matching": "Rules match one quote-aware simple command at a time. The canonical form is the command name followed by its expanded words joined by single spaces; for git the words start at the subcommand. Whitespace inside one word is folded to U+001F, so quoted text never forms a separate argument. match: command (default, skipped for pure-read commands) | pipeline (command names joined by |) | raw (full source text).",
+  "rules": [
+    {
+      "id": "broad-recursive-delete",
+      "pattern": "^rm (?=(?:.* )?(?:-[A-Za-z]*[rR][A-Za-z]*|--recursive)(?: |$))(?=(?:.* )?(?:-[A-Za-z]*f[A-Za-z]*|--force)(?: |$))",
+      "reason": "Recursive forced deletion is blocked. For tracked paths use `git rm -r <path>` so the deletion stays reviewable and recoverable; otherwise resolve and review an exact recoverable target outside the agent harness."
+    },
+    {
+      "id": "disk-destruction",
+      "pattern": "^(?:mkfs(?:\\.[A-Za-z0-9_-]+)?(?: |$)|diskutil (?:.* )?(?:eraseDisk|eraseVolume|partitionDisk|zeroDisk|randomDisk|secureErase)(?: |$)|format-volume(?: |$)|dd (?:.* )?of=/dev/)",
+      "flags": "iu",
+      "reason": "Disk formatting or raw device writes are blocked."
+    },
+    {
+      "id": "git-hard-reset",
+      "pattern": "^git reset (?:.* )?--hard(?: |$)",
+      "flags": "u",
+      "reason": "git reset --hard can destroy uncommitted work and is blocked."
+    },
+    {
+      "id": "git-clean",
+      "pattern": "^git clean(?: |$)(?!(?:(?!--(?: |$))[^ ]+ )*(?:-[A-Za-z]*[ni][A-Za-z]*|--dry-run|--interactive)(?: |$))",
+      "flags": "u",
+      "reason": "git clean can destroy untracked work and is blocked; `git clean -n` (dry run) and `git clean -i` remain allowed."
+    },
+    {
+      "id": "git-discard",
+      "pattern": "^git (?:checkout (?=(?:.* )?(?:-[A-Za-z]*f[A-Za-z]*|--force)(?: |$))|switch (?=(?:.* )?(?:-[A-Za-z]*f[A-Za-z]*|--force|--discard-changes)(?: |$))|checkout (?!(?:.* )?--(?:ours|theirs)(?: |$))(?:.* )?--(?: |$)|restore(?: |$)(?!(?=(?:.* )?(?:--staged|-[A-Za-z]*S[A-Za-z]*)(?: |$))(?!(?:.* )?(?:--worktree|-[A-Za-z]*W[A-Za-z]*)(?: |$))))",
+      "flags": "u",
+      "reason": "Discarding worktree changes through Git (checkout --, checkout/switch --force, switch --discard-changes, restore) is blocked. `git checkout --ours/--theirs` and `git restore --staged` remain allowed."
+    },
+    {
+      "id": "git-branch-delete-force",
+      "pattern": "^git branch (?=(?:.* )?(?:-D|--delete|-[A-Za-z]*d[A-Za-z]*)(?: |$))(?=(?:.* )?(?:-D|--force|-[A-Za-z]*f[A-Za-z]*)(?: |$))",
+      "flags": "u",
+      "reason": "Forced branch deletion is blocked."
+    },
+    {
+      "id": "git-force-push",
+      "pattern": "^git push (?:.* )?(?:--force(?:-with-lease|-if-includes)?(?:=[^ ]*)?|--mirror|-[A-Za-z]*f[A-Za-z]*|\\+[^ ]+)(?: |$)",
+      "flags": "u",
+      "reason": "Forced and mirror pushes are blocked by the global policy."
+    },
+    {
+      "id": "repository-delete",
+      "pattern": "^gh (?:.* )?repo (?:.* )?delete(?: |$)",
+      "reason": "Repository deletion is blocked."
+    },
+    {
+      "id": "infrastructure-destroy",
+      "pattern": "^(?:(?:terraform|tofu|pulumi) (?:.* )?-?destroy(?: |$)|pulumi (?:.* )?down(?: |$)|kubectl (?:.* )?delete (?:.* )?(?:namespace|namespaces|ns)(?:[ /]|$)|wrangler (?:.* )?delete(?: |$)|vercel (?:.* )?(?:remove|rm)(?: |$))",
+      "reason": "High-impact infrastructure destruction is blocked."
+    },
+    {
+      "id": "download-to-shell",
+      "match": "pipeline",
+      "pattern": "(?:^|\\|)(?:curl|wget)(?:\\|[^|]*)*\\|(?:sh|bash|zsh|dash|ksh)(?:\\||$)",
+      "reason": "Piping downloaded code directly into a shell is blocked."
+    },
+    {
+      "id": "fork-bomb",
+      "match": "raw",
+      "pattern": ":\\(\\)\\s*\\{\\s*:\\|:\\s*&\\s*\\}\\s*;\\s*:",
+      "reason": "Fork bombs are blocked."
+    }
+  ],
+  "structuralRules": [
+    { "id": "missing-command", "reason": "Shell hook input contained no command; blocked closed." },
+    { "id": "malformed-payload", "reason": "Hook payload could not be inspected; blocked closed." },
+    { "id": "shell-parse-error", "reason": "The command could not be parsed with confidence; blocked closed." },
+    { "id": "shell-nesting-depth", "reason": "Command substitution or nested shell evaluation exceeds the inspected depth; blocked closed." },
+    { "id": "shell-ansi-c-quoting", "reason": "ANSI-C $'...' quoting outside single quotes can hide command text and is blocked. Use plain single or double quotes." },
+    { "id": "shell-indirect-expansion", "reason": "Indirect or evaluating parameter expansion (${!name}, zsh (e) flags) is blocked." },
+    { "id": "shell-glob-execution", "reason": "Glob qualifiers that execute code are blocked." },
+    { "id": "shell-eval", "reason": "eval executes runtime-constructed code and is blocked." },
+    { "id": "shell-dynamic-command", "reason": "Shell code built from a variable or substitution cannot be inspected and is blocked. Pass a literal script." },
+    { "id": "shell-dynamic-script", "reason": "Running a shell script or interpreter program produced by process substitution or read from a device is blocked." },
+    { "id": "shell-dynamic-stdin", "reason": "A shell or interpreter reading its commands from piped, inherited or non-literal standard input cannot be inspected and is blocked. Pass the program with -c/-e, a literal heredoc or a file." },
+    { "id": "dynamic-command-name", "reason": "A variable or substitution used as the command name cannot be inspected and is blocked." },
+    { "id": "read-command-execution", "reason": "This read command option executes other programs (rg --pre, sed e) and is blocked." },
+    { "id": "sensitive-dynamic-argument", "reason": "A destructive-capable command (rm, dd, mkfs, diskutil, gh, terraform, tofu, pulumi, kubectl, wrangler, vercel, or non-read-only git) received a variable or substitution argument. Use literal arguments so the guard can inspect them." },
+    { "id": "test-file-write", "reason": "Creating or modifying automated test files or test runner configuration is blocked by the no-tests policy. Deleting them is allowed." },
+    { "id": "guard-config-write", "reason": "Writing the guard's hook configuration (Claude Code settings, Codex hooks or config, including the project's .claude and .codex settings), the project's .git/config (its aliases run commands) or the installed guard skill is blocked; use the Development System guardrails commands, `git config`, or ask the user to make the edit." },
+    { "id": "shell-arithmetic-injection", "reason": "Text shaped like `name[$(…)]` in an assignment, variable name, test or arithmetic runs the subscript as a command when evaluated and is blocked." },
+    { "id": "git-config-destructive", "reason": "Git configuration that makes an ordinary command destructive (help.autocorrect, clean.requireForce=false, forced or deleting remote.*.push refspecs, remote.*.mirror) is blocked." }
+  ],
+  "testFilePatterns": [
+    "(?:^|/)(?:__tests__|__snapshots__|tests?|e2e|cypress|[A-Za-z0-9_-]*Tests)/(?:[^/]+/)*[^/]+\\.(?:[cm]?[jt]sx?|py|go|swift|rb|snap|json)$",
+    "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+    "(?:^|/)[^/]*Tests?\\.swift$",
+    "\\.snap$",
+    "(?:^|/)(?:vitest|jest|playwright|cypress)\\.config\\.[cm]?[jt]s$",
+    "(?:^|/)vitest\\.workspace\\.[cm]?[jt]s$",
+    "(?:^|/)karma\\.conf\\.[cm]?js$",
+    "(?:^|/)\\.mocharc(?:\\.[a-z]+)?$",
+    "(?:^|/)(?:pytest\\.ini|conftest\\.py)$",
+    "(?:^|/)test_[^/]*\\.py$",
+    "_test\\.(?:py|go)$"
+  ],
+  "readOnlyCommands": ["rg", "grep", "echo", "printf", "cat", "head", "tail", "wc", "ls", "sort", "uniq", "cut", "tr", "jq", "diff", "stat"],
+  "sensitiveCommands": ["rm", "dd", "mkfs", "diskutil", "gh", "terraform", "tofu", "pulumi", "kubectl", "wrangler", "vercel", "git"],
+  "readOnlyGitSubcommands": ["status", "log", "show", "diff", "blame", "rev-parse", "ls-files", "grep", "cat-file", "ls-tree", "merge-base", "rev-list", "show-ref", "for-each-ref", "describe", "shortlog"],
+  "readOnlyGitBranchOptions": ["--show-current"],
+  "maxSubstitutionDepth": 4,
+  "protectedWriteTargets": [
+    "~/.codex/hooks.json",
+    "~/.codex/config.toml",
+    "~/.claude/settings.json",
+    "~/.claude/settings.local.json",
+    "~/.agents/skills/global-agent-guardrails/**",
+    "~/.claude/skills/global-agent-guardrails/**"
+  ],
+  "protectedProjectWriteTargets": [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    ".codex/hooks.json",
+    ".codex/config.toml",
+    ".git/config"
+  ]
+}
