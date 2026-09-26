@@ -7,8 +7,11 @@ import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
 const guardRelative = ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs";
 const policyRelative = ".codex/development-system/runtime/claude-orchestration/policy.json";
+const stopGateRelative = ".codex/development-system/runtime/report-gate/stop-gate.mjs";
+/** The Stop gate resolves HOME at run time so the settings entry stays portable. */
+const stopGateCommand = `node "$HOME/${stopGateRelative}" --harness claude`;
 const settingsRelative = ".claude/settings.json";
-const stateRelative = ".development-system/claude-orchestration/state.json";
+export const stateRelative = ".development-system/claude-orchestration/state.json";
 const manifestRelative = ".development-system/installed-manifest.json";
 const ledgerRelative = ".development-system/private/runs/claude-orchestration";
 const managedEnv = /** @type {const} */ ({
@@ -16,9 +19,10 @@ const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: "1",
 });
 const managedEvents = /** @type {const} */ ([
-  { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*", timeout: 20, statusMessage: "Checking roster and image budget" },
-  { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined },
-  { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined },
+  { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*", timeout: 20, statusMessage: "Checking roster and image budget", target: "guard" },
+  { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined, target: "guard" },
+  { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined, target: "guard" },
+  { event: "Stop", matcher: undefined, timeout: 10, statusMessage: undefined, target: "stopGate" },
 ]);
 
 /** @param {unknown} error */
@@ -101,12 +105,24 @@ function paths(home) {
   return {
     guard,
     policy: insideHome(home, policyRelative),
+    stopGate: insideHome(home, stopGateRelative),
     settings: insideHome(home, settingsRelative),
     state: insideHome(home, stateRelative),
     manifest: insideHome(home, manifestRelative),
     ledger: insideHome(home, ledgerRelative),
     command: `node ${shellQuote(guard)}`,
+    stopCommand: stopGateCommand,
   };
+}
+
+/** @param {ReturnType<typeof paths>} managed @param {typeof managedEvents[number]} spec */
+function commandFor(managed, spec) {
+  return spec.target === "stopGate" ? managed.stopCommand : managed.command;
+}
+
+/** @param {ReturnType<typeof paths>} managed */
+function managedCommands(managed) {
+  return [managed.command, managed.stopCommand];
 }
 
 /** @param {ReturnType<typeof paths>} managed */
@@ -120,7 +136,7 @@ async function artifactFindings(managed) {
   try { manifest = parseObject(contents, "Installed manifest"); }
   catch (error) { return [`Installed manifest is unreadable: ${error instanceof Error ? error.message : String(error)}`]; }
   const artifacts = /** @type {any[]} */ (Array.isArray(manifest.artifacts) ? manifest.artifacts : []);
-  for (const [label, destination, path] of [["guard", guardRelative, managed.guard], ["policy", policyRelative, managed.policy]]) {
+  for (const [label, destination, path] of [["guard", guardRelative, managed.guard], ["policy", policyRelative, managed.policy], ["stop gate", stopGateRelative, managed.stopGate]]) {
     const artifact = artifacts.find((entry) => entry && entry.destination === destination);
     if (!artifact) { findings.push(`Installed manifest does not declare the ${label} at ${destination}`); continue; }
     const actual = await readOptional(path);
@@ -146,12 +162,12 @@ function managedEntry(command, spec) {
 }
 
 /**
- * Removes only hook objects whose command equals the managed command. An entry is dropped
+ * Removes only hook objects whose command equals one of the managed commands. An entry is dropped
  * only when its hooks array becomes empty; with `prune`, event arrays and the hooks object
  * emptied by the removal are dropped too.
- * @param {any} container @param {string} command @param {boolean} prune
+ * @param {any} container @param {string[]} commands @param {boolean} prune
  */
-function withoutManaged(container, command, prune) {
+function withoutManaged(container, commands, prune) {
   if (!container || typeof container !== "object" || Array.isArray(container)) return container;
   /** @type {Record<string, any>} */
   const hooks = { ...container };
@@ -162,7 +178,7 @@ function withoutManaged(container, command, prune) {
     const next = [];
     for (const entry of entries) {
       if (!entry || typeof entry !== "object" || !Array.isArray(entry.hooks)) { next.push(entry); continue; }
-      const kept = /** @type {any[]} */ (entry.hooks).filter((hook) => !(hook && typeof hook === "object" && hook.command === command));
+      const kept = /** @type {any[]} */ (entry.hooks).filter((hook) => !(hook && typeof hook === "object" && commands.includes(hook.command)));
       if (kept.length === entry.hooks.length) { next.push(entry); continue; }
       removed = true;
       if (kept.length > 0) next.push({ ...entry, hooks: kept });
@@ -184,14 +200,14 @@ function hasManagedHook(container, command) {
     && entry.hooks.some((/** @type {any} */ hook) => hook && typeof hook === "object" && hook.command === command)));
 }
 
-/** @param {any} settings @param {string} command */
-function mergedSettings(settings, command) {
-  const base = withoutManaged(settings.hooks, command, false);
+/** @param {any} settings @param {ReturnType<typeof paths>} managed */
+function mergedSettings(settings, managed) {
+  const base = withoutManaged(settings.hooks, managedCommands(managed), false);
   /** @type {Record<string, any>} */
   const hooks = base && typeof base === "object" && !Array.isArray(base) ? { ...base } : {};
   for (const spec of managedEvents) {
     const existing = Array.isArray(hooks[spec.event]) ? hooks[spec.event] : [];
-    hooks[spec.event] = [...existing, managedEntry(command, spec)];
+    hooks[spec.event] = [...existing, managedEntry(commandFor(managed, spec), spec)];
   }
   const env = settings.env && typeof settings.env === "object" && !Array.isArray(settings.env) ? { ...settings.env } : {};
   Object.assign(env, managedEnv);
@@ -199,12 +215,12 @@ function mergedSettings(settings, command) {
 }
 
 /**
- * @param {any} settings @param {string} command
+ * @param {any} settings @param {string[]} commands
  * @param {Record<string, {before: string | null, installed: string}>} envState
  */
-function structuralRollback(settings, command, envState) {
+function structuralRollback(settings, commands, envState) {
   const next = { ...settings };
-  const hooks = withoutManaged(settings.hooks, command, true);
+  const hooks = withoutManaged(settings.hooks, commands, true);
   if (hooks === undefined) delete next.hooks;
   else if ("hooks" in settings) next.hooks = hooks;
   if (settings.env && typeof settings.env === "object" && !Array.isArray(settings.env)) {
@@ -256,7 +272,7 @@ export async function auditClaudeOrchestration({ home }) {
   const managed = paths(resolvedHome);
   /** @type {string[]} */
   const findings = [];
-  for (const path of [managed.guard, managed.policy, managed.settings, managed.state]) {
+  for (const path of [managed.guard, managed.policy, managed.stopGate, managed.settings, managed.state]) {
     try { await assertNoSymlinkParents(resolvedHome, path); }
     catch (error) { findings.push(error instanceof Error ? error.message : String(error)); }
   }
@@ -274,7 +290,7 @@ export async function auditClaudeOrchestration({ home }) {
     const matches = [];
     for (const entry of entries) {
       for (const hook of Array.isArray(entry?.hooks) ? entry.hooks : []) {
-        if (hook?.command === managed.command) matches.push({ entry, hook });
+        if (hook?.command === commandFor(managed, spec)) matches.push({ entry, hook });
       }
     }
     if (matches.length !== 1) { findings.push(`${spec.event} has ${matches.length} managed hooks; expected exactly one`); continue; }
@@ -285,6 +301,9 @@ export async function auditClaudeOrchestration({ home }) {
   const missingTarget = "managed hook targets a missing guard";
   if (hasManagedHook(settings.hooks, managed.command) && (await readOptional(managed.guard)) === null && !findings.includes(missingTarget)) {
     findings.push(missingTarget);
+  }
+  if (hasManagedHook(settings.hooks, managed.stopCommand) && (await readOptional(managed.stopGate)) === null) {
+    findings.push("managed Stop hook targets a missing stop gate");
   }
   for (const [key, value] of Object.entries(managedEnv)) {
     if (settings.env?.[key] !== value) findings.push(`env ${key} is ${JSON.stringify(settings.env?.[key])}; expected ${JSON.stringify(value)}`);
@@ -309,7 +328,7 @@ export async function auditClaudeOrchestration({ home }) {
 export async function enableClaudeOrchestration({ home }) {
   const resolvedHome = resolve(home);
   const managed = paths(resolvedHome);
-  for (const path of [managed.guard, managed.policy, managed.settings, managed.state, managed.manifest]) {
+  for (const path of [managed.guard, managed.policy, managed.stopGate, managed.settings, managed.state, managed.manifest]) {
     await assertNoSymlinkParents(resolvedHome, path);
   }
   const preconditions = await artifactFindings(managed);
@@ -318,7 +337,7 @@ export async function enableClaudeOrchestration({ home }) {
   const settings = parseObject(current, "Claude Code settings");
   const stateBytes = await readOptional(managed.state);
   const state = parseState(stateBytes);
-  const installed = serialize(mergedSettings(settings, managed.command));
+  const installed = serialize(mergedSettings(settings, managed));
   const unchanged = current !== null && current.equals(installed);
   if (unchanged && state) {
     return { ...(await auditClaudeOrchestration({ home: resolvedHome })), operation: "claude-orchestration-enable", changed: false };
@@ -328,15 +347,15 @@ export async function enableClaudeOrchestration({ home }) {
   let before;
   if (!state) {
     if (current === null) before = null;
-    else if (hasManagedHook(settings.hooks, managed.command)) {
+    else if (managedCommands(managed).some((command) => hasManagedHook(settings.hooks, command))) {
       const next = { ...settings };
-      const hooks = withoutManaged(settings.hooks, managed.command, true);
+      const hooks = withoutManaged(settings.hooks, managedCommands(managed), true);
       if (hooks === undefined) delete next.hooks;
       else next.hooks = hooks;
       before = serialize(next).toString("base64");
     } else before = current.toString("base64");
   } else if (matchesInstalled) before = state.settings.before;
-  else before = current === null ? null : serialize(structuralRollback(settings, managed.command, state.env)).toString("base64");
+  else before = current === null ? null : serialize(structuralRollback(settings, managedCommands(managed), state.env)).toString("base64");
   /** @type {Record<string, {before: string | null, installed: string}>} */
   const env = {};
   for (const [key, value] of Object.entries(managedEnv)) {
@@ -378,7 +397,7 @@ export async function rollbackClaudeOrchestration({ home }) {
     status = "restored";
   } else {
     const settings = parseObject(current, "Claude Code settings");
-    await writeAtomic(managed.settings, serialize(structuralRollback(settings, managed.command, state.env)));
+    await writeAtomic(managed.settings, serialize(structuralRollback(settings, managedCommands(managed), state.env)));
     status = "structurally-restored";
   }
   await unlink(managed.state);

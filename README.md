@@ -1,5 +1,26 @@
 # AOHYS Development System
 
+## Release 1.33.0 / catalog 0.51.0
+
+Release 1.33.0 replaces automated tests with real verification (computer use,
+the browser or a verification CLI). `check-no-tests --root <repository> --json`
+reports test files, runner configuration, test scripts, test dependencies and CI
+test steps; reviewed prefixes go in `config/no-tests-allow.json`. The command
+guard gains `test-file-write` and `guard-config-write`. A Stop report gate asks
+once per session that changed files for the completion report. The Claude roster
+drops Haiku: Explore, code-mapper, docs-researcher and mechanical-worker run on
+Sonnet at low effort. Catalog 0.51.0 updates six internal skills and removes
+`tdd` with reversible cleanup. Product repositories run
+`pnpm exec aohys-development-system check-no-tests --root . --json`. See
+[ADR 0060](docs/adr/0060-real-verification-no-tests-report-launch.md).
+
+```sh
+./bin/development-system setup --version 1.33.0
+./bin/development-system guardrails-enable
+./bin/development-system claude-orchestration-enable
+./bin/development-system report-gate-enable
+```
+
 ## Release 1.32.0 / catalog 0.50.0
 
 Release 1.32.0 packages the Claude Code orchestration roster: seventeen tiered
@@ -45,11 +66,11 @@ makes no security bypass. The advisory parent execution, full GPT-6 role roster,
 independent reviews, Jev advisory 1.29.0 and customized field-notebook reports
 continue.
 
-Automated tests are not written, changed, generated or run by default unless the
-user explicitly asks. Existing build, type and lint checks remain available;
-behavior claims need observed behavior evidence, and a requested visual result
-still needs real browser review and independent critique. Existing test files and
-CI protections remain intact.
+No automated tests anywhere: do not create, run or restore them; delete them
+when found (`check-no-tests` and the guard enforce this). Every task includes
+real verification without being asked: computer use, browser, and the
+repository's verification CLI and feature map. Report passed / failed / not
+reached with evidence. A requested visual result still needs independent critique.
 
 An explicitly selected new Codex T3 coordinator thread can request Sol 6 High
 through its supported invocation setting. This is a per-thread choice; it does
@@ -127,7 +148,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.32.0/aohys-development-system-1.32.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.33.0/aohys-development-system-1.33.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -158,13 +179,17 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.32.0
+./bin/development-system setup --version 1.33.0
 ./bin/development-system guardrails-enable
+./bin/development-system claude-orchestration-enable
+./bin/development-system report-gate-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.50.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.51.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
+./bin/development-system report-gate-rollback
+./bin/development-system claude-orchestration-rollback
 ./bin/development-system guardrails-rollback
 ./bin/development-system rollback-skills
 ./bin/development-system rollback
@@ -227,7 +252,7 @@ After `Implement Preview` is authorized, execute a private structured plan with:
   --plan /private/path/implement-preview.json
 ```
 
-The command runs one writer, independent intent/standards reviews, proportional TDD/QA, commit, push, PR, and preview commands. It creates a private Local Visual Plan and Recap and stops at `ready-for-human`; see `docs/implement-preview.md`. It rejects promotion operations.
+The command runs one writer, independent intent/standards reviews, real verification (computer use, browser, verification CLI; no automated tests), commit, push, PR, and preview commands. It creates a private Local Visual Plan and Recap and stops at `ready-for-human`; see `docs/implement-preview.md`. It rejects promotion operations.
 
 When an authorized task contract names at least two exact work-item IDs and a
 complete matching work graph, `orchestration-plan` automatically selects
@@ -337,7 +362,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.32.0`; audit advisory hooks and the paired catalog 0.50.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.33.0`; audit advisory hooks and the paired catalog 0.51.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
@@ -360,7 +385,6 @@ migrations, seeds, roles, or environment contracts changed. Product
 repositories still own the concrete commands and provider implementation.
 
 ```sh
-node --test test/technical-documents.test.mjs test/visual-documents.test.mjs test/delivery-preview.test.mjs
 pnpm run typecheck
 ```
 

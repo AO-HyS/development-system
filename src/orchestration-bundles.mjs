@@ -9,7 +9,7 @@ function strings(value) { return Array.isArray(value) ? value.filter((entry) => 
 
 /** @type {Readonly<Record<string, {skills: string[], tactics: string[]}>>} */
 const profileMap = Object.freeze({
-  typescript: { skills: ["tdd"], tactics: ["type-discipline"] },
+  typescript: { skills: [], tactics: ["type-discipline"] },
   react: { skills: ["vercel-react-best-practices", "impeccable"], tactics: ["subtract-before-add", "prove-it-works"] },
   ui: { skills: ["impeccable"], tactics: ["prove-it-works"] },
   convex: { skills: ["convex-best-practices", "convex:convex-expert", "convex-guardian"], tactics: ["fix-root-causes", "type-discipline"] },
