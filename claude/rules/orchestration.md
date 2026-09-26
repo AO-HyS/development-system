@@ -17,7 +17,7 @@ form a ladder, and the guard asks Jev which tier the packet needs. Reviews are n
 Fixed roles: code-mapper, Explore and docs-researcher (Sonnet, low effort) for mapping
 and research; mechanical-worker (Sonnet, low effort) only for fully spelled-out edits
 and commands; ui-implementer (Opus high) for one UI slice (a screen, or up to 4 sharing
-files); browser-qa (Opus low) for browser behavior checks through scripts. There is no per-subagent
+files); browser-qa (Opus low, Codex fallback only) for browser checks through scripts. There is no per-subagent
 thinking switch (subagents inherit the session's thinking): Sonnet runs at low effort.
 code-mapper Bash is limited by a hook to read-only git commands and typechecks.
 Read-only work whose output is decisions or a plan goes to a planner, not a mapper.
@@ -38,7 +38,9 @@ run only with a `Codex fallback: <reason>` line (Codex failed or has no quota), 
 report says so; plan-reviewer and security-reviewer are retired. From the 4th round of
 the same objective codex-review needs a `Round rationale: ...` line naming an open
 critical or high finding; otherwise the remaining findings become documented gaps or
-next-version work.
+next-version work. Computer use (changing dashboards or tools, testing the real app)
+runs on Astra XHigh through `codex-review.mjs --computer-use`, one at a time, launched in
+the background the same way; browser-qa only as a declared `Codex fallback:`.
 
 When a subagent is halted or fails, split its packet into smaller ones and dispatch
 again; the coordinator does not absorb the work.

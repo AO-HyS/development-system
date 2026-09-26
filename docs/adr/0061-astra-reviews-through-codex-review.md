@@ -51,5 +51,5 @@ Contract 1.34.0 with catalog 0.51.0 (unchanged):
 Installed files do not prove that Claude Code runs the guard or the Stop gate,
 or that Codex honors the requested model and effort; the receipt's observed
 fields and session evidence answer that. The retired agent files stay installed
-because installation does not remove artifacts dropped from a manifest. Reviews
+because installation does not remove artifacts dropped from a manifest. A `--computer-use` mode runs one Codex Computer Use operator at a time through the same launcher, with browser-qa as a declared fallback. Known gap: two launches in the same instant can both pass the round and parallel reservation checks, since the check and the marker write are not atomic. Reviews
 depend on Codex quota; the declared fallback keeps them possible without it.

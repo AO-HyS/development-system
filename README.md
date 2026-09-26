@@ -9,7 +9,8 @@ exits; it prints one JSON receipt with the requested and observed model and
 effort. The roster guard retires plan-reviewer and security-reviewer and admits
 the Claude reviewers only with a `Codex fallback:` line. A fourth review round of
 the same objective needs a `Round rationale:` line, at most five reviews run at
-once, and the Stop report gate waits while one runs. Catalog 0.51.0 is unchanged.
+once, and the Stop report gate waits while one runs. `codex-review.mjs --computer-use`
+runs one Codex Computer Use operator at a time, and browser-qa becomes a declared fallback. Catalog 0.51.0 is unchanged.
 See [ADR 0061](docs/adr/0061-astra-reviews-through-codex-review.md).
 
 ```sh

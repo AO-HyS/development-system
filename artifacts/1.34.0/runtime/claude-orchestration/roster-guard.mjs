@@ -6,7 +6,8 @@
 // model tier (Sonnet, Opus low/medium/high, Fable) for implement, plan and review work,
 // using the operator's memory of how similar packets went. With policy.review.engine
 // "codex", reviews go to codex-review (Astra XHigh): retired reviewers are refused and
-// Claude reviewers need a "Codex fallback:" line.
+// Claude reviewers and browser-qa need a "Codex fallback:" line (then skip the Jev gate);
+// computer use goes to codex-review --computer-use.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
 // image-free. PostToolUse Agent and SubagentStop: ledger with the observed model and
 // release of the writer's paths.
@@ -253,7 +254,7 @@ async function agentCall() {
       if (POLICY.otherAgentsRequireModel.includes(ti.model)) allow(null, entry);
       deny(`Plugin agent ${type} has no pinned model. Pass model: "opus" (or "sonnet" for read-only work) or use a roster role: ${rosterList}.`, entry);
     }
-    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, diff, plan, security or image review -> codex-review on Astra XHigh (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true); reviewer or visual-reviewer only as a declared "Codex fallback: <reason>".`, entry);
+    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, diff, plan, security or image review -> codex-review on Astra XHigh (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true); computer use (dashboards, tools, the real app) -> codex-review.mjs --computer-use --packet <file> --root <repo> (Bash run_in_background: true); reviewer, visual-reviewer or browser-qa only as a declared "Codex fallback: <reason>".`, entry);
   }
   if (ti.model && ti.model !== role.model) {
     deny(`${type} runs on ${role.model}; do not override it with "${ti.model}". For more capability dispatch senior-implementer or planner (Opus high); for less, mechanical-worker or code-mapper (Sonnet, low effort).`, entry);
@@ -265,7 +266,13 @@ async function agentCall() {
     const launch = 'Write the review packet to a file and run node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <mock> --image <capture>] with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use a Claude reviewer only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.';
     if (role.retired) deny(`${type} is retired in 1.34.0: reviews run on Astra XHigh through codex-review. ${launch}`, { ...entry, blockedBy: 'retired' });
     const fallbackLine = /^\s*Codex fallback:\s*\S/m.test(prompt);
+    const fallbackReason = prompt.match(/^\s*Codex fallback:\s*(\S.*)$/m)?.[1]?.slice(0, 300) ?? null;
+    if (role.family === 'browser' && !fallbackLine) deny(`${type} is a fallback: computer use (changing dashboards or tools, testing the real app) runs on Astra XHigh through node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --computer-use --packet <file> --root <repo>, with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use browser-qa only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`, { ...entry, blockedBy: 'codex-computer-use' });
     if (['review', 'visual'].includes(role.family) && !fallbackLine) deny(`${type} is a fallback: reviews run on Astra XHigh through codex-review. ${launch}`, { ...entry, blockedBy: 'codex-review' });
+    // An accepted fallback skips the Jev tier and route gate: the parent already declared why.
+    if (['review', 'visual', 'browser'].includes(role.family)) {
+      allow(null, { ...entry, codexFallback: fallbackReason, jev: 'skipped', tier: null, why: 'accepted Codex fallback' });
+    }
   }
   // Fable is kept for very large or ultra-hard specs: Jev has to pick it, or the parent
   // says why in a "Fable scope:" line.

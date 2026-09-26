@@ -220,25 +220,29 @@ function stateDirectory(home, parts) {
 }
 
 /**
- * True when a codex-review launched in the background is still running: a pending marker
- * whose process is alive. The coordinator is woken when it exits, so the reminder waits.
- * Any error counts as no pending review (fail open). @param {string} home
+ * True when a codex-review (review or computer-use) launched in the background is still
+ * running: a pending marker whose process is alive. The coordinator is woken when it
+ * exits, so the reminder waits. A missing pending directory means none; any other error
+ * while inspecting markers (unreadable or malformed marker) counts as pending, so the
+ * gate returns without blocking and without changing state (fail open). @param {string} home
  */
 function reviewPending(home) {
+  const directory = join(home, ".development-system", "private", "runs", "codex-review", "pending");
+  let names;
+  try { names = readdirSync(directory); } catch (error) {
+    return !(error instanceof Error && "code" in error && error.code === "ENOENT");
+  }
   try {
-    const directory = join(home, ".development-system", "private", "runs", "codex-review", "pending");
-    for (const name of readdirSync(directory)) {
+    for (const name of names) {
       if (!name.endsWith(".json")) continue;
-      try {
-        const pid = Number(JSON.parse(readFileSync(join(directory, name), "utf8")).pid);
-        if (!Number.isInteger(pid) || pid <= 0) continue;
-        try { process.kill(pid, 0); } catch (error) {
-          if (!(error instanceof Error && "code" in error && error.code === "EPERM")) continue;
-        }
-        return true;
-      } catch { /* an unreadable marker is not a pending review */ }
+      const pid = Number(JSON.parse(readFileSync(join(directory, name), "utf8")).pid);
+      if (!Number.isInteger(pid) || pid <= 0) return true;
+      try { process.kill(pid, 0); } catch (error) {
+        if (!(error instanceof Error && "code" in error && error.code === "EPERM")) continue;
+      }
+      return true;
     }
-  } catch { /* no pending directory */ }
+  } catch { return true; }
   return false;
 }
 

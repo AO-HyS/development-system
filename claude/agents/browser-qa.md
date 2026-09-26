@@ -1,6 +1,6 @@
 ---
 name: browser-qa
-description: "Behavior checks in a real browser through scripts (Playwright or the project probe): flows, dialogs, URL state, console errors, keyboard and 390px layout. Reports text results; no product edits."
+description: "Fallback only when Codex fails or has no quota (packet needs a `Codex fallback:` line): Behavior checks in a real browser through scripts (Playwright or the project probe): flows, dialogs, URL state, console errors, keyboard and 390px layout. Reports text results; no product edits."
 model: opus
 effort: low
 disallowedTools: Agent

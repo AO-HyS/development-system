@@ -188,6 +188,7 @@
     "model": "gpt-6-astra",
     "effort": "xhigh",
     "maxParallel": 5,
+    "maxComputerUse": 1,
     "roundsWithoutRationale": 3,
     "stateDir": "~/.development-system/private/runs/codex-review"
   }

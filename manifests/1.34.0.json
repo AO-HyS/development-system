@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "c50282226fe70946332246e2e516f40e57c13c017143e39c7fe4077afcb89b6e",
+      "sha256": "b1a23e0143bdf0c48094edf903e7bbde0b202ffd06ed7c734b8f2580f5498016",
       "expectedMirrorOf": null
     },
     {
@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/1.34.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "628d7ed19521233231a24516a0cc2bc824e09727fb3613fa163d980723060dc1",
+      "sha256": "c07d2786124bd0bfe459f6480e6a19c9162ca1762fdf92d36e23893018b797d0",
       "expectedMirrorOf": null
     },
     {
@@ -629,7 +629,7 @@
       "sourcePath": "artifacts/1.34.0/runtime/claude-orchestration/policy.json",
       "destination": ".codex/development-system/runtime/claude-orchestration/policy.json",
       "harness": "claude",
-      "sha256": "009f9746d9aa11007188c98078982136b05a539ba7a79e435292ea872dfe32e8",
+      "sha256": "b8a205970e1b7cda8d338d5b495f5f6e304842bdd1bd680f43be37b026d6a9c6",
       "expectedMirrorOf": null
     },
     {
@@ -656,7 +656,7 @@
       "sourcePath": "artifacts/1.34.0/claude/agents/browser-qa.md",
       "destination": ".claude/agents/browser-qa.md",
       "harness": "claude",
-      "sha256": "92cfb7803bac498ca240f56e50ad0006ce9883d33b4e7b93377191183385a6b3",
+      "sha256": "a13023e94a27757c557b76711229cf8e907131220dca992a8eb82e6f08de20e7",
       "expectedMirrorOf": null
     },
     {
@@ -800,7 +800,7 @@
       "sourcePath": "artifacts/1.34.0/claude/rules/orchestration.md",
       "destination": ".claude/rules/orchestration.md",
       "harness": "claude",
-      "sha256": "5f7cba9398a50da0356d28781194269c01ae487feca863db3743ce113a1530b3",
+      "sha256": "af6b0886d2b937704822659bd38d0751239fdf3401fa09fdaf812072d35399f6",
       "expectedMirrorOf": null
     },
     {
@@ -809,7 +809,7 @@
       "sourcePath": "artifacts/1.34.0/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "9c18c36fc02a24e9c44dde0dfba2e1ceab923c49fcc0237c1f6bc7a8d61db840",
+      "sha256": "5f2ced6440ab5b3e9dd52df1bf89477743132472574472c8d6f488a01ec8dfb7",
       "expectedMirrorOf": null
     },
     {
@@ -818,7 +818,7 @@
       "sourcePath": "artifacts/1.34.0/runtime/claude-orchestration/codex-review.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/codex-review.mjs",
       "harness": "claude",
-      "sha256": "a385a945c900b9796fb6d1442200ad324bee39d82cb9e4c1cde140c14564ea36",
+      "sha256": "314c07980abbc63fa47b8dee0e7b4549dd3cdb13b229dc50d41b4d6213aa92d3",
       "expectedMirrorOf": null
     }
   ],
