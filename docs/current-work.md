@@ -125,6 +125,16 @@ when cleared. Round 10 (73 probes) vs cd5282f: 34 now blocked (33 attacks and
 the conservative `(( n = $x ))`), 6 FPs now allowed; all earlier rounds unchanged. Corpus 916 0 mismatches; ≤131 ms
 (linear) on 45–60 KB inputs; builder, typecheck, roster, check-no-tests,
 verify1330.py 46/46.
+Sixth review of 55a2867 (do not merge): a `+cmd` with no file after it was
+never read (`e +w\ FILE`), a named value blocked on any PATH word
+(`NODE_OPTIONS=--require=./path/x.js`), and escaped spaces started editor
+matches (859 ms at 50 KB). Fixed: the last `+cmd` may end the command and the
+file is optional; a variable value counts only when it assigns or steps a PATH
+name; an escaped space does not start a command. `$` arithmetic next to a commit
+heredoc (`for ((i=0; i<$n; i++))`) stays a documented false positive. Round 11
+(56 probes) vs 55a2867: 9 attacks now blocked, 3 FPs now allowed; all earlier
+rounds unchanged. Corpus 916 0 mismatches; ≤147 ms (linear) on 45–60 KB inputs;
+builder, typecheck, roster, check-no-tests, verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,

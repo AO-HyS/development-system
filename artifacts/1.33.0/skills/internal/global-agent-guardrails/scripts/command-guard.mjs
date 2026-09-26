@@ -121,16 +121,19 @@ const CAT_LOOKUP_NAMES = /^(?:path|bash_cmds|bash_aliases|(?:dis_)?(?:functions|
 const CAT_LOOKUP_WORD = new RegExp(String.raw`\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b`, "iu");
 /** An arithmetic assignment (`=`, `+=`, `<<=`, `++`, `--`), not a comparison (`==`, `!=`, `<=`, `>=`). */
 const ARITH_ASSIGN_OP = /(?:<<|>>|\*\*|[-+*/%&|^])=|(?<![=!<>])=(?!=)|\+\+|--/u;
+/** One of those names as the target of an arithmetic assignment (`PATH=5`, `path[1] += 2`, `++PATH`). */
+const CAT_LOOKUP_TARGET = new RegExp(String.raw`${CAT_LOOKUP_WORD.source}\s*(?:\[[^\]]*\]\s*)?(?:(?:<<|>>|\*\*|[-+*/%&|^])?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${CAT_LOOKUP_WORD.source}`, "iu");
 /**
  * Whether arithmetic text can assign one of those names: it assigns and names one (`PATH=5`, `path[1]+=2`, `++PATH`), or,
  * unless `named`, it assigns and holds text that can build a name (`$n`, `${n:-PATH}`, a quote, a backtick or a backslash,
  * as in `"PATH" = 5`). Reading (`n = ${#path} + $#`, `PATH == 5`) or assigning a plain name (`i += 1`) does not count.
- * @param {string} text @param {boolean} [named] only a named assignment counts (a variable's value that arithmetic reads again)
+ * @param {string} text @param {boolean} [named] a variable's value that arithmetic reads again: only a name it assigns counts
  */
 function assignsLookup(text, named = false) {
+  if (named) return CAT_LOOKUP_TARGET.test(text);
   // A length (`${#path}`) or a special parameter (`$#`, `$?`) expands to a number.
   const plain = text.replace(/\$\{#\w*(?:\[[@*]\])?\}|\$[#?$!]/gu, " 0 ");
-  return ARITH_ASSIGN_OP.test(plain) && (CAT_LOOKUP_WORD.test(plain) || (!named && /[$`"'\\]/u.test(plain)));
+  return ARITH_ASSIGN_OP.test(plain) && (CAT_LOOKUP_WORD.test(plain) || /[$`"'\\]/u.test(plain));
 }
 /** Precommand words that run the next word as the command (`command -p`, `builtin --`, zsh `noglob`, `nocorrect`, `-`). */
 const PRECOMMANDS = new Set(["builtin", "command", "noglob", "nocorrect", "-"]);
@@ -1876,9 +1879,9 @@ const EDITOR_FILE_NAMES = [
 /**
  * An editor command that writes or opens a named file, after an optional line address (`:w FILE`, `%w FILE`, `1,$w!FILE`,
  * `:sav ++enc=x FILE`, `e +10 FILE`, `e + FILE`, `redir! > FILE`, `exe "w FILE"`). Group 1 holds the `+cmd` and `++opt`
- * words, group 2 the file.
+ * words, group 2 the file, empty when `:e +cmd` re-edits the current file. An escaped space does not start a command.
  */
-const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))((?:\+(?:[^\s\\]|\\.)*\s+)*)(?:>>?!?\s*)?([^\s|"']+)`, "gu");
+const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|(?<!\\)[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))((?:\+(?:[^\s\\]|\\.)*(?:\s+|$))*)(?:>>?!?\s*)?([^\s|"']*)`, "gu");
 /** A shell command in an editor line: `:!cmd`, a range filter (`%!cmd`, `1,2!cmd`), `r !cmd`, `w !cmd`, `e !cmd`, `exe "!cmd"`. */
 const EDITOR_SHELL_ESCAPE = /(?:^|[|:\s"])(?:[%.$\d,'<>+-]*|(?:r|read)\s*|(?:e|edit|w|write)\s+)!(.*)$/u;
 /** Command modifiers and `:*do` loops that may come before an ex command (`sil!`, `vert`, `keepalt`, `bufdo`, `3verbose`). */
@@ -1918,7 +1921,7 @@ function delimitedEnd(text, from, delimiter) {
  */
 function editorFiles(text, editor, ctx) {
   for (const match of text.matchAll(EDITOR_FILE_COMMAND)) {
-    editor.write(match[2]);
+    if (match[2]) editor.write(match[2]);
     for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
       if (command && !command.startsWith("+")) editorScript(command.replace(/\\(.)/gsu, "$1"), false, false, editor, ctx);
     }
