@@ -13,6 +13,10 @@ export const TEST_FILE_PATTERN_SOURCES = Object.freeze([
   "_test\\.(?:py|go)$",
 ]);
 
+/** The TEST_FILE_PATTERN_SOURCES entries that describe runner configuration rather than test files. */
+export const TEST_CONFIG_PATTERN_SOURCES = Object.freeze(new Set(TEST_FILE_PATTERN_SOURCES.filter((source) =>
+  /config|workspace|karma|mocharc|pytest/u.test(source))));
+
 /** @type {ReadonlyArray<RegExp>} */
 export const TEST_FILE_PATTERNS = Object.freeze(TEST_FILE_PATTERN_SOURCES.map((source) => new RegExp(source)));
 

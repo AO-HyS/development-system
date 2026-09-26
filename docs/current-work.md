@@ -61,8 +61,20 @@ p3s, rounds 3-5, 194 probes): every attack blocked, every ordinary command
 allowed. Corpus 816 entries (399 allow, 417 block), replay 0 mismatches;
 perf ≤55 ms on 60 KB inputs; gated runners block everything with no effect;
 builder --check, typecheck, roster:check, check-no-tests and
-/tmp/verify1330.py 46/46 pass. Next: commit, PR to develop with independent
-review, merge, HOME rollout, main + v1.33.0 prerelease, products.
+/tmp/verify1330.py 46/46 pass. PR #108 (develop) review found M1 (`[^x]`
+glob bypass), M2 (words such as "enable" or "hash … cat" in commit heredoc
+text made it dynamic) and M3 (quadratic bracket/brace scan, 17 s); fixed on
+the branch: bracket expressions kept in the broad glob, `cat` redefinition
+detected from parsed commands (function, alias, hash, enable, PATH), linear
+bracket/brace/group precomputation (≤48 ms at 60,000 characters). Minors:
+editors also write -w/-W logs and `:w`/`:sav` files from -c/--cmd/+cmd
+scripts and `:!` runs as shell; no-tests config kinds come from
+TEST_CONFIG_PATTERN_SOURCES; SKILL.md budget, cat and rollback wording; ADR
+0060 notes the 2-space Codex rollback rewrite. Round 6 (28 probes) as
+expected; corpus 844 (407 allow, 437 block), replay 0 mismatches; builder
+--check, typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
+Next: re-review of the fixes, merge, HOME rollout, main + v1.33.0
+prerelease, products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,
 validate-skill/check-route-inventory/check-repo-rules pass, `plan --list` added. Next: guard re-review,
 develop, HOME rollout, main + v1.33.0 prerelease, product rollout. Barber #343

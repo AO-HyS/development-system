@@ -101,8 +101,33 @@ function checkSubscriptCode(value) {
   }
 }
 
-/** Set per command: the command text redefines `cat` (function, alias, hash), so its output is not known. */
+/** Set per command: the command changes what `cat` runs (function, alias, hash, enable, PATH), so its output is not known. */
 let catRedefined = false;
+/** Set by the parser when it reads such a change; parseScript then parses again with catRedefined. */
+let catTouched = false;
+
+/** Parse a whole script; when it changes what `cat` runs, parse it again so no `$(cat <<'EOF' …)` counts as literal. @param {string} text @param {number} depth */
+function parseScript(text, depth) {
+  catTouched = false;
+  const list = new Parser(text, depth).parseAll();
+  if (!catTouched || catRedefined) return list;
+  catRedefined = true;
+  return new Parser(text, depth).parseAll();
+}
+
+/** Whether a simple command changes what `cat` runs: an alias, hash or enable naming cat, or a PATH assignment. @param {{ assigns: Word[], words: Word[] }} node */
+function changesCat(node) {
+  if (node.assigns.some((word) => /^path$/iu.test(word.name ?? ""))) return true;
+  let words = node.words;
+  while (words[0]?.literal && (words[0].value === "builtin" || words[0].value === "command")) words = words.slice(1);
+  const [head, ...rest] = words;
+  if (!head?.literal) return false;
+  if (["alias", "hash", "enable"].includes(head.value)) return rest.some((word) => !word.literal || /(?:^|[^\w.-])cat\b/u.test(word.value));
+  if (["export", "declare", "typeset", "readonly", "local", "read", "mapfile", "printf"].includes(head.value)) {
+    return rest.some((word) => !word.literal || /^path(?:\+?=|$)/iu.test(word.value));
+  }
+  return false;
+}
 
 /** Output of a substitution that is only `cat` reading a quoted (literal) heredoc, or null. @param {any} list */
 function literalOutput(list) {
@@ -326,7 +351,8 @@ class Parser {
       if (keyword === "function") {
         this.i += keyword.length;
         this.skipBlanks();
-        this.parseWord(true);
+        const name = this.parseWord(true);
+        if (!name.literal || name.value === "cat") catTouched = true;
         this.skipBlanks();
         if (/^\(\s*\)/u.test(this.s.slice(this.i, this.i + 8))) this.i = this.s.indexOf(")", this.i) + 1;
         continue;
@@ -350,6 +376,7 @@ class Parser {
       if (redirect) { node.redirects.push(redirect); continue; }
       if (c === "(") {
         if (node.words.length === 1 && node.assigns.length === 0 && node.redirects.length === 0 && /^\(\s*\)/u.test(this.s.slice(this.i, this.i + 8))) {
+          if (!node.words[0].literal || node.words[0].value === "cat") catTouched = true;
           this.i = this.s.indexOf(")", this.i) + 1;
           this.skipBlanksAndNewlines();
           return this.parseCommand();
@@ -375,6 +402,7 @@ class Parser {
               array.value += `${element.value} `;
               if (!element.literal) array.literal = false;
             }
+            array.name = match[0].replace(/(?:\[[^\]]*\])?\+?=$/u, "");
             node.assigns.push(array);
           } else {
             const value = this.parseWord(false, true);
@@ -388,6 +416,7 @@ class Parser {
       if (!word.raw) throw new ParseError(`unexpected ${JSON.stringify(this.peek())} at offset ${this.i}`);
       node.words.push(word);
     }
+    if (changesCat(node)) catTouched = true;
     return node;
   }
 
@@ -748,6 +777,7 @@ class Parser {
     this.skipBlanks();
     if (this.at("((")) return this.parseArithmeticCommand();
     const words = [this.parseWord(false)];
+    if (/^path$/iu.test(words[0].value)) catTouched = true;
     this.skipBlanksAndNewlines();
     if (this.peekKeyword() === "in") {
       this.i += 2;
@@ -981,32 +1011,80 @@ function globForms(absolute) {
  * matches any text including a leading dot; a region that spans `/` becomes `ANY/**\/ANY`. @param {string} text
  */
 function broadGlob(text) {
-  let out = "";
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c === "{" || c === "(") {
-      const close = c === "{" ? "}" : ")";
-      let depth = 0;
-      let j = i;
-      for (; j < text.length; j++) if (text[j] === c) depth++; else if (text[j] === close && --depth === 0) break;
-      if (j < text.length) {
-        // `@(…)`, `?(…)`, `*(…)`, `+(…)`, `!(…)`: the operator belongs to the group.
-        if (c === "(") out = out.replace(/[@+!?*]$/u, "");
-        out += text.slice(i, j).includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT;
-        i = j;
-        continue;
-      }
+  const chars = [...text];
+  const n = chars.length;
+  const braces = bracketPairs(chars, "{", "}");
+  const groups = bracketPairs(chars, "(", ")");
+  const classes = classCloses(chars);
+  const nextSlash = new Int32Array(n + 1).fill(n);
+  for (let k = n - 1; k >= 0; k--) nextSlash[k] = chars[k] === "/" ? k : nextSlash[k + 1];
+  // Each element is one pattern unit (a character, a bracket expression or ANY_TEXT), so `x#` can drop the unit before it.
+  /** @type {string[]} */
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const c = chars[i];
+    const close = c === "{" ? braces[i] : c === "(" ? groups[i] : -1;
+    if (close > 0) {
+      // `@(…)`, `?(…)`, `*(…)`, `+(…)`, `!(…)`: the operator belongs to the group.
+      if (c === "(" && ["@", "+", "!", "?", "*"].includes(out.at(-1) ?? "")) out.pop();
+      out.push(nextSlash[i] < close ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT);
+      i = close;
+      continue;
+    }
+    // A bracket expression inside one segment stays as it is: `^` and `!` there negate it.
+    const end = c === "[" ? classEnd(chars, i, classes) : -1;
+    if (end > 0 && nextSlash[i] > end) {
+      out.push(chars.slice(i, end + 1).join(""));
+      i = end;
+      continue;
     }
     // `a~b` matches at most what `a` matches, `^x` anything in its segment, `x#` also no x.
-    if (c === "~" && i > 0 && i < text.length - 1) break;
+    if (c === "~" && i > 0 && i < n - 1) break;
     if (c === "^") {
-      out += ANY_TEXT;
-      const slash = text.indexOf("/", i);
-      i = slash < 0 ? text.length : slash - 1;
-    } else if (c === "#") out = `${[...out].slice(0, -1).join("")}${ANY_TEXT}`;
-    else out += c;
+      out.push(ANY_TEXT);
+      i = nextSlash[i] - 1;
+    } else if (c === "#") {
+      out.pop();
+      out.push(ANY_TEXT);
+    } else out.push(c);
   }
-  return out;
+  return out.join("");
+}
+
+/** For each opener the index of its closer (one kind of pair, nested), or -1, in one pass. @param {string[]} chars @param {string} open @param {string} close */
+function bracketPairs(chars, open, close) {
+  const match = new Int32Array(chars.length).fill(-1);
+  /** @type {number[]} */
+  const stack = [];
+  for (let k = 0; k < chars.length; k++) {
+    if (chars[k] === open) stack.push(k);
+    else if (chars[k] === close && stack.length > 0) match[/** @type {number} */ (stack.pop())] = k;
+  }
+  return match;
+}
+
+/**
+ * For each index, the `]` that ends a bracket expression body read from there, skipping [:name:], [.x.] and [=x=], or -1.
+ * Built right to left in one pass so every bracket lookup is constant time. @param {string[]} chars
+ */
+function classCloses(chars) {
+  const n = chars.length;
+  /** @type {Record<string, Int32Array>} */
+  const terms = {};
+  for (const kind of [":", ".", "="]) {
+    const next = new Int32Array(n + 2).fill(-1);
+    for (let k = n - 1; k >= 0; k--) next[k] = chars[k] === kind && chars[k + 1] === "]" ? k : next[k + 1];
+    terms[kind] = next;
+  }
+  const scan = new Int32Array(n + 2).fill(-1);
+  for (let k = n - 1; k >= 0; k--) {
+    if (chars[k] === "]") scan[k] = k;
+    else if (chars[k] === "[" && terms[chars[k + 1]]) {
+      const term = terms[chars[k + 1]][k + 2];
+      scan[k] = term < 0 ? -1 : scan[term + 2];
+    } else scan[k] = scan[k + 1];
+  }
+  return scan;
 }
 
 /** Set per command: dotglob, GLOBIGNORE or zsh GLOB_DOTS lets a pattern character match a leading dot. */
@@ -1022,13 +1100,14 @@ function globSegment(segment) {
   if (segment === "**") return "**";
   if (!/[*?[\u0002]/u.test(segment)) return segment;
   const chars = [...segment];
+  const classes = classCloses(chars);
   /** @type {GlobSegment["tokens"]} */
   const tokens = [];
   for (let i = 0; i < chars.length; i++) {
     const c = chars[i];
     if (c === "*" || c === ANY_TEXT) { if (tokens.at(-1) !== "*") tokens.push("*"); continue; }
     if (c === "?") { tokens.push(() => true); continue; }
-    const end = c === "[" ? classEnd(chars, i) : -1;
+    const end = c === "[" ? classEnd(chars, i, classes) : -1;
     if (end > 0) { tokens.push(charClass(chars.slice(i + 1, end))); i = end; continue; }
     tokens.push((d) => d === c);
   }
@@ -1036,38 +1115,31 @@ function globSegment(segment) {
   return { tokens, hidden: !dotGlob && /^[*?[]/u.test(segment) && !segment.includes(ANY_TEXT) };
 }
 
-/** Index of the `]` closing the bracket expression at i, or -1. A `]` first in the set is literal; [:name:] is skipped. @param {string[]} chars @param {number} i */
-function classEnd(chars, i) {
+/**
+ * Index of the `]` closing the bracket expression at i, or -1. A `]` first in the set is literal.
+ * @param {string[]} chars @param {number} i @param {Int32Array} classes from classCloses(chars)
+ */
+function classEnd(chars, i, classes) {
   let k = i + 1;
   if (chars[k] === "!" || chars[k] === "^") k++;
   if (chars[k] === "]") k++;
-  for (; k < chars.length; k++) {
-    if (chars[k] === "[" && [":", ".", "="].includes(chars[k + 1])) {
-      const kind = chars[k + 1];
-      let close = k + 2;
-      while (close < chars.length && !(chars[close] === kind && chars[close + 1] === "]")) close++;
-      if (close >= chars.length) return -1;
-      k = close + 1;
-    } else if (chars[k] === "]") return k;
-  }
-  return -1;
+  return k < chars.length ? classes[k] : -1;
 }
 
 /** A bracket expression as a character test; a named class or a reversed range matches any character. @param {string[]} body */
 function charClass(body) {
   const negate = body[0] === "!" || body[0] === "^";
   const set = negate ? body.slice(1) : body;
+  const singles = new Set();
+  /** @type {Set<string>} */
+  const ranges = new Set();
   for (let k = 0; k < set.length; k++) {
     if ((set[k] === "[" && [":", ".", "="].includes(set[k + 1])) || (set[k + 1] === "-" && k + 2 < set.length && set[k] > set[k + 2])) return () => true;
+    if (set[k + 1] === "-" && k + 2 < set.length) { ranges.add(`${set[k]}${set[k + 2]}`); k += 2; }
+    else singles.add(set[k]);
   }
-  return (/** @type {string} */ c) => {
-    let hit = false;
-    for (let k = 0; k < set.length && !hit; k++) {
-      if (set[k + 1] === "-" && k + 2 < set.length) { hit = c >= set[k] && c <= set[k + 2]; k += 2; }
-      else hit = set[k] === c;
-    }
-    return hit !== negate;
-  };
+  const spans = [...ranges].map((range) => [...range]);
+  return (/** @type {string} */ c) => (singles.has(c) || spans.some(([low, high]) => c >= low && c <= high)) !== negate;
 }
 
 /** Whether a glob segment matches a whole name. Backtracking only to the last `*` keeps this O(pattern × name). @param {GlobSegment} glob @param {string} name */
@@ -1390,7 +1462,7 @@ function evaluateGitConfigs(configs, subArgs, ctx) {
     if (!word.literal || index < 0) throw new Block("shell-dynamic-command", "Inline Git configuration that names an executed program must be a literal key=value pair.");
     const value = word.value.slice(index + 1);
     if (/^alias\./iu.test(key) && !value.startsWith("!")) {
-      const aliased = new Parser(value, ctx.depth + 1).parseAll();
+      const aliased = parseScript(value, ctx.depth + 1);
       const words = aliased.items.length === 1 && aliased.items[0].commands.length === 1 ? aliased.items[0].commands[0].words : null;
       if (!words || words.some((/** @type {Word} */ entry) => !entry.literal)) throw new Block("shell-dynamic-command");
       evaluateArgv([literalWord("git"), ...words, ...subArgs], [], { ...ctx, depth: ctx.depth + 1 }, false, false);
@@ -1406,7 +1478,7 @@ function evaluateGitConfigs(configs, subArgs, ctx) {
  */
 function aliasWords(text, ctx) {
   try {
-    const list = new Parser(text, ctx.depth + 1).parseAll();
+    const list = parseScript(text, ctx.depth + 1);
     const words = list.items.length === 1 && list.items[0].commands.length === 1 ? list.items[0].commands[0].words : null;
     return words && words.length > 0 && words.every((/** @type {Word} */ word) => word.literal) ? words : null;
   } catch {
@@ -1771,11 +1843,25 @@ function commandTargets(name, rest, ctx, sed) {
     case "touch": case "truncate":
       operandsOf(rest, new Set(["-t", "-d", "-r", "-s", "--reference", "--size", "--date"])).operands.forEach((word) => add(word, "write"));
       break;
-    case "ex": case "vi": case "vim": case "nvim": case "ed":
-      // Editor scripts (-c, +cmd, stdin) can write every file operand.
+    case "ex": case "vi": case "vim": case "nvim": case "ed": case "view": {
+      // Editor scripts (-c, --cmd, +cmd, piped keys) can write every file operand (`:w!` also under -R), any file a
+      // `:w` command names and the -w/-W keystroke log, and run shell commands through `:!`.
+      for (let i = 0; i < rest.length; i++) {
+        const value = rest[i].value;
+        const script = value === "-c" || value === "--cmd" ? rest[++i]?.value ?? "" : value.startsWith("+") ? value.slice(1) : null;
+        if ((value === "-w" || value === "-W") && rest[i + 1]) add(rest[++i], "write");
+        if (script === null) continue;
+        for (const match of script.matchAll(/(?:^|[|:\s])(?:w|wq|x|xit|write|sav|saveas|up|update|wn|wN|wa|wall|xa|xall|wqa|wqall)!?\s+(?:>>\s*)?([^\s|]+)/gu)) {
+          // The editor expands `~` and environment variables in the file name; a variable is unknown text.
+          add(literalWord(match[1].replace(/^~(?=\/|$)/u, HOME).replace(/\$(?:\{\w+\}|\w+)/gu, UNKNOWN)), "write");
+        }
+        const escape = /(?:^|[|:\s])(?:(?:r|read)\s*|(?:w|write)\s+)?!(.*)$/su.exec(script);
+        if (escape) evaluateShellText(escape[1], ctx);
+      }
       operandsOf(rest, new Set(["-c", "--cmd", "-S", "-u", "-U", "-i", "-T", "-w", "-W", "-t", "-q"])).operands
         .filter((word) => !word.value.startsWith("+")).forEach((word) => add(word, "write"));
       break;
+    }
     case "rm": case "unlink": case "rmdir": case "trash": case "srm":
       operandsOf(rest, new Set()).operands.forEach((word) => add(word, "delete"));
       break;
@@ -1947,7 +2033,7 @@ function evaluateShellText(text, ctx) {
   for (const rule of rawRules) if (rule.regex.test(text)) throw new Block(rule.id, rule.reason);
   const depth = ctx.depth + 1;
   if (depth > maxDepth) throw new Block("shell-nesting-depth");
-  const list = new Parser(text, depth).parseAll();
+  const list = parseScript(text, depth);
   evaluateList(list, { ...ctx, depth });
 }
 
@@ -2571,11 +2657,11 @@ function evaluateCommandNow(command, options) {
   }
   if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return { allowed: false, ruleId: "guard-timeout", reason: TOO_LARGE_REASON };
   const scope = options.scope ?? process.cwd();
-  catRedefined = /(?:^|[^\w.-])(?:cat\s*\(\s*\)|function\s+cat\b|alias\b[^\n;]*\bcat=|hash\b[^\n;]*\bcat\b|enable\b)/u.test(command);
+  catRedefined = false;
   dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
   try {
     for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
-    const list = new Parser(command, 0).parseAll();
+    const list = parseScript(command, 0);
     // A CDPATH from the environment or set in this command redirects bare relative directory names.
     evaluateList(list, { cwd: options.cwd ?? scope, scope, depth: 0, aliases: new Map(), cdpath: Boolean(process.env.CDPATH) || /cdpath/iu.test(command) });
     return { allowed: true, ruleId: null, reason: null };

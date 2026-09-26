@@ -89,7 +89,9 @@ A contract `rollback` refuses while the report-gate or Claude orchestration
 activation snapshot exists, naming the command to run first
 (`report-gate-rollback` / `claude-orchestration-rollback`), so the managed hooks
 never point at deleted files. The snapshot paths come from the feature modules
-themselves.
+themselves. When Codex `hooks.json` changed after guard activation,
+`guardrails-rollback` removes only the managed entry and rewrites the file as
+2-space JSON, so its formatting can differ from the prior bytes.
 
 Product repositories adopt the policy one pull request at a time: delete their
 tests, add `check-no-tests` to pre-commit and CI, and pin 1.33.0.

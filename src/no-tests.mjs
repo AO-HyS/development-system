@@ -1,10 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { TEST_FILE_PATTERN_SOURCES, TEST_FILE_PATTERNS } from "./test-change-policy.mjs";
-
-/** Indexes in TEST_FILE_PATTERN_SOURCES that describe runner configuration rather than test files. */
-const CONFIG_PATTERN_INDEXES = new Set([4, 5, 6, 7, 8]);
+import { TEST_CONFIG_PATTERN_SOURCES, TEST_FILE_PATTERN_SOURCES, TEST_FILE_PATTERNS } from "./test-change-policy.mjs";
 const RUNNER = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b/;
 const CI_TEST = /(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?test\b/;
 const TEST_DEPENDENCIES = new Set([
@@ -39,7 +36,7 @@ export function findAutomatedTests({ root = process.cwd(), allow = [] } = {}) {
     if (index !== -1) {
       findings.push({
         path,
-        kind: CONFIG_PATTERN_INDEXES.has(index) ? "test-config" : "test-file",
+        kind: TEST_CONFIG_PATTERN_SOURCES.has(TEST_FILE_PATTERN_SOURCES[index]) ? "test-config" : "test-file",
         detail: `matches ${TEST_FILE_PATTERN_SOURCES[index]}`,
       });
     }
