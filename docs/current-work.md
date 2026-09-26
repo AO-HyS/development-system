@@ -19,9 +19,21 @@ smoke (45 s, CUA initialized and woke the coordinator; no screenshot because
 Computer Use refuses the Codex app itself). Checks: release:prepare,
 typecheck, roster:check, check-no-tests.
 Round 3 (50 s): no findings, merge.
-Next: merge #111, main PR, v1.34.0 prerelease,
-HOME rollout, Barber pin to production, NutriPlan pin to develop (main waits
-for the redesign).
+Published 2026-09-26: #111 -> develop (bd611d4), #112 develop -> main
+(1ffb3b3, develop fast-forwarded), tag v1.34.0, prerelease "v1.34.0 development
+prerelease" with aohys-development-system-1.34.0.tgz (downloaded asset
+sha512-OGV/Fx…maQ==, identical to the local pack). HOME: setup 1.34.0 needs
+`--source-commit` while `private/` is untracked (otherwise skill sync fails and
+the rollback error "Cannot rollback while a feature activation exists" hides
+the cause); audit, guardrails, orchestration and report gate healthy;
+installed codex-review.mjs equals the source. Products (Astra pin review, 31 s:
+merge): the-barber-central #346 -> develop (2c94553c), #347 -> main (30a27e8e;
+the PR Release job raced the develop Release Train and passed on rerun),
+production Release Train 36262850381 success; nutri-plan #496 squash-merged to
+develop (9201f7af, plumbing commit through the git data API, Release Train
+success); main waits for the redesign.
+Next: nutri-plan main with the redesign; a real Astra computer-use task on a
+product dashboard; setup should report the original skill-sync error.
 Unverified: a real computer-use UI action, SIGKILL escalation on a live Codex
 run, the reservation race.
 
