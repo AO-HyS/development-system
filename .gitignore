@@ -5,3 +5,7 @@ node_modules/
 
 # Private local task artifacts
 .humanlayer/tasks/
+
+# Python bytecode (never part of an artifact)
+__pycache__/
+*.pyc

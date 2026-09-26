@@ -127,7 +127,7 @@ export async function writeTechnicalDocument(options) {
   if (!nonEmptyString(options.home)) throw new Error("Technical document generation requires --home");
   const validated = validatePacket(options.input);
   const packet = { ...validated, evidence: await normalizeDocumentEvidence(isRecord(options.input) ? options.input.evidence : undefined, validated.language === "en" ? "en" : "es") };
-  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.29.0/skills/internal/working-backwards/scripts/t3-reader.mjs");
+  const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.33.0/skills/internal/working-backwards/scripts/t3-reader.mjs");
   const model = buildTechnicalReaderModel({
     presentation: "report",
     ...(packet.language ? { language: packet.language } : {}),

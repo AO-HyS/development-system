@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Spec"
+  short_description: "Implement the authorized spec with focused coordination"
+  default_prompt: "Implement the authorized specification using its current references, bounded ownership, focused checks and requested delivery state."

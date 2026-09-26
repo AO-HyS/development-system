@@ -18,6 +18,14 @@ import { fileURLToPath } from "node:url";
 import { loadPackageSource, packageFileBytes, verifyPackageFile } from "./package-source.mjs";
 import { validateSkillCatalog } from "./skills.mjs";
 import { applyAdvisoryHookTransition, prepareAdvisoryHookTransition, restoreAdvisoryHookTransition } from "./governance-installation.mjs";
+import { reportGateStateRelative } from "./report-gate.mjs";
+import { stateRelative as claudeOrchestrationStateRelative } from "./claude-orchestration.mjs";
+
+/** Feature activations whose snapshot must be rolled back before the contract rollback. */
+const featureActivations = [
+  { state: reportGateStateRelative, command: "report-gate-rollback" },
+  { state: claudeOrchestrationStateRelative, command: "claude-orchestration-rollback" },
+];
 
 /**
  * @typedef {object} Harness
@@ -534,6 +542,16 @@ async function validateSnapshotForRollback(snapshot, currentVersion) {
   }
 }
 
+/**
+ * A transition that removed no managed hooks has nothing to restore, so later hook edits
+ * (guard, report gate, Claude orchestration) must not block a contract rollback.
+ * @param {Snapshot["advisoryHookTransition"]} transition
+ * @returns {transition is NonNullable<Snapshot["advisoryHookTransition"]>}
+ */
+function changesHooks(transition) {
+  return transition !== undefined && (transition.before.hooks !== transition.after.hooks || transition.before.state !== transition.after.state);
+}
+
 /** Validate every backup before changing a destination. @param {string} home @param {Snapshot} snapshot */
 async function prepareSnapshotRestore(home, snapshot) {
   const snapshotRoot = resolve(statePaths(home).snapshots, snapshot.id);
@@ -550,7 +568,7 @@ async function prepareSnapshotRestore(home, snapshot) {
     if (sha256(contents) !== file.sha256) throw new Error(`Rollback backup integrity mismatch: ${file.destination}`);
     backups.set(file.destination, contents);
   }
-  if (snapshot.advisoryHookTransition) {
+  if (changesHooks(snapshot.advisoryHookTransition)) {
     await prepareAdvisoryHookTransition({ home });
     const { after } = snapshot.advisoryHookTransition;
     const currentHooks = await readOptionalHookBytes(home);
@@ -600,7 +618,7 @@ async function restoreSnapshot(home, snapshot) {
     }
   }
 
-  if (snapshot.advisoryHookTransition) {
+  if (changesHooks(snapshot.advisoryHookTransition)) {
     await restoreAdvisoryHookTransition({ home, expected: snapshot.advisoryHookTransition.after, restore: snapshot.advisoryHookTransition.before });
   }
 
@@ -898,6 +916,17 @@ export async function rollbackInstallation(options) {
   await assertNoSymlinkInManagedPath(home, `${stateDirectory}/${manifestFilename}`);
   const state = await readJsonOr(paths.state, /** @type {InstallState | null} */ (null));
   if (!state) throw new Error("Cannot rollback: no installation state exists");
+  const active = [];
+  for (const feature of featureActivations) {
+    await assertNoSymlinkInManagedPath(home, feature.state);
+    if (await readFile(resolve(home, feature.state)).then(() => true, (error) => {
+      if (error?.code === "ENOENT") return false;
+      throw error;
+    })) active.push(feature.command);
+  }
+  if (active.length) {
+    throw new Error(`Cannot rollback while a feature activation exists: run ${active.join(" / ")} first`);
+  }
   const snapshotReference = state.history.at(-1);
   if (!snapshotReference) throw new Error("Cannot rollback: no previous installation snapshot exists");
   const snapshot = await readSnapshot(home, snapshotReference);

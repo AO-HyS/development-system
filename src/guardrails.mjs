@@ -9,16 +9,17 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const guardCatalogVersion = "0.50.0";
-/** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.50.0 engine understands --harness claude. */
+/** Catalog 0.51.0 ships the quote-aware 2.0.0 policy from artifacts/1.33.0/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.51.0";
+/** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.51.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**
  * Codex hooks also cover T3 Codex threads; Claude Code reads its user settings. Both run the
  * canonical engine: the Claude skill variant is a link to it, and links are not managed paths.
  */
 const adapters = /** @type {const} */ ([
-  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec", label: "Codex" },
-  { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor", label: "Claude Code" },
+  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec|apply_patch", label: "Codex" },
+  { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor|Edit|Write|MultiEdit|NotebookEdit", label: "Claude Code" },
 ]);
 
 /** @param {unknown} error */
@@ -77,14 +78,14 @@ function priorRollbackSnapshot(contents) {
   try {
     const state = JSON.parse(contents.toString("utf8"));
     if (![2, 3].includes(state?.schemaVersion) || !state.files) return null;
-    /** @type {Record<string, string | null>} */
+    /** @type {Record<string, {before: string | null, installed: string | null}>} */
     const snapshot = {};
     for (const { key } of adapters) {
       const file = state.files[key];
       if (file === undefined && key !== "codex") continue;
       if (!file || typeof file !== "object" || !("before" in file)) return null;
       if (file.before !== null && typeof file.before !== "string") return null;
-      snapshot[key] = file.before;
+      snapshot[key] = { before: file.before, installed: typeof file.installed === "string" ? file.installed : null };
     }
     return snapshot;
   } catch {
@@ -108,7 +109,8 @@ function shellQuote(value) {
 
 /** @param {string} engine @param {string} harness */
 function managedCommand(engine, harness) {
-  return `${marker} node ${shellQuote(engine)} hook --harness ${harness}`;
+  // `|| exit 2` fails closed: a missing, unreadable or crashing engine blocks instead of allowing.
+  return `${marker} node ${shellQuote(engine)} hook --harness ${harness} || exit 2`;
 }
 
 /** @param {any} entry */
@@ -116,6 +118,17 @@ function isManagedEntry(entry) {
   if (!entry || typeof entry !== "object" || !Array.isArray(entry.hooks)) return false;
   const entryHooks = /** @type {any[]} */ (entry.hooks);
   return entryHooks.some((hook) => hook && typeof hook === "object" && typeof hook.command === "string" && hook.command.includes(marker));
+}
+
+/** @param {Buffer} contents @param {string} label */
+function withoutManagedEntry(contents, label) {
+  const settings = parseObject(contents, label);
+  const preToolUse = /** @type {any[]} */ (Array.isArray(settings.hooks?.PreToolUse) ? settings.hooks.PreToolUse : []);
+  const hooks = { ...settings.hooks, PreToolUse: preToolUse.filter((entry) => !isManagedEntry(entry)) };
+  if (hooks.PreToolUse.length === 0) delete hooks.PreToolUse;
+  const next = { ...settings, hooks };
+  if (Object.keys(hooks).length === 0) delete next.hooks;
+  return Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
 }
 
 /** @param {any} container @param {string} matcher @param {string} command */
@@ -217,6 +230,11 @@ function probe(engine, command) {
   return spawnSync(process.execPath, [engine, "check", "--command", command], { encoding: "utf8" });
 }
 
+/** @param {string} engine @param {unknown} payload */
+function probePayload(engine, payload) {
+  return spawnSync(process.execPath, [engine, "check", "--tool-json", JSON.stringify(payload)], { encoding: "utf8" });
+}
+
 /** @param {{home: string}} options */
 export async function auditGlobalGuardrails({ home }) {
   const resolvedHome = resolve(home);
@@ -228,10 +246,13 @@ export async function auditGlobalGuardrails({ home }) {
   }
   /** @type {Map<string, Set<string>>} */
   const expectedByHarness = new Map();
+  /** Hashes of the current catalogued guard; only that engine understands the 2.0.0 probes. @type {Map<string, string>} */
+  const currentByHarness = new Map();
   try {
     for (const version of [guardCatalogVersion, legacyCodexCatalogVersion]) {
       for (const [harness, hash] of await guardHashes(version)) {
         if (version === legacyCodexCatalogVersion && harness !== "codex") continue;
+        if (version === guardCatalogVersion) currentByHarness.set(harness, hash);
         expectedByHarness.set(harness, (expectedByHarness.get(harness) ?? new Set()).add(hash));
       }
     }
@@ -241,9 +262,12 @@ export async function auditGlobalGuardrails({ home }) {
   const audited = await activeAdapters(managed);
   for (const adapter of audited) {
     try { await assertEngine(adapter.enginePath); } catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
+    /** @type {string | null} */
+    let skillHash = null;
     try {
       const directory = dirname(dirname(adapter.enginePath));
-      if (await existsFile(directory) && !expectedByHarness.get(adapter.key)?.has(await directoryHash(directory))) {
+      if (await existsFile(directory)) skillHash = await directoryHash(directory);
+      if (skillHash !== null && !expectedByHarness.get(adapter.key)?.has(skillHash)) {
         problems.push(`${adapter.key} guard skill bytes do not match a catalogued guard version`);
       }
     } catch (error) {
@@ -256,10 +280,15 @@ export async function auditGlobalGuardrails({ home }) {
       problems.push(`${adapter.label} managed PreToolUse hook is missing or drifted`);
     }
     if (await readOptional(adapter.enginePath)) {
-      const safe = probe(adapter.enginePath, "git status --short");
+      const current = skillHash !== null && skillHash === currentByHarness.get(adapter.key);
+      const safe = probe(adapter.enginePath, current ? 'grep -n "x" f 2>/dev/null | head' : "git status --short");
       const blocked = probe(adapter.enginePath, "git reset --hard");
       if (safe.status !== 0) problems.push(`${adapter.label} guard did not allow the safe probe`);
       if (blocked.status !== 2) problems.push(`${adapter.label} guard did not block the destructive probe`);
+      if (current) {
+        const testWrite = probePayload(adapter.enginePath, { tool_name: "Write", cwd: resolve(resolvedHome, "guard-probe"), tool_input: { file_path: "src/a.test.ts", content: "" } });
+        if (testWrite.status !== 2) problems.push(`${adapter.label} guard did not block the test-file write probe`);
+      }
     }
   }
   return {
@@ -302,8 +331,16 @@ export async function enableGlobalGuardrails({ home }) {
   for (const adapter of managedAdapters) {
     const current = /** @type {Buffer | null} */ (before[adapter.key]);
     const prior = priorSnapshot && adapter.key in priorSnapshot ? priorSnapshot[adapter.key] : undefined;
+    const currentBase64 = current === null ? null : current.toString("base64");
+    // Keep the first activation's bytes only while nobody changed the config since; otherwise
+    // restore the current config minus the managed entry, so hooks added later survive rollback.
+    const priorBefore = prior !== undefined && prior.installed === currentBase64
+      ? prior.before
+      : prior === undefined || current === null
+        ? currentBase64
+        : withoutManagedEntry(current, `${adapter.label} hooks`).toString("base64");
     files[adapter.key] = {
-      before: prior !== undefined ? prior : current === null ? null : current.toString("base64"),
+      before: priorBefore,
       installed: (installed[adapter.key] ?? current ?? Buffer.alloc(0)).toString("base64"),
     };
   }
@@ -363,19 +400,12 @@ export async function rollbackGlobalGuardrails({ home }) {
     const current = await readOptional(path);
     if (current !== null && current.equals(installed)) {
       entries.push({ path, before });
-    } else if (key === "claude" && current === null) {
-      // Settings were removed after activation, so the managed hook is already gone.
-    } else if (key === "claude") {
-      // Claude Code rewrites its user settings (plugins, preferences); remove only the managed hook.
-      const settings = parseObject(current, "Claude Code settings");
-      const preToolUse = /** @type {any[]} */ (Array.isArray(settings.hooks?.PreToolUse) ? settings.hooks.PreToolUse : []);
-      const hooks = { ...settings.hooks, PreToolUse: preToolUse.filter((entry) => !isManagedEntry(entry)) };
-      if (hooks.PreToolUse.length === 0) delete hooks.PreToolUse;
-      const next = { ...settings, hooks };
-      if (Object.keys(hooks).length === 0) delete next.hooks;
-      entries.push({ path, before: Buffer.from(`${JSON.stringify(next, null, 2)}\n`) });
+    } else if (current === null) {
+      // The configuration was removed after activation, so the managed hook is already gone.
     } else {
-      throw new Error(`Refusing guardrail rollback because ${key} configuration changed after activation`);
+      // Claude Code rewrites its user settings and other features (report gate, orchestration)
+      // add their own hooks after activation; remove only the managed guard hook.
+      entries.push({ path, before: withoutManagedEntry(current, key === "claude" ? "Claude Code settings" : "Codex hooks") });
     }
   }
   for (const { path, before } of entries) {

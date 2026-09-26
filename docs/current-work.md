@@ -1,4 +1,203 @@
-# Current work — Claude Code orchestration roster (Development System 1.32.0)
+# Current work — Development System 1.33.0 (less friction, real verification, reports that launch)
+
+Status 2026-09-25: approved ("hazlo de golpe … llévalo a producción" for
+development-system, the-barber-central and nutri-plan; other repos optional).
+Done (uncommitted, checks passed): P2 check-no-tests + 102 test files removed;
+P4 roster Sonnet low/no Haiku + run-report $15.51; P5 contract text + AGENTS.md.
+Interrupted by the session limit (2026-09-25 22:50) and resumed 2026-09-26.
+Done 2026-09-26 (uncommitted): P1/P1b quote-aware guard 2.0.0 (replay 328
+entries, 0 mismatches); P3 report gate (Codex + Claude Stop) + CLI entry
+(`document` works from src/cli.mjs); P6 reader (table fold, Preguntar) +
+questionnaire on the reader frame; P7 builder 1330 (`--check` ok, 88 artifacts,
+catalog 0.51.0 with 103 skills, tdd removed); typecheck, validate-repository
+and check-no-tests pass. Browser QA: mobile pr-lens maps too wide at 390px, one
+h2 without ask button. V1: 7 Major reader findings, fix slice running.
+P8 (/tmp/verify1330.py, isolated /tmp/ds1330): 43/46; the 3 failures were
+rollback bugs, fixed in src/guardrails.mjs (Codex rollback removes only the
+managed entry) and src/core.mjs (no-op advisory transition no longer blocks
+`rollback`); rerun pending after the reader rebuild. Headless Claude needs the
+real HOME (auth) and Codex is out of quota until 2026-09-29, so both move to the
+live observation after the HOME rollout. Codex asks to re-trust changed hooks
+(hooks.state trusted_hash in ~/.codex/config.toml). P8 rerun after the reader
+fix: 45/46, the last one a harness artifact (1.32.0 CLI audit healthy).
+R1 guard security review: 1 Critical, 8 High, 6 Medium, 2 Low (14 regressions
+vs 1.31.0; findings in /tmp/r1-1330/findings.md). G1 fix slice running (all
+fixed, hook ends with `|| exit 2`), then a fresh guard re-review. V2: all
+V1 Majors fixed (Minors deferred to 1.34: mobile map label size, questionnaire
+h1 rule width, fold button colors). R2: B1 pycache in catalog hash, M1-M4,
+N1-N6; W2 fixed B1/M1-M3/N1-N6 (13 skills re-pointed, upstream implement,
+diagnosing-bugs, ask-matt, codebase-design + implement-spec,
+drive-development-flow, impeccable copies without test promises; stop gate
+counts delegated `Owned paths:` writers; rollback refuses while report-gate or
+claude-orchestration is active). M4 done (guardrails re-enable keeps prior
+`before` only when current == prior installed, else current minus the managed
+entry) and the managed hook ends with `|| exit 2`; observed in an isolated HOME
+(/tmp/m4-observe.mjs: later hooks survive rollback, missing engine exits 2).
+G1 stopped partway (safety classifier); split into G2a and G2b. G2a done: C1,
+H1-H7, M6 (3 s clock, 64 KB, 512 stages, ruleId guard-timeout); 50/50 part-A
+probes blocked through gated runners (/tmp/g2-1330), 18 twins allowed, replay 0
+mismatches, typecheck ok. G2b halted (safety classifier on dense guard
+packets), so the coordinator did the rest directly: M1 (rule
+shell-arithmetic-injection), M3 (abbreviated git long options), M4 (git config
+that makes commands destructive), M5 (guard-config-write writers, project
+.claude/.codex settings, cd/pushd/popd tracking, unknown-directory tails), H8
+(interpreter string literals scanned as shell), L1/L2, saved aliases and hash.
+cw4 (array `cmd`) is inspected as argv; nested or mixed arrays fail closed.
+Verdict-only checks in /tmp/g2-1330 (git-alias, arith, write, interp, array,
+twins, extra) report 0 unexpected; gated runners: every probe blocked, no
+effect; perf ~30 ms on 360 KB. Private corpus rebuilt from the recorded probes
+(PROBE_RECORD): 631 entries, replay 0 mismatches. Builder --write/--check,
+roster:check, check-no-tests and typecheck pass. Fresh guard security
+re-review (reviewer, Opus high) found B1-B4, S1-S3 and M-a; all fixed by the
+coordinator 2026-09-26: runner arguments scanned at command positions, chmod
+on ancestors, glob targets (linear matcher, brace/extglob/zsh groups and
+qualifiers, dotglob), cd tracking (conditional, background, branch, pipeline,
+missing directory, CDPATH, env -C, sudo -D), interpreter programs from stdin
+(`node -`, `awk -f -`, here-strings), code fragments and lone shell strings
+with a process API, project .git/config protected, editors (ex/vim/ed) as
+writers, and `$(cat <<'EOF' … EOF)` read as literal text (commit messages
+pass). Accepted: .vscode/settings.json (M-b/M-c). Probe files (review p1-p3,
+p3s, rounds 3-5, 194 probes): every attack blocked, every ordinary command
+allowed. Corpus 816 entries (399 allow, 417 block), replay 0 mismatches;
+perf ≤55 ms on 60 KB inputs; gated runners block everything with no effect;
+builder --check, typecheck, roster:check, check-no-tests and
+/tmp/verify1330.py 46/46 pass. PR #108 (develop) review found M1 (`[^x]`
+glob bypass), M2 (words such as "enable" or "hash … cat" in commit heredoc
+text made it dynamic) and M3 (quadratic bracket/brace scan, 17 s); fixed on
+the branch: bracket expressions kept in the broad glob, `cat` redefinition
+detected from parsed commands (function, alias, hash, enable, PATH), linear
+bracket/brace/group precomputation (≤48 ms at 60,000 characters). Minors:
+editors also write -w/-W logs and `:w`/`:sav` files from -c/--cmd/+cmd
+scripts and `:!` runs as shell; no-tests config kinds come from
+TEST_CONFIG_PATTERN_SOURCES; SKILL.md budget, cat and rollback wording; ADR
+0060 notes the 2-space Codex rollback rewrite. Round 6 (28 probes) as
+expected; corpus 844 (407 allow, 437 block), replay 0 mismatches; builder
+--check, typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
+Re-review of 1530018 ("do not merge"): the `#` level loss after a group with
+`/` and the new `cat` wrapper bypasses (`command -p hash`, `noglob`, `trap`,
+zsh `function a cat`, `functions[cat]=`, `getopts o PATH`, `set -A path`)
+were regressions; quoted glob closers, editor spellings (`-cw`, `w!~`,
+`++enc`, `exe "w …"`, `%!`, `writefile()`, ed heredocs, piped input) and the
+`export X="$(date)"`/`printf '%s' "$x"` false positive were open. Fixed on the
+branch: repeated slash groups read as kept or absent (first four), quoted or
+escaped pattern characters read broadly, `changesCat` skips precommands and
+checks trap actions, name-taking builtins and zsh tables, editor scripts from
+heredocs are read, explicit TEST_CONFIG_PATTERN_SOURCES. Round 7 (72 probes):
+the committed engine allowed 50 attacks and blocked 3 ordinary commands; now
+all as expected, earlier 222 review probes unchanged. Corpus 916 (428 allow,
+488 block), replay 0 mismatches; ≤118 ms on 60 KB inputs; builder --check,
+typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
+Third review of 0befc84 (do not merge): a fifth repeated slash group was
+allowed (regression), editor writes after an address (`%w`, `1,$w`, `.w`, ed
+`W`/`f`) and `BASH_CMDS`/nameref/option-cluster PATH changes passed, and
+substitution or typed editor text and fully quoted `(…)` names were false
+positives. Fixed on the branch: the fifth group onward reads as any path, an
+editor scanner (addresses, `:g`, `:s` and typed text as data, all
+abbreviations, `drop`/`args`/`redir`/`mksession`/`hardcopy`, `:cd`, `%`/`#`,
+backticks, program options, `:source`/`:make`/`:grep`, visual-editor stdin
+keys blocked), `autoload`/`functions -c`, `${PATH:=…}` and arithmetic PATH,
+and an `opener` flag so quoted pattern characters stay broad while fully quoted
+names are literal. Round 8 (117 probes) against 0befc84: 49 attacks now
+blocked, 7 false positives now allowed, 61 unchanged; the 293 earlier probes
+are unchanged. Corpus 916 with 0 mismatches; ≤78 ms on 60 KB editor inputs;
+builder --check, typecheck, roster:check, check-no-tests, verify1330.py 46/46.
+Fourth review of ddc8eaa (do not merge): typed text after `a`/`i`/`c` hid the
+next lines inside `:g`, after an address the editor rejects, `nomodifiable` or
+`:if 0` (observed with real vim 9.1 and macOS ed: vim runs them as commands, ed
+exits at the first error except inside `g`). Also `+cmd` with escaped spaces,
+`*`/`\/`/mid-line addresses, and `$[…]`/subscript/`[[` arithmetic PATH. Fixed:
+typed text is data only in ed outside `g`/`G`; each `|` command gets its own
+address; arithmetic checks assignment (so `${#path}` and `set inde=` allow).
+Round 9 (51 probes) vs ddc8eaa: 27 attacks now blocked, 3 FPs now allowed;
+earlier rounds unchanged except w6 (vim append text, now a documented FP).
+Corpus 916 0 mismatches; ≤84 ms; builder, typecheck, roster, check-no-tests,
+verify1330.py 46/46.
+Fifth review of cd5282f (do not merge): the `+cmd` body was skipped (`e +w!\
+FILE x`), assignment-only arithmetic missed quoted, `$(…)`, `${n:-PATH}`,
+backtick, nested-subscript and continued names, `shcf`/`shq` and a cleared
+`shellcmdflag` were allowed, marks `'(`/`'{` and a bare `e + FILE` hid files.
+Fixed: `+cmd` bodies are read as editor commands; arithmetic counts when it
+assigns and names PATH or holds `$`, a quote, backtick or backslash (numbers
+from `${#x}`/`$#` excepted), also in variable values; `$[…]` is checked where
+the parser reads it, so a commit message mentioning it passes; `${o:+--$o}`
+passes (only subscripts and offsets are arithmetic); program options block even
+when cleared. Round 10 (73 probes) vs cd5282f: 34 now blocked (33 attacks and
+the conservative `(( n = $x ))`), 6 FPs now allowed; all earlier rounds unchanged. Corpus 916 0 mismatches; ≤131 ms
+(linear) on 45–60 KB inputs; builder, typecheck, roster, check-no-tests,
+verify1330.py 46/46.
+Sixth review of 55a2867 (do not merge): a `+cmd` with no file after it was
+never read (`e +w\ FILE`), a named value blocked on any PATH word
+(`NODE_OPTIONS=--require=./path/x.js`), and escaped spaces started editor
+matches (859 ms at 50 KB). Fixed: the last `+cmd` may end the command and the
+file is optional; a variable value counts only when it assigns or steps a PATH
+name; an escaped space does not start a command. `$` arithmetic next to a commit
+heredoc (`for ((i=0; i<$n; i++))`) stays a documented false positive. Round 11
+(56 probes) vs 55a2867: 9 attacks now blocked, 3 FPs now allowed; all earlier
+rounds unchanged. Corpus 916 0 mismatches; ≤147 ms (linear) on 45–60 KB inputs;
+builder, typecheck, roster, check-no-tests, verify1330.py 46/46.
+Seventh review of 91f9ab7 (do not merge): the escaped-space rule hid commands
+that vim unescapes (`exe "sil\ w FILE"`, `exe "…\|w FILE"`, `cpo+=b` maps), and
+a literal array element was never read (`a=('PATH=5')`). Fixed: editorFiles also
+reads the unescaped text; array elements get the named value check. Round 12 (42
+probes) vs 91f9ab7: exactly those 8 now blocked; all earlier rounds unchanged.
+Corpus 916 0 mismatches; ≤185 ms (linear); builder, typecheck, roster,
+check-no-tests, verify1330.py 46/46.
+Eighth review of 23dab52 (do not merge): both readings of a nested `+cmd`
+recurse, so 13 levels took 5.7 s. Fixed: `+cmd` nesting is bounded by
+maxSubstitutionDepth (`shell-nesting-depth`), a body is read once per line, and
+editorScript checks the deadline per line. Nested shapes now block in ~31 ms.
+Round 13 (33 probes) vs 23dab52: only nest5/nest8 changed (now blocked); all
+earlier rounds unchanged. Corpus 916 0 mismatches; ≤119 ms; builder, typecheck,
+roster, check-no-tests, verify1330.py 46/46.
+Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
+products.
+Barber writer done: 24 features in config/product-verification-feature-map.json,
+validate-skill/check-route-inventory/check-repo-rules pass, `plan --list` added. Next: guard re-review,
+develop, HOME rollout, main + v1.33.0 prerelease, product rollout. Barber #343
+and #342 are merged to develop (tests already removed there); barber branch
+chore/development-system-1.33.0 (from 79242129) moves the Feature Map to
+config/product-verification-feature-map.json and expands it (writer running),
+pin 1.33.0 after the release. nutri-plan: the local redesign branch
+codex/aoh-168-composite-attestation already deletes 845 test paths and the
+vitest scripts, so no separate test-removal PR; develop only gets the 1.33.0
+pin PR (like #494), built without touching that checkout.
+Root /Users/corrortiz/Documents/AO/development-system, branch
+feat/development-system-1.33.0 from develop 2192eb4. Plan document:
+~/.development-system/private/documents/plan-1-33-0-repos-sin-tests-y-1-34-0-49aac13c26523d94.{md,html}.
+
+This thread owns Development System releases; the nutri-plan thread only does
+its private phase-0 prompt (finding A). Settled user decisions (2026-09-25): no
+automated tests anywhere (delete and block them); real verification (computer
+use, browser, verification CLI) is always part of the task; executable
+`Done when:`; optional `Outcome:`; autonomous develop merges after real
+verification plus review; no evals; no Haiku anywhere (Explore, code-mapper,
+docs-researcher, mechanical-worker move to Sonnet without thinking, mechanical
+work only); one-way/two-way stays a single S5 line (reversible: agent decides and
+records; data, production, money, customers: stop and ask). Plan v2 document:
+plan-1-33-0-repos-sin-tests-y-1-34-0-4bcf53d31d6f56a4.
+
+Slices for 1.33.0 (disjoint owned paths):
+- S1 Bash guard: quote-aware, allow harmless redirections/`$?`, block writing
+  test files (reuse src/test-change-policy.mjs); security review required.
+- S2 Roster: drop the Haiku tier, Sonnet (lowest effort, no thinking if a
+  per-role setting exists) for the four mechanical roles, stricter code-mapper,
+  Jev planner examples, ~/.claude/rules/orchestration.md.
+- S3 run-report.py: last-chunk usage, session by project dir ($15.51 on 4b29b8ea).
+- S4 Report launch: closing step in orchestrate-work/coding-orchestration plus
+  a once-only Stop hook; concise packet with a gardener line.
+- S5 Contract/global instructions (no tests, real verification, gardener ladder).
+- S6 Delete this repo's automated tests; verify = roster:check + typecheck +
+  validate:repository + builder --check; keep the isolated install scenario.
+
+Next: product repos (eteria, casa-roca, the-barber-central with feature map and
+verification CLI; nutri-plan after its redesign), then 1.34.0 (readable report
+template: fewer tables, diagrams, visible Preguntar, same reader for grill).
+
+Observed on the way: `node src/cli.mjs document` exits silently; use
+bin/development-system. The Bash guard blocked `$?` and `2>/dev/null` reads in
+this session (evidence for S1).
+
+## Previous — Claude Code orchestration roster (Development System 1.32.0)
 
 Status 2026-09-25: 1.32.0 is on main, released and installed; product repository
 adoption and promotion are tracked in "Release 1.32.0" below; the sections
