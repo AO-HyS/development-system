@@ -87,6 +87,20 @@ the committed engine allowed 50 attacks and blocked 3 ordinary commands; now
 all as expected, earlier 222 review probes unchanged. Corpus 916 (428 allow,
 488 block), replay 0 mismatches; ≤118 ms on 60 KB inputs; builder --check,
 typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
+Third review of 0befc84 (do not merge): a fifth repeated slash group was
+allowed (regression), editor writes after an address (`%w`, `1,$w`, `.w`, ed
+`W`/`f`) and `BASH_CMDS`/nameref/option-cluster PATH changes passed, and
+substitution or typed editor text and fully quoted `(…)` names were false
+positives. Fixed on the branch: the fifth group onward reads as any path, an
+editor scanner (addresses, `:g`, `:s` and typed text as data, all
+abbreviations, `drop`/`args`/`redir`/`mksession`/`hardcopy`, `:cd`, `%`/`#`,
+backticks, program options, `:source`/`:make`/`:grep`, visual-editor stdin
+keys blocked), `autoload`/`functions -c`, `${PATH:=…}` and arithmetic PATH,
+and an `opener` flag so quoted pattern characters stay broad while fully quoted
+names are literal. Round 8 (117 probes) against 0befc84: 49 attacks now
+blocked, 7 false positives now allowed, 61 unchanged; the 293 earlier probes
+are unchanged. Corpus 916 with 0 mismatches; ≤78 ms on 60 KB editor inputs;
+builder --check, typecheck, roster:check, check-no-tests, verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,
