@@ -1809,23 +1809,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.5.0/skills/internal/posthog-observability"
+        "path": "artifacts/1.34.1/skills/internal/posthog-observability"
       },
       "variants": [
         {
           "id": "posthog-observability.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.5.0/skills/internal/posthog-observability",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/posthog-observability",
           "destination": ".agents/skills/posthog-observability",
-          "folderSha256": "cdc99ea49bc79d6298bfc3ec3ec5749f53a370a257ddfd331f5e1e514d33cbf3",
+          "folderSha256": "2886472b4e790e057bca1021473ecb14f08610c7ed5918c144c6478bece00d6a",
           "expectedMirrorOf": null
         },
         {
           "id": "posthog-observability.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.5.0/skills/internal/posthog-observability",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/posthog-observability",
           "destination": ".claude/skills/posthog-observability",
-          "folderSha256": "cdc99ea49bc79d6298bfc3ec3ec5749f53a370a257ddfd331f5e1e514d33cbf3",
+          "folderSha256": "2886472b4e790e057bca1021473ecb14f08610c7ed5918c144c6478bece00d6a",
           "expectedMirrorOf": "posthog-observability.codex",
           "install": "symlink"
         }
