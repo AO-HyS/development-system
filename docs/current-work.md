@@ -1,6 +1,8 @@
 # Current work — Development System 1.33.0 (less friction, real verification, reports that launch)
 
-Status 2026-09-25: approved ("hazlo de golpe … llévalo a producción" for
+Status 2026-09-26: v1.33.0 published (prerelease from main) and rolled out to
+HOME; the-barber-central and nutri-plan pins follow (see "Published" below).
+Approved 2026-09-25 ("hazlo de golpe … llévalo a producción" for
 development-system, the-barber-central and nutri-plan; other repos optional).
 Done (uncommitted, checks passed): P2 check-no-tests + 102 test files removed;
 P4 roster Sonnet low/no Haiku + run-report $15.51; P5 contract text + AGENTS.md.
@@ -149,8 +151,34 @@ editorScript checks the deadline per line. Nested shapes now block in ~31 ms.
 Round 13 (33 probes) vs 23dab52: only nest5/nest8 changed (now blocked); all
 earlier rounds unchanged. Corpus 916 0 mismatches; ≤119 ms; builder, typecheck,
 roster, check-no-tests, verify1330.py 46/46.
-Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
-products.
+Ninth review of 444166e: merge. PR #108 merged to develop (1acfd3a).
+HOME rollout from develop (backup first): setup, guardrails, orchestration and
+report gate audits healthy; installed engine = repository bytes, corpus replay
+0 mismatches; 0 Haiku agents; installed run-report.py gives $15.51 on 4b29b8ea
+(nutri-plan project). `audit-skills 0.51.0` stays "invalid" only for missing
+live evidence (bound to the old catalog and commit; ADR 0003); structure is
+healthy (139 identical mirrors, no broken links). The live probe
+(scripts/probe-harness-skills.mjs) needs Codex, out of quota until 2026-09-29.
+Codex will ask to re-trust the changed hooks (user action).
+Published 2026-09-26: #109 develop -> main (52370ee, develop fast-forwarded),
+tag v1.33.0, prerelease "v1.33.0 development prerelease" with
+aohys-development-system-1.33.0.tgz (downloaded asset sha512-I7NHGyMh…BqBw==,
+identical to the local pack).
+Products (independent review: merge, 5 minors): the-barber-central #344 ->
+develop (c2b4262f; pin, feature map in config, check-no-tests in
+lint:architecture; the feature-map commit cba2a6f4 was made with --no-verify by
+mistake, full-tree checks cover it) and #345 -> main (c1183234, also carries
+#343 and #342 WhatsApp template provisioning); production Release Train
+36246201994 success (Convex production functions, production workers, provider
+and production URL smoke, final attestation). nutri-plan #495 squash-merged to
+develop (bae3d3ff, Release Train success; branch created through the git data
+API with the local plumbing tree d913e81, as for #494); develop still has 842
+test files, which the redesign branch deletes; main waits for the redesign.
+Barber follow-ups (minor): require the six core feature IDs again
+(scripts/verification/lib.mjs), `qa` only lists selected features, stale
+`.factory` mutationScope entry, lockfile tarball without integrity.
+Next: eteria and casa-roca pins (optional), live skill probe when Codex quota
+returns, 1.34.0.
 Barber writer done: 24 features in config/product-verification-feature-map.json,
 validate-skill/check-route-inventory/check-repo-rules pass, `plan --list` added. Next: guard re-review,
 develop, HOME rollout, main + v1.33.0 prerelease, product rollout. Barber #343
