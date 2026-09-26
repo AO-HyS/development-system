@@ -115,18 +115,45 @@ function parseScript(text, depth) {
   return new Parser(text, depth).parseAll();
 }
 
-/** Whether a simple command changes what `cat` runs: an alias, hash or enable naming cat, or a PATH assignment. @param {{ assigns: Word[], words: Word[] }} node */
+/** PATH, zsh `path`, and the zsh tables that define functions, commands and aliases by name (`functions[cat]=…`). */
+const CAT_LOOKUP_NAMES = /^(?:path|(?:dis_)?(?:functions|commands|aliases|galiases|saliases|builtins))$/iu;
+/** Precommand words that run the next word as the command (`command -p`, `builtin --`, zsh `noglob`, `nocorrect`, `-`). */
+const PRECOMMANDS = new Set(["builtin", "command", "noglob", "nocorrect", "-"]);
+
+/**
+ * Whether a simple command changes what `cat` runs: an alias, hash or enable naming cat, a PATH assignment (also through a
+ * name-taking builtin such as `read`, `getopts` or `printf -v`), a zsh function table entry, or a trap action that can.
+ * @param {{ assigns: Word[], words: Word[] }} node
+ */
 function changesCat(node) {
-  if (node.assigns.some((word) => /^path$/iu.test(word.name ?? ""))) return true;
+  if (node.assigns.some((word) => CAT_LOOKUP_NAMES.test(word.name ?? ""))) return true;
   let words = node.words;
-  while (words[0]?.literal && (words[0].value === "builtin" || words[0].value === "command")) words = words.slice(1);
+  while (words[0]?.literal && PRECOMMANDS.has(words[0].value)) {
+    words = words.slice(1);
+    while (words[0]?.literal && words[0].value.startsWith("-") && words.length > 1) words = words.slice(1);
+  }
   const [head, ...rest] = words;
   if (!head?.literal) return false;
-  if (["alias", "hash", "enable"].includes(head.value)) return rest.some((word) => !word.literal || /(?:^|[^\w.-])cat\b/u.test(word.value));
-  if (["export", "declare", "typeset", "readonly", "local", "read", "mapfile", "printf"].includes(head.value)) {
-    return rest.some((word) => !word.literal || /^path(?:\+?=|$)/iu.test(word.value));
+  /** A word naming a variable: a dynamic name, or PATH or a function table, alone or assigned. @param {Word | undefined} word */
+  const namesLookup = (word) => {
+    if (!word) return false;
+    const name = /^([A-Za-z_]\w*)(?:\[[^\]]*\])?(?:\+?=|$)/u.exec(word.value)?.[1];
+    return name === undefined ? !word.literal && !word.value.startsWith("-") : CAT_LOOKUP_NAMES.test(name);
+  };
+  switch (head.value) {
+    case "alias": case "hash": case "enable": case "trap":
+      return rest.some((word) => !word.literal || /(?:^|[^\w.-])cat\b|path/iu.test(word.value));
+    case "printf": case "print": case "wait": case "set": {
+      // Only the value of -v (printf, print), -p (wait) or -A (zsh set) names a variable.
+      const option = { printf: "-v", print: "-v", wait: "-p", set: "-A" }[head.value];
+      return rest.some((word, k) => (word.value === option || (head.value === "set" && word.value === "+A") ? namesLookup(rest[k + 1])
+        : head.value !== "set" && word.value.startsWith(option) && word.value.length > 2 && namesLookup({ ...word, value: word.value.slice(2) })));
+    }
+    case "test": case "[":
+      return false;
+    default:
+      return NAME_BUILTINS.has(head.value) && rest.some(namesLookup);
   }
-  return false;
 }
 
 /** Output of a substitution that is only `cat` reading a quoted (literal) heredoc, or null. @param {any} list */
@@ -351,9 +378,13 @@ class Parser {
       if (keyword === "function") {
         this.i += keyword.length;
         this.skipBlanks();
-        const name = this.parseWord(true);
-        if (!name.literal || name.value === "cat") catTouched = true;
-        this.skipBlanks();
+        // zsh defines every name before the body: `function a cat { … }`.
+        for (let start = -1; start !== this.i && this.i < this.s.length && (start === -1 || !/[{(;&|\n]/u.test(this.s[this.i]));) {
+          start = this.i;
+          const name = this.parseWord(true);
+          if (!name.literal || name.value === "cat") catTouched = true;
+          this.skipBlanks();
+        }
         if (/^\(\s*\)/u.test(this.s.slice(this.i, this.i + 8))) this.i = this.s.indexOf(")", this.i) + 1;
         continue;
       }
@@ -979,7 +1010,7 @@ function protectedFiles(directory) {
  * @param {string | null} absolute @param {string} text @param {"write" | "delete" | "tree"} kind @param {typeof protectedTargets} targets
  */
 function protectedGlob(absolute, text, kind, targets) {
-  const patterns = (absolute === null ? [text] : globForms(absolute)).map((form) => fold(broadGlob(form)).split(sep)
+  const patterns = (absolute === null ? [text] : globForms(absolute)).flatMap(broadGlob).map((form) => fold(form).split(sep)
     .filter((part, k, parts) => part && part !== "." && !(part === "**" && parts[k - 1] === "**")).map(globSegment));
   for (const pattern of patterns) {
     for (const target of targets) {
@@ -1001,14 +1032,15 @@ function protectedGlob(absolute, text, kind, targets) {
 /** The glob and its form with the literal directory prefix resolved through symlinks. @param {string} absolute */
 function globForms(absolute) {
   const parts = absolute.split(sep);
-  const first = parts.findIndex((part) => /[*?[{}()^#~]/u.test(part));
+  const first = parts.findIndex((part) => /[*?[{}()^#~\u0002]/u.test(part));
   if (first <= 1) return [absolute];
   return [...new Set([absolute, join(canonicalPath(parts.slice(0, first).join(sep)), ...parts.slice(first))])];
 }
 
 /**
  * The glob with every brace expansion, extglob or zsh group or qualifier and zsh operator (^ # ~) replaced by ANY_TEXT, which
- * matches any text including a leading dot; a region that spans `/` becomes `ANY/**\/ANY`. @param {string} text
+ * matches any text including a leading dot; a region that spans `/` becomes `ANY/**\/ANY`. A repeated region that spans `/`
+ * also yields the form without it. @param {string} text @returns {string[]}
  */
 function broadGlob(text) {
   const chars = [...text];
@@ -1021,6 +1053,9 @@ function broadGlob(text) {
   // Each element is one pattern unit (a character, a bracket expression or ANY_TEXT), so `x#` can drop the unit before it.
   /** @type {string[]} */
   const out = [];
+  // Units `x#` repeats that span `/`: zero copies drop a directory level, more copies add some.
+  /** @type {Set<number>} */
+  const levels = new Set();
   for (let i = 0; i < n; i++) {
     const c = chars[i];
     const close = c === "{" ? braces[i] : c === "(" ? groups[i] : -1;
@@ -1044,11 +1079,20 @@ function broadGlob(text) {
       out.push(ANY_TEXT);
       i = nextSlash[i] - 1;
     } else if (c === "#") {
-      out.pop();
-      out.push(ANY_TEXT);
+      const unit = out.pop() ?? "";
+      out.push(unit.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT);
+      if (unit.includes("/")) levels.add(out.length - 1);
     } else out.push(c);
   }
-  return out.join("");
+  // Each of the first four repeated levels is kept or dropped on its own; later ones stay kept.
+  const choices = [...levels].slice(0, 4);
+  /** @type {string[]} */
+  const forms = [];
+  for (let mask = 0; mask < 1 << choices.length; mask++) {
+    const drop = new Set(choices.filter((_, bit) => mask & (1 << bit)));
+    forms.push(out.filter((_, k) => !drop.has(k)).join(""));
+  }
+  return forms;
 }
 
 /** For each opener the index of its closer (one kind of pair, nested), or -1, in one pass. @param {string[]} chars @param {string} open @param {string} close */
@@ -1197,6 +1241,28 @@ function insideScope(scope, absolute) {
   return null;
 }
 
+/**
+ * Quotes or escapes inside a glob (`{"}",h}`, `[\h]`, `(h|[")"])`) and a bracket holding brace or group text (`[{s],x}`) pair
+ * differently in the shell than in broadGlob, so such a target is also read with its first opener to its last closer as
+ * ANY_TEXT. @param {Word} word @param {string} text @returns {string | null}
+ */
+function looseGlob(word, text) {
+  const first = text.search(/[[{(]/u);
+  if (first < 0) return null;
+  let mixed = /["'\\]/u.test(word.raw ?? "");
+  for (let k = first, open = false; !mixed && k < text.length; k++) {
+    if (text[k] === "[") open = true;
+    else if (text[k] === "]" || text[k] === "/") open = false;
+    else if (open && "{}(),".includes(text[k])) mixed = true;
+  }
+  if (!mixed) return null;
+  let last = text.length - 1;
+  while (last > first && !"]})".includes(text[last])) last--;
+  if (last === first) return null;
+  const region = text.slice(first, last + 1);
+  return `${text.slice(0, first)}${region.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT}${text.slice(last + 1)}`;
+}
+
 /** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx */
 function checkTarget(word, kind, ctx) {
   if (!word || !word.value) return;
@@ -1206,8 +1272,10 @@ function checkTarget(word, kind, ctx) {
   const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
   const unknown = word.value.lastIndexOf(UNKNOWN);
   const tail = unknown >= 0 ? word.value.slice(unknown + 1) : ctx.cwd === null && !isAbsolute(text) ? text : null;
+  const loose = looseGlob(word, text);
   const hit = protectedMatch(absolute, kind, targets) ?? (tail === null ? null : protectedTail(tail, kind, targets))
-    ?? (word.glob ? protectedGlob(ctx.cwd === null && !isAbsolute(text) ? null : absolute, text, kind, targets) : null);
+    ?? (word.glob ? protectedGlob(ctx.cwd === null && !isAbsolute(text) ? null : absolute, text, kind, targets) : null)
+    ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   if (kind !== "write") return;
   const rel = insideScope(ctx.scope, absolute);
@@ -1722,11 +1790,18 @@ function remoteNames(rest, add) {
   }
 }
 
+/** An editor command that writes or opens a named file (`:w FILE`, `:w!FILE`, `:sav ++enc=x FILE`, `e FILE`, `exe "w FILE"`). */
+const EDITOR_FILE_COMMAND = /(?:^|[|:\s"'])(?:w|wq|x|xit|write|sav|saveas|up|update|wn|wN|wa|wall|xa|xall|wqa|wqall|e|edit|sp|split|vs|vsplit|new|vnew|tabe|tabedit|tabnew|badd|argadd|sv|sview)(?:!\s*|\s+|(?=>>))(?:\+\+\S+\s+)*(?:>>\s*)?([^\s|"']+)/gu;
+/** A shell command in an editor line: `:!cmd`, a range filter (`%!cmd`, `1,2!cmd`), `r !cmd`, `w !cmd`, `e !cmd`. */
+const EDITOR_SHELL_ESCAPE = /(?:^|[|:\s])(?:[%.$\d,'<>+-]*|(?:r|read)\s*|(?:e|edit|w|write)\s+)!(.*)$/u;
+/** Vim script the guard cannot read: process and file functions, embedded languages, a terminal, or `:execute` of built text. */
+const EDITOR_CODE = /\b(?:system|systemlist|writefile|delete|rename|mkdir|job_start|jobstart|termopen|term_start|libcall|libcallnr|luaeval|pyeval|py3eval|pyxeval|perleval|rubyeval|chansend)\s*\(|(?:^|[|:])\s*(?:lua\w*|py\w*|perl\w*|ruby\w*|mz\w*|tcl\w*|ter|term|terminal)\b|(?:^|[|:])\s*exe(?:c|cu|cut|cute)?\s+(?!(["'])[^"']*\1\s*(?:\||$))/u;
+
 /**
  * Collect file targets written (or deleted) by a command. @param {string} name @param {Word[]} rest @param {Context} ctx
- * @param {ReturnType<typeof analyzeSed> | null} sed
+ * @param {ReturnType<typeof analyzeSed> | null} sed @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
  */
-function commandTargets(name, rest, ctx, sed) {
+function commandTargets(name, rest, ctx, sed, stdin) {
   /** @type {{word: Word, kind: "write" | "delete" | "tree"}[]} */
   const targets = [];
   const add = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind) => targets.push({ word, kind });
@@ -1844,19 +1919,36 @@ function commandTargets(name, rest, ctx, sed) {
       operandsOf(rest, new Set(["-t", "-d", "-r", "-s", "--reference", "--size", "--date"])).operands.forEach((word) => add(word, "write"));
       break;
     case "ex": case "vi": case "vim": case "nvim": case "ed": case "view": {
-      // Editor scripts (-c, --cmd, +cmd, piped keys) can write every file operand (`:w!` also under -R), any file a
-      // `:w` command names and the -w/-W keystroke log, and run shell commands through `:!`.
+      // Editor scripts (-c, --cmd, +cmd, a heredoc or piped keys) can write every file operand (`:w!` also under -R), any
+      // file a `:w` or `:e` command names and the -w/-W keystroke log, and run shell commands through `:!`.
+      /** @type {string[]} */
+      const scripts = [];
       for (let i = 0; i < rest.length; i++) {
-        const value = rest[i].value;
-        const script = value === "-c" || value === "--cmd" ? rest[++i]?.value ?? "" : value.startsWith("+") ? value.slice(1) : null;
-        if ((value === "-w" || value === "-W") && rest[i + 1]) add(rest[++i], "write");
-        if (script === null) continue;
-        for (const match of script.matchAll(/(?:^|[|:\s])(?:w|wq|x|xit|write|sav|saveas|up|update|wn|wN|wa|wall|xa|xall|wqa|wqall)!?\s+(?:>>\s*)?([^\s|]+)/gu)) {
+        const word = rest[i];
+        const value = word.value;
+        if ((value === "-w" || value === "-W") && rest[i + 1]) { add(rest[++i], "write"); continue; }
+        const script = value === "-c" || value === "--cmd" ? rest[++i] ?? literalWord("")
+          : /^-c./u.test(value) ? { ...word, value: value.slice(2) } : value.startsWith("+") ? { ...word, value: value.slice(1) } : null;
+        if (!script) continue;
+        if (!script.literal) throw new Block("shell-dynamic-command");
+        scripts.push(script.value);
+      }
+      // Without a `-` operand (the buffer read from stdin), a vi-family editor reads keys and ed reads commands from stdin.
+      if (name === "ed" || !rest.some((word) => word.literal && word.value === "-")) {
+        const source = stdinSource(stdin.redirects);
+        if (source?.heredoc?.literal === false) throw new Block("shell-dynamic-stdin");
+        programFromStdin(stdin.redirects, ctx, { stdinPiped: stdin.stdinPiped, lenient: true }, scripts);
+      }
+      for (const line of scripts.flatMap((script) => script.split(/\r?\n/u))) {
+        for (const match of line.matchAll(EDITOR_FILE_COMMAND)) {
           // The editor expands `~` and environment variables in the file name; a variable is unknown text.
           add(literalWord(match[1].replace(/^~(?=\/|$)/u, HOME).replace(/\$(?:\{\w+\}|\w+)/gu, UNKNOWN)), "write");
         }
-        const escape = /(?:^|[|:\s])(?:(?:r|read)\s*|(?:w|write)\s+)?!(.*)$/su.exec(script);
+        const escape = EDITOR_SHELL_ESCAPE.exec(line);
         if (escape) evaluateShellText(escape[1], ctx);
+        if (name !== "ed" && EDITOR_CODE.test(line)) {
+          throw new Block("shell-dynamic-command", "An editor script that calls a process or file function, an embedded language or a built `:execute` cannot be inspected.");
+        }
       }
       operandsOf(rest, new Set(["-c", "--cmd", "-S", "-u", "-U", "-i", "-T", "-w", "-W", "-t", "-q"])).operands
         .filter((word) => !word.value.startsWith("+")).forEach((word) => add(word, "write"));
@@ -2622,7 +2714,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     if (unsafe) throw new Block("sensitive-dynamic-argument", "xargs appends arguments from standard input to a destructive-capable command; put them after a literal -- separator.");
   }
 
-  for (const { word, kind } of commandTargets(name, rest, ctx, sed)) checkTarget(word, kind, ctx);
+  for (const { word, kind } of commandTargets(name, rest, ctx, sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx);
   if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
 

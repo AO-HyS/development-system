@@ -73,8 +73,22 @@ TEST_CONFIG_PATTERN_SOURCES; SKILL.md budget, cat and rollback wording; ADR
 0060 notes the 2-space Codex rollback rewrite. Round 6 (28 probes) as
 expected; corpus 844 (407 allow, 437 block), replay 0 mismatches; builder
 --check, typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
-Next: re-review of the fixes, merge, HOME rollout, main + v1.33.0
-prerelease, products.
+Re-review of 1530018 ("do not merge"): the `#` level loss after a group with
+`/` and the new `cat` wrapper bypasses (`command -p hash`, `noglob`, `trap`,
+zsh `function a cat`, `functions[cat]=`, `getopts o PATH`, `set -A path`)
+were regressions; quoted glob closers, editor spellings (`-cw`, `w!~`,
+`++enc`, `exe "w …"`, `%!`, `writefile()`, ed heredocs, piped input) and the
+`export X="$(date)"`/`printf '%s' "$x"` false positive were open. Fixed on the
+branch: repeated slash groups read as kept or absent (first four), quoted or
+escaped pattern characters read broadly, `changesCat` skips precommands and
+checks trap actions, name-taking builtins and zsh tables, editor scripts from
+heredocs are read, explicit TEST_CONFIG_PATTERN_SOURCES. Round 7 (72 probes):
+the committed engine allowed 50 attacks and blocked 3 ordinary commands; now
+all as expected, earlier 222 review probes unchanged. Corpus 916 (428 allow,
+488 block), replay 0 mismatches; ≤118 ms on 60 KB inputs; builder --check,
+typecheck, roster:check, check-no-tests, verify1330.py 46/46 pass.
+Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
+products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,
 validate-skill/check-route-inventory/check-repo-rules pass, `plan --list` added. Next: guard re-review,
 develop, HOME rollout, main + v1.33.0 prerelease, product rollout. Barber #343
