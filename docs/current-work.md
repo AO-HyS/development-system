@@ -101,6 +101,17 @@ names are literal. Round 8 (117 probes) against 0befc84: 49 attacks now
 blocked, 7 false positives now allowed, 61 unchanged; the 293 earlier probes
 are unchanged. Corpus 916 with 0 mismatches; ≤78 ms on 60 KB editor inputs;
 builder --check, typecheck, roster:check, check-no-tests, verify1330.py 46/46.
+Fourth review of ddc8eaa (do not merge): typed text after `a`/`i`/`c` hid the
+next lines inside `:g`, after an address the editor rejects, `nomodifiable` or
+`:if 0` (observed with real vim 9.1 and macOS ed: vim runs them as commands, ed
+exits at the first error except inside `g`). Also `+cmd` with escaped spaces,
+`*`/`\/`/mid-line addresses, and `$[…]`/subscript/`[[` arithmetic PATH. Fixed:
+typed text is data only in ed outside `g`/`G`; each `|` command gets its own
+address; arithmetic checks assignment (so `${#path}` and `set inde=` allow).
+Round 9 (51 probes) vs ddc8eaa: 27 attacks now blocked, 3 FPs now allowed;
+earlier rounds unchanged except w6 (vim append text, now a documented FP).
+Corpus 916 0 mismatches; ≤84 ms; builder, typecheck, roster, check-no-tests,
+verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,

@@ -110,6 +110,8 @@ let catTouched = false;
 function parseScript(text, depth) {
   catTouched = false;
   const list = new Parser(text, depth).parseAll();
+  // The old `$[…]` arithmetic form is read as plain text, so a script using it is checked as a whole.
+  if (text.includes("$[") && CAT_ARITH_ASSIGN.test(text)) catTouched = true;
   if (!catTouched || catRedefined) return list;
   catRedefined = true;
   return new Parser(text, depth).parseAll();
@@ -117,8 +119,14 @@ function parseScript(text, depth) {
 
 /** PATH, zsh `path`, and the bash and zsh tables that define functions, commands and aliases by name (`BASH_CMDS[cat]=…`). */
 const CAT_LOOKUP_NAMES = /^(?:path|bash_cmds|bash_aliases|(?:dis_)?(?:functions|commands|aliases|galiases|saliases|builtins))$/iu;
-/** One of those names anywhere in arithmetic text. */
-const CAT_LOOKUP_WORD = new RegExp(String.raw`\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b`, "iu");
+/**
+ * Arithmetic text that assigns one of those names (`PATH=5`, `path[1]+=2`, `++PATH`, `PATH--`) or a name built by an
+ * expansion (`$n = 5`). Reading one (`${#path}`, `PATH == 5`) does not count.
+ */
+const CAT_ARITH_ASSIGN = (() => {
+  const target = String.raw`(?:\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b|\$\{?[\w#@*!?-]*\}?)\s*(?:\[[^\][]*\]\s*)?`;
+  return new RegExp(String.raw`${target}(?:(?:[-+*/%&|^]|<<|>>|\*\*)?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${target}`, "iu");
+})();
 /** Precommand words that run the next word as the command (`command -p`, `builtin --`, zsh `noglob`, `nocorrect`, `-`). */
 const PRECOMMANDS = new Set(["builtin", "command", "noglob", "nocorrect", "-"]);
 
@@ -162,7 +170,8 @@ function changesCat(node) {
     default:
       // A nameref (`declare -n p=PATH`) assigns through another name.
       if (["declare", "typeset", "local"].includes(head.value) && rest.some((word) => /^-[A-Za-z]*n/u.test(word.value))) return true;
-      return NAME_BUILTINS.has(head.value) && rest.some(namesLookup);
+      // `let` text and name subscripts are arithmetic (`let x=PATH=5`, `read 'a[PATH=5]'`).
+      return NAME_BUILTINS.has(head.value) && rest.some((word) => namesLookup(word) || CAT_ARITH_ASSIGN.test(word.value));
   }
 }
 
@@ -429,6 +438,8 @@ class Parser {
         const match = assignment.exec(this.s);
         if (match) {
           checkSubscriptCode(match[0]);
+          // The subscript is arithmetic: `a[PATH=5]=1`.
+          if (CAT_ARITH_ASSIGN.test(match[0].slice(0, -1))) catTouched = true;
           this.i += match[0].length;
           if (this.peek() === "(") {
             this.i++;
@@ -710,7 +721,7 @@ class Parser {
     }
     this.leave();
     // Arithmetic can assign PATH (`(( PATH = 5 ))` looks up `cat` in `./5`).
-    if (CAT_LOOKUP_WORD.test(this.s.slice(start, this.i - 2))) catTouched = true;
+    if (CAT_ARITH_ASSIGN.test(this.s.slice(start, this.i - 2))) catTouched = true;
     word.subs.push(...scratch.subs);
     markDynamic(word);
   }
@@ -748,7 +759,8 @@ class Parser {
     if (assigned) checkSubscriptCode(content.slice(assigned[0].length));
     // `${PATH:=…}`, `${path::=…}` (zsh) and `${(A)path=…}` change what `cat` runs.
     const target = /^(?:\([^)]*\))?([A-Za-z_]\w*)(?:\[[^\]]*\])?:{0,2}=/u.exec(content);
-    if (target && CAT_LOOKUP_NAMES.test(target[1])) catTouched = true;
+    // Subscripts and `${x:offset}` are arithmetic (`${a[PATH=5]}`).
+    if ((target && CAT_LOOKUP_NAMES.test(target[1])) || CAT_ARITH_ASSIGN.test(content)) catTouched = true;
     word.subs.push(...scratch.subs);
     if (content === "HOME") word.value += HOME;
     else markDynamic(word);
@@ -885,6 +897,8 @@ class Parser {
       if ("<>()!&|".includes(this.peek())) { this.i++; continue; }
       const word = this.parseWord(false);
       if (!word.raw) throw new ParseError("unexpected token in [[");
+      // The operands of `-eq`, `-lt` and the rest are arithmetic (`[[ PATH=5 -eq 1 ]]`).
+      if (CAT_ARITH_ASSIGN.test(word.value) || CAT_ARITH_ASSIGN.test(word.raw)) catTouched = true;
       words.push(word);
     }
     return { type: "data", cond: true, words, redirects: this.parseRedirectsOnly() };
@@ -1836,7 +1850,7 @@ const EDITOR_FILE_NAMES = [
  * An editor command that writes or opens a named file, after an optional line address (`:w FILE`, `%w FILE`, `1,$w!FILE`,
  * `:sav ++enc=x FILE`, `e +10 FILE`, `redir! > FILE`, `exe "w FILE"`).
  */
-const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|[|:\s"'])[%.$\d,;+-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))(?:\+\+?[^\s+]\S*\s+)*(?:>>?!?\s*)?([^\s|"']+)`, "gu");
+const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))(?:\+\+?(?:[^\s\\+]|\\.)(?:[^\s\\]|\\.)*\s+)*(?:>>?!?\s*)?([^\s|"']+)`, "gu");
 /** A shell command in an editor line: `:!cmd`, a range filter (`%!cmd`, `1,2!cmd`), `r !cmd`, `w !cmd`, `e !cmd`, `exe "!cmd"`. */
 const EDITOR_SHELL_ESCAPE = /(?:^|[|:\s"])(?:[%.$\d,'<>+-]*|(?:r|read)\s*|(?:e|edit|w|write)\s+)!(.*)$/u;
 /** Command modifiers and `:*do` loops that may come before an ex command (`sil!`, `vert`, `keepalt`, `bufdo`, `3verbose`). */
@@ -1846,12 +1860,18 @@ const EDITOR_MODIFIERS = String.raw`(?:(?:sil(?:e(?:n(?:t)?)?)?!?|uns\w*|vert\w*
  * commands that run a configured program (`:make`, `:grep`, `:cscope`), a sourced script, or `:execute` of built text.
  */
 const EDITOR_CODE = new RegExp(String.raw`\b(?:system|systemlist|writefile|delete|rename|mkdir|execute|feedkeys|job_start|jobstart|termopen|term_start|libcall|libcallnr|luaeval|pyeval|py3eval|pyxeval|perleval|rubyeval|chansend|setbufvar|setwinvar|settabvar|settabwinvar)\s*\(|(?:^|[|:])\s*${EDITOR_MODIFIERS}(?:lua\w*|py\w*|perl\w*|ruby\w*|mz\w*|tcl\w*|ter\w*|${[["sh", "ell"], ["so", "urce"], ["ru", "ntime"], ["mak", "e"], ["lmak", "e"], ["gr", "ep"], ["lgr", "ep"], ["grepa", "dd"], ["lgrepa", "dd"], ["cs", "cope"], ["lcs", "cope"], ["scs", "cope"]].map(([short, more]) => exName(short, more)).join("|")})\b|(?:^|[|:])\s*${EDITOR_MODIFIERS}exe(?:c|cu|cut|cute)?\s+(?!(["'])[^"']*\1\s*(?:\||$))`, "u");
-/** A `:set` or `:let &` of an option that names a program or an expression the editor runs (`shell`, `makeprg`, `diffexpr`). */
-const EDITOR_PROGRAM_OPTION = new RegExp(String.raw`(?:^|\|)[\s:]*${EDITOR_MODIFIERS}(?:exe\w*\s+["'])?(?:se\w*|let)(?=\s)[^|]*?[\s&](?:[lg]:)?(?:sh|shell\w*|s(?:cf|p|rr|xq|xe)|mp|makeprg|gp|grepprg|ep|equalprg|fp|formatprg|kp|keywordprg|csprg|cscopeprg|\w*expr|\w*func|pex|dex|fex|inex|inde|fde|ccv|cfu|ofu|tfu)\s*[+^-]?=`, "u");
+/**
+ * A `:set` or `:let &` of an option that names a program or an expression the editor runs (`shell`, `makeprg`, `diffexpr`).
+ * Clearing one (`set indentexpr=`) is allowed.
+ */
+const EDITOR_PROGRAM_OPTION = new RegExp(String.raw`(?:^|\|)[\s:]*${EDITOR_MODIFIERS}(?:exe\w*\s+["'])?(?:se\w*|let)(?=\s)[^|]*?[\s&](?:[lg]:)?(?:sh|shell\w*|s(?:cf|p|rr|xq|xe)|mp|makeprg|gp|grepprg|ep|equalprg|fp|formatprg|kp|keywordprg|csprg|cscopeprg|\w*expr|\w*func|pex|dex|fex|inex|inde|fde|ccv|cfu|ofu|tfu)\s*[+^-]?=(?!\s*(?:\||$))`, "u");
 /** A directory change inside the editor (`:cd`, `:lcd`, `:tcd`, `chdir()`, `autochdir`) moves the base of later relative file names. */
 const EDITOR_CD = /(?:^|[|:\s"'])(?:cd|chd(?:ir?)?|lcd|lch(?:d(?:ir?)?)?|tcd|tch(?:d(?:ir?)?)?)(?:!|\s|$)|\bchdir\s*\(|\b(?:acd|autochdir)\b/u;
-/** A line address before an ex or ed command: numbers, `.`, `$`, `%`, marks, offsets and `/re/` or `?re?` searches. */
-const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+-]|'[\w<>[\]]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
+/**
+ * A line address before an ex or ed command: numbers, `.`, `$`, `%`, `*`, marks, offsets, `/re/` or `?re?` searches and
+ * the last search or substitute pattern (`\/`, `\?`, `\&`).
+ */
+const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+*-]|'[\w<>[\]'`"^.]|\\[/?&]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
 
 /** Index just after the next unescaped `delimiter` at or after `from`, or the text length. @param {string} text @param {number} from @param {string} delimiter */
 function delimitedEnd(text, from, delimiter) {
@@ -1865,41 +1885,63 @@ function delimitedEnd(text, from, delimiter) {
 /**
  * Read an ex, vim or ed script: each file a write or edit command names is a write target, shell commands (`:!`, range
  * filters, `r !`) are evaluated, and vimscript or normal-mode keys the guard cannot read are blocked. Substitution text and,
- * in a script read line by line, the lines typed after `a`, `i` or `c` up to `.` are data.
+ * in an ed script read line by line, the lines typed after `a`, `i` or `c` up to `.` are data: ed exits at the first error
+ * in a script. vim runs those lines as commands when the append fails or is skipped (inside `:g`, a missing line or mark,
+ * `nomodifiable`, `:if 0`), so vim and ex lines are always read as commands, as are ed lines typed inside `g` or after `G`.
  * @param {string} script @param {boolean} ed @param {boolean} typed whether `a`, `i` and `c` read the following lines
  * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
  */
 function editorScript(script, ed, typed, editor, ctx) {
   let typing = false;
+  // ed's `G` and `V` read the command for each matching line from the next script lines.
+  let interactive = false;
   for (const line of script.split(/\r?\n/u)) {
     if (typing) { typing = line !== "."; continue; }
     let rest = line;
-    for (;;) {
+    let first = true;
+    let prefixed = false;
+    // Each command on the line (vim separates them with `|`): its address, `:g` prefix and `:s` are read first.
+    while (rest) {
       rest = rest.slice(EDITOR_ADDRESS.exec(rest)?.[0].length ?? 0);
       // `:g/re/cmd` runs cmd; `:s` stops at the first unescaped `|` (ed has no `|`).
       const global = /^(?:g|global|v|vglobal|G|V)!?([^\w\s"|\\])/u.exec(rest);
-      if (global) { rest = rest.slice(delimitedEnd(rest, global[0].length, global[1])); continue; }
-      const substitute = /^(?:s|substitute)[^\w\s"|\\]/u.exec(rest);
-      if (!substitute) break;
-      const end = ed ? rest.length : delimitedEnd(rest, substitute[0].length, "|");
-      if (!ed && /\\=/u.test(rest.slice(0, end)) && EDITOR_CODE.test(rest.slice(0, end))) {
-        throw new Block("shell-dynamic-command", "A substitution expression that calls a process or file function cannot be inspected.");
+      if (global) {
+        prefixed = true;
+        if (ed && /^[GV]/u.test(global[0])) interactive = true;
+        rest = rest.slice(delimitedEnd(rest, global[0].length, global[1]));
+        continue;
       }
+      const substitute = /^(?:s|substitute)[^\w\s"|\\]/u.exec(rest);
+      if (substitute) {
+        const end = ed ? rest.length : delimitedEnd(rest, substitute[0].length, "|");
+        if (!ed && /\\=/u.test(rest.slice(0, end)) && EDITOR_CODE.test(rest.slice(0, end))) {
+          throw new Block("shell-dynamic-command", "A substitution expression that calls a process or file function cannot be inspected.");
+        }
+        rest = rest.slice(end);
+        continue;
+      }
+      if (typed && ed && first && !prefixed && !interactive && /^[aic]\s*$/u.test(rest)) { typing = true; break; }
+      const shell = (ed ? /^(?:(?:r|w|W|e|E)\s*)?!(.*)$/u : /^(?:(?:r|read)\s*|(?:w|write|e|edit)\s+)?!(.*)$/u).exec(rest);
+      if (shell) { evaluateShellText(shell[1], ctx); break; }
+      if (first) {
+        first = false;
+        if (!ed && EDITOR_CD.test(rest)) editor.moved = true;
+        for (const match of rest.matchAll(EDITOR_FILE_COMMAND)) editor.write(match[1]);
+        const escape = EDITOR_SHELL_ESCAPE.exec(rest);
+        if (escape) evaluateShellText(escape[1], ctx);
+        if (!ed) {
+          const keys = /(?:^|[|:\s"'])norm(?:a|al)?!?\s/u.exec(rest);
+          if (EDITOR_CODE.test(rest) || EDITOR_PROGRAM_OPTION.test(rest)
+            || (keys && /[!Q@]|"=|<[Cc]-[RrOo\\]>|[\x0f\x12\x1c]/u.test(rest.slice(keys.index + keys[0].length)))) {
+            throw new Block("shell-dynamic-command", "An editor script that calls a process or file function, an embedded language, a configured program, a built `:execute` or normal-mode keys that run commands cannot be inspected.");
+          }
+        }
+      }
+      if (ed) break;
+      // A later command after `|` may start with its own address (`let a=1|/x/w FILE`, `|'aw FILE`).
+      const end = delimitedEnd(rest, 0, "|");
+      for (const match of rest.slice(0, end).matchAll(EDITOR_FILE_COMMAND)) editor.write(match[1]);
       rest = rest.slice(end);
-      if (!rest) break;
-    }
-    if (typed && /^(?:a|i|c|append|insert|change)!?\s*$/u.test(rest)) { typing = true; continue; }
-    const shell = (ed ? /^(?:(?:r|w|W|e|E)\s*)?!(.*)$/u : /^(?:(?:r|read)\s*|(?:w|write|e|edit)\s+)?!(.*)$/u).exec(rest);
-    if (shell) { evaluateShellText(shell[1], ctx); continue; }
-    if (!ed && EDITOR_CD.test(rest)) editor.moved = true;
-    for (const match of rest.matchAll(EDITOR_FILE_COMMAND)) editor.write(match[1]);
-    const escape = EDITOR_SHELL_ESCAPE.exec(rest);
-    if (escape) evaluateShellText(escape[1], ctx);
-    if (ed) continue;
-    const keys = /(?:^|[|:\s"'])norm(?:a|al)?!?\s/u.exec(rest);
-    if (EDITOR_CODE.test(rest) || EDITOR_PROGRAM_OPTION.test(rest)
-      || (keys && /[!Q@]|"=|<[Cc]-[RrOo\\]>|[\x0f\x12\x1c]/u.test(rest.slice(keys.index + keys[0].length)))) {
-      throw new Block("shell-dynamic-command", "An editor script that calls a process or file function, an embedded language, a configured program, a built `:execute` or normal-mode keys that run commands cannot be inspected.");
     }
   }
 }
