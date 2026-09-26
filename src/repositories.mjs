@@ -334,9 +334,27 @@ function skillLogicalName(path, contents) {
 /** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner @param {(command:string) => boolean} [accept] */
 function selectCommand(scripts, candidates, runner, accept = () => true) {
   const script = candidates.find((candidate) =>
-    typeof scripts[candidate] === "string" && accept(scripts[candidate])
+    typeof scripts[candidate] === "string" && !isTestScript(candidate, scripts) && accept(scripts[candidate])
   );
   return script ? { script, command: `${runner} run ${script}` } : null;
+}
+
+// Mirrors the test-script finding of src/no-tests.mjs: repository guidance never
+// names a script that runs automated tests.
+const testRunnerCommand = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b|(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?test\b/;
+
+/**
+ * True when the script is a test script or reaches one through the scripts it runs.
+ * @param {string} name @param {Record<string, string>} scripts @param {Set<string>} [seen]
+ * @returns {boolean}
+ */
+function isTestScript(name, scripts, seen = new Set()) {
+  if (seen.has(name)) return false;
+  seen.add(name);
+  const command = typeof scripts[name] === "string" ? scripts[name] : "";
+  if (name === "test" || name.startsWith("test:") || testRunnerCommand.test(command)) return true;
+  return [...command.matchAll(/(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?([\w:.-]+)/g)]
+    .some((match) => match[1] in scripts && isTestScript(match[1], scripts, seen));
 }
 
 /** @param {string} command */
@@ -423,8 +441,8 @@ async function repositoryIdentity(repository, files) {
         ["quality:provider-readiness", "release:env:preview"],
         runner,
       ),
-      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
-      qa: selectCommand(scripts, ["qa", "test:e2e:changed", "test:e2e", "e2e", "test"], runner),
+      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check"], runner),
+      qa: selectCommand(scripts, ["qa", "e2e"], runner),
       preview: selectCommand(
         scripts,
         ["preview", "preview:local", "cloudflare:local", "dev", "start"],
@@ -815,15 +833,18 @@ A plan or installed skill grants no additional authority; platform and repositor
 
 Use changed validation for ordinary feedback and required certification once the
 integrated candidate stabilizes. Choose checks by the changed public behavior.
-Test edits are closed by default: use the repository's reviewed test-change
-policy and report missing behavioral evidence to the parent before widening it.
+This repository has no automated tests: \`development-system check-no-tests\`
+guards it and lint runs it. Every task ends with real verification through the
+repository's verification CLI and feature map, the browser or computer use.
+Reviews run on Astra XHigh through codex-review launched in the background;
+Claude reviewers run only with a declared \`Codex fallback:\` line.
 Use the local construction recipes and existing components for screens, forms
-and authorized server operations. Simplification, review of test value,
-correction and objective verification are responsibilities. Tiny direct work
-stays with the parent; nontrivial features retain their independent Astra plan
-and final reviews. Select additional specialists by affected risk and preserve
-the parent's final judgment. Reject weakened assertions
-and unsupported green-check claims. File counts and style scores are not gates.
+and authorized server operations. Simplification, correction and objective
+verification are responsibilities. Tiny direct work stays with the parent;
+nontrivial features retain their independent Astra plan and final reviews.
+Select additional specialists by affected risk and preserve the parent's final
+judgment. Reject unsupported green-check claims. File counts and style scores
+are not gates.
 
 Repeat checks only for relevant edits, failures, required gates or unresolved
 concerns. Preserve exit codes and still-valid evidence. Never bypass hooks or CI.
@@ -999,7 +1020,7 @@ function repositoryContract(audit, mode) {
         command: "flow-implement",
         requiresNamedTerminalSlice: true,
         terminalState: "ready-for-human",
-        autonomousOperations: ["implement", "test", "validate", "review", "correct", "proportional-qa"],
+        autonomousOperations: ["implement", "real-verification", "validate", "review", "correct", "proportional-qa"],
         checksAreDevelopmentSubsteps: true,
         externalStateAuthorization: "request-and-repository-policy",
         deliveryAuthorization: "request-and-repository-policy",
@@ -1029,7 +1050,7 @@ function repositoryContract(audit, mode) {
         writable: phase.writable,
         dependsOn: [...phase.dependsOn],
       })),
-      testsAreSubordinateEvidence: true,
+      automatedTests: "none-real-verification-only",
       independentVerification: "oracle-derived-from-objective-and-public-interface",
       excludedMetrics: [...antiSlopExcludedMetrics],
       diagnosticOnlyMetrics: [...antiSlopDiagnosticOnlyMetrics],

@@ -1,4 +1,23 @@
-# Current work — Development System 1.34.0 (Astra reviews and computer use through codex-review)
+# Current work — Development System 1.34.1 (no automated tests in any repository)
+
+Goal: remove every remaining DS-owned instruction that asks for automated tests,
+so repositories and HOME carry one rule set: no automated tests; real
+verification (computer use, browser, the repository's verification CLI); reviews
+on Astra XHigh through codex-review. Root
+/Users/corrortiz/Documents/AO/development-system, branch
+feat/development-system-1.34.1 from develop 9fa37ab. Status: in progress.
+
+Done on the branch: builder 1341 (manifest 1.34.1 from 1.34.0, catalog 0.52.0
+from 0.51.0); global instructions sentence; behavioral-evidence,
+setup-ts-deep-modules, flow-implement, simplify-code and codebase-design copies
+under artifacts/1.34.1/skills; repository adapter template and command
+selection; anti-slop lane texts; setup keeps the skill-sync error when the
+rollback throws; contract paragraph; README; Devin blueprints; implement-preview
+example.
+Next: Astra review through codex-review; PR to develop and then main; v1.34.1
+prerelease; HOME setup 1.34.1; product pins.
+
+## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 
 Approved 2026-09-26: "hagamos la nueva versión: lleva lo de NutriPlan a
 Developer System y a de Barber Central" plus Astra as the computer-use default.

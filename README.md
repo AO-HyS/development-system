@@ -1,5 +1,22 @@
 # AOHYS Development System
 
+## Release 1.34.1 / catalog 0.52.0
+
+Release 1.34.1 leaves one rule set in every repository and HOME: no automated
+tests; every task ends with real verification (computer use, the browser, the
+repository's verification CLI and feature map); reviews run on Astra XHigh
+through `codex-review.mjs` launched in the background. The Fable roles
+(plan-reviewer, security-reviewer) are retired and the Claude reviewers run only
+as a declared `Codex fallback:`. Catalog 0.52.0 rewrites behavioral-evidence and
+removes the remaining test instructions from setup-ts-deep-modules,
+flow-implement, simplify-code and codebase-design. The repository adapter drops
+the test-change policy for `check-no-tests`, and setup reports the original
+skill-sync error together with any rollback error.
+
+```sh
+./bin/development-system setup --version 1.34.1
+```
+
 ## Release 1.34.0 / catalog 0.51.0
 
 Release 1.34.0 moves plan, diff, security and visual reviews to Astra XHigh
@@ -28,7 +45,7 @@ guard gains `test-file-write` and `guard-config-write`. A Stop report gate asks
 once per session that changed files for the completion report. The Claude roster
 drops Haiku: Explore, code-mapper, docs-researcher and mechanical-worker run on
 Sonnet at low effort. Catalog 0.51.0 updates six internal skills and removes
-`tdd` with reversible cleanup. Product repositories run
+the former TDD skill with reversible cleanup. Product repositories run
 `pnpm exec aohys-development-system check-no-tests --root . --json`. See
 [ADR 0060](docs/adr/0060-real-verification-no-tests-report-launch.md).
 
@@ -44,8 +61,8 @@ Sonnet at low effort. Catalog 0.51.0 updates six internal skills and removes
 Release 1.32.0 packages the Claude Code orchestration roster: seventeen tiered
 subagent roles in `.claude/agents`, the orchestration rule in `.claude/rules` and
 the roster guard with its policy. The guard asks Jev which tier each packet needs
-and keeps tier memory of escalations; Fable 5.1 roles run only when Jev picks them
-or gives them a probability of at least 0.4, or a packet carries a `Fable scope:` line. Activate, check and undo the guard hooks
+and keeps tier memory of escalations. Its Fable 5.1 reviewer roles were retired
+in 1.34.0: reviews run on Astra XHigh through codex-review. Activate, check and undo the guard hooks
 with `claude-orchestration-enable`, `claude-orchestration-audit` and
 `claude-orchestration-rollback`. Catalog 0.50.0 is unchanged.
 
@@ -123,8 +140,9 @@ Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-reposi
 [la corrección de roles de verificación](docs/adr/0033-capability-based-verification-roles.md).
 
 Previous version 1.20.0 published catalog 0.41.0 with pinned execution contracts,
-exact-instruction and outcome-delegation modes, reviewed test-change policy,
-and deterministic UI evidence packaging. It preserves the reusable HTML grill
+exact-instruction and outcome-delegation modes and deterministic UI evidence
+packaging; its test-change policy gave way to the no-tests rule (1.33.0, completed
+in 1.34.1). It preserves the reusable HTML grill
 questionnaire from 1.19.1. See [the execution decision and limits](docs/adr/0035-pinned-execution-contract-and-reviewed-test-policy.md).
 Installation is not proof of model behavior, speed or token savings.
 
@@ -197,12 +215,12 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.34.0
+./bin/development-system setup --version 1.34.1
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.51.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.52.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -433,8 +451,8 @@ not reported as enabled in Codex/T3 without host runtime evidence.
 
 Version 1.9.0 adds embedded before/after captures and real workflow video to completion reports, with comparison controls, image expansion and reduced-motion support. The shared implementation skill captures the baseline early and requires visual evidence for backend changes that affect UI. Missing evidence stays explicit; presence does not certify the result.
 
-`pnpm verify` certifies the current roster, types, behavior tests and canonical
-sources; `pnpm scenario` exercises isolated installation and recovery.
+`pnpm verify` certifies the current roster, types, repository validation and
+canonical sources; `pnpm scenario` exercises isolated installation and recovery.
 `pnpm rollout:validate` remains an explicit audit of the July 20 historical
 pilot and requires its original private recap files. It is not a current-release
 gate; absent archived files remain an audit gap.

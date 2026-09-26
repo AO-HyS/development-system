@@ -18,9 +18,9 @@ knowledge:
   - name: lint
     contents: |
       pnpm lint
-  - name: test
+  - name: verification
     contents: |
-      pnpm test
+      pnpm run quality:verification
   - name: typecheck
     contents: |
       pnpm typecheck
