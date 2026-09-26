@@ -135,6 +135,13 @@ heredoc (`for ((i=0; i<$n; i++))`) stays a documented false positive. Round 11
 (56 probes) vs 55a2867: 9 attacks now blocked, 3 FPs now allowed; all earlier
 rounds unchanged. Corpus 916 0 mismatches; ≤147 ms (linear) on 45–60 KB inputs;
 builder, typecheck, roster, check-no-tests, verify1330.py 46/46.
+Seventh review of 91f9ab7 (do not merge): the escaped-space rule hid commands
+that vim unescapes (`exe "sil\ w FILE"`, `exe "…\|w FILE"`, `cpo+=b` maps), and
+a literal array element was never read (`a=('PATH=5')`). Fixed: editorFiles also
+reads the unescaped text; array elements get the named value check. Round 12 (42
+probes) vs 91f9ab7: exactly those 8 now blocked; all earlier rounds unchanged.
+Corpus 916 0 mismatches; ≤185 ms (linear); builder, typecheck, roster,
+check-no-tests, verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,

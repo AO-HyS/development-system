@@ -466,6 +466,8 @@ class Parser {
               if (this.peek() === ")") { this.i++; break; }
               const element = this.parseWord(false);
               if (!element.raw) throw new ParseError(`unexpected ${JSON.stringify(this.peek())} in array assignment`);
+              // Arithmetic reads an element as arithmetic again (`a=('PATH=5'); (( a ))`).
+              if (assignsLookup(element.literal ? element.value : element.raw, true)) catTouched = true;
               array.subs.push(...element.subs);
               array.value += `${element.value} `;
               if (!element.literal) array.literal = false;
@@ -1916,14 +1918,17 @@ function delimitedEnd(text, from, delimiter) {
 
 /**
  * Record each file an editor command line writes or opens, and read each `+cmd` it runs on the opened file as a command
- * (`e +w!\ FILE notes.txt` writes FILE). @param {string} text
+ * (`e +w!\ FILE notes.txt` writes FILE). The text is also read unescaped, as an `:execute` string or a `cpo+=b` mapping
+ * runs it (`exe "sil\ w FILE"`, `map x y\|w FILE`). @param {string} text
  * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
  */
 function editorFiles(text, editor, ctx) {
-  for (const match of text.matchAll(EDITOR_FILE_COMMAND)) {
-    if (match[2]) editor.write(match[2]);
-    for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
-      if (command && !command.startsWith("+")) editorScript(command.replace(/\\(.)/gsu, "$1"), false, false, editor, ctx);
+  for (const line of text.includes("\\") ? [text, text.replace(/\\(.)/gsu, "$1")] : [text]) {
+    for (const match of line.matchAll(EDITOR_FILE_COMMAND)) {
+      if (match[2]) editor.write(match[2]);
+      for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
+        if (command && !command.startsWith("+")) editorScript(command.replace(/\\(.)/gsu, "$1"), false, false, editor, ctx);
+      }
     }
   }
 }
