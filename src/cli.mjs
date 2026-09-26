@@ -1,7 +1,7 @@
 // @ts-check
 
 import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +32,8 @@ import {
   enableClaudeOrchestration,
   rollbackClaudeOrchestration,
 } from "./claude-orchestration.mjs";
+import { auditReportGate, enableReportGate, rollbackReportGate } from "./report-gate.mjs";
+import { findAutomatedTests } from "./no-tests.mjs";
 import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
 import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
 import {
@@ -78,7 +80,7 @@ async function readSkillCatalog(explicitVersion) {
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -109,6 +111,7 @@ function parseArguments(argv) {
     else if (token === "--projects-root") options.projectsRoot = value;
     else if (token === "--codex-path") options.codexPath = value;
     else if (token === "--node-path") options.nodePath = value;
+    else if (token === "--root") options.root = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -140,6 +143,14 @@ function formatHuman(result) {
   if (result.operation === "claude-orchestration-enable") return `Claude orchestration ${result.status}${result.changed ? "" : " (unchanged)"}.`;
   if (result.operation === "claude-orchestration-audit") return `Claude orchestration ${result.status}.`;
   if (result.operation === "claude-orchestration-rollback") return `Claude orchestration rollback ${result.status}.`;
+  if (result.operation === "report-gate-enable") return `Report gate ${result.status}${result.changed ? "" : " (unchanged)"}.`;
+  if (result.operation === "report-gate-audit") return `Report gate ${result.status}.`;
+  if (result.operation === "report-gate-rollback") return `Report gate rollback ${result.status}.`;
+  if (result.operation === "check-no-tests") {
+    const findings = /** @type {{path: string, kind: string, detail: string}[]} */ (Array.isArray(result.findings) ? result.findings : []);
+    if (findings.length === 0) return `No automated tests found in ${result.root}.`;
+    return [`${findings.length} automated test findings in ${result.root}:`, ...findings.map((finding) => `- ${finding.path} [${finding.kind}] ${finding.detail}`)].join("\n");
+  }
   if (result.operation === "lifecycle-request") {
     const transition = /** @type {{status?: string, operation?: string} | undefined} */ (result.transition);
     return `Lifecycle transition ${transition?.status}: ${transition?.operation ?? result.selectedStage ?? "none"}.`;
@@ -305,6 +316,14 @@ export async function run(argv) {
     result = await auditClaudeOrchestration({ home: options.home });
   } else if (command === "claude-orchestration-rollback") {
     result = await rollbackClaudeOrchestration({ home: options.home });
+  } else if (command === "report-gate-enable") {
+    result = await enableReportGate({ home: options.home });
+  } else if (command === "report-gate-audit") {
+    result = await auditReportGate({ home: options.home });
+  } else if (command === "report-gate-rollback") {
+    result = await rollbackReportGate({ home: options.home });
+  } else if (command === "check-no-tests") {
+    result = findAutomatedTests({ root: options.root ?? process.cwd() });
   } else if (command === "governance-hooks-enable") {
     result = await enableGovernanceHooks({ home: options.home });
   } else if (command === "governance-hooks-audit") {
@@ -521,10 +540,42 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
   const output = options.json ? JSON.stringify(result) : formatHuman(result);
   return { result, output, json: options.json };
 }
+
+/**
+ * Runs one command, writes its output and sets the exit code (1 when ok is false).
+ * @param {string[]} argv
+ */
+export async function main(argv) {
+  const wantsJson = argv.includes("--json");
+  try {
+    const response = await run(argv);
+    const { result, output } = response;
+    process.stdout.write(`${output}\n`);
+    if (result.ok === false && !["audit", "audit-repository"].includes(result.operation)) process.exitCode = 1;
+    if ("code" in response && typeof response.code === "number" && response.code !== 0) process.exitCode = response.code;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (wantsJson) {
+      process.stdout.write(`${JSON.stringify({ ok: false, operation: "error", error: message })}\n`);
+    } else {
+      process.stderr.write(`Development System error: ${message}\n`);
+    }
+    process.exitCode = 1;
+  }
+}
+
+/** True when this module is the process entry point (`node src/cli.mjs ...`), including through symlinks. */
+function isEntryPoint() {
+  if (!process.argv[1]) return false;
+  try { return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); }
+  catch { return false; }
+}
+
+if (isEntryPoint()) await main(process.argv.slice(2));

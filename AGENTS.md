@@ -18,12 +18,15 @@ update `docs/current-work.md` so a resumed session does not restart the work.
 
 - Treat `artifacts/` and `manifests/` as immutable published contract versions. Change behavior in a new semantic version rather than rewriting a published version.
 - Every artifact hash, harness, destination, and mirror relationship must remain explicit in its version manifest.
-- HOME files are generated outputs. Tests and scenarios must use an isolated `--home`; never write to the operator's real HOME during verification.
+- HOME files are generated outputs. Verification and scenarios must use an isolated `--home`; never write to the operator's real HOME during verification.
 - Do not claim harness discovery, loading, or behavioral influence from a successful file copy. Those require operational adapter evidence.
 
 ## Verification
 
-Run focused CLI tests while editing. Do not run `pnpm run verify`,
+Real verification is `pnpm run typecheck`, `pnpm run release:prepare`,
+`pnpm run roster:check`, `development-system check-no-tests`, the isolated-HOME
+install script, and live hook or browser observation; no automated tests are
+created or run. Do not run `pnpm run verify`,
 `pnpm run scenario`, or another full repository suite unless the user
 explicitly requests that broad gate for the current run. When explicitly
 requested, the scenario must demonstrate installation, drift detection, failed

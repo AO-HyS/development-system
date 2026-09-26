@@ -1,0 +1,817 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.33.0",
+  "source": {
+    "repository": "https://github.com/AO-HyS/development-system",
+    "commit": "$INSTALL_COMMIT"
+  },
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    },
+    {
+      "id": "claude",
+      "adapter": "native"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "development-contract.codex",
+      "logicalName": "development-contract",
+      "sourcePath": "artifacts/1.33.0/contract.md",
+      "destination": ".codex/development-system/contract.md",
+      "harness": "codex",
+      "sha256": "8d7809f7bf36995dfce37c32602caac4e2dd631348db668e3a3b7b326f717b4c",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "operator-interface.codex",
+      "logicalName": "operator-interface",
+      "sourcePath": "artifacts/1.5.0/operator-interface.md",
+      "destination": ".codex/development-system/operator-interface.md",
+      "harness": "codex",
+      "sha256": "21ee99f305722e76948193939dbb7bc44bc41c8a28dcd6026c2f2a9dfaa4d50d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "harness-adapters.codex",
+      "logicalName": "harness-adapters",
+      "sourcePath": "config/1.5.0/harness-adapters.json",
+      "destination": ".codex/development-system/harness-adapters.json",
+      "harness": "codex",
+      "sha256": "a1e7b7d03945eb75f3675b02275474189456ab00d3aa7b425c3a14fe9597f72d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "agent-roster.codex",
+      "logicalName": "agent-roster",
+      "sourcePath": "config/1.29.0/agent-roster.json",
+      "destination": ".codex/development-system/agent-roster.json",
+      "harness": "codex",
+      "sha256": "6aebf6d79fabf082c2cc6ac2c494a6d2bbb713ce66f3fb95e0f5d2e461ceea2a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "benchmark-suite.codex",
+      "logicalName": "benchmark-suite",
+      "sourcePath": "artifacts/0.6.0/benchmark-suite.json",
+      "destination": ".codex/development-system/benchmark-suite.json",
+      "harness": "codex",
+      "sha256": "702ae228b99aff17c208f97b0a5204fdd86093c9d46925556a7a3409fdaf6e36",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "skill-catalog.codex",
+      "logicalName": "skill-catalog",
+      "sourcePath": "catalog/0.51.0.json",
+      "destination": ".codex/development-system/skills.json",
+      "harness": "codex",
+      "sha256": "878a2925a45a6aa87ed2b370bbff3e60e46a435a93ab635bc51b6d81f6a8eae5",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "global-validator.shared",
+      "logicalName": "global-validator",
+      "sourcePath": "artifacts/0.6.0/validate-development-system.py",
+      "destination": ".agents/scripts/validate-development-system.py",
+      "harness": "codex",
+      "sha256": "305d8979f6c5f54c4c74840e078165eca142207dc60684c18ddda0d4c2065276",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.architecture-planner",
+      "logicalName": "codex-agent-architecture-planner",
+      "sourcePath": "artifacts/1.26.0/agents/codex/architecture-planner.toml",
+      "destination": ".codex/agents/architecture-planner.toml",
+      "harness": "codex",
+      "sha256": "103c4142c22576a0c5d4b525e095537f7358acb7db1640d1de4556f89245f40a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.backend-specialist",
+      "logicalName": "codex-agent-backend-specialist",
+      "sourcePath": "artifacts/1.26.0/agents/codex/backend-specialist.toml",
+      "destination": ".codex/agents/backend-specialist.toml",
+      "harness": "codex",
+      "sha256": "54bd95c84197fa6e6ea2701a68298dd5f55b748ca4cf5cb2239b5a5bd959fe27",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.code-mapper",
+      "logicalName": "codex-agent-code-mapper",
+      "sourcePath": "artifacts/1.28.0/agents/codex/code-mapper.toml",
+      "destination": ".codex/agents/code-mapper.toml",
+      "harness": "codex",
+      "sha256": "50fe14410ccded38375c8ed85b33e3f557dd20f87841b4dd2f4ab9213e9ec42a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.docs-researcher",
+      "logicalName": "codex-agent-docs-researcher",
+      "sourcePath": "artifacts/1.28.0/agents/codex/docs-researcher.toml",
+      "destination": ".codex/agents/docs-researcher.toml",
+      "harness": "codex",
+      "sha256": "7e40b9e4bf0b9f2eb79fbc97c8b2dc8513cd81e7f37c0434e29291eafa1375b4",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.qa-planner",
+      "logicalName": "codex-agent-qa-planner",
+      "sourcePath": "artifacts/1.26.0/agents/codex/qa-planner.toml",
+      "destination": ".codex/agents/qa-planner.toml",
+      "harness": "codex",
+      "sha256": "a2aaa756feadac2934f4c8eeaa4d797ed4d074ef6dc9b5cfbef8882075271371",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.test-runner",
+      "logicalName": "codex-agent-test-runner",
+      "sourcePath": "artifacts/1.26.0/agents/codex/test-runner.toml",
+      "destination": ".codex/agents/test-runner.toml",
+      "harness": "codex",
+      "sha256": "0b800d3699ba08b61c58e741a2b3404ef78d967c22e52891367e1bbec2352abc",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.fast-implementer",
+      "logicalName": "codex-agent-fast-implementer",
+      "sourcePath": "artifacts/1.28.0/agents/codex/fast-implementer.toml",
+      "destination": ".codex/agents/fast-implementer.toml",
+      "harness": "codex",
+      "sha256": "9b5c683eb98d15518a073dd95468c18e0489567312a549d57322ab3a91512c63",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.implementer",
+      "logicalName": "codex-agent-implementer",
+      "sourcePath": "artifacts/1.28.0/agents/codex/implementer.toml",
+      "destination": ".codex/agents/implementer.toml",
+      "harness": "codex",
+      "sha256": "919cbf518349ef37248b51ff3cea08ed8bcf84a2e2cd46648729a5a3fffe988d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.mechanical-worker",
+      "logicalName": "codex-agent-mechanical-worker",
+      "sourcePath": "artifacts/1.28.0/agents/codex/mechanical-worker.toml",
+      "destination": ".codex/agents/mechanical-worker.toml",
+      "harness": "codex",
+      "sha256": "d29e14b0d7208632bc07632b0a398ef93f2cceef64150bfe106eddaa99e7fd3c",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.performance-auditor",
+      "logicalName": "codex-agent-performance-auditor",
+      "sourcePath": "artifacts/1.26.0/agents/codex/performance-auditor.toml",
+      "destination": ".codex/agents/performance-auditor.toml",
+      "harness": "codex",
+      "sha256": "67be1965e1346f63bcd1a9cbc2a1944d579e7d4849aff6c11c365a416e20e20d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.release-manager",
+      "logicalName": "codex-agent-release-manager",
+      "sourcePath": "artifacts/1.26.0/agents/codex/release-manager.toml",
+      "destination": ".codex/agents/release-manager.toml",
+      "harness": "codex",
+      "sha256": "6d307ea5f4a449876b2198f7261b4db6eaba06157dc8a2721ad6d7dfc445d3c0",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.browser-qa",
+      "logicalName": "codex-agent-browser-qa",
+      "sourcePath": "artifacts/1.26.0/agents/codex/browser-qa.toml",
+      "destination": ".codex/agents/browser-qa.toml",
+      "harness": "codex",
+      "sha256": "66e3dd004b7e24f2f59a061eb6be1c2a40f0e2a7cda3687fafaaa3ea6a55513d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.reviewer",
+      "logicalName": "codex-agent-reviewer",
+      "sourcePath": "artifacts/1.26.0/agents/codex/reviewer.toml",
+      "destination": ".codex/agents/reviewer.toml",
+      "harness": "codex",
+      "sha256": "3a69ea2cffa730bcd97b1922b3540ab36bf5f4da51d5f6ab8862f86970aac455",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.security-reviewer",
+      "logicalName": "codex-agent-security-reviewer",
+      "sourcePath": "artifacts/1.26.0/agents/codex/security-reviewer.toml",
+      "destination": ".codex/agents/security-reviewer.toml",
+      "harness": "codex",
+      "sha256": "ef554c3dc8b7019a9d368cc2b6df6a9371c196dc0324de42848093da7f9223d1",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.ui-designer",
+      "logicalName": "codex-agent-ui-designer",
+      "sourcePath": "artifacts/1.26.0/agents/codex/ui-designer.toml",
+      "destination": ".codex/agents/ui-designer.toml",
+      "harness": "codex",
+      "sha256": "90b64e4b7db74d40f856b026a6c22d6f905232fd760f71be9fd79dbd2bf86a2b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.visual-reviewer",
+      "logicalName": "codex-agent-visual-reviewer",
+      "sourcePath": "artifacts/1.26.0/agents/codex/visual-reviewer.toml",
+      "destination": ".codex/agents/visual-reviewer.toml",
+      "harness": "codex",
+      "sha256": "b199e5c9b5b40bfb064490504aec57cbb21bd052ca1c21b7950f1fb98f2dbcb5",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "stack-quality-profiles.codex",
+      "logicalName": "stack-quality-profiles",
+      "sourcePath": "artifacts/1.5.0/quality/stack-quality-profiles.json",
+      "destination": ".codex/development-system/stack-quality-profiles.json",
+      "harness": "codex",
+      "sha256": "3301d0bef68aa5754065b1b280ae41bcffb5998d6a4a886c0294ad11bde0c774",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "development-steward-schedule.codex",
+      "logicalName": "development-steward-schedule",
+      "sourcePath": "artifacts/1.5.1/steward/schedule.json",
+      "destination": ".codex/development-system/development-steward-schedule.json",
+      "harness": "codex",
+      "sha256": "cca06a803351a850b7a3e753d0363b0e1a697697c0c75292eb80a79a948d7823",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "model-routing.codex",
+      "logicalName": "model-routing",
+      "sourcePath": "artifacts/1.30.0/model-routing.md",
+      "destination": ".codex/development-system/model-routing.md",
+      "harness": "codex",
+      "sha256": "c604f2b303955a448c446c060f8c1f6f4586cdc29fb9bc53c86a4aaecbf44513",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "architecture-reference-pack.codex",
+      "logicalName": "architecture-reference-pack",
+      "sourcePath": "artifacts/1.5.10/architecture-reference-pack.md",
+      "destination": ".codex/development-system/architecture-reference-pack.md",
+      "harness": "codex",
+      "sha256": "6fc71793eb776668ceda2ffeff343654c8593c92004e0d246341867153602dee",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent.computer-use-runner",
+      "logicalName": "codex-agent-computer-use-runner",
+      "sourcePath": "artifacts/1.26.0/agents/codex/computer-use-runner.toml",
+      "destination": ".codex/agents/computer-use-runner.toml",
+      "harness": "codex",
+      "sha256": "9de76e6ed237f2281c2fb06161fc728ec7316999847381ff3138d2efedc1ab6b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "codex-agent-evidence-preparer.codex",
+      "logicalName": "codex-agent-evidence-preparer",
+      "sourcePath": "artifacts/1.26.0/agents/codex/evidence-preparer.toml",
+      "destination": ".codex/agents/evidence-preparer.toml",
+      "harness": "codex",
+      "sha256": "8451fa1f28d0127f1a2191600bcd1b1a315252d48d8aa82f116ac001e73117c9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "personal-codex-instructions.codex",
+      "logicalName": "personal-codex-instructions",
+      "sourcePath": "artifacts/1.33.0/global-codex-instructions.md",
+      "destination": ".codex/AGENTS.md",
+      "harness": "codex",
+      "sha256": "47f134bb4fe1d355bcbdbc6431469ca90e93a3bb06a9a950dbcdedb25faba5ae",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-contract.codex",
+      "logicalName": "orchestration-contract",
+      "sourcePath": "artifacts/1.30.0/orchestration-contract.md",
+      "destination": ".codex/development-system/orchestration-contract.md",
+      "harness": "codex",
+      "sha256": "8b61c977530d7027997ef3ed165cab4338d2abc4d4f7f29d19bb37a0734e884b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-source-provenance.codex",
+      "logicalName": "orchestration-source-provenance",
+      "sourcePath": "artifacts/1.30.0/source-provenance.json",
+      "destination": ".codex/development-system/orchestration-source-provenance.json",
+      "harness": "codex",
+      "sha256": "e5ee1793dc0525b8db8dc7044084d7e24eaa08391e75eb8146ea0f1da40736bf",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-provenance.codex",
+      "logicalName": "orchestration-runtime-provenance",
+      "sourcePath": "artifacts/1.29.0/runtime-source-provenance.json",
+      "destination": ".codex/development-system/runtime-source-provenance.json",
+      "harness": "codex",
+      "sha256": "a1613f05024ff547da9ed1a8d4ac5864539c9b22b78c492b12988018b5f01f74",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-config-1-23-0-orchestration-policy-json.codex",
+      "logicalName": "orchestration-runtime-config-1-23-0-orchestration-policy-json",
+      "sourcePath": "artifacts/1.23.5/runtime/config/1.23.0/orchestration-policy.json",
+      "destination": ".codex/development-system/runtime/config/1.23.0/orchestration-policy.json",
+      "harness": "codex",
+      "sha256": "03a3604120256833a27e21d910448f5ffbec93961a57727162c089e1765845f8",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-config-1-23-0-api-prices-json.codex",
+      "logicalName": "orchestration-runtime-config-1-23-0-api-prices-json",
+      "sourcePath": "artifacts/1.23.5/runtime/config/1.23.0/api-prices.json",
+      "destination": ".codex/development-system/runtime/config/1.23.0/api-prices.json",
+      "harness": "codex",
+      "sha256": "34eaba0c809a7d3ef67d4f4cb9834a87d09e52674fad4c7dd9b5c65e66affd00",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-src-orchestration-mjs.codex",
+      "logicalName": "orchestration-runtime-src-orchestration-mjs",
+      "sourcePath": "artifacts/1.23.5/runtime/src/orchestration.mjs",
+      "destination": ".codex/development-system/runtime/src/orchestration.mjs",
+      "harness": "codex",
+      "sha256": "fbaf9009a6215b6a69478387b91e0d6a7b5210a6bb5ed1a790cb2108ef0c1d6b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-src-orchestration-store-mjs.codex",
+      "logicalName": "orchestration-runtime-src-orchestration-store-mjs",
+      "sourcePath": "artifacts/1.23.5/runtime/src/orchestration-store.mjs",
+      "destination": ".codex/development-system/runtime/src/orchestration-store.mjs",
+      "harness": "codex",
+      "sha256": "d2ae24db85b7778c999cb2bfa79fdf3a5b7e840dadf9182150de5666ffea0819",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-src-model-execution-mjs.codex",
+      "logicalName": "orchestration-runtime-src-model-execution-mjs",
+      "sourcePath": "artifacts/1.23.5/runtime/src/model-execution.mjs",
+      "destination": ".codex/development-system/runtime/src/model-execution.mjs",
+      "harness": "codex",
+      "sha256": "6a2dd7fa5b9c98e60a7e440b427d2c3221969ab18fdd15e5e051cc682f3d6c70",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-scripts-run-jev-workflow-mjs.codex",
+      "logicalName": "orchestration-runtime-scripts-run-jev-workflow-mjs",
+      "sourcePath": "artifacts/1.26.0/legacy-controller-disabled.mjs",
+      "destination": ".codex/development-system/runtime/scripts/run-jev-workflow.mjs",
+      "harness": "codex",
+      "sha256": "fd7ccb200cf9fea9cce4d84e4efc54db8f3ed16ca40f7c33fbf4761ab01fe6dc",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-scripts-measure-jev-workflow-mjs.codex",
+      "logicalName": "orchestration-runtime-scripts-measure-jev-workflow-mjs",
+      "sourcePath": "artifacts/1.23.5/runtime/scripts/measure-jev-workflow.mjs",
+      "destination": ".codex/development-system/runtime/scripts/measure-jev-workflow.mjs",
+      "harness": "codex",
+      "sha256": "58356c6ea579dcddf179ffebf96e3415a9be17c4bdcadc343a05ca5fdfd4c355",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "orchestration-runtime-scripts-orchestration-hook-mjs.codex",
+      "logicalName": "orchestration-runtime-scripts-orchestration-hook-mjs",
+      "sourcePath": "artifacts/1.23.5/runtime/scripts/orchestration-hook.mjs",
+      "destination": ".codex/development-system/runtime/scripts/orchestration-hook.mjs",
+      "harness": "codex",
+      "sha256": "b2510446e163f8bd9d723ac313fd10bc262583116fc09eaae7a460767f268c98",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "advisory-runtime-jev-advisory-cli-mjs.codex",
+      "logicalName": "advisory-runtime-jev-advisory-cli-mjs",
+      "sourcePath": "artifacts/1.29.0/advisory-runtime/cli.mjs",
+      "destination": ".codex/development-system/advisory-runtime/cli.mjs",
+      "harness": "codex",
+      "sha256": "36cb7945ffa0e340f679fdc4cd111d80423cad0deabb9cd7a3482f3539a65217",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "advisory-runtime-jev-advisory-provenance-json.codex",
+      "logicalName": "advisory-runtime-jev-advisory-provenance-json",
+      "sourcePath": "artifacts/1.29.0/advisory-runtime/provenance.json",
+      "destination": ".codex/development-system/advisory-runtime/provenance.json",
+      "harness": "codex",
+      "sha256": "f3e4a8dff3aa6250401a6fe0a416e801768668d216b03bf69f116a53cc462cb9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "advisory-runtime-jev-advisory-src-orchestration-mjs.codex",
+      "logicalName": "advisory-runtime-jev-advisory-src-orchestration-mjs",
+      "sourcePath": "artifacts/1.29.0/advisory-runtime/src/orchestration.mjs",
+      "destination": ".codex/development-system/advisory-runtime/src/orchestration.mjs",
+      "harness": "codex",
+      "sha256": "4b3fad1ede07989700990e4a304b3127e686ff9e82a004979090d7a5e5015910",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "advisory-runtime-jev-advisory-config-1-3-0-orchestration-policy-json.codex",
+      "logicalName": "advisory-runtime-jev-advisory-config-1-3-0-orchestration-policy-json",
+      "sourcePath": "artifacts/1.29.0/advisory-runtime/config/1.3.0/orchestration-policy.json",
+      "destination": ".codex/development-system/advisory-runtime/config/1.3.0/orchestration-policy.json",
+      "harness": "codex",
+      "sha256": "eda4476699c613f88b72ed844a92b94e38b0dccab016b8d94acccb8136f71654",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "advisory-config-1-24-0-orchestration-policy-json.codex",
+      "logicalName": "advisory-config-1-24-0-orchestration-policy-json",
+      "sourcePath": "artifacts/1.29.0/advisory-runtime/config/1.3.0/orchestration-policy.json",
+      "destination": ".codex/development-system/advisory-policy.json",
+      "harness": "codex",
+      "sha256": "eda4476699c613f88b72ed844a92b94e38b0dccab016b8d94acccb8136f71654",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-adapters-mjs.codex",
+      "logicalName": "governance-runtime-adapters-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/adapters.mjs",
+      "destination": ".codex/development-system/governance-runtime/adapters.mjs",
+      "harness": "codex",
+      "sha256": "2ccd86b161e9c60410cfc737632897638e30ca4fc8468398b86238f624c45b29",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-cli-mjs.codex",
+      "logicalName": "governance-runtime-cli-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/cli.mjs",
+      "destination": ".codex/development-system/governance-runtime/cli.mjs",
+      "harness": "codex",
+      "sha256": "494a56ed973cc91db4628f8d02b4c32b58f7916c25f831eb23636827dd00c347",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-command-reference-mjs.codex",
+      "logicalName": "governance-runtime-command-reference-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/command-reference.mjs",
+      "destination": ".codex/development-system/governance-runtime/command-reference.mjs",
+      "harness": "codex",
+      "sha256": "4c13941ddcbd460429a9df440547e07823e46e8ddf5fc4c936c72c5f2eefa2fa",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-core-mjs.codex",
+      "logicalName": "governance-runtime-core-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/core.mjs",
+      "destination": ".codex/development-system/governance-runtime/core.mjs",
+      "harness": "codex",
+      "sha256": "30657336f780c44289717e785b14e97c1e27084a302ff560ff977d9bef6b76b9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-errors-mjs.codex",
+      "logicalName": "governance-runtime-errors-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/errors.mjs",
+      "destination": ".codex/development-system/governance-runtime/errors.mjs",
+      "harness": "codex",
+      "sha256": "469bc7cc4da72d959c55bb63c06758d5f470226067995e0995455cf569c2e43a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-executor-mjs.codex",
+      "logicalName": "governance-runtime-executor-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/executor.mjs",
+      "destination": ".codex/development-system/governance-runtime/executor.mjs",
+      "harness": "codex",
+      "sha256": "19256604d6fcb29dca6629c76787035cf2ec0dfa5432f3e723eb92f2e483d287",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-hook-launcher-mjs.codex",
+      "logicalName": "governance-runtime-hook-launcher-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/hook-launcher.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook-launcher.mjs",
+      "harness": "codex",
+      "sha256": "207a481460bdc036f292445b2ba0a3d2c7369e72b7b913dc4f47643da0e83472",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-hook-mjs.codex",
+      "logicalName": "governance-runtime-hook-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/hook.mjs",
+      "destination": ".codex/development-system/governance-runtime/hook.mjs",
+      "harness": "codex",
+      "sha256": "bbdb9d649b02d500e8b23987c4497d977f28c8ca6c0e9cde3bb901e49f208f41",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-jev-mjs.codex",
+      "logicalName": "governance-runtime-jev-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/jev.mjs",
+      "destination": ".codex/development-system/governance-runtime/jev.mjs",
+      "harness": "codex",
+      "sha256": "fa1e7b1e7bf792ee4bd5ff899c09df8e52d348a76a42ba4badae2256ba446e06",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-opencode-mjs.codex",
+      "logicalName": "governance-runtime-opencode-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/opencode.mjs",
+      "destination": ".codex/development-system/governance-runtime/opencode.mjs",
+      "harness": "codex",
+      "sha256": "bd50cd076b0ea025fd05504ce1c147f07c14221579a1bf396e6dcdb2e706359e",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-policy-mjs.codex",
+      "logicalName": "governance-runtime-policy-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/policy.mjs",
+      "destination": ".codex/development-system/governance-runtime/policy.mjs",
+      "harness": "codex",
+      "sha256": "fb5e6972f3f8f7c5d3b5d4d7fc7e91135ffc3a9d765fe444119cec2d95970c15",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-schemas-mjs.codex",
+      "logicalName": "governance-runtime-schemas-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/schemas.mjs",
+      "destination": ".codex/development-system/governance-runtime/schemas.mjs",
+      "harness": "codex",
+      "sha256": "8b99c7458f5d58ba58c3c32cf4786d890f713a953e90731c6ee24ec0ccd528ad",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-store-mjs.codex",
+      "logicalName": "governance-runtime-store-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/store.mjs",
+      "destination": ".codex/development-system/governance-runtime/store.mjs",
+      "harness": "codex",
+      "sha256": "6a1728d3cc5319d6ba55b794287ca0a4a22d6fde6821e58cd50715045131a0df",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-policy.codex",
+      "logicalName": "governance-policy",
+      "sourcePath": "config/1.26.0/orchestration-policy.json",
+      "destination": ".codex/development-system/governance-policy.json",
+      "harness": "codex",
+      "sha256": "e7efa3d9686efe2c3dc6ae5b9608e364d8560e5578123fd0ee2ba9eba247088d",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "governance-runtime-codex-mjs.codex",
+      "logicalName": "governance-runtime-codex-mjs",
+      "sourcePath": "artifacts/1.28.0/governance-runtime/codex.mjs",
+      "destination": ".codex/development-system/governance-runtime/codex.mjs",
+      "harness": "codex",
+      "sha256": "1fd1d19ac999a764e6b5ece0032798187f3b43a8d53ba0eaf1b5beff6c39c750",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "runtime--codex-development-system-runtime-headroom-README-md",
+      "logicalName": "runtime--codex-development-system-runtime-headroom-README-md",
+      "sourcePath": "artifacts/1.31.0/runtime/headroom/README.md",
+      "destination": ".codex/development-system/runtime/headroom/README.md",
+      "harness": "codex",
+      "sha256": "a07ef19a06dd98f3c26f1a449ef9c988744bd151001c47072e7afb0d3e04186b",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "runtime--codex-development-system-runtime-headroom-cli-mjs",
+      "logicalName": "runtime--codex-development-system-runtime-headroom-cli-mjs",
+      "sourcePath": "artifacts/1.30.1/runtime/headroom/cli.mjs",
+      "destination": ".codex/development-system/runtime/headroom/cli.mjs",
+      "harness": "codex",
+      "sha256": "8d7a3c03eaec46f7b8f3e6dc502453951941920a5484354a587a9d67f4c14c8f",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "runtime--codex-development-system-runtime-native-browser-overrides-mjs",
+      "logicalName": "runtime--codex-development-system-runtime-native-browser-overrides-mjs",
+      "sourcePath": "artifacts/1.30.0/runtime/native-browser/overrides.mjs",
+      "destination": ".codex/development-system/runtime/native-browser/overrides.mjs",
+      "harness": "codex",
+      "sha256": "76648f8530366e2cf686a19fd1b45ef6ecf9be0b23390029c9f334847fdd34e0",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "headroom-runtime-provenance.codex",
+      "logicalName": "headroom-runtime-provenance",
+      "sourcePath": "artifacts/1.31.0/headroom-runtime-provenance.json",
+      "destination": ".codex/development-system/headroom-runtime-provenance.json",
+      "harness": "codex",
+      "sha256": "062916718791a3794250b7b910fef7facd0760ab885c5d3748ef312088031131",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "runtime--codex-development-system-runtime-headroom-claude-mjs.claude",
+      "logicalName": "runtime--codex-development-system-runtime-headroom-claude-mjs",
+      "sourcePath": "artifacts/1.31.0/runtime/headroom/claude.mjs",
+      "destination": ".codex/development-system/runtime/headroom/claude.mjs",
+      "harness": "claude",
+      "sha256": "fa98d7729ddcb338ffd214ad020b1137ef40cedc089623dbe82aa970427399b7",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-orchestration-roster-guard-mjs.claude",
+      "logicalName": "claude-orchestration-roster-guard-mjs",
+      "sourcePath": "artifacts/1.33.0/runtime/claude-orchestration/roster-guard.mjs",
+      "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
+      "harness": "claude",
+      "sha256": "5922b97b2f9342760e76744715726c83db97d7a07bff47c00deca1d287763b3e",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-orchestration-policy-json.claude",
+      "logicalName": "claude-orchestration-policy-json",
+      "sourcePath": "artifacts/1.33.0/runtime/claude-orchestration/policy.json",
+      "destination": ".codex/development-system/runtime/claude-orchestration/policy.json",
+      "harness": "claude",
+      "sha256": "a349aed37c967f6ff4e0b760caaf52ac056fda47f23443d501021b6ca34641a7",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-orchestration-run-report-py.claude",
+      "logicalName": "claude-orchestration-run-report-py",
+      "sourcePath": "artifacts/1.33.0/runtime/claude-orchestration/run-report.py",
+      "destination": ".codex/development-system/runtime/claude-orchestration/run-report.py",
+      "harness": "claude",
+      "sha256": "117fe385250c7541741905b174c306e3c232dee1e5cce148d7829f78f34edc56",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-explore.claude",
+      "logicalName": "claude-agent-explore",
+      "sourcePath": "artifacts/1.33.0/claude/agents/Explore.md",
+      "destination": ".claude/agents/Explore.md",
+      "harness": "claude",
+      "sha256": "d4ca73d07e19f6c8ca8ccfde4e29d10a3de0fa40cb8d3500ccbbf4c90c49eb14",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-browser-qa.claude",
+      "logicalName": "claude-agent-browser-qa",
+      "sourcePath": "artifacts/1.33.0/claude/agents/browser-qa.md",
+      "destination": ".claude/agents/browser-qa.md",
+      "harness": "claude",
+      "sha256": "92cfb7803bac498ca240f56e50ad0006ce9883d33b4e7b93377191183385a6b3",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-code-mapper.claude",
+      "logicalName": "claude-agent-code-mapper",
+      "sourcePath": "artifacts/1.33.0/claude/agents/code-mapper.md",
+      "destination": ".claude/agents/code-mapper.md",
+      "harness": "claude",
+      "sha256": "97ce68d96399a98bde7d393b08a08eed8d8855b5a57620bd6052d020ee1dd6d9",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-docs-researcher.claude",
+      "logicalName": "claude-agent-docs-researcher",
+      "sourcePath": "artifacts/1.33.0/claude/agents/docs-researcher.md",
+      "destination": ".claude/agents/docs-researcher.md",
+      "harness": "claude",
+      "sha256": "ac56720e875b7f1163f3925fbb5006adc412ab8d5e15225ee2b5f97c4bcd0f42",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-exact-implementer.claude",
+      "logicalName": "claude-agent-exact-implementer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/exact-implementer.md",
+      "destination": ".claude/agents/exact-implementer.md",
+      "harness": "claude",
+      "sha256": "e164d8d3175cc013f862ecf56a19af977b32da879e586a826e6f75027ed158bd",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-implementer.claude",
+      "logicalName": "claude-agent-implementer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/implementer.md",
+      "destination": ".claude/agents/implementer.md",
+      "harness": "claude",
+      "sha256": "36492903ef01b00a5239acb5a14e97a45ebd0dda5b7b4ca2e36dcd9596ede6cc",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-implementer-medium.claude",
+      "logicalName": "claude-agent-implementer-medium",
+      "sourcePath": "artifacts/1.33.0/claude/agents/implementer-medium.md",
+      "destination": ".claude/agents/implementer-medium.md",
+      "harness": "claude",
+      "sha256": "270521713d7dd9f059822c2c2ea3c8041da9c2b4a0084ca41c8bbeee53f001cf",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-mechanical-worker.claude",
+      "logicalName": "claude-agent-mechanical-worker",
+      "sourcePath": "artifacts/1.33.0/claude/agents/mechanical-worker.md",
+      "destination": ".claude/agents/mechanical-worker.md",
+      "harness": "claude",
+      "sha256": "d6838132fec380bc417d106e86f756bdcd8b902f5c2b02fb2441dbc9fcf49e1a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-plan-reviewer.claude",
+      "logicalName": "claude-agent-plan-reviewer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/plan-reviewer.md",
+      "destination": ".claude/agents/plan-reviewer.md",
+      "harness": "claude",
+      "sha256": "be841ed1508aba4d79cb141ab926c1148c9b9e7e9ef618ca6bbffd68e636c950",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-planner.claude",
+      "logicalName": "claude-agent-planner",
+      "sourcePath": "artifacts/1.33.0/claude/agents/planner.md",
+      "destination": ".claude/agents/planner.md",
+      "harness": "claude",
+      "sha256": "9dedd755c42feab6c4920ae1fbd521e9a67b83e1e880dea760ba2e51004788aa",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-planner-medium.claude",
+      "logicalName": "claude-agent-planner-medium",
+      "sourcePath": "artifacts/1.33.0/claude/agents/planner-medium.md",
+      "destination": ".claude/agents/planner-medium.md",
+      "harness": "claude",
+      "sha256": "c905c13ed5f73db74323ea74463fd369e7cfed0242d26d948e9a583fdedfe851",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-reviewer.claude",
+      "logicalName": "claude-agent-reviewer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/reviewer.md",
+      "destination": ".claude/agents/reviewer.md",
+      "harness": "claude",
+      "sha256": "dad4071ebacf205ac24d098a37b79b5ccea6fbdaaab7c21acb91f584796bfb8a",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-reviewer-medium.claude",
+      "logicalName": "claude-agent-reviewer-medium",
+      "sourcePath": "artifacts/1.33.0/claude/agents/reviewer-medium.md",
+      "destination": ".claude/agents/reviewer-medium.md",
+      "harness": "claude",
+      "sha256": "700a9716c8bf2c754fd8a06aaef5d15e181e9aa1f4c18ae9cca8476a5f2c22ea",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-security-reviewer.claude",
+      "logicalName": "claude-agent-security-reviewer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/security-reviewer.md",
+      "destination": ".claude/agents/security-reviewer.md",
+      "harness": "claude",
+      "sha256": "3ab589f1affbb25cce6440ba15d528e787ab2c02e61bb56d90ac44f39f000574",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-senior-implementer.claude",
+      "logicalName": "claude-agent-senior-implementer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/senior-implementer.md",
+      "destination": ".claude/agents/senior-implementer.md",
+      "harness": "claude",
+      "sha256": "4a827984f4cb6aa5c2d521927220d5434d6264bbca4c00826aa0240bd6c9a9a4",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-ui-implementer.claude",
+      "logicalName": "claude-agent-ui-implementer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/ui-implementer.md",
+      "destination": ".claude/agents/ui-implementer.md",
+      "harness": "claude",
+      "sha256": "816993cd2c10d269aec84791cbddb050facb1509acb93582d4504b4617796ff1",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-agent-visual-reviewer.claude",
+      "logicalName": "claude-agent-visual-reviewer",
+      "sourcePath": "artifacts/1.33.0/claude/agents/visual-reviewer.md",
+      "destination": ".claude/agents/visual-reviewer.md",
+      "harness": "claude",
+      "sha256": "3bb3ed45f1ed8a5d53004ceda429beec54d1b54dda98853cb549f23df13c6521",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "claude-rule-orchestration-md.claude",
+      "logicalName": "claude-rule-orchestration-md",
+      "sourcePath": "artifacts/1.33.0/claude/rules/orchestration.md",
+      "destination": ".claude/rules/orchestration.md",
+      "harness": "claude",
+      "sha256": "306856fc43b55a21b2a29fae7f8b8c9092748a786a7e4a30a09cef8e61dbe072",
+      "expectedMirrorOf": null
+    },
+    {
+      "id": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
+      "logicalName": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
+      "sourcePath": "artifacts/1.33.0/runtime/report-gate/stop-gate.mjs",
+      "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
+      "harness": "codex",
+      "sha256": "a44d6444c0b1fb80864f33625affd766bd9dd2e61703982ec285ed35604d8981",
+      "expectedMirrorOf": null
+    }
+  ],
+  "executionMode": "advisory-parent-execution"
+}
