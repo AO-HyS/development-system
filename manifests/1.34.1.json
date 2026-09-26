@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "e492def592cbc09569bda09da79e04cfca150bc5d9882173fda2fb5538b0622a",
+      "sha256": "9ab170f2f7d0486dfe01e2618cd5e8516196d0cb294afb593081b62607a611fd",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.52.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "ba355cf5a7d05e94b1bf749704bb82eb3e19844b1e208e68f6b5a832cdc2b6e7",
+      "sha256": "580a1c4c8b95789af57434e380245ae2f1964bdfec69e320de38f74bd46bda4e",
       "expectedMirrorOf": null
     },
     {
@@ -140,19 +140,19 @@
     {
       "id": "codex-agent.fast-implementer",
       "logicalName": "codex-agent-fast-implementer",
-      "sourcePath": "artifacts/1.28.0/agents/codex/fast-implementer.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/fast-implementer.toml",
       "destination": ".codex/agents/fast-implementer.toml",
       "harness": "codex",
-      "sha256": "9b5c683eb98d15518a073dd95468c18e0489567312a549d57322ab3a91512c63",
+      "sha256": "8159993d368a6d8f65301dc4edbeba90ed6614d72276c38b70664a851e9881bd",
       "expectedMirrorOf": null
     },
     {
       "id": "codex-agent.implementer",
       "logicalName": "codex-agent-implementer",
-      "sourcePath": "artifacts/1.28.0/agents/codex/implementer.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/implementer.toml",
       "destination": ".codex/agents/implementer.toml",
       "harness": "codex",
-      "sha256": "919cbf518349ef37248b51ff3cea08ed8bcf84a2e2cd46648729a5a3fffe988d",
+      "sha256": "ac2efc1fb7e9bfc9b0f2a2ca89e8d0a50fadf5e478a88884602cee5ce15bdaaa",
       "expectedMirrorOf": null
     },
     {
@@ -230,10 +230,10 @@
     {
       "id": "stack-quality-profiles.codex",
       "logicalName": "stack-quality-profiles",
-      "sourcePath": "artifacts/1.5.0/quality/stack-quality-profiles.json",
+      "sourcePath": "artifacts/1.34.1/quality/stack-quality-profiles.json",
       "destination": ".codex/development-system/stack-quality-profiles.json",
       "harness": "codex",
-      "sha256": "3301d0bef68aa5754065b1b280ae41bcffb5998d6a4a886c0294ad11bde0c774",
+      "sha256": "2e89bf84ecd2b1d603c54edce6dcec5f19eb2b7137b4a86d8c012ea8b4583407",
       "expectedMirrorOf": null
     },
     {

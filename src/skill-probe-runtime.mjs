@@ -45,13 +45,13 @@ export const skillProbeContracts = [
   {
     logicalName: "behavioral-evidence",
     catalogPrompt:
-      "Without opening or activating a skill, name the exact available skill whose catalog description covers auditing changed and new tests for behavioral value and rejecting checks or snapshots relaxed merely to turn a run green. Reply with only its skill name.",
+      "Without opening or activating a skill, name the exact available skill whose catalog description covers independently verifying an accepted objective with real evidence and confirming the change adds no automated tests. Reply with only its skill name.",
     skillPrompt:
-      "$behavioral-evidence Read the full skill instructions from the exact installed file .agents/skills/behavioral-evidence/SKILL.md. Then, according only to them: how should tests be treated relative to the product behavior they observe, what is the disposition for an assertion loosened or a snapshot updated merely to turn a run green, and what must an independent verifier derive its oracle from? Classify that change using the skill's own category label, and quote the specific rule that determines whether it may be accepted. Include the exact phrase 'justifies nothing'; do not perform any audit.",
+      "$behavioral-evidence Read the full skill instructions from the exact installed file .agents/skills/behavioral-evidence/SKILL.md. Then, according only to them: what counts as evidence, which command confirms the change adds no automated tests and what happens to any tests it finds, and what must an independent verifier derive its oracle from? Include the exact phrase 'Real verification is the evidence'; do not perform any audit.",
     catalogPattern: /^behavioral-evidence\s*$/iu,
     loadPathMarkers: [".agents/skills/behavioral-evidence/SKILL.md"],
-    loadSignature: ["justifies nothing"],
-    behaviorSignature: ["subordinate evidence", "weakened test", "accepted objective"],
+    loadSignature: ["real verification is the evidence"],
+    behaviorSignature: ["check-no-tests", "deleted", "accepted objective"],
   },
   {
     logicalName: "simplify-code",
@@ -62,7 +62,7 @@ export const skillProbeContracts = [
     catalogPattern: /^simplify-code\s*$/iu,
     loadPathMarkers: [".agents/skills/simplify-code/SKILL.md"],
     loadSignature: ["why it must remain"],
-    behaviorSignature: ["deletion pass", "production code and test code", "what was deleted"],
+    behaviorSignature: ["deletion pass", "dead code", "what was deleted"],
   },
   {
     logicalName: "install-anti-slop",

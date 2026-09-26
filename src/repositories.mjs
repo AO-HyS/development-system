@@ -341,7 +341,7 @@ function selectCommand(scripts, candidates, runner, accept = () => true) {
 
 // Mirrors the test-script finding of src/no-tests.mjs: repository guidance never
 // names a script that runs automated tests.
-const testRunnerCommand = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b|(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?test\b/;
+const testRunnerCommand = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b/;
 
 /**
  * True when the script is a test script or reaches one through the scripts it runs.
@@ -353,8 +353,43 @@ function isTestScript(name, scripts, seen = new Set()) {
   seen.add(name);
   const command = typeof scripts[name] === "string" ? scripts[name] : "";
   if (name === "test" || name.startsWith("test:") || testRunnerCommand.test(command)) return true;
-  return [...command.matchAll(/(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?([\w:.-]+)/g)]
-    .some((match) => match[1] in scripts && isTestScript(match[1], scripts, seen));
+  return referencedScripts(command).some((script) =>
+    script === "test" || script.startsWith("test:") || (script in scripts && isTestScript(script, scripts, seen))
+  );
+}
+
+// Package-manager options that consume the following token as their value.
+const valueOptions = new Set(["--filter", "-F", "--dir", "-C", "--prefix", "--cwd", "--workspace", "--reporter", "--loglevel"]);
+
+/**
+ * Script names a command runs through a package manager or turbo, after skipping
+ * their options, `run`/`run-script` and yarn `workspace <name>`.
+ * @param {string} command @returns {string[]}
+ */
+function referencedScripts(command) {
+  /** @type {string[]} */
+  const names = [];
+  for (const segment of command.split(/&&|\|\||[;|&]/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let index = tokens.findIndex((token) => /^(?:pnpm|npm|yarn|bun|turbo)$/.test(token));
+    if (index < 0) continue;
+    const manager = tokens[index];
+    index += 1;
+    const skipOptions = () => {
+      while (index < tokens.length && tokens[index].startsWith("-")) {
+        const option = tokens[index].split("=")[0];
+        const takesValue = !tokens[index].includes("=") &&
+          (valueOptions.has(option) || (manager === "npm" && option === "-w"));
+        index += takesValue ? 2 : 1;
+      }
+    };
+    skipOptions();
+    if (manager === "yarn" && tokens[index] === "workspace") { index += 2; skipOptions(); }
+    if (tokens[index] === "run" || tokens[index] === "run-script") { index += 1; skipOptions(); }
+    const script = tokens[index];
+    if (script && /^[\w:.-]+$/.test(script)) names.push(script);
+  }
+  return names;
 }
 
 /** @param {string} command */

@@ -1,6 +1,6 @@
 ---
 name: simplify-code
-description: Review an existing diff for safe deletion, reuse, native, standard-library, or installed-dependency alternatives, and run the final deletion-oriented pass over production and test code. Explicit invocation or deterministic-plan selection only; read-only.
+description: Review an existing diff for safe deletion, reuse, native, standard-library, or installed-dependency alternatives, and run the final deletion-oriented pass over the changed code. Explicit invocation or deterministic-plan selection only; read-only.
 ---
 
 # Simplify Code

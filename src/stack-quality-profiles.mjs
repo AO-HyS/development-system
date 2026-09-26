@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 
-const catalogPath = new URL("../artifacts/1.5.0/quality/stack-quality-profiles.json", import.meta.url);
+const catalogPath = new URL("../artifacts/1.34.1/quality/stack-quality-profiles.json", import.meta.url);
 /** @type {unknown} */
 const parsedCatalog = JSON.parse(readFileSync(catalogPath, "utf8"));
 
@@ -40,7 +40,7 @@ function loadCatalog() {
   const rules = requiredRecord(parsedCatalog, "rules");
   const sources = requiredRecord(parsedCatalog, "sources");
   const oracles = requiredRecord(parsedCatalog, "oracles");
-  if (parsedCatalog.contractVersion !== "1.5.0") throw new Error("stack quality catalog must target contract 1.5.0");
+  if (parsedCatalog.contractVersion !== "1.34.1") throw new Error("stack quality catalog must target contract 1.34.1");
 
   const dimensions = ["composition", "performance", "locality", "modules", "interfaces", "state", "dataFetching", "platformBoundaries"];
   for (const [profileId, profileValue] of Object.entries(profiles)) {
