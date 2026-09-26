@@ -1,5 +1,22 @@
 # AOHYS Development System
 
+## Release 1.34.0 / catalog 0.51.0
+
+Release 1.34.0 moves plan, diff, security and visual reviews to Astra XHigh
+through `codex-review.mjs`, installed with the Claude orchestration runtime. The
+coordinator launches it with Bash `run_in_background: true` and is woken when it
+exits; it prints one JSON receipt with the requested and observed model and
+effort. The roster guard retires plan-reviewer and security-reviewer and admits
+the Claude reviewers only with a `Codex fallback:` line. A fourth review round of
+the same objective needs a `Round rationale:` line, at most five reviews run at
+once, and the Stop report gate waits while one runs. Catalog 0.51.0 is unchanged.
+See [ADR 0061](docs/adr/0061-astra-reviews-through-codex-review.md).
+
+```sh
+./bin/development-system setup --version 1.34.0
+./bin/development-system claude-orchestration-enable
+```
+
 ## Release 1.33.0 / catalog 0.51.0
 
 Release 1.33.0 replaces automated tests with real verification (computer use,
@@ -148,7 +165,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.33.0/aohys-development-system-1.33.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.34.0/aohys-development-system-1.34.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -179,7 +196,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.33.0
+./bin/development-system setup --version 1.34.0
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable
@@ -362,7 +379,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.33.0`; audit advisory hooks and the paired catalog 0.51.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.34.0`; audit advisory hooks and the paired catalog 0.51.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`
