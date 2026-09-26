@@ -1407,33 +1407,33 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.33.0/skills/internal/coding-orchestration"
+        "path": "artifacts/1.34.1/skills/internal/coding-orchestration"
       },
       "variants": [
         {
           "id": "coding-orchestration.codex-adapter",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.33.0/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/coding-orchestration",
           "destination": ".codex/skills/coding-orchestration",
-          "folderSha256": "b93845a3cc61691ad6e8c741c7373f1183a3dd068e34ced746c4ff2df9b8597e",
+          "folderSha256": "f71948eb42b371deeb2de03b60d98cc504e9ddca2f8614df5b218bbb3b162efb",
           "expectedMirrorOf": null,
           "adapterContract": "authorized-initiative-orchestration-v2"
         },
         {
           "id": "coding-orchestration.agents",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.33.0/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/coding-orchestration",
           "destination": ".agents/skills/coding-orchestration",
-          "folderSha256": "b93845a3cc61691ad6e8c741c7373f1183a3dd068e34ced746c4ff2df9b8597e",
+          "folderSha256": "f71948eb42b371deeb2de03b60d98cc504e9ddca2f8614df5b218bbb3b162efb",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "adapterContract": "authorized-initiative-orchestration-v2"
         },
         {
           "id": "coding-orchestration.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.33.0/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/coding-orchestration",
           "destination": ".claude/skills/coding-orchestration",
-          "folderSha256": "b93845a3cc61691ad6e8c741c7373f1183a3dd068e34ced746c4ff2df9b8597e",
+          "folderSha256": "f71948eb42b371deeb2de03b60d98cc504e9ddca2f8614df5b218bbb3b162efb",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "install": "symlink",
           "adapterContract": "authorized-initiative-orchestration-v2"
@@ -3894,7 +3894,7 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.18.0/skills/internal/vercel-react-best-practices",
+        "path": "artifacts/1.34.1/skills/internal/vercel-react-best-practices",
         "upstreamReference": {
           "repository": "https://github.com/vercel-labs/agent-skills",
           "path": "skills/react-best-practices/SKILL.md",
@@ -3909,15 +3909,15 @@
           "harness": "codex",
           "destination": ".agents/skills/vercel-react-best-practices",
           "expectedMirrorOf": null,
-          "sourceDirectory": "artifacts/1.18.0/skills/internal/vercel-react-best-practices",
-          "folderSha256": "e5291c4a756095912ae723e04a5a096aba39951244072208f4f974e7b37c1887"
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/vercel-react-best-practices",
+          "folderSha256": "96477af339f7d3609e156a162d622f188897fb188159144e8dfc9439baa7ae50"
         },
         {
           "id": "vercel-react-best-practices.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.18.0/skills/internal/vercel-react-best-practices",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/vercel-react-best-practices",
           "destination": ".claude/skills/vercel-react-best-practices",
-          "folderSha256": "e5291c4a756095912ae723e04a5a096aba39951244072208f4f974e7b37c1887",
+          "folderSha256": "96477af339f7d3609e156a162d622f188897fb188159144e8dfc9439baa7ae50",
           "expectedMirrorOf": "vercel-react-best-practices.codex",
           "install": "symlink"
         }

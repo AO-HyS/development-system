@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "28e870a2d6a8fe480159e248c5e5c2ee26b2e2e3b767309cceacf87d3bb198c1",
+      "sha256": "a67f6105201300b78622cac6b5680fe264d477f1cfadc7a100c6d5482233b575",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.52.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "580a1c4c8b95789af57434e380245ae2f1964bdfec69e320de38f74bd46bda4e",
+      "sha256": "147a3e8b34a4cf95c2be7866086b881184b29009ef19004239e681394e0bb3ce",
       "expectedMirrorOf": null
     },
     {
@@ -95,19 +95,19 @@
     {
       "id": "codex-agent.backend-specialist",
       "logicalName": "codex-agent-backend-specialist",
-      "sourcePath": "artifacts/1.26.0/agents/codex/backend-specialist.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/backend-specialist.toml",
       "destination": ".codex/agents/backend-specialist.toml",
       "harness": "codex",
-      "sha256": "54bd95c84197fa6e6ea2701a68298dd5f55b748ca4cf5cb2239b5a5bd959fe27",
+      "sha256": "d04ad9f3728988eea2ebe47a9e490c0b793be73f335a54d5ce9545b13c9771c2",
       "expectedMirrorOf": null
     },
     {
       "id": "codex-agent.code-mapper",
       "logicalName": "codex-agent-code-mapper",
-      "sourcePath": "artifacts/1.28.0/agents/codex/code-mapper.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/code-mapper.toml",
       "destination": ".codex/agents/code-mapper.toml",
       "harness": "codex",
-      "sha256": "50fe14410ccded38375c8ed85b33e3f557dd20f87841b4dd2f4ab9213e9ec42a",
+      "sha256": "89e2883788b2a3791c862adc93df21a3aa4f4db54142ca8783ca0ec955dc6706",
       "expectedMirrorOf": null
     },
     {
@@ -131,10 +131,10 @@
     {
       "id": "codex-agent.test-runner",
       "logicalName": "codex-agent-test-runner",
-      "sourcePath": "artifacts/1.26.0/agents/codex/test-runner.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/test-runner.toml",
       "destination": ".codex/agents/test-runner.toml",
       "harness": "codex",
-      "sha256": "0b800d3699ba08b61c58e741a2b3404ef78d967c22e52891367e1bbec2352abc",
+      "sha256": "c2a794765a8d0c8569b7a1531b1273d1160b075f579dda618ff3d0724eba1845",
       "expectedMirrorOf": null
     },
     {
@@ -194,10 +194,10 @@
     {
       "id": "codex-agent.reviewer",
       "logicalName": "codex-agent-reviewer",
-      "sourcePath": "artifacts/1.26.0/agents/codex/reviewer.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/reviewer.toml",
       "destination": ".codex/agents/reviewer.toml",
       "harness": "codex",
-      "sha256": "3a69ea2cffa730bcd97b1922b3540ab36bf5f4da51d5f6ab8862f86970aac455",
+      "sha256": "af929386ee3cd6ef89567fc420eabbf1b634e7742e7cc9e1b180b2a24b1cf590",
       "expectedMirrorOf": null
     },
     {
