@@ -142,6 +142,13 @@ reads the unescaped text; array elements get the named value check. Round 12 (42
 probes) vs 91f9ab7: exactly those 8 now blocked; all earlier rounds unchanged.
 Corpus 916 0 mismatches; ≤185 ms (linear); builder, typecheck, roster,
 check-no-tests, verify1330.py 46/46.
+Eighth review of 23dab52 (do not merge): both readings of a nested `+cmd`
+recurse, so 13 levels took 5.7 s. Fixed: `+cmd` nesting is bounded by
+maxSubstitutionDepth (`shell-nesting-depth`), a body is read once per line, and
+editorScript checks the deadline per line. Nested shapes now block in ~31 ms.
+Round 13 (33 probes) vs 23dab52: only nest5/nest8 changed (now blocked); all
+earlier rounds unchanged. Corpus 916 0 mismatches; ≤119 ms; builder, typecheck,
+roster, check-no-tests, verify1330.py 46/46.
 Next: short re-review, merge, HOME rollout, main + v1.33.0 prerelease,
 products.
 Barber writer done: 24 features in config/product-verification-feature-map.json,

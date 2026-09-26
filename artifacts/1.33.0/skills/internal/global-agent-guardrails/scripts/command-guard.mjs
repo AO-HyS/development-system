@@ -1907,6 +1907,9 @@ const EDITOR_CD = /(?:^|[|:\s"'])(?:cd|chd(?:ir?)?|lcd|lch(?:d(?:ir?)?)?|tcd|tch
  */
 const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+*-]|'[\w<>[\]'`"^.(){}]|\\[/?&]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
 
+/** How many `+cmd` bodies are being read inside one another. */
+let plusDepth = 0;
+
 /** Index just after the next unescaped `delimiter` at or after `from`, or the text length. @param {string} text @param {number} from @param {string} delimiter */
 function delimitedEnd(text, from, delimiter) {
   for (let k = from; k < text.length; k++) {
@@ -1923,11 +1926,18 @@ function delimitedEnd(text, from, delimiter) {
  * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
  */
 function editorFiles(text, editor, ctx) {
+  const read = new Set();
   for (const line of text.includes("\\") ? [text, text.replace(/\\(.)/gsu, "$1")] : [text]) {
     for (const match of line.matchAll(EDITOR_FILE_COMMAND)) {
       if (match[2]) editor.write(match[2]);
       for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
-        if (command && !command.startsWith("+")) editorScript(command.replace(/\\(.)/gsu, "$1"), false, false, editor, ctx);
+        const body = command.replace(/\\(.)/gsu, "$1");
+        if (!command || command.startsWith("+") || read.has(body)) continue;
+        read.add(body);
+        // Both readings of a `+cmd` nested in a `+cmd` recurse, so the nesting is bounded like substitutions.
+        if (plusDepth >= maxDepth) throw new Block("shell-nesting-depth");
+        plusDepth++;
+        try { editorScript(body, false, false, editor, ctx); } finally { plusDepth--; }
       }
     }
   }
@@ -1947,6 +1957,7 @@ function editorScript(script, ed, typed, editor, ctx) {
   // ed's `G` and `V` read the command for each matching line from the next script lines.
   let interactive = false;
   for (const line of script.split(/\r?\n/u)) {
+    checkDeadline();
     if (typing) { typing = line !== "."; continue; }
     let rest = line;
     let first = true;
