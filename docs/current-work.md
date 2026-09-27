@@ -41,8 +41,19 @@ copies, coding-orchestration and vercel-react-best-practices move to 1.34.1
 copies, the gardener negation must sit directly before the action, and the
 adapter reads package-qualified turbo tasks and unwraps npx/pnpx/bunx and
 exec/dlx/x executors.
-Next: Astra round 4 (with a round rationale); PR to develop and then main;
-v1.34.1 prerelease; HOME setup 1.34.1; product pins, reviews and releases.
+Astra round 4 (1 High, 1 Medium: to-tickets asked for tests in every slice;
+working-backwards and the architecture reference pack planned test locality)
+fixed in 1a0d279 together with a full audit of the 151 installed lines that
+mention tests (32 fixed, 119 kept: prohibitions, manual or browser testing,
+code literals, compatibility keys).
+Astra round 5 (3 Medium: the Codex qa-planner planned unit/integration checks,
+measure-development-run inspected test evidence, the anti-slop module-mocking
+rule described test implementations) fixed in a follow-up commit and verified
+with the builder, the checks, isolated HOME home8 and a grep. Round-limit
+decision (two-way): no sixth Astra round, because a sixth round needs an open
+Critical or High and round 5 found only Medium.
+Next: PR to develop and then main; v1.34.1 prerelease; HOME setup 1.34.1;
+product pins, reviews and releases.
 
 ## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 
