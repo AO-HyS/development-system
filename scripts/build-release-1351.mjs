@@ -321,11 +321,12 @@ for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml)$/.t
 }
 assert(directiveHits.length === 0, `instructions ask for automated tests:\n${directiveHits.join("\n")}`);
 // Gardener check: the document validator rejects the retired report sections and tables, so no
-// installed instruction may prescribe them. Every text file counts, including JSON instructions
-// and scripts that generate prompts.
+// installed instruction may prescribe them. Every installed file counts except binaries (a NUL byte).
 /** @type {string[]} */ const retiredSectionHits = [];
-for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml|json|mjs|js|py|txt)$/.test(file)).sort()) {
-  (await readFile(file, "utf8")).split("\n").forEach((line, index) => {
+for (const file of [...instructionFiles].sort()) {
+  const data = await readFile(file);
+  if (data.includes(0)) continue;
+  data.toString("utf8").split("\n").forEach((line, index) => {
     if (/\bVeredicto\b|Preguntas al margen|Qué cambió|Known issues\*{0,2} table/i.test(line)) retiredSectionHits.push(`${relative(root, file)}:${index + 1}: ${line.trim().slice(0, 160)}`);
   });
 }
