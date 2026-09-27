@@ -77,3 +77,6 @@ Contract 1.35.0 with catalog 0.53.0:
 - Report packets that used the old Veredicto sections or tables fail until they
   are rewritten.
 - 1.34.x artifacts stay published and unchanged.
+- Known gap (next version): if the PostToolUse update cannot take the
+  active-writer lock within 2 s, a background writer's hold keeps no agent id
+  and expires after 5 minutes like a foreground hold.

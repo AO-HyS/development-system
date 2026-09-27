@@ -15,7 +15,18 @@ guard/policy/writer agents/rule, W3 technical-documents and delivery recap.
 Coordinator: builder 1350, skills copies under artifacts/1.35.0, catalog
 0.53.0, manifest 1.35.0, ADR 0062, README, guard pins.
 
-Status: implementation in progress.
+Astra round 1 (do not merge; 1 High, 2 Medium: non-atomic `--out`, tables
+without a leading pipe, expiry logged more than once and stale overwrites)
+fixed in 73b0f86. Round 2 (2 Medium: the lock helper ran without ownership on
+timeout, single-column tables) fixed in 8e3c438 and observed live. Round 3
+closed both and raised one new Medium: when the PostToolUse update times out on
+the active-writer lock, a background writer's hold keeps `agentId: null` and
+expires after 5 minutes as a foreground hold. Round cap: no open Critical or
+High, so no round 4; this is a documented known gap for 1.35.1 (record the
+background intent at registration and exempt unresolved background holds from
+the foreground expiry). It needs a 2 s lock contention to happen.
+
+Status: reviewed; publication and rollout in progress.
 
 ## Previous — Development System 1.34.1 (no automated tests in any repository)
 
