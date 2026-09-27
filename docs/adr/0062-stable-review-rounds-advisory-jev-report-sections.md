@@ -80,3 +80,16 @@ Contract 1.35.0 with catalog 0.53.0:
 - Known gap (next version): if the PostToolUse update cannot take the
   active-writer lock within 2 s, a background writer's hold keeps no agent id
   and expires after 5 minutes like a foreground hold.
+
+## Amendment 1.35.1
+
+The pin review of the product rollout found that orchestrate-work, still at its
+1.33.0 copy, prescribed Veredicto and the other retired sections, which the
+1.35.0 validator rejects. Contract 1.35.1 with catalog 0.53.1 moves it to a copy
+with the four sections. working-backwards moves to a copy that lists known
+issues under Hallazgos instead of requiring a table, and says that the table
+formats of better-interface, interface-review, make-interfaces-feel-better and
+break become lists inside a Development System document. Those four skills keep
+their table formats for their own review output; the validator rejects a table
+in a document with an explicit error. The release build fails when any
+installed text file names a retired section or requires a known-issues table.
