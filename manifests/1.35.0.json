@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/1.35.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "68e2bd4057cd92aa38020d2c3000b37e0e9e794a3bab8b32a0811ddd900d4e54",
+      "sha256": "cdae3aa4d444793b717d5fb802c37ff358f35ed95ae7062fae0ceb76ae0d0ab0",
       "expectedMirrorOf": null
     },
     {
@@ -818,7 +818,7 @@
       "sourcePath": "artifacts/1.35.0/runtime/claude-orchestration/codex-review.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/codex-review.mjs",
       "harness": "claude",
-      "sha256": "3a360a16c5fa2e712ca070fc3bb9dc1e98b5be51d416adea41d11814e7a8c057",
+      "sha256": "b41ed793df7f9a1f79c4cb04a2716f10cc9c9da77f23e501f13c877cc8368973",
       "expectedMirrorOf": null
     }
   ],

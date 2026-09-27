@@ -12,6 +12,7 @@
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
 // image-free. PostToolUse Agent and SubagentStop: ledger with the observed model and
 // release of the writer's paths; an expired hold is logged as writer-hold-expired.
+// Every read-modify-write of active-writers.json runs under one session lock directory.
 // CLI mode `mapper-bash` (code-mapper frontmatter hook): PreToolUse Bash limited to
 // read-only git commands and typechecks.
 // CLI mode `writer-bash` (writer frontmatter hook): PreToolUse Bash denies git commands
@@ -126,8 +127,9 @@ function staleReason(w) {
   const moved = transcriptMtime(w.agentId) ?? w.at;
   return moved > now - STALE.idleMinutes * 60e3 ? null : 'idle';
 }
-// An expired hold is logged once and dropped from the saved map.
-function activeWriters() {
+// An expired hold is logged once and dropped from the saved map. Call under the lock:
+// only the process that actually removes the entry logs it.
+function prunedActive() {
   const all = fs.existsSync(ACTIVE) ? JSON.parse(fs.readFileSync(ACTIVE, 'utf8')) : {};
   const kept = {};
   let expired = false;
@@ -139,6 +141,52 @@ function activeWriters() {
   }
   if (expired) saveActive(kept);
   return kept;
+}
+const activeWriters = () => withActiveLock(prunedActive);
+
+// Session lock for active-writers.json: a directory with owner.json {pid, token}. A dead
+// owner (or a missing owner.json older than 5 s) is reclaimed by rename then removal.
+// After 2 s the call proceeds unlocked and logs active-lock-timeout: never stall a hook.
+const LOCK = `${ACTIVE}.lock`;
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function lockIsStale() {
+  try {
+    const { pid } = JSON.parse(fs.readFileSync(path.join(LOCK, 'owner.json'), 'utf8'));
+    try { process.kill(pid, 0); return false; } catch (e) { return e.code === 'ESRCH'; }
+  } catch {
+    try { return fs.statSync(LOCK).mtimeMs < Date.now() - 5000; } catch { return false; }
+  }
+}
+function withActiveLock(fn) {
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const deadline = Date.now() + 2000;
+  let held = false;
+  fs.mkdirSync(sessionDir, { recursive: true });
+  while (!held) {
+    try {
+      fs.mkdirSync(LOCK);
+      fs.writeFileSync(path.join(LOCK, 'owner.json'), JSON.stringify({ pid: process.pid, token }));
+      held = true;
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      if (lockIsStale()) {
+        const stale = `${LOCK}.stale-${token}`;
+        try { fs.renameSync(LOCK, stale); fs.rmSync(stale, { recursive: true, force: true }); } catch { /* another process reclaimed it */ }
+        continue;
+      }
+      if (Date.now() >= deadline) break;
+      pause(20);
+    }
+  }
+  if (!held) ledger({ event: 'active-lock-timeout' });
+  try { return fn(); } finally {
+    if (held) {
+      try {
+        const owner = JSON.parse(fs.readFileSync(path.join(LOCK, 'owner.json'), 'utf8'));
+        if (owner.token === token) fs.rmSync(LOCK, { recursive: true, force: true });
+      } catch { /* lock already gone */ }
+    }
+  }
 }
 
 // Jev may refuse, but it must never stall the work: the same packet is refused at most
@@ -152,6 +200,7 @@ function recordRefusal(key) {
   fs.writeFileSync(REFUSALS, JSON.stringify({ count: r.count + 1, keys: [...r.keys, key].slice(-50) }));
 }
 function saveActive(all) { fs.mkdirSync(sessionDir, { recursive: true }); fs.writeFileSync(ACTIVE, JSON.stringify(all)); }
+const clashes = (active, owned) => [...new Set(Object.values(active).flatMap((w) => w.writeSet.flatMap((a) => owned.filter((b) => pathsOverlap(a, b)).map((b) => `${b} (held by ${w.type} "${w.id}")`))))];
 const pathsOverlap = (a, b) => a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`)
   || (/[*]/.test(a) && b.startsWith(a.split('*')[0])) || (/[*]/.test(b) && a.startsWith(b.split('*')[0]));
 
@@ -338,14 +387,21 @@ async function agentCall() {
   const owned = list.paths;
   if (role.writer) {
     if (list.rejected.length || !owned.length) deny(`${OWNED_FORMAT} Rejected: ${list.rejected.length ? list.rejected.slice(0, 3).join('; ') : 'an empty list'}`, { ...entry, blockedBy: 'owned-paths', rejected: list.rejected.slice(0, 3) });
-    const clash = [...new Set(Object.values(active).flatMap((w) => w.writeSet.flatMap((a) => owned.filter((b) => pathsOverlap(a, b)).map((b) => `${b} (held by ${w.type} "${w.id}")`))))];
+    const clash = clashes(active, owned);
     if (clash.length) deny(`One writer per surface: ${clash.slice(0, 6).join('; ')}. Wait for that writer to finish, or re-scope the owned paths. (A hold whose writer stopped without a release expires once its transcript is idle ${STALE.idleMinutes} min.)`, { ...entry, clash: clash.slice(0, 6) });
   }
+  // Re-read and re-check the clash under the lock, so a concurrent add is never lost.
   const register = () => {
     if (!role.writer || !input.tool_use_id) return;
-    const all = activeWriters();
-    all[input.tool_use_id] = { id: (ti.description || type).slice(0, 80), type, writeSet: owned, at: Date.now(), agentId: null };
-    saveActive(all);
+    const clash = withActiveLock(() => {
+      const all = prunedActive();
+      const found = clashes(all, owned);
+      if (found.length) return found;
+      all[input.tool_use_id] = { id: (ti.description || type).slice(0, 80), type, writeSet: owned, at: Date.now(), agentId: null };
+      saveActive(all);
+      return [];
+    });
+    if (clash.length) deny(`One writer per surface: ${clash.slice(0, 6).join('; ')}. A concurrent dispatch took that path first; wait for it to finish, or re-scope the owned paths.`, { ...entry, clash: clash.slice(0, 6) });
   };
   const mode = POLICY.jev.mode ?? 'gate';
   const tiered = mode !== 'off' && tierLadder(role.family).length > 1;
@@ -609,18 +665,22 @@ try {
     ledger({ event: 'agent-result', type: input.tool_input?.subagent_type ?? null, status: r.status ?? null,
       resolvedModel: r.resolvedModel ?? null, modelsUsed: r.modelsUsed ?? null, durationMs: r.totalDurationMs ?? null,
       toolUses: r.totalToolUseCount ?? null, agentId: r.agentId ?? null });
-    const all = activeWriters();
-    if (input.tool_use_id && all[input.tool_use_id]) {
-      if (/launch|running|async/i.test(String(r.status))) all[input.tool_use_id].agentId = r.agentId ?? null;
-      else delete all[input.tool_use_id];
-      saveActive(all);
-    }
+    withActiveLock(() => {
+      const all = prunedActive();
+      if (input.tool_use_id && all[input.tool_use_id]) {
+        if (/launch|running|async/i.test(String(r.status))) all[input.tool_use_id].agentId = r.agentId ?? null;
+        else delete all[input.tool_use_id];
+        saveActive(all);
+      }
+    });
     process.exit(0);
   }
   if (input.hook_event_name === 'SubagentStop') {
-    const all = activeWriters();
-    const kept = Object.fromEntries(Object.entries(all).filter(([, w]) => !w.agentId || w.agentId !== input.agent_id));
-    if (Object.keys(kept).length !== Object.keys(all).length) saveActive(kept);
+    withActiveLock(() => {
+      const all = prunedActive();
+      const kept = Object.fromEntries(Object.entries(all).filter(([, w]) => !w.agentId || w.agentId !== input.agent_id));
+      if (Object.keys(kept).length !== Object.keys(all).length) saveActive(kept);
+    });
     process.exit(0);
   }
   if (input.tool_name === 'Agent') await agentCall();

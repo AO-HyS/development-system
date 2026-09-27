@@ -11,8 +11,9 @@
 // and in previous-findings.md. --computer-use runs the packet as a Codex Computer Use operator:
 // Task-Id optional, no rounds, at most policy.review.maxComputerUse live runs (one screen).
 // The live-run caps (maxParallel reviews) are checked and reserved under an ownership-aware
-// lock (pending/.lock), so simultaneous launches cannot both pass. --out must be a new or
-// empty directory. Refusals exit 2 before any launch. Prints one JSON receipt line: requested
+// lock (pending/.lock), so simultaneous launches cannot both pass. --out (or the default
+// runs/<runId>) is claimed atomically: it must be new or empty, and an exclusive .claim file
+// refuses a second launch; a refusal after the claim leaves the directory burned. Refusals exit 2 before any launch. Prints one JSON receipt line: requested
 // model and effort, the observed ones from the Codex session log ("unknown" if absent), and
 // the outcome ("review" = complete round, "attempt" = not counted).
 import { spawn } from 'node:child_process';
@@ -198,14 +199,28 @@ if (mode === 'review') {
   }
 }
 
-if (args.out) {
-  const out = path.resolve(args.out);
-  let entries = [];
-  try { entries = fs.readdirSync(out); } catch (error) { if (error?.code !== 'ENOENT') refuse(`--out ${out} is not a usable directory (${error?.code ?? error})`); }
-  if (entries.length > 0) refuse(`--out must be a new or empty directory (${out} has ${entries.length} entries)`);
-}
-
 const runId = `${new Date().toISOString().replace(/[-:.]/g, '')}-${crypto.randomBytes(3).toString('hex')}`;
+
+// Claim the output directory atomically before anything is written: create it (parent
+// recursive, the directory itself not), require it empty, then create .claim exclusively.
+// Two launches with the same --out cannot both pass; .claim stays to mark the directory used.
+const outDir = path.resolve(args.out ?? path.join(stateDir, 'runs', runId));
+function claimOutDir() {
+  try {
+    fs.mkdirSync(path.dirname(outDir), { recursive: true });
+    try { fs.mkdirSync(outDir); } catch (error) { if (error?.code !== 'EEXIST') throw error; }
+    const entries = fs.readdirSync(outDir);
+    if (entries.includes('.claim')) return `--out ${outDir} is already claimed by another codex-review launch`;
+    if (entries.length > 0) return `--out must be a new or empty directory (${outDir} has ${entries.length} entries)`;
+    fs.writeFileSync(path.join(outDir, '.claim'), JSON.stringify({ pid: process.pid, runId, at: new Date().toISOString() }), { flag: 'wx' });
+    return null;
+  } catch (error) {
+    if (error?.code === 'EEXIST') return `--out ${outDir} is already claimed by another codex-review launch`;
+    return `--out ${outDir} is not a usable directory (${error?.code ?? error})`;
+  }
+}
+const claimRefusal = claimOutDir();
+if (claimRefusal) refuse(claimRefusal);
 const requested = { model: REVIEW.model ?? 'gpt-6-astra', effort: REVIEW.effort ?? 'xhigh' };
 const marker = path.join(pendingDir, `${runId}.json`);
 const removeMarker = () => { try { fs.rmSync(marker, { force: true }); } catch { /* best effort */ } };
@@ -242,8 +257,6 @@ function reserve() {
 const refusal = reserve();
 if (refusal) refuse(refusal);
 
-const outDir = path.resolve(args.out ?? path.join(stateDir, 'runs', runId));
-fs.mkdirSync(outDir, { recursive: true });
 const files = Object.fromEntries(['packet.md', 'findings.md', 'events.jsonl', 'stderr.log', 'receipt.json', 'previous-findings.md'].map((name) => [name, path.join(outDir, name)]));
 fs.writeFileSync(files['packet.md'], packet);
 const preamble = mode === 'computer-use' ? COMPUTER_USE_PREAMBLE(outDir) : PREAMBLE;
