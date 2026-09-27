@@ -5,7 +5,8 @@ so repositories and HOME carry one rule set: no automated tests; real
 verification (computer use, browser, the repository's verification CLI); reviews
 on Astra XHigh through codex-review. Root
 /Users/corrortiz/Documents/AO/development-system, branch
-feat/development-system-1.34.1 from develop 9fa37ab. Status: in progress.
+feat/development-system-1.34.1 from develop 9fa37ab. Status: released and
+rolled out to the used repositories (see "Product rollout").
 
 Done on the branch: builder 1341 (manifest 1.34.1 from 1.34.0, catalog 0.52.0
 from 0.51.0); global instructions sentence; behavioral-evidence,
@@ -60,8 +61,55 @@ pin follows the release catalog); guardrails-audit healthy on HOME and the live
 guard still blocks `rm -rf`. HOME setup needs `--source-commit` while the
 untracked private/ directory keeps the checkout dirty.
 Decision (two-way): the v1.34.1 prerelease asset is re-uploaded with the fix,
-because no repository had pinned it yet.
-Next: product pins, reviews and releases.
+because no repository had pinned it yet. The fix merged as PR #116 (develop
+ee82966) and #117 (main 26924d3); the v1.34.1 tag and prerelease were recreated
+at 26924d3, and HOME was set up again from it.
+
+Product rollout (2026-09-27, "Actualiza todos los repos con la nueva versión";
+branch chore/development-system-1.34.1 in each repository, pin 1.34.1 with
+recorded tarball integrity, adapter normalized, live docs aligned; each PR
+reviewed by Astra XHigh until no blocking finding, and round-3 Medium
+findings fixed and verified directly, without a fourth round):
+- opportunity-os #73 -> main (4136dc25): `.venv-cv/` ignored so
+  check-no-tests stops scanning vendored pip tests; Quality run success;
+  production (Cloudflare Pages) 200.
+- aohys.com #197 -> develop, #198 -> main (83eb4e9); production Release Train
+  success; aohys.com and /es return 200.
+- casa-roca #142 -> develop, #143 -> main (06b7d72); Production Path success.
+  The Vercel Git integration created no deployment for #143 (nor for #141);
+  the last production deploys are a 2026-09-24 CLI deploy (dashboard) and
+  #121 (public). The promotion changes no runtime code, so production behavior
+  is unchanged; production 200.
+- eteria #283 -> develop (static-markup smoke suites removed; changed
+  validation skips deleted files in the impeccable scan), #284 -> main
+  (6cd0397d); production Release Train 36284414166 success (Deploy
+  Cloudflare Pages, Smoke release URL); momentos-eteria.com 200. The www
+  host has no DNS record (pre-existing).
+- the-barber-central #348 -> develop, #349 -> main (f6d081f7); production
+  Release Train 36284450742 success (Verify, Preflight attestation,
+  Selective deploy, Release); landing, dashboard and admin workers 200.
+- nutri-plan #497 -> develop only (squash 9f6c5dee; git data API, the
+  checkout belongs to another thread): the removed
+  `findTestPolicyViolations` consumers are dropped, and `verify:product` becomes the Feature Map check alone, so
+  `quality:changed` and the Husky pre-push stop running tests; staged quality
+  (pre-commit) no longer runs `test:unit:email`; the scorecard guide marks
+  `quality:scorecard` unavailable; plan decisions D-0003 and D-0004 are
+  superseded. Astra rounds 1-3 (1 High, 5 Medium) fixed; the round-3 Mediums
+  were fixed and verified directly (head 510461e), without a fourth round.
+  Main and production wait for the redesign.
+  Unresolved policy violation: develop still holds 835 automated test files
+  and the scripts that run them (`test:unit*`, `quality:certify*`,
+  `verify:full:*`, `verify:ci`, the scorecard). The no-tests rule requires
+  their removal. They were not deleted here because the redesign thread owns
+  the checkout and its branch removes them; if that branch does not land,
+  the cleanup still has to happen on develop.
+Dormant repositories stay untouched.
+
+Next-version candidates: check-no-tests flags live doc instructions that run
+or require tests and static-markup "smoke" suites (reviews found stray test
+instructions round after round); check-no-tests skips vendored site-packages;
+normalize skips catalog-identical mirror files (aohys foreign-product-residue);
+setup reports the original skill-sync error.
 
 ## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 
