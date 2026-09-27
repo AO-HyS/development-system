@@ -61,7 +61,7 @@ export function buildOrchestrationBundle(ticket, options = {}) {
     ? qualitySelection.checks.flatMap((check) => check ? [check.oracle] : [])
     : [];
   const nonStackOracles = [
-    ...(capabilities.includes("typescript") ? ["lint", "typecheck", "focused-tests"] : []),
+    ...(capabilities.includes("typescript") ? ["lint", "typecheck", "real-verification"] : []),
     ...(capabilities.includes("security") ? ["codex-security"] : []),
     ...(capabilities.includes("performance") ? ["performance-audit"] : []),
     ...(capabilities.includes("browser") ? ["computer-use-evidence"] : []),

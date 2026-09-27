@@ -49,7 +49,7 @@ Evolucionar el repositorio canónico a **Development System Next**, soportado ú
 18. As Alejandro, I want issue identifiers to reflect their product, so that Casa Roca work is not confused with AO HyS work.
 19. As Alejandro, I want architectural drift detected periodically, so that agent slop does not become precedent.
 20. As Alejandro, I want recognized canonical repos and primary documentation used as evidence, so that stack guidance stays current.
-21. As Alejandro, I want React Doctor, lint, typecheck, focused tests and Impeccable composed without duplicate work, so that quality stays fast.
+21. As Alejandro, I want React Doctor, lint, typecheck, real verification and Impeccable composed without duplicate work, so that quality stays fast.
 22. As Alejandro, I want zero `any` and no dishonest TypeScript escape hatches in owned code, so that agents preserve real type safety.
 23. As Alejandro, I want shadcn components, registries and icon strategy kept current unless a repo pins an exception, so that bugs do not persist through stale copies.
 24. As Alejandro, I want Convex functions checked for authorization, validators, indexes, pagination, contention and bounded reads, so that performance and cost remain controlled.

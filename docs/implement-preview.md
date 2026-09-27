@@ -14,7 +14,7 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
     { "lane": "intent", "surface": "factory", "role": "adversarial-reviewer" },
     { "lane": "standards", "surface": "codex", "role": "reviewer" }
   ],
-  "tdd": { "selection": "required", "reason": "contract logic", "evidence": "acceptance seam" },
+  "tdd": { "selection": "omitted", "reason": "no automated tests", "evidence": "repository verification CLI" },
   "qa": { "level": "omitted", "reason": "internal CLI", "alternativeEvidence": "CLI scenario" },
   "providerReadiness": {
     "required": true,
@@ -25,7 +25,7 @@ The ordinary plan has one writer. Tiny changes target functional evidence in fiv
   "manualChecklist": ["Inspect PR", "Open preview", "Authorize merge separately"],
   "execution": {
     "implement": { "command": "codex", "args": ["exec", "..."] },
-    "test": { "command": "pnpm", "args": ["test"] },
+    "test": { "command": "pnpm", "args": ["run", "verify:product"] },
     "changed_validation": { "command": "pnpm", "args": ["quality:changed"] },
     "review": {
       "intent": { "command": "droid", "args": ["exec", "..."] },

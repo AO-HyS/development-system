@@ -334,9 +334,93 @@ function skillLogicalName(path, contents) {
 /** @param {Record<string, string>} scripts @param {string[]} candidates @param {string} runner @param {(command:string) => boolean} [accept] */
 function selectCommand(scripts, candidates, runner, accept = () => true) {
   const script = candidates.find((candidate) =>
-    typeof scripts[candidate] === "string" && accept(scripts[candidate])
+    typeof scripts[candidate] === "string" && !isTestScript(candidate, scripts) && accept(scripts[candidate])
   );
   return script ? { script, command: `${runner} run ${script}` } : null;
+}
+
+// Mirrors the test-script finding of src/no-tests.mjs: repository guidance never
+// names a script that runs automated tests.
+const testRunnerCommand = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b/;
+
+/**
+ * True when the script is a test script or reaches one through the scripts it runs.
+ * @param {string} name @param {Record<string, string>} scripts @param {Set<string>} [seen]
+ * @returns {boolean}
+ */
+function isTestScript(name, scripts, seen = new Set()) {
+  if (seen.has(name)) return false;
+  seen.add(name);
+  const command = typeof scripts[name] === "string" ? scripts[name] : "";
+  if (name === "test" || name.startsWith("test:") || testRunnerCommand.test(command)) return true;
+  if (referencedScripts(command).some((script) =>
+    script === "test" || script.startsWith("test:") || (script in scripts && isTestScript(script, scripts, seen))
+  )) return true;
+  // npm-style runners execute pre<name> and post<name> implicitly.
+  return [`pre${name}`, `post${name}`].some((lifecycle) =>
+    typeof scripts[lifecycle] === "string" && isTestScript(lifecycle, scripts, seen)
+  );
+}
+
+// Package-manager options that consume the following token as their value.
+const valueOptions = new Set(["--filter", "-F", "--dir", "-C", "--prefix", "--cwd", "--workspace", "--reporter", "--loglevel"]);
+
+/**
+ * Script names a command runs through a package manager or turbo, after skipping
+ * their options, `run`/`run-script` and yarn `workspace <name>`.
+ * @param {string} command @returns {string[]}
+ */
+function referencedScripts(command) {
+  /** @type {string[]} */
+  const names = [];
+  for (const segment of command.split(/&&|\|\||[;|&]/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let index = tokens.findIndex((token) => /^(?:pnpm|npm|yarn|bun|turbo|npx|pnpx|bunx)$/.test(token));
+    if (index < 0) continue;
+    let manager = "";
+    const skipOptions = () => {
+      while (index < tokens.length && tokens[index].startsWith("-")) {
+        const option = tokens[index].split("=")[0];
+        const takesValue = !tokens[index].includes("=") &&
+          (valueOptions.has(option) || (manager === "npm" && option === "-w"));
+        index += takesValue ? 2 : 1;
+      }
+    };
+    // Executors (npx, pnpx, bunx, `<manager> exec|dlx|x`) run the inner command.
+    const skipExecutor = () => { index += 1; skipOptions(); if (tokens[index] === "--") index += 1; };
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (/^(?:npx|pnpx|bunx)$/.test(token)) { manager = token; skipExecutor(); continue; }
+      if (!/^(?:pnpm|npm|yarn|bun|turbo)$/.test(token)) { manager = ""; break; }
+      manager = token;
+      index += 1;
+      skipOptions();
+      if (manager !== "turbo" && /^(?:exec|dlx|x)$/.test(tokens[index] ?? "")) { skipExecutor(); continue; }
+      break;
+    }
+    if (!manager || /^(?:npx|pnpx|bunx)$/.test(manager)) continue;
+    if (manager === "yarn" && tokens[index] === "workspace") { index += 2; skipOptions(); }
+    if (tokens[index] === "run" || tokens[index] === "run-script") { index += 1; skipOptions(); }
+    if (manager === "turbo") {
+      // turbo runs every task named on the command line.
+      while (index < tokens.length && tokens[index] !== "--") {
+        const token = tokens[index];
+        if (token.startsWith("-")) {
+          const takesValue = !token.includes("=") && valueOptions.has(token.split("=")[0]);
+          index += takesValue ? 2 : 1;
+          continue;
+        }
+        // `<package>#<task>` and `//#<task>` name the task after the last `#`.
+        const task = token.includes("#") ? token.slice(token.lastIndexOf("#") + 1) : token;
+        if (/^[\w:.-]+$/.test(task)) names.push(task);
+        index += 1;
+      }
+      continue;
+    }
+    const script = tokens[index];
+    if (script && /^[\w:.-]+$/.test(script)) names.push(script);
+  }
+  return names;
 }
 
 /** @param {string} command */
@@ -423,8 +507,8 @@ async function repositoryIdentity(repository, files) {
         ["quality:provider-readiness", "release:env:preview"],
         runner,
       ),
-      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check", "test"], runner),
-      qa: selectCommand(scripts, ["qa", "test:e2e:changed", "test:e2e", "e2e", "test"], runner),
+      validation: selectCommand(scripts, ["validate", "verify:changed", "verify:ci", "verify", "check"], runner),
+      qa: selectCommand(scripts, ["qa", "e2e"], runner),
       preview: selectCommand(
         scripts,
         ["preview", "preview:local", "cloudflare:local", "dev", "start"],
@@ -815,15 +899,18 @@ A plan or installed skill grants no additional authority; platform and repositor
 
 Use changed validation for ordinary feedback and required certification once the
 integrated candidate stabilizes. Choose checks by the changed public behavior.
-Test edits are closed by default: use the repository's reviewed test-change
-policy and report missing behavioral evidence to the parent before widening it.
+This repository has no automated tests: \`development-system check-no-tests\`
+guards it and lint runs it. Every task ends with real verification through the
+repository's verification CLI and feature map, the browser or computer use.
+Reviews run on Astra XHigh through codex-review launched in the background;
+Claude reviewers run only with a declared \`Codex fallback:\` line.
 Use the local construction recipes and existing components for screens, forms
-and authorized server operations. Simplification, review of test value,
-correction and objective verification are responsibilities. Tiny direct work
-stays with the parent; nontrivial features retain their independent Astra plan
-and final reviews. Select additional specialists by affected risk and preserve
-the parent's final judgment. Reject weakened assertions
-and unsupported green-check claims. File counts and style scores are not gates.
+and authorized server operations. Simplification, correction and objective
+verification are responsibilities. Tiny direct work stays with the parent;
+nontrivial features retain their independent Astra plan and final reviews.
+Select additional specialists by affected risk and preserve the parent's final
+judgment. Reject unsupported green-check claims. File counts and style scores
+are not gates.
 
 Repeat checks only for relevant edits, failures, required gates or unresolved
 concerns. Preserve exit codes and still-valid evidence. Never bypass hooks or CI.
@@ -999,7 +1086,7 @@ function repositoryContract(audit, mode) {
         command: "flow-implement",
         requiresNamedTerminalSlice: true,
         terminalState: "ready-for-human",
-        autonomousOperations: ["implement", "test", "validate", "review", "correct", "proportional-qa"],
+        autonomousOperations: ["implement", "real-verification", "validate", "review", "correct", "proportional-qa"],
         checksAreDevelopmentSubsteps: true,
         externalStateAuthorization: "request-and-repository-policy",
         deliveryAuthorization: "request-and-repository-policy",
@@ -1029,7 +1116,7 @@ function repositoryContract(audit, mode) {
         writable: phase.writable,
         dependsOn: [...phase.dependsOn],
       })),
-      testsAreSubordinateEvidence: true,
+      automatedTests: "none-real-verification-only",
       independentVerification: "oracle-derived-from-objective-and-public-interface",
       excludedMetrics: [...antiSlopExcludedMetrics],
       diagnosticOnlyMetrics: [...antiSlopDiagnosticOnlyMetrics],

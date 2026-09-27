@@ -73,12 +73,13 @@ function automationDecision(error) {
   const id = text(error.id) ?? "unidentified-error";
   const reproduction = isRecord(error.reproduction) ? error.reproduction : {};
   const rootCause = isRecord(error.rootCause) ? error.rootCause : {};
-  const regressionTest = isRecord(error.regressionTest) ? error.regressionTest : {};
+  const verification = isRecord(error.verification) ? error.verification : {};
   const revision = text(reproduction.revision);
   const steps = strings(reproduction.steps);
   const module = text(rootCause.module);
   const explanation = text(rootCause.explanation);
-  const regressionTestPath = text(regressionTest.path);
+  const verificationMethod = text(verification.method);
+  const verificationEvidence = text(verification.evidence);
   const fingerprint = text(error.fingerprint);
   const observationId = text(error.observationId);
   const eligible = reproduction.status === "passed"
@@ -89,15 +90,16 @@ function automationDecision(error) {
     && rootCause.status === "bounded"
     && module !== null
     && explanation !== null
-    && regressionTest.status === "passed"
-    && regressionTestPath !== null;
+    && verification.status === "passed"
+    && ["verification-cli", "browser", "computer-use"].includes(verificationMethod ?? "")
+    && verificationEvidence !== null;
 
   return {
     id,
     fingerprint,
     decision: eligible ? "prepare-draft-fix" : "investigate",
     reason: eligible
-      ? "deterministic-reproduction-bounded-root-cause-and-regression-test"
+      ? "deterministic-reproduction-bounded-root-cause-and-real-verification"
       : "automation-evidence-incomplete-or-ambiguous",
     evidencePacket: eligible ? {
       fingerprint,
@@ -105,7 +107,7 @@ function automationDecision(error) {
       revision,
       reproductionSteps: steps,
       rootCause: { module, explanation },
-      regressionTestPath,
+      verification: { method: verificationMethod, evidence: verificationEvidence },
     } : null,
     draftCreated: false,
   };

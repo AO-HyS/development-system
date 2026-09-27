@@ -1,4 +1,61 @@
-# Current work — Development System 1.34.0 (Astra reviews and computer use through codex-review)
+# Current work — Development System 1.34.1 (no automated tests in any repository)
+
+Goal: remove every remaining DS-owned instruction that asks for automated tests,
+so repositories and HOME carry one rule set: no automated tests; real
+verification (computer use, browser, the repository's verification CLI); reviews
+on Astra XHigh through codex-review. Root
+/Users/corrortiz/Documents/AO/development-system, branch
+feat/development-system-1.34.1 from develop 9fa37ab. Status: in progress.
+
+Done on the branch: builder 1341 (manifest 1.34.1 from 1.34.0, catalog 0.52.0
+from 0.51.0); global instructions sentence; behavioral-evidence,
+setup-ts-deep-modules, flow-implement, simplify-code and codebase-design copies
+under artifacts/1.34.1/skills; repository adapter template and command
+selection; anti-slop lane texts; setup keeps the skill-sync error when the
+rollback throws; contract paragraph; README; Devin blueprints; implement-preview
+example.
+Astra round 1 (do not merge; 2 High, 2 Medium) fixed in 5e8abc3: the Codex
+implementer and fast-implementer prompts, stack-quality-profiles
+(real-verification oracle) and six more skills (setup-pre-commit,
+resolving-merge-conflicts, triage, to-spec, improve-codebase-architecture,
+agent-browser) move to 1.34.1 copies; migrate-to-shoehorn retired with cleanup;
+Convex guardian and orchestration bundles ask for real verification; the
+adapter follows pnpm/npm/yarn/bun/turbo indirection to test scripts; the
+builder fails on any installed instruction that asks for tests. Isolated HOME
+1.34.1 audits healthy, and 1.34.0 -> 1.34.1 removes migrate-to-shoehorn.
+Scope decision (two-way): used repos are development-system, nutri-plan,
+the-barber-central, opportunity-os, aohys, casa-roca and eteria; the dormant
+repos stay untouched. Product branches chore/development-system-1.34.1 carry
+the docs alignment (reviewed by Astra) and get the 1.34.1 pin after the
+release; nutri-plan goes to develop only through plumbing (its checkout
+belongs to another thread).
+Astra round 2 (1 High, 3 Medium) fixed: the 1.30.0 orchestration contract
+("Preserve existing test files") is replaced by a 1.34.1 copy with the
+no-tests rule; the gardener checks each directive clause (negation only within
+its clause) and catches `pnpm run test` and similar; the adapter follows every
+turbo task and npm pre/post lifecycle scripts.
+Astra round 3 (4 Medium) plus a High found on the isolated HOME (the Codex
+reviewer, test_runner, backend-specialist and code-mapper prompts still asked
+for or returned tests) fixed in 64a4595 and the adapter commit: 1.34.1 agent
+copies, coding-orchestration and vercel-react-best-practices move to 1.34.1
+copies, the gardener negation must sit directly before the action, and the
+adapter reads package-qualified turbo tasks and unwraps npx/pnpx/bunx and
+exec/dlx/x executors.
+Astra round 4 (1 High, 1 Medium: to-tickets asked for tests in every slice;
+working-backwards and the architecture reference pack planned test locality)
+fixed in 1a0d279 together with a full audit of the 151 installed lines that
+mention tests (32 fixed, 119 kept: prohibitions, manual or browser testing,
+code literals, compatibility keys).
+Astra round 5 (3 Medium: the Codex qa-planner planned unit/integration checks,
+measure-development-run inspected test evidence, the anti-slop module-mocking
+rule described test implementations) fixed in a follow-up commit and verified
+with the builder, the checks, isolated HOME home8 and a grep. Round-limit
+decision (two-way): no sixth Astra round, because a sixth round needs an open
+Critical or High and round 5 found only Medium.
+Next: PR to develop and then main; v1.34.1 prerelease; HOME setup 1.34.1;
+product pins, reviews and releases.
+
+## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 
 Approved 2026-09-26: "hagamos la nueva versión: lleva lo de NutriPlan a
 Developer System y a de Barber Central" plus Astra as the computer-use default.
