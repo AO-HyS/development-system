@@ -52,8 +52,16 @@ rule described test implementations) fixed in a follow-up commit and verified
 with the builder, the checks, isolated HOME home8 and a grep. Round-limit
 decision (two-way): no sixth Astra round, because a sixth round needs an open
 Critical or High and round 5 found only Medium.
-Next: PR to develop and then main; v1.34.1 prerelease; HOME setup 1.34.1;
-product pins, reviews and releases.
+Merged: PR #114 (develop) and #115 (main, d2ec15b); v1.34.1 prerelease.
+HOME rollout found a release bug: src/guardrails.mjs pinned guard catalog
+0.51.0 while catalog 0.52.0 moved global-agent-guardrails, so guardrails-audit
+rejected the installed guard. Fixed (pin 0.52.0; the builder now asserts the
+pin follows the release catalog); guardrails-audit healthy on HOME and the live
+guard still blocks `rm -rf`. HOME setup needs `--source-commit` while the
+untracked private/ directory keeps the checkout dirty.
+Decision (two-way): the v1.34.1 prerelease asset is re-uploaded with the fix,
+because no repository had pinned it yet.
+Next: product pins, reviews and releases.
 
 ## Previous — Development System 1.34.0 (Astra reviews and computer use through codex-review)
 

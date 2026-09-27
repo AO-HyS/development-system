@@ -9,9 +9,11 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Catalog 0.51.0 ships the quote-aware 2.0.0 policy from artifacts/1.33.0/skills/internal/global-agent-guardrails. */
-const guardCatalogVersion = "0.51.0";
-/** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.51.0 engine understands --harness claude and --tool-json. */
+/** Catalog 0.52.0 ships the quote-aware 2.0.0 policy from artifacts/1.34.1/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.52.0";
+/** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
+const guardSetupVersion = "1.34.1";
+/** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**
  * Codex hooks also cover T3 Codex threads; Claude Code reads its user settings. Both run the
@@ -268,7 +270,7 @@ export async function auditGlobalGuardrails({ home }) {
       const directory = dirname(dirname(adapter.enginePath));
       if (await existsFile(directory)) skillHash = await directoryHash(directory);
       if (skillHash !== null && !expectedByHarness.get(adapter.key)?.has(skillHash)) {
-        problems.push(`${adapter.key} guard skill bytes do not match a catalogued guard version`);
+        problems.push(`${adapter.key} guard skill bytes do not match a catalogued guard version; run \`development-system setup --version ${guardSetupVersion}\` to install the catalogued guard`);
       }
     } catch (error) {
       problems.push(`Cannot hash ${adapter.key} guard skill: ${error instanceof Error ? error.message : String(error)}`);

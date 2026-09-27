@@ -294,6 +294,10 @@ assert(typeof guardTarget === "string", "catalog has no global-agent-guardrails 
 const guardPolicy = JSON.parse((await bytes(`${guardTarget}/references/policy.json`)).toString());
 assert(JSON.stringify(guardPolicy.testFilePatterns) === JSON.stringify(TEST_FILE_PATTERN_SOURCES),
   `${guardTarget}/references/policy.json testFilePatterns differ from TEST_FILE_PATTERN_SOURCES`);
+// guardrails-audit accepts only the guard bytes of its pinned catalog, so the pin follows a moved guard skill.
+const guardrailsSource = (await bytes("src/guardrails.mjs")).toString();
+assert(guardrailsSource.includes(`const guardCatalogVersion = "${catalogVersion}";`), `src/guardrails.mjs guardCatalogVersion is not ${catalogVersion}`);
+assert(guardrailsSource.includes(`const guardSetupVersion = "${version}";`), `src/guardrails.mjs guardSetupVersion is not ${version}`);
 const catalogErrors = await validateSkillCatalog(catalog, root);
 if (catalogErrors.length) throw new Error(catalogErrors.join("\n"));
 await outputJson(`catalog/${catalogVersion}.json`, catalog);
