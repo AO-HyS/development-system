@@ -10,8 +10,9 @@ import { antiSlopPhases } from "../src/anti-slop.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // 1.35.1 moves orchestrate-work to a copy that prescribes the four completion sections the
-// 1.35.0 document validator requires, and fails the build when any installed instruction still
-// names the retired report sections. The Claude orchestration and the Stop gate are unchanged.
+// 1.35.0 document validator requires and working-backwards to a copy that lists known issues
+// instead of requiring a table, and fails the build when any installed instruction still names
+// the retired report sections or requires a known-issues table. The Claude orchestration and the Stop gate are unchanged.
 const version = "1.35.1", previous = "1.35.0", catalogVersion = "0.53.1", previousCatalog = "0.53.0";
 const prefix = `artifacts/${version}`;
 const write = process.argv.includes("--write");
@@ -223,10 +224,10 @@ assert(!contract.includes(`catalog is ${previousCatalog}`), "contract kept the p
 assert(contract.includes(`The paired skill catalog is ${catalogVersion}.`), "contract lost the paired catalog reference");
 await output(`${prefix}/contract.md`, contract);
 
-// Catalog: orchestrate-work moves to its 1.35.1 copy.
+// Catalog: orchestrate-work and working-backwards move to their 1.35.1 copies.
 const catalog = JSON.parse((await bytes(`catalog/${previousCatalog}.json`)).toString());
 catalog.catalogVersion = catalogVersion;
-const moved = ["orchestrate-work"];
+const moved = ["orchestrate-work", "working-backwards"];
 for (const name of moved) {
   const skill = catalog.skills.find((/** @type {any} */ entry) => entry.logicalName === name);
   if (!skill) throw new Error(`Catalog ${previousCatalog} has no ${name}`);
@@ -247,6 +248,8 @@ const orchestrateWork = (await bytes(`${prefix}/skills/internal/orchestrate-work
 for (const term of ["## Qué se hizo", "## Hallazgos", "## Qué sigue", "## Detalle", "allowTables", "chat only"]) {
   assert(orchestrateWork.includes(term), `orchestrate-work SKILL.md lacks ${term}`);
 }
+const workingBackwards = (await bytes(`${prefix}/skills/internal/working-backwards/SKILL.md`)).toString();
+assert(workingBackwards.includes("under `## Hallazgos`") && workingBackwards.includes("turn its rows into list items"), "working-backwards SKILL.md does not list known issues");
 // guardrails-audit accepts only the guard bytes of its pinned catalog, so the pin follows the catalog.
 const guardrailsSource = (await bytes("src/guardrails.mjs")).toString();
 assert(guardrailsSource.includes(`const guardCatalogVersion = "${catalogVersion}";`), `src/guardrails.mjs guardCatalogVersion is not ${catalogVersion}`);
@@ -317,12 +320,13 @@ for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml)$/.t
   });
 }
 assert(directiveHits.length === 0, `instructions ask for automated tests:\n${directiveHits.join("\n")}`);
-// Gardener check: the document validator rejects the retired report sections, so no installed
-// instruction may prescribe them.
+// Gardener check: the document validator rejects the retired report sections and tables, so no
+// installed instruction may prescribe them. Every text file counts, including JSON instructions
+// and scripts that generate prompts.
 /** @type {string[]} */ const retiredSectionHits = [];
-for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml)$/.test(file)).sort()) {
+for (const file of [...instructionFiles].filter(file => /\.(?:md|toml|ya?ml|json|mjs|js|py|txt)$/.test(file)).sort()) {
   (await readFile(file, "utf8")).split("\n").forEach((line, index) => {
-    if (/\bVeredicto\b|Preguntas al margen|Qué cambió/.test(line)) retiredSectionHits.push(`${relative(root, file)}:${index + 1}: ${line.trim()}`);
+    if (/\bVeredicto\b|Preguntas al margen|Qué cambió|Known issues\*{0,2} table/i.test(line)) retiredSectionHits.push(`${relative(root, file)}:${index + 1}: ${line.trim().slice(0, 160)}`);
   });
 }
 assert(retiredSectionHits.length === 0, `instructions name the retired report sections:\n${retiredSectionHits.join("\n")}`);

@@ -37,7 +37,7 @@ Rollout review (Task-Id ds-1350-rollout, the first live run of the 1.35
 codex-review: complete round 1, verdict recorded in the receipt) passed the six
 pins and found one Medium: orchestrate-work (1.33.0 copy) still prescribed the
 Veredicto sections that 1.35.0 rejects. Fixed in 1.35.1 (branch
-fix/development-system-1.35.1): orchestrate-work 1.35.1 copy and a
+fix/development-system-1.35.1): orchestrate-work and working-backwards 1.35.1 copies (known issues as a list, no mandatory table) and a
 catalog-wide gardener check (probe with the old copy fails the build). The pin
 PRs (eteria #285, aohys.com #199, the-barber-central #350, opportunity-os #74,
 casa-roca #145, nutri-plan #498) move to 1.35.1 before merging. casa-roca goes

@@ -5,8 +5,9 @@
 Release 1.35.1 moves orchestrate-work to a copy whose close-every-task step
 prescribes the four completion sections that `development-system document`
 requires since 1.35.0 (its 1.33.0 copy still named Veredicto and the other
-retired sections). The release build now fails when any installed instruction
-names the retired sections.
+retired sections), and working-backwards to a copy that lists known issues
+instead of requiring a table. The release build now fails when any installed
+instruction names the retired sections or requires a known-issues table.
 
 ```sh
 ./bin/development-system setup --version 1.35.1
