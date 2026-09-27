@@ -45,7 +45,27 @@ to develop only: its develop carries #144 (receipt balance) that another thread
 releases. aohys also refreshes its Devin mirrors; its foreign-product residue
 in .agents/skills predates this work.
 
-Status: 1.35.1 in progress; rollout waits for it.
+1.35.1 published 2026-09-27: Astra ds-1351-diff round 1 (Medium: mandatory
+Known issues table; Low: narrow gardener scan) fixed; round 2 left only the Low
+for `.sh` files, closed in 230832b by scanning every non-binary file (probe
+build confirmed). #121 -> develop (c06b076), #122 -> main (53076ca), tag
+v1.35.1 and prerelease (sha256 9d303644…aeaf522; downloaded asset matches).
+HOME setup 1.35.1 from 53076ca: healthy; no installed skill names a retired
+section.
+
+Rollout round 2 (ds-1350-rollout, 1.35.1 pins plus aohys mirrors): verdict
+merge, no new findings. Merged: eteria #285, aohys.com #199,
+the-barber-central #350, casa-roca #145 (develop only), nutri-plan #498
+(develop only, squash, through the git data API), opportunity-os #74 (main;
+Pages deploys manually and the pin only changes tooling, site 200). Promotions
+to main: eteria #286 (bc575a95) and aohys.com #200 (a7e146d0), Release Train
+success, sites 200; the-barber-central #351 (e7f5cc73), Release success,
+selective deploy skipped (tooling-only). Its first Release check failed because
+the develop preview train had not finished; a rerun passed.
+
+Status: done. 1.35.1 is released, installed in HOME and in production wherever
+production applies. casa-roca and nutri-plan stay on develop until their own
+threads release them.
 
 ## Previous — Development System 1.34.1 (no automated tests in any repository)
 
