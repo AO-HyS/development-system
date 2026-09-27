@@ -10,8 +10,9 @@ import { rosterChain } from "./agent-roster.mjs";
  * publishes the same schema, so the two surfaces cannot drift.
  *
  * Lines of code and related proxy metrics are excluded as optimization
- * targets and gates; tests are subordinate evidence and can never override
- * the objective or observable product behavior.
+ * targets and gates. No lane asks for automated tests: evidence is real
+ * verification (computer use, the browser, the repository's verification CLI)
+ * derived from the objective and observable product behavior.
  */
 const antiSlopPhaseDefinitions = [
   {
@@ -31,8 +32,8 @@ const antiSlopPhaseDefinitions = [
     laneType: "writer",
     writable: true,
     dependsOn: Object.freeze(["pre-implementation-simplification"]),
-    requirement: "Derive tests and evidence from the objective and the public interface before implementing; tests are subordinate evidence and never override observable product behavior.",
-    completion: "The writer reports the behavior-first evidence design before implementation begins.",
+    requirement: "Derive the real verification evidence (computer use, the browser, the repository's verification CLI) from the objective and the public interface before implementing; add no automated tests.",
+    completion: "The writer reports the behavior-first real verification design before implementation begins.",
   },
   {
     order: 3,
@@ -51,8 +52,8 @@ const antiSlopPhaseDefinitions = [
     laneType: "independent-review",
     writable: false,
     dependsOn: Object.freeze(["implementation"]),
-    requirement: "Independently audit every changed or new test for behavioral value; refuse green-only acceptance; reject weakened assertions, updated snapshots, and private-structure tests without an observable-behavior justification; recommend deleting a useless test only when its behavior is covered elsewhere or intentionally removed.",
-    completion: "The read-only review reports a per-test disposition and every weakening finding, and never edits.",
+    requirement: "Independently confirm that the change adds no automated tests, test runner configuration, test scripts or test dependencies, and that real verification evidence (computer use, the browser, the repository's verification CLI) exists for the accepted behavior; refuse green-only acceptance.",
+    completion: "The read-only review reports any added automated test and every missing real verification item, and never edits.",
   },
   {
     order: 5,
@@ -61,8 +62,8 @@ const antiSlopPhaseDefinitions = [
     laneType: "correction",
     writable: true,
     dependsOn: Object.freeze(["test-value-review"]),
-    requirement: "Apply safe deletions and corrections as the writable follow-up to the test-value review, covering production code and test code; preserve behavior and protected boundaries; edits are never delegated to a read-only reviewer.",
-    completion: "The correction lane reports what was deleted, kept, and why across production and test code, and reruns the focused checks after every edit.",
+    requirement: "Apply safe deletions and corrections as the writable follow-up to the review; preserve behavior and protected boundaries; edits are never delegated to a read-only reviewer.",
+    completion: "The correction lane reports what was deleted, kept, and why, and reruns the focused checks after every edit.",
   },
   {
     order: 6,
@@ -71,7 +72,7 @@ const antiSlopPhaseDefinitions = [
     laneType: "independent-review",
     writable: false,
     dependsOn: Object.freeze(["deletion-pass"]),
-    requirement: "Independently derive the verification oracle from the accepted objective and the public interface with context isolated from implementation conclusions; reject tests or snapshots weakened merely to get green; the implementation writer's own tests are never the only evidence.",
+    requirement: "Independently derive the verification oracle from the accepted objective and the public interface with context isolated from implementation conclusions; the implementation writer's own checks are never the only evidence.",
     completion: "The read-only verification returns a verdict against the acceptance criteria exactly as written, including anything unproven.",
   },
 ];

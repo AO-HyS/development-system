@@ -19,7 +19,7 @@ The Technical Grill and repository audit must establish:
 - whether inactive or legacy mobile surfaces are authoritative, experimental, or removable candidates, without deleting them by assumption;
 - whether React composition, native architecture, Convex queries/mutations/actions, media storage, Cloudflare, PostHog, strict typing, and privacy follow current primary guidance;
 - whether subscriptions, queries, image/media delivery, rendering, and native networking are measurably bounded and performant;
-- which stack-specific fitness functions compose lint, typecheck, focused tests, `ios:verify`, React Doctor, Impeccable, Convex/security review, and provider smoke without making every change pay every platform;
+- which stack-specific fitness functions compose lint, typecheck, real verification, `ios:verify`, React Doctor, Impeccable, Convex/security review, and provider smoke without making every change pay every platform;
 
 Use strong iOS, React, Convex, and cross-platform open-source products as comparative evidence where they match a real ETERIA decision. Prefer explicit Interfaces and adapters over forced code sharing.
 

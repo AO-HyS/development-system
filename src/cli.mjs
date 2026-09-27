@@ -264,10 +264,29 @@ export async function run(argv) {
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
       result = { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(governance ? { governance } : {}) };
     } catch (error) {
-      if (governance?.changed) await rollbackGovernanceHooks({ home: options.home });
-      if (!installation.reinstalled) await rollbackInstallation({ home: options.home });
+      const original = error instanceof Error ? error.message : String(error);
+      // A failing rollback must not hide the skill-sync error that caused it.
+      /** @type {string[]} */
+      const rollbackFailures = [];
+      if (governance?.changed) {
+        try {
+          await rollbackGovernanceHooks({ home: options.home });
+        } catch (rollbackError) {
+          rollbackFailures.push(`governance hook rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
+        }
+      }
+      if (!installation.reinstalled) {
+        try {
+          await rollbackInstallation({ home: options.home });
+        } catch (rollbackError) {
+          rollbackFailures.push(`contract installation rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
+        }
+      }
+      if (rollbackFailures.length > 0) {
+        throw new Error(`Setup skill synchronization failed: ${original}; ${rollbackFailures.join("; ")}`, { cause: error });
+      }
       const recovery = installation.reinstalled ? "existing contract reinstalled; skill sync restored its prior state" : "contract installation rolled back";
-      throw new Error(`Setup skill synchronization failed; ${recovery}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Setup skill synchronization failed; ${recovery}: ${original}`, { cause: error });
     }
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");

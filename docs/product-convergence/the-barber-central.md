@@ -20,7 +20,7 @@ The Technical Grill and repository audit must establish:
 - whether TanStack routing/data patterns, React composition, Convex authorization and performance, Cloudflare/R2 boundaries, PostHog observability, and strict TypeScript match current primary guidance;
 - where `any`, assertions, copied contracts, oversized utilities, effects used for derivable state, or cross-app imports hide real coupling;
 - whether shadcn components and icon usage can be updated without making every surface visually identical;
-- which fast fitness functions should prevent recurrence through lint architecture, typecheck, focused tests, React Doctor, Impeccable, Convex review, and security;
+- which fast fitness functions should prevent recurrence through lint architecture, typecheck, real verification, React Doctor, Impeccable, Convex review, and security;
 
 Use observable behavior and production contracts as the baseline. Protect tenant data, authorization, appointments, media, Stripe, migrations, and provider configuration with explicit slices and rollback. Use recognized repositories and books as evidence for principles, never as a folder tree to copy blindly.
 

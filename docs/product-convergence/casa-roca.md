@@ -20,7 +20,7 @@ The Technical Grill and repository audit must establish:
 - whether authorization, validators, indexes, pagination, bounded reads, write contention, storage, and migrations follow current Convex guidance;
 - where types are erased through `any`, unsafe assertions, generated-type workarounds, or duplicated client/server contracts;
 - whether current shadcn components and icon choices can be updated safely while preserving Casa Roca's design;
-- which changed-surface checks should compose lint, typecheck, focused tests, React Doctor, Impeccable, Convex review, security, and Vercel/provider evidence without repeating work;
+- which changed-surface checks should compose lint, typecheck, real verification, React Doctor, Impeccable, Convex review, security, and Vercel/provider evidence without repeating work;
 
 Preserve production data and current user-visible behavior. Treat schema changes, backfills, R2/storage moves, and provider configuration as separate risk-bearing slices with rollback evidence. Use primary sources and strong open-source examples only to test a proposed boundary, not to impose a universal folder template.
 

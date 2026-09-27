@@ -1351,7 +1351,7 @@ export function planOrchestration(input) {
       ownership: contract.scope,
       contract,
       checks: contract.checks,
-      stopCondition: "Review the integrated diff against repository standards, architecture, correctness, regressions, maintainability, and missing tests; do not edit.",
+      stopCondition: "Review the integrated diff against repository standards, architecture, correctness, regressions, maintainability, and missing real verification; do not edit.",
       readOnly: true,
       reviewFocus: "standards",
       phase: "post-integration-review",
@@ -1363,7 +1363,7 @@ export function planOrchestration(input) {
       correctionDependsOn: ["review-standards", "review-test-value", ...parallelSpecialistIds],
       correctionStopSuffix: correctionStopSuffix([
         "the standards review",
-        "the test-value review",
+        "the no-tests and real-verification review",
         ...risks.map((risk) => `the ${risk.id} specialist review`),
       ]),
     }, correctionContract).map((entry) => ({
@@ -1403,7 +1403,7 @@ export function planOrchestration(input) {
       reviewDependsOn: ["writer", ...writeSpecialistIds],
       correctionDependsOn: ["review-test-value", ...writeSpecialistIds],
       correctionStopSuffix: correctionStopSuffix([
-        "the test-value review",
+        "the no-tests and real-verification review",
         ...risks.map((risk) => `the ${risk.id} specialist review`),
       ]),
     }, correctionContract));

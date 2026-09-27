@@ -139,12 +139,12 @@ export function auditConvexGuardian(input) {
           id: `${checkPrefix}-auth`,
           category: "auth",
           subject,
-          command: `Run focused authorization tests for ${subject}`,
+          command: `Verify the authorization boundary for ${subject} with real calls: one unauthorized and one authorized, through the verification CLI or the browser`,
           proves: "unauthorized callers are rejected and authorized callers are scoped to permitted records",
         }]);
       } else if (authStatus === "not-required") {
         if (!auth || !stringValue(auth, "rationale") || auth.boundaryTest !== true) {
-          unproven("auth", subject, "an intentionally public function requires a rationale and a verified boundary test");
+          unproven("auth", subject, "an intentionally public function requires a rationale and a verified boundary check");
         }
       } else if (authStatus !== "verified") {
         unproven("auth", subject, "authorization evidence for the public function was not supplied");
@@ -193,7 +193,7 @@ export function auditConvexGuardian(input) {
             id: `${checkPrefix}-validators`,
             category: "validators",
             subject,
-            command: `Run validator contract tests for ${subject}`,
+            command: `Verify validator rejection and acceptance for ${subject} with real calls through the verification CLI or the browser`,
             proves: "invalid arguments and invalid return shapes are rejected at the function boundary",
           }]);
         } else if (status !== "complete") {
