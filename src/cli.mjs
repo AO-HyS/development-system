@@ -137,8 +137,10 @@ function formatHuman(result) {
     return `Synchronized ${result.logicalSkillCount} logical skills with reversible cleanup.`;
   }
   if (result.operation === "audit-skills") return `Skill catalog ${result.status}.`;
-  if (result.operation === "guardrails-enable") return `Global guardrails ${result.status}.`;
-  if (result.operation === "guardrails-audit") return `Global guardrails ${result.status}.`;
+  if (result.operation === "guardrails-enable" || result.operation === "guardrails-audit") {
+    const problems = Array.isArray(result.problems) ? result.problems : [];
+    return `Global guardrails ${result.status}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
+  }
   if (result.operation === "guardrails-rollback") return "Restored the prior global hook configuration.";
   if (result.operation === "claude-orchestration-enable") return `Claude orchestration ${result.status}${result.changed ? "" : " (unchanged)"}.`;
   if (result.operation === "claude-orchestration-audit") return `Claude orchestration ${result.status}.`;
