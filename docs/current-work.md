@@ -89,15 +89,20 @@ findings fixed and verified directly, without a fourth round):
   Release Train 36284450742 success (Verify, Preflight attestation,
   Selective deploy, Release); landing, dashboard and admin workers 200.
 - nutri-plan #497 -> develop only (squash 9f6c5dee; git data API, the
-  checkout belongs to another thread): the removed `findTestPolicyViolations` consumers are
-  dropped, and `verify:product` becomes the Feature Map check alone, so
+  checkout belongs to another thread): the removed
+  `findTestPolicyViolations` consumers are dropped, and `verify:product` becomes the Feature Map check alone, so
   `quality:changed` and the Husky pre-push stop running tests; staged quality
   (pre-commit) no longer runs `test:unit:email`; the scorecard guide marks
   `quality:scorecard` unavailable; plan decisions D-0003 and D-0004 are
   superseded. Astra rounds 1-3 (1 High, 5 Medium) fixed; the round-3 Mediums
   were fixed and verified directly (head 510461e), without a fourth round.
-  Its 835 test files, `test:unit*`, `quality:certify*` and the scorecard wait
-  for the redesign; main and production wait too.
+  Main and production wait for the redesign.
+  Unresolved policy violation: develop still holds 835 automated test files
+  and the scripts that run them (`test:unit*`, `quality:certify*`,
+  `verify:full:*`, `verify:ci`, the scorecard). The no-tests rule requires
+  their removal. They were not deleted here because the redesign thread owns
+  the checkout and its branch removes them; if that branch does not land,
+  the cleanup still has to happen on develop.
 Dormant repositories stay untouched.
 
 Next-version candidates: check-no-tests flags live doc instructions that run
