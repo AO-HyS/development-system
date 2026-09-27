@@ -74,6 +74,85 @@ function validateSource(source) {
   };
 }
 
+const COMPLETION_SECTIONS = {
+  es: ["Qué se hizo", "Hallazgos", "Qué sigue", "Detalle"],
+  en: ["What was done", "Findings", "What's next", "Detail"],
+};
+const MAX_COMPLETION_INTRO_CHARS = 600;
+const TABLE_DELIMITER_ROW = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/u;
+
+/**
+ * Split Markdown into lines tagged with whether they sit inside a fenced code
+ * block (``` or ~~~). Fence delimiter lines count as fenced.
+ * @param {string} markdown
+ */
+function markdownLines(markdown) {
+  /** @type {{text: string, fenced: boolean}[]} */
+  const lines = [];
+  /** @type {string | null} */
+  let fence = null;
+  for (const text of markdown.split(/\r?\n/u)) {
+    const opener = /^ {0,3}(`{3,}|~{3,})/u.exec(text);
+    if (fence === null && opener) {
+      fence = opener[1];
+      lines.push({ text, fenced: true });
+      continue;
+    }
+    if (fence !== null) {
+      const closer = /^ {0,3}(`{3,}|~{3,})\s*$/u.exec(text);
+      if (closer && closer[1][0] === fence[0] && closer[1].length >= fence.length) fence = null;
+      lines.push({ text, fenced: true });
+      continue;
+    }
+    lines.push({ text, fenced: false });
+  }
+  return lines;
+}
+
+/** @param {{text: string, fenced: boolean}[]} lines */
+function rejectTables(lines) {
+  for (let index = 0; index + 1 < lines.length; index += 1) {
+    const header = lines[index];
+    const delimiter = lines[index + 1];
+    if (header.fenced || delimiter.fenced) continue;
+    if (!/^\s*\|/u.test(header.text)) continue;
+    if (!delimiter.text.includes("|") || !TABLE_DELIMITER_ROW.test(delimiter.text)) continue;
+    throw new Error(`Tables are not allowed in reports (line ${index + 1}); use prose or a short list, or set "allowTables": true for a real comparison`);
+  }
+}
+
+/**
+ * @param {{text: string, fenced: boolean}[]} lines
+ * @param {string | undefined} language
+ */
+function validateCompletionShape(lines, language) {
+  const required = COMPLETION_SECTIONS[typeof language === "string" && language.trim().toLowerCase().startsWith("en") ? "en" : "es"];
+  /** @type {string[]} */
+  const headings = [];
+  let firstHeadingIndex = -1;
+  lines.forEach((line, index) => {
+    if (line.fenced) return;
+    const match = /^## (.+)$/u.exec(line.text);
+    if (!match) return;
+    if (firstHeadingIndex === -1) firstHeadingIndex = index;
+    headings.push(match[1].trim().toLowerCase());
+  });
+  const order = required.map((section) => `## ${section}`).join(", ");
+  for (let index = 0; index < required.length; index += 1) {
+    const heading = headings[index];
+    if (heading === undefined || !heading.startsWith(required[index].toLowerCase())) {
+      throw new Error(`Completion report needs the sections in order: ${order} (missing or out of order: "${required[index]}")`);
+    }
+  }
+  const introLines = lines.slice(0, firstHeadingIndex).map((line) => line.text);
+  const firstContent = introLines.findIndex((text) => text.trim().length > 0);
+  if (firstContent !== -1 && /^# /u.test(introLines[firstContent])) introLines.splice(firstContent, 1);
+  const intro = introLines.filter((text) => text.trim().length > 0).join("\n");
+  if (intro.length > MAX_COMPLETION_INTRO_CHARS) {
+    throw new Error(`Completion report text before the first ## section must be at most ${MAX_COMPLETION_INTRO_CHARS} characters (found ${intro.length})`);
+  }
+}
+
 /** @param {unknown} input */
 function validatePacket(input) {
   if (!isRecord(input)) throw new Error("Technical document input must be an object");
@@ -99,6 +178,12 @@ function validatePacket(input) {
   if (input.productName !== undefined && !nonEmptyString(input.productName)) {
     throw new Error("Technical document productName must be a non-empty string");
   }
+  if (input.allowTables !== undefined && typeof input.allowTables !== "boolean") {
+    throw new Error("Technical document allowTables must be a boolean");
+  }
+  const lines = markdownLines(input.markdown);
+  if (input.allowTables !== true) rejectTables(lines);
+  if (input.kind === "completion") validateCompletionShape(lines, typeof input.language === "string" ? input.language : undefined);
   return {
     kind: /** @type {"completion" | "review" | "explanation"} */ (input.kind),
     title: input.title.trim(),
@@ -108,6 +193,7 @@ function validatePacket(input) {
     productName: typeof input.productName === "string" ? input.productName.trim() : "Development System",
     source: validateSource(input.source),
     visuals: validateVisuals(input.visuals),
+    ...(input.allowTables === true ? { allowTables: true } : {}),
   };
 }
 

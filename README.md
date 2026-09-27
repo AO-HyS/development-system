@@ -1,5 +1,22 @@
 # AOHYS Development System
 
+## Release 1.35.0 / catalog 0.53.0
+
+Release 1.35.0 makes review rounds and writer boundaries hold under pressure.
+`codex-review.mjs` needs a `Task-Id:` line, counts a round only when Codex ends
+with a `Verdict:` line (failed runs go to attempts.jsonl), reserves review slots
+under an ownership-aware lock, and feeds the previous round's findings into the
+next one. The roster guard runs Jev as advice, accepts `Owned paths:` only as
+one path per entry, keeps writers out of the Git index through a `writer-bash`
+hook and logs expired writer holds. `development-system document` requires
+completion reports to open with Qué se hizo, Hallazgos, Qué sigue and Detalle
+and rejects tables unless `allowTables: true`. Catalog 0.53.0 moves
+flow-implement, coding-orchestration and working-backwards to 1.35.0 copies.
+
+```sh
+./bin/development-system setup --version 1.35.0
+```
+
 ## Release 1.34.1 / catalog 0.52.0
 
 Release 1.34.1 leaves one rule set in every repository and HOME: no automated
@@ -215,12 +232,12 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.34.1
+./bin/development-system setup --version 1.35.0
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.52.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.53.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

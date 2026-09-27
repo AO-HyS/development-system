@@ -161,21 +161,17 @@ function visualPlanHtml(plan) {
 
 /** @param {any} details */
 function recapMarkdown(details) {
+  const link = (/** @type {string} */ url) => encodeURI(url).replaceAll("(", "%28").replaceAll(")", "%29");
   const lines = [
     `# Local Visual Recap`,
     ``,
     `> Observed delivery evidence. Merge, release, and production remain unauthorized.`,
     ``,
-    `## Terminal slice`,
+    `## What was done`,
     ``,
     details.plan.terminalSlice,
     ``,
-    `## Decision surface`,
-    ``,
-    `- [Pull request](${encodeURI(details.pullRequestUrl).replaceAll("(", "%28").replaceAll(")", "%29")})`,
-    `- [Preview](${encodeURI(details.previewUrl).replaceAll("(", "%28").replaceAll(")", "%29")})`,
-    ``,
-    `## Failures and corrections`,
+    `## Findings`,
     ``,
   ];
   if (details.failuresAndCorrections.length === 0) {
@@ -186,16 +182,22 @@ function recapMarkdown(details) {
     }
   }
   lines.push(
-    `## Risk and evidence`,
+    `## What's next`,
+    ``,
+    `- [Pull request](${link(details.pullRequestUrl)})`,
+    `- [Preview](${link(details.previewUrl)})`,
+    `- Merge, release, and production remain unauthorized.`,
+    ``,
+  );
+  for (const item of details.plan.manualChecklist) lines.push(`- [ ] ${item}`);
+  lines.push(
+    ``,
+    `## Detail`,
     ``,
     `- TDD: ${details.plan.tdd.reason} — ${details.plan.tdd.evidence}`,
     `- QA: ${details.plan.qa.reason} — ${details.plan.qa.alternativeEvidence ?? details.plan.qa.level}`,
     ``,
-    `## Manual checklist`,
-    ``,
   );
-  for (const item of details.plan.manualChecklist) lines.push(`- [ ] ${item}`);
-  lines.push(``);
   return `${lines.join("\n")}\n`;
 }
 
@@ -416,6 +418,7 @@ export async function runImplementPreview(options) {
       input: {
         schemaVersion: 1,
         kind: "completion",
+        language: "en",
         title: "Delivery review",
         markdown: recapMarkdown(recapDetails),
         status: "Observed delivery evidence; promotion not granted",
