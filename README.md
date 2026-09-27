@@ -1,5 +1,17 @@
 # AOHYS Development System
 
+## Release 1.35.1 / catalog 0.53.1
+
+Release 1.35.1 moves orchestrate-work to a copy whose close-every-task step
+prescribes the four completion sections that `development-system document`
+requires since 1.35.0 (its 1.33.0 copy still named Veredicto and the other
+retired sections). The release build now fails when any installed instruction
+names the retired sections.
+
+```sh
+./bin/development-system setup --version 1.35.1
+```
+
 ## Release 1.35.0 / catalog 0.53.0
 
 Release 1.35.0 makes review rounds and writer boundaries hold under pressure.
@@ -232,12 +244,12 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.35.0
+./bin/development-system setup --version 1.35.1
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.53.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.53.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate

@@ -1,4 +1,4 @@
-# Current work — Development System 1.35.0 (stable review rounds, advisory Jev, report sections)
+# Current work — Development System 1.35.0 and 1.35.1 (stable review rounds, advisory Jev, report sections)
 
 Approved 2026-09-27: "Sí tú arranca 1.35. Haces todo lo necesario para que
 llegue a producción en todos lados donde puede llegar a producción." Root
@@ -26,7 +26,26 @@ High, so no round 4; this is a documented known gap for 1.35.1 (record the
 background intent at registration and exempt unresolved background holds from
 the foreground expiry). It needs a 2 s lock contention to happen.
 
-Status: reviewed; publication and rollout in progress.
+Published 2026-09-27: #119 -> develop (86f8658), #120 develop -> main
+(1225621, develop fast-forwarded), tag v1.35.0 and prerelease with
+aohys-development-system-1.35.0.tgz (sha256 4dbf4f98…572f50; downloaded asset
+matches). HOME setup 1.35.0 from 1225621: audit, guardrails, Claude
+orchestration and report gate healthy; installed runtime equals the source.
+audit-skills stays "invalid" only for missing live evidence (ADR 0003).
+
+Rollout review (Task-Id ds-1350-rollout, the first live run of the 1.35
+codex-review: complete round 1, verdict recorded in the receipt) passed the six
+pins and found one Medium: orchestrate-work (1.33.0 copy) still prescribed the
+Veredicto sections that 1.35.0 rejects. Fixed in 1.35.1 (branch
+fix/development-system-1.35.1): orchestrate-work 1.35.1 copy and a
+catalog-wide gardener check (probe with the old copy fails the build). The pin
+PRs (eteria #285, aohys.com #199, the-barber-central #350, opportunity-os #74,
+casa-roca #145, nutri-plan #498) move to 1.35.1 before merging. casa-roca goes
+to develop only: its develop carries #144 (receipt balance) that another thread
+releases. aohys also refreshes its Devin mirrors; its foreign-product residue
+in .agents/skills predates this work.
+
+Status: 1.35.1 in progress; rollout waits for it.
 
 ## Previous — Development System 1.34.1 (no automated tests in any repository)
 
