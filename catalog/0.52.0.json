@@ -1532,23 +1532,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.10.0/skills/internal/measure-development-run"
+        "path": "artifacts/1.34.1/skills/internal/measure-development-run"
       },
       "variants": [
         {
           "id": "measure-development-run.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.10.0/skills/internal/measure-development-run",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/measure-development-run",
           "destination": ".codex/skills/measure-development-run",
-          "folderSha256": "3a2f0e4a31f653e9f9d01b20561ac6c524b5c8e1c8fe229708cc44a3b1c2ed18",
+          "folderSha256": "0b932f4874f7914c768dd728a58c6edc1584be3c9ff560ff4ec0616623941bdf",
           "expectedMirrorOf": null
         },
         {
           "id": "measure-development-run.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.10.0/skills/internal/measure-development-run",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/measure-development-run",
           "destination": ".claude/skills/measure-development-run",
-          "folderSha256": "3a2f0e4a31f653e9f9d01b20561ac6c524b5c8e1c8fe229708cc44a3b1c2ed18",
+          "folderSha256": "0b932f4874f7914c768dd728a58c6edc1584be3c9ff560ff4ec0616623941bdf",
           "expectedMirrorOf": "measure-development-run.codex",
           "install": "symlink"
         }
@@ -1918,7 +1918,7 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.5.17/skills/internal/install-anti-slop",
+        "path": "artifacts/1.34.1/skills/internal/install-anti-slop",
         "upstreamReference": {
           "repository": "https://github.com/dmmulroy/anti-slop",
           "commit": "e8c4880471b23ab7f216fba7b27d173a6ef07d4c",
@@ -1932,9 +1932,9 @@
         {
           "id": "install-anti-slop.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.5.17/skills/internal/install-anti-slop",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/install-anti-slop",
           "destination": ".agents/skills/install-anti-slop",
-          "folderSha256": "0d7c484b10c6e59432f05496a2eeecb2b2ca8355f305b7f1e6d5f2d93e775cd0",
+          "folderSha256": "7a365e4c3be7cf7dbfa594ed78753369456bbcc45b649d68a8611c4a113644f1",
           "executableFiles": [
             "scripts/install.mjs"
           ],
@@ -1943,9 +1943,9 @@
         {
           "id": "install-anti-slop.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.5.17/skills/internal/install-anti-slop",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/install-anti-slop",
           "destination": ".claude/skills/install-anti-slop",
-          "folderSha256": "0d7c484b10c6e59432f05496a2eeecb2b2ca8355f305b7f1e6d5f2d93e775cd0",
+          "folderSha256": "7a365e4c3be7cf7dbfa594ed78753369456bbcc45b649d68a8611c4a113644f1",
           "executableFiles": [
             "scripts/install.mjs"
           ],

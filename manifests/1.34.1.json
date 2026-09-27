@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.34.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "87e3048dcfe620a95785a6dcfbd014807ee93cf649f11225f5ff65cd9312c23f",
+      "sha256": "61e37ead8d2f9cae79a75fc3d938a314f21bbca4db113ee96ff2571a40ab8a60",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.52.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "f325341d08d87ceb7db588bd53ca9eb08e8cf14398ea91e7e802ead6bd4b0123",
+      "sha256": "03cb8450ae4e59421a0e0103053d5ed16962025a545fd2eb5a29f56287c295cc",
       "expectedMirrorOf": null
     },
     {
@@ -122,10 +122,10 @@
     {
       "id": "codex-agent.qa-planner",
       "logicalName": "codex-agent-qa-planner",
-      "sourcePath": "artifacts/1.26.0/agents/codex/qa-planner.toml",
+      "sourcePath": "artifacts/1.34.1/agents/codex/qa-planner.toml",
       "destination": ".codex/agents/qa-planner.toml",
       "harness": "codex",
-      "sha256": "a2aaa756feadac2934f4c8eeaa4d797ed4d074ef6dc9b5cfbef8882075271371",
+      "sha256": "c4ecc5073d61bf0be2e0e6c9c9aaccd2f45a43eddf973c17aec604949c2a07d1",
       "expectedMirrorOf": null
     },
     {
