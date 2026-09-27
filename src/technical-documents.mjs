@@ -117,7 +117,8 @@ function rejectTables(lines) {
     if (header.fenced || delimiter.fenced) continue;
     // GFM tables need no leading pipe: `A | B` over `--- | ---` is a table too.
     if (!header.text.replace(/\\\|/gu, "").includes("|")) continue;
-    if (!delimiter.text.includes("|") || !TABLE_DELIMITER_ROW.test(delimiter.text)) continue;
+    // A single-column table has a bare `---` delimiter under a piped header.
+    if (!TABLE_DELIMITER_ROW.test(delimiter.text)) continue;
     throw new Error(`Tables are not allowed in reports (line ${index + 1}); use prose or a short list, or set "allowTables": true for a real comparison`);
   }
 }

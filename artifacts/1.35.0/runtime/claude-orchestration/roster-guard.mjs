@@ -142,7 +142,8 @@ function prunedActive() {
   if (expired) saveActive(kept);
   return kept;
 }
-const activeWriters = () => withActiveLock(prunedActive);
+// Without the lock, a reader sees the saved holds but prunes and saves nothing.
+const activeWriters = () => withActiveLock(prunedActive, () => (fs.existsSync(ACTIVE) ? JSON.parse(fs.readFileSync(ACTIVE, 'utf8')) : {}));
 
 // Session lock for active-writers.json: a directory with owner.json {pid, token}. A dead
 // owner (or a missing owner.json older than 5 s) is reclaimed by rename then removal.
@@ -157,7 +158,9 @@ function lockIsStale() {
     try { return fs.statSync(LOCK).mtimeMs < Date.now() - 5000; } catch { return false; }
   }
 }
-function withActiveLock(fn) {
+// fn runs only while this process owns the lock; on timeout onTimeout runs instead
+// (default: skip the update), so a delayed process never overwrites newer state.
+function withActiveLock(fn, onTimeout = () => undefined) {
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const deadline = Date.now() + 2000;
   let held = false;
@@ -178,7 +181,7 @@ function withActiveLock(fn) {
       pause(20);
     }
   }
-  if (!held) ledger({ event: 'active-lock-timeout' });
+  if (!held) { ledger({ event: 'active-lock-timeout' }); return onTimeout(); }
   try { return fn(); } finally {
     if (held) {
       try {
@@ -400,7 +403,8 @@ async function agentCall() {
       all[input.tool_use_id] = { id: (ti.description || type).slice(0, 80), type, writeSet: owned, at: Date.now(), agentId: null };
       saveActive(all);
       return [];
-    });
+    }, () => null);
+    if (clash === null) deny('The guard could not lock the active-writer list within 2 s; dispatch the same packet again.', { ...entry, lock: 'timeout' });
     if (clash.length) deny(`One writer per surface: ${clash.slice(0, 6).join('; ')}. A concurrent dispatch took that path first; wait for it to finish, or re-scope the owned paths.`, { ...entry, clash: clash.slice(0, 6) });
   };
   const mode = POLICY.jev.mode ?? 'gate';
