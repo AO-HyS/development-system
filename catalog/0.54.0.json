@@ -1630,15 +1630,15 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/1.35.1/skills/internal/working-backwards"
+        "path": "artifacts/1.36.0/skills/internal/working-backwards"
       },
       "variants": [
         {
           "id": "working-backwards.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.35.1/skills/internal/working-backwards",
+          "sourceDirectory": "artifacts/1.36.0/skills/internal/working-backwards",
           "destination": ".agents/skills/working-backwards",
-          "folderSha256": "25ef66818a7b8caf49d8bc9d8eb34dd29f7313982b52a8b9f7583aa2d5f8aeb0",
+          "folderSha256": "a1210601a983aa809c730458d37ea172e12bcbcb3dadf642e5440676dd23e5ad",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",
@@ -1651,9 +1651,9 @@
         {
           "id": "working-backwards.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.35.1/skills/internal/working-backwards",
+          "sourceDirectory": "artifacts/1.36.0/skills/internal/working-backwards",
           "destination": ".claude/skills/working-backwards",
-          "folderSha256": "25ef66818a7b8caf49d8bc9d8eb34dd29f7313982b52a8b9f7583aa2d5f8aeb0",
+          "folderSha256": "a1210601a983aa809c730458d37ea172e12bcbcb3dadf642e5440676dd23e5ad",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",

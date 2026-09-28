@@ -499,20 +499,25 @@ function imageCall() {
 // mapper-bash: an optional `cd <path> &&` prefix, then git show/log/diff/blame/status/
 // rev-parse/ls-files/grep, a typecheck, or jevgrep (`jg --version`, or `jg "<question>"
 // [relative root] [--max-source-bytes N] [--concurrency N] [--no-cache]`), optionally
-// piped into head/tail/wc/sort/uniq/cut/rg/grep. jg subcommands (auth, doctor, skill) and
-// the filter-disabling flags are denied, as are substitutions, file redirects, command
-// lists and anything else.
-const MAPPER_HELP = 'code-mapper Bash runs only git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache), optionally piped into head/tail/wc/sort/uniq/cut/rg/grep. Use Grep, Glob and Read for everything else.';
+// piped into head/tail/wc/sort/uniq/cut/rg/grep. jg subcommands (auth, doctor, skill,
+// cache) and help/version words are denied even when quoted, a double-quoted question may
+// not hold $, ` or \, and a cd before jg must be a plain relative path (no quotes, -, ..).
+// Filter-disabling flags, substitutions, file redirects and command lists are denied too.
+const MAPPER_HELP = 'code-mapper Bash runs only git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), optionally piped into head/tail/wc/sort/uniq/cut/rg/grep. Use Grep, Glob and Read for everything else.';
 // jevgrep for the mapper: null when allowed, else why not. Works on raw shell words
 // (quotes kept) so the question must be one quoted word and the root stays a plain
 // relative path inside the working directory.
 const JG_OPTIONS = new Set(['--max-source-bytes', '--concurrency', '--no-cache']);
+// From `jg --help`; jevgrep sees the unquoted word, so a quoted "auth" still dispatches.
+const JG_RESERVED = new Set(['auth', 'doctor', 'skill', 'cache', 'help', 'version', '--help', '-h', '--version']);
 function jgRefusal(step) {
   const words = step.match(/(?:'[^']*'|"(?:\\.|[^"\\])*"|[^\s'"])+/g) ?? [];
   if (words.length === 2 && words[1] === '--version') return null;
   const question = words[1] ?? '';
   if (!/^("(?:\\.|[^"\\])*"|'[^']*')$/.test(question)) return `\`jg ${question}\`: jg takes one quoted question (jg "<question>" [root]); subcommands and other flags are not allowed.`;
   const text = question.slice(1, -1);
+  if (question.startsWith('"') && /[$`\\]/.test(text)) return 'A double-quoted jg question must not contain $, ` or \\; use single quotes for literal text.';
+  if (JG_RESERVED.has(text.trim().toLowerCase())) return `\`jg ${question}\` names a jg subcommand or help word; ask a question instead.`;
   if (!text.trim() || text.startsWith('-')) return 'The jg question must be non-empty and must not start with `-`.';
   let i = 2;
   if (words[i] !== undefined && !words[i].startsWith('-')) {
@@ -578,10 +583,10 @@ function mapperBash() {
   if (cdMatch) {
     // jg reads a whole tree, so its cd prefix must stay inside the working directory.
     const next = shellWords(segments[1] ?? '');
-    const cdPath = cdMatch[1].replace(/^(['"])([\s\S]*)\1$/, '$2');
+    const cdPath = cdMatch[1];
     if (next[0] === 'jg' && !(next.length === 2 && next[1] === '--version')
-      && (/^[\/~$]/.test(cdPath) || cdPath.split('/').includes('..'))) {
-      refuse(`\`cd ${cdPath}\` before jg must be a relative path inside the working directory (no leading /, ~ or $, no .. segment).`);
+      && (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..'))) {
+      refuse(`\`cd ${cdPath}\` before jg must be a plain relative path inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment).`);
     }
     segments = segments.slice(1);
     separators = separators.slice(1);

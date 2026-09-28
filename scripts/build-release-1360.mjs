@@ -245,12 +245,12 @@ const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toStri
 const contractBase = replaceOnce(
   replaceOnce(contractSource, `# Development contract ${previous}`, `# Development contract ${version}`),
   `The paired skill catalog is ${previousCatalog}.`, `The paired skill catalog is ${catalogVersion}.`);
-const contract = `${contractBase.trimEnd()}\n\n## ${version}: pruned instructions, mistake log, verification scope, jevgrep\n\nContract ${version} installs shorter shared global instructions at \`.codex/AGENTS.md\`: one shared body with a Codex host section and a Claude Code host section, under 8,640 bytes. \`development-system mistake add|list\` records mistakes in a private, append-only store at \`~/.development-system/private/mistakes.jsonl\` with mode 0600; \`mistake list --repeated\` groups ids seen in two or more incidents, and retro and development-steward read it before they analyze, so a repeated mistake becomes a proposed hard rule at the highest level that can hold it. \`development-system document\` now requires completion documents to carry a verification-scope line in Detalle (\`Alcance de la verificación:\`, or \`Verification scope:\` in English) that states what the verification covers, what it does not cover and the real effects. Catalog ${catalogVersion} moves retro, development-steward, orchestrate-work and flow-implement to ${version} copies that describe these steps and adds the jevgrep skill; the operator installs \`@dzhng/jevgrep@0.4.0\` and authenticates it, and agents never install or authenticate it. The roster guard allows code-mapper one restricted form, \`jg "<question>" [relative root]\`, and records a writer dispatched with \`run_in_background\` as a background hold: before the agent id is known the hold is not expired as a lost foreground dispatch, and it lasts until the writer finishes, an explicit release or the maximum hold age. \`development-system check-no-tests\` also reports live instruction documents (README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md and docs) that direct an agent to write or run automated tests, and skips vendored Python environments. The repository residue audit skips catalog skill copies that are byte-identical to their catalog original. \`development-system thread-health\` reads a Claude Code thread and reports whether it is moving, needs watching or is stuck (idle time, repeated identical failures, review rounds past three), which guard stops it hit, and its token cost; it measures no throughput and only suggests \`mistake add\` commands. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.\n`;
+const contract = `${contractBase.trimEnd()}\n\n## ${version}: pruned instructions, mistake log, verification scope, jevgrep\n\nContract ${version} installs shorter shared global instructions at \`.codex/AGENTS.md\`: one shared body with a Codex host section and a Claude Code host section, under 8,640 bytes. \`development-system mistake add|list\` records mistakes in a private, append-only store at \`~/.development-system/private/mistakes.jsonl\` with mode 0600; \`mistake list --repeated\` groups ids seen in two or more incidents, and retro and development-steward read it before they analyze, so a repeated mistake becomes a proposed hard rule at the highest level that can hold it. \`development-system document\` now requires completion documents to carry a verification-scope line in Detalle (\`Alcance de la verificación:\`, or \`Verification scope:\` in English) that states what the verification covers, what it does not cover and the real effects. Catalog ${catalogVersion} moves retro, development-steward, orchestrate-work, flow-implement and working-backwards to ${version} copies that describe these steps and adds the jevgrep skill; the operator installs \`@dzhng/jevgrep@0.4.0\` and authenticates it, and agents never install or authenticate it. The roster guard allows code-mapper one restricted form, \`jg "<question>" [relative root]\`, and records a writer dispatched with \`run_in_background\` as a background hold: before the agent id is known the hold is not expired as a lost foreground dispatch, and it lasts until the writer finishes, an explicit release or the maximum hold age. \`development-system check-no-tests\` also reports live instruction documents (README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md and docs) that direct an agent to write or run automated tests, and skips vendored Python environments. The repository residue audit skips catalog skill copies that are byte-identical to their catalog original. \`development-system thread-health\` reads a Claude Code thread and reports whether it is moving, needs watching or is stuck (idle time, repeated identical failures, review rounds past three), which guard stops it hit, and its token cost; it measures no throughput and only suggests \`mistake add\` commands. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.\n`;
 assert(!contract.includes(`catalog is ${previousCatalog}`), "contract kept the previous paired catalog reference");
 assert(contract.includes(`The paired skill catalog is ${catalogVersion}.`), "contract lost the paired catalog reference");
 await output(`${prefix}/contract.md`, contract);
 
-// Catalog: retro, development-steward, orchestrate-work and flow-implement move to their 1.36.0 copies,
+// Catalog: retro, development-steward, orchestrate-work, flow-implement and working-backwards move to their 1.36.0 copies,
 // and jevgrep joins as an upstream model-invocable skill modeled on retro's entry.
 const catalog = JSON.parse((await bytes(`catalog/${previousCatalog}.json`)).toString());
 catalog.catalogVersion = catalogVersion;
@@ -260,6 +260,7 @@ const skillFolders = {
   "development-steward": "internal/development-steward",
   "orchestrate-work": "internal/orchestrate-work",
   "flow-implement": "internal/flow-implement",
+  "working-backwards": "internal/working-backwards",
   "jevgrep": "upstream/jevgrep",
 };
 for (const [name, folder] of Object.entries(skillFolders)) {
@@ -269,7 +270,7 @@ for (const [name, folder] of Object.entries(skillFolders)) {
     assert(!/Veredicto|Preguntas al margen/.test(text), `${relative(root, file)} names the retired report sections`);
   }
 }
-const moved = ["retro", "development-steward", "orchestrate-work", "flow-implement"];
+const moved = ["retro", "development-steward", "orchestrate-work", "flow-implement", "working-backwards"];
 for (const name of moved) {
   const skill = catalog.skills.find((/** @type {any} */ entry) => entry.logicalName === name);
   if (!skill) throw new Error(`Catalog ${previousCatalog} has no ${name}`);
@@ -309,6 +310,8 @@ const steward = (await bytes(`${prefix}/skills/internal/development-steward/SKIL
 assert(steward.includes("mistake list --repeated"), "development-steward SKILL.md lacks mistake list --repeated");
 const completionReport = (await bytes(`${prefix}/skills/internal/flow-implement/references/completion-report.md`)).toString();
 assert(completionReport.includes("Alcance de la verificación:"), "flow-implement completion-report.md lacks Alcance de la verificación:");
+const reportReference = (await bytes(`${prefix}/skills/internal/working-backwards/report-reference.md`)).toString();
+assert(reportReference.includes("Alcance de la verificación:"), "working-backwards report-reference.md lacks Alcance de la verificación:");
 const jevgrepSkill = (await bytes(`${jevgrepPath}/SKILL.md`)).toString();
 assert(jevgrepSkill.includes("@dzhng/jevgrep@0.4.0") && !jevgrepSkill.includes("@latest"), "jevgrep SKILL.md must pin @dzhng/jevgrep@0.4.0 and not @latest");
 const orchestrateWork = (await bytes(`${prefix}/skills/internal/orchestrate-work/SKILL.md`)).toString();

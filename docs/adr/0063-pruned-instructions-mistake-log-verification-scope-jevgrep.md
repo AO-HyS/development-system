@@ -60,8 +60,9 @@ Contract 1.36.0 with catalog 0.54.0:
   line in `## Detalle` that begins with `Alcance de la verificación:` (or
   `Verification scope:` in `## Detail`) and states what the verification
   covers, what it does not cover and the real effects. The error quotes the
-  line to add. orchestrate-work and flow-implement move to 1.36.0 copies that
-  prescribe it, and the delivery recap writes it from what it actually ran.
+  line to add; each of the three clauses must carry content. orchestrate-work,
+  flow-implement and working-backwards move to 1.36.0 copies that prescribe it,
+  and the delivery recap writes it from what it actually ran.
 - **jevgrep skill.** Catalog 0.54.0 adds `jevgrep` for Codex and Claude Code
   (the Claude variant links to the Codex one). The operator alone installs
   `@dzhng/jevgrep@0.4.0` (never `@latest`) and authenticates it through stdin;

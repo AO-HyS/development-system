@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.36.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "72300fcd340bd5d8b96d21ec6c0ad5d340db9d5c32f3e309c9bf2103fcad1d23",
+      "sha256": "7a886542a305aa83ea469f3b5bae8bfa4c77224b5b0b2e3c9b4c558256ce2167",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.54.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "b6f6461d0664d088fa5c91fec27f44c17b7f7fa32d40220f1a0ea9cbd48835a7",
+      "sha256": "d7a6786339a5b4701daf51f946aa64c5efc877fb151896ac152e6a8c2974968c",
       "expectedMirrorOf": null
     },
     {
@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/1.36.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "2fcf3ceee5ce3f1503a0306a960cea4bdd26a80ac59eb739b89427f4e8500b0e",
+      "sha256": "7692522773f2f0d0bbff6b5e2762577cd5e80e838108f5328db3a36e655c3c26",
       "expectedMirrorOf": null
     },
     {

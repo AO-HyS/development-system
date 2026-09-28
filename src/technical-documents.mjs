@@ -87,6 +87,11 @@ const VERIFICATION_SCOPE_EXAMPLES = {
   es: "Alcance de la verificación: cubre …; no cubre …; efectos reales: …",
   en: "Verification scope: covers …; does not cover …; real effects: …",
 };
+/** Ordered clauses a verification scope line must carry after its label. */
+const SCOPE_CLAUSES = {
+  es: /^cubre\s+(.*?\S.*?)\s*;\s*no cubre\s+(.*?\S.*?)\s*;\s*efectos reales\s*:\s*(.*\S.*)$/iu,
+  en: /^covers\s+(.*?\S.*?)\s*;\s*does not cover\s+(.*?\S.*?)\s*;\s*real effects\s*:\s*(.*\S.*)$/iu,
+};
 const MAX_COMPLETION_INTRO_CHARS = 600;
 const TABLE_DELIMITER_ROW = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/u;
 
@@ -177,14 +182,18 @@ function validateCompletionShape(lines, language) {
 
 /**
  * A scope line begins with the label, optionally wrapped in Markdown emphasis
- * (`**Label:**` or `**Label**:`), and carries non-empty text after it.
+ * (`**Label:**` or `**Label**:`), followed by three non-empty `;`-separated clauses in order:
+ * what it covers, what it does not cover, and the real effects (see SCOPE_CLAUSES).
  * @param {string} text
  * @param {"es" | "en"} locale
  */
 function hasVerificationScope(text, locale) {
   const label = VERIFICATION_SCOPE_LABELS[locale].slice(0, -1).replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   const match = new RegExp(`^ {0,3}(\\*\\*|__|\\*|_)?${label}(?::\\1|\\1:)(.*)$`, "u").exec(text);
-  return !!match && match[2].replaceAll(/[*_\s]/gu, "").length > 0;
+  if (!match) return false;
+  const body = match[2].replaceAll(/[*_]/gu, "").trim();
+  const clauses = SCOPE_CLAUSES[locale].exec(body);
+  return !!clauses && clauses.slice(1).every((clause) => clause.trim().length > 0);
 }
 
 /** @param {unknown} input */

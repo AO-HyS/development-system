@@ -14,8 +14,8 @@ const policyPath = resolve(dirname(fileURLToPath(import.meta.url)), "../claude/o
 
 /**
  * @typedef {{input: number, output: number, cacheRead: number, cacheCreation: number, total: number}} Tokens
- * @typedef {{kind: "tool" | "error", tool: string, input?: string, error: string, repeats: number, evidence: string}} Loop
- * @typedef {{name: string, input: string, file: string}} ToolCall
+ * @typedef {{tool: string, classification: string, errorClass: string, repeats: number, resolved: boolean, evidence: string}} Loop
+ * @typedef {{id: string, name: string, classification: string, file: string, line: number}} ToolCall
  */
 
 /** @param {string} home @param {string} value */
@@ -45,14 +45,6 @@ function clip(text, max) {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 }
 
-/** @param {unknown} value @returns {unknown} */
-function sortKeys(value) {
-  if (Array.isArray(value)) return value.map(sortKeys);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(/** @type {Record<string, unknown>} */ (value)[key])]));
-  }
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : value;
-}
 
 /** @param {unknown} content @returns {string} */
 function resultText(content) {
@@ -61,15 +53,27 @@ function resultText(content) {
   return "";
 }
 
+// Safe call classification: never the raw input. For Bash only the first command word
+// when it looks like a program name; every other tool is classified by its name alone.
 /** @param {string} name @param {unknown} input */
-function inputSummary(name, input) {
+function classifyCall(name, input) {
   const record = /** @type {Record<string, unknown>} */ (input ?? {});
-  const main = typeof record.command === "string" ? record.command
-    : typeof record.file_path === "string" ? record.file_path
-    : typeof record.pattern === "string" ? record.pattern
-    : typeof record.description === "string" ? record.description
-    : "";
-  return clip(main || name, 120);
+  if (name === "Bash" && typeof record.command === "string") {
+    const word = record.command.trim().split(/\s+/)[0] ?? "";
+    return /^[a-z][\w.-]*$/.test(word) ? word : "command";
+  }
+  return name;
+}
+
+// Error class derived by pattern; the error text itself is never emitted.
+/** @param {string} text */
+function classifyError(text) {
+  if (/hook|denied|blocked by|permission/i.test(text)) return "hook-denied";
+  if (/timed? ?out|timeout/i.test(text)) return "timeout";
+  const exit = text.match(/^Exit code (\d+)/m);
+  if (exit) return `exit-code-${exit[1]}`;
+  if (/not found|no such file|ENOENT|does not exist/i.test(text)) return "not-found";
+  return "other";
 }
 
 /** @param {string} text */
@@ -201,13 +205,17 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   let lastMainEntry = null;
   /** @type {Map<string, ToolCall>} */
   const calls = new Map();
-  /** @type {{call: ToolCall | undefined, text: string, file: string}[]} */
+  /** @type {{call: ToolCall | undefined, errorClass: string, file: string, line: number, seq: number}[]} */
   const errors = [];
-  /** @type {Map<string, number>} */
-  const successLines = new Map();
+  /** @type {{key: string, file: string, seq: number}[]} */
+  const successes = [];
+  /** @type {{file: string, seq: number}[]} */
+  const finalAnswers = [];
   let consecutiveErrors = 0;
   let run = 0;
-  const seenMessages = new Set();
+  let seq = 0;
+  /** @type {Map<string, {model: string, usage: Record<string, any>, isMain: boolean}>} */
+  const lastUsage = new Map();
   /** @type {Record<string, Tokens>} */
   const byModel = {};
   const scopes = { main: emptyTokens(), subagents: emptyTokens() };
@@ -217,8 +225,9 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
     const isMain = file === mainFile;
     const raw = readFileSync(file, "utf8");
     for (const match of raw.matchAll(RUN_ID)) runIds.add(match[1] ?? match[2]);
-    for (const line of raw.split("\n")) {
+    for (const [index, line] of raw.split("\n").entries()) {
       if (!line.trim()) continue;
+      seq += 1;
       let entry;
       try { entry = JSON.parse(line); } catch { continue; }
       const at = typeof entry.timestamp === "string" ? Date.parse(entry.timestamp) : NaN;
@@ -233,61 +242,59 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
       if (entry.type === "assistant") {
         for (const part of content) {
           if (part?.type === "tool_use" && typeof part.id === "string") {
-            calls.set(part.id, { name: String(part.name ?? "tool"), input: JSON.stringify(sortKeys(part.input ?? {})), file });
+            const name = String(part.name ?? "tool");
+            calls.set(part.id, { id: part.id, name, classification: classifyCall(name, part.input), file, line: index + 1 });
           }
         }
+        if (isFinalAssistantText(entry)) finalAnswers.push({ file, seq });
+        // Claude streams several rows per message id; the last one carries the complete usage.
         const usage = message.usage;
         const id = message.id;
         const model = String(message.model ?? "unknown");
-        if (usage && id && !seenMessages.has(id) && model !== "<synthetic>") {
-          seenMessages.add(id);
-          addUsage(byModel[model] ??= emptyTokens(), usage);
-          addUsage(isMain ? scopes.main : scopes.subagents, usage);
-        }
+        if (usage && id && model !== "<synthetic>") lastUsage.set(id, { model, usage, isMain });
         continue;
       }
       for (const part of content) {
         if (part?.type !== "tool_result") continue;
-        const text = resultText(part.content);
+        const call = calls.get(part.tool_use_id);
         if (part.is_error === true) {
-          errors.push({ call: calls.get(part.tool_use_id), text, file });
+          errors.push({ call, errorClass: classifyError(resultText(part.content)), file, line: index + 1, seq });
           if (isMain) { run += 1; consecutiveErrors = Math.max(consecutiveErrors, run); }
         } else {
-          for (const resultLine of text.split("\n").slice(0, 20)) {
-            const key = resultLine.trim();
-            if (key) successLines.set(key, (successLines.get(key) ?? 0) + 1);
-          }
+          if (call) successes.push({ key: `${call.name}\u0000${call.classification}`, file, seq });
           if (isMain) run = 0;
         }
       }
     }
   }
-
-  // Error signature: first 160 chars after dropping the exit-code line and lines that also
-  // appear in 3 or more successful results (shell banners are noise, not the error).
-  /** @param {string} text */
-  const signature = (text) => clip(text.split("\n")
-    .filter((line) => line.trim() && !/^Exit code \d+$/.test(line.trim()) && (successLines.get(line.trim()) ?? 0) < 3)
-    .join(" ") || text, 160);
-
-  /** @type {Map<string, Loop>} */
-  const toolLoops = new Map();
-  /** @type {Map<string, Loop>} */
-  const errorLoops = new Map();
-  for (const error of errors) {
-    const sig = signature(error.text);
-    const tool = error.call?.name ?? "tool";
-    if (error.call) {
-      const key = `${error.call.name}\u0000${error.call.input}`;
-      const loop = toolLoops.get(key) ?? { kind: "tool", tool, input: inputSummary(tool, JSON.parse(error.call.input)), error: sig, repeats: 0, evidence: error.file };
-      loop.repeats += 1;
-      toolLoops.set(key, loop);
-    }
-    const loop = errorLoops.get(sig) ?? { kind: "error", tool, error: sig, repeats: 0, evidence: error.file };
-    loop.repeats += 1;
-    errorLoops.set(sig, loop);
+  const trailingErrors = run;
+  for (const { model, usage, isMain } of lastUsage.values()) {
+    addUsage(byModel[model] ??= emptyTokens(), usage);
+    addUsage(isMain ? scopes.main : scopes.subagents, usage);
   }
-  const loops = [...toolLoops.values(), ...errorLoops.values()].filter((loop) => loop.repeats >= 3).sort((a, b) => b.repeats - a.repeats);
+
+  // Failure groups keyed only by safe fields. A group is resolved when a later successful call
+  // of the same tool and classification, or a final assistant answer, follows its last failure
+  // in the same transcript.
+  /** @type {Map<string, Loop & {key: string, file: string, lastSeq: number}>} */
+  const groups = new Map();
+  for (const error of errors) {
+    const tool = error.call?.name ?? "tool";
+    const classification = error.call?.classification ?? tool;
+    const callKey = `${tool}\u0000${classification}`;
+    const evidence = `${error.file}:${error.line}${error.call ? `#${error.call.id}` : ""}`;
+    const groupKey = `${callKey}\u0000${error.errorClass}`;
+    const group = groups.get(groupKey) ?? { tool, classification, errorClass: error.errorClass, repeats: 0, resolved: false, evidence, key: callKey, file: error.file, lastSeq: 0 };
+    group.repeats += 1;
+    group.lastSeq = Math.max(group.lastSeq, error.seq);
+    groups.set(groupKey, group);
+  }
+  /** @type {Loop[]} */
+  const loops = [...groups.values()].filter((group) => group.repeats >= 3).map(({ key, file, lastSeq, ...loop }) => ({
+    ...loop,
+    resolved: successes.some((success) => success.key === key && success.file === file && success.seq > lastSeq)
+      || finalAnswers.some((answer) => answer.file === file && answer.seq > lastSeq),
+  })).sort((a, b) => b.repeats - a.repeats);
 
   // Codex review runs this thread referenced, started after the thread's first entry.
   const policy = JSON.parse(readFileSync(policyPath, "utf8"));
@@ -339,7 +346,8 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   for (const event of ledger) {
     if (event.decision !== "deny") continue;
     if (event.mode === "writer-bash") { gitIndexRefusals += 1; continue; }
-    const reason = clip(String(event.reason ?? "sin motivo"), 160);
+    // Guard reasons quote the refused input in backticks or quotes; keep only the rule text.
+    const reason = clip(String(event.reason ?? "sin motivo").replace(/`[^`]*`|"[^"]*"|'[^']*'/g, "`…`"), 160);
     const group = denialGroups.get(reason) ?? { reason, count: 0, repeated: false };
     group.count += 1;
     group.repeated = group.count >= 3;
@@ -370,19 +378,19 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   /** @type {string[]} */
   const watchReasons = [];
   if (idle !== null && idle > idleMinutes && !finished) stuckReasons.push(`sin actividad hace ${Math.round(idle)} min y el último turno no cerró con texto`);
-  for (const loop of loops) {
-    const what = loop.kind === "tool" ? `${loop.tool} repetido ×${loop.repeats} con error` : `el mismo error ×${loop.repeats} (${clip(loop.error, 60)})`;
+  for (const loop of loops.filter((group) => !group.resolved)) {
+    const what = `${loop.tool} (${loop.classification}) repetido ×${loop.repeats} con ${loop.errorClass}`;
     (loop.repeats >= 5 ? stuckReasons : watchReasons).push(what);
   }
   for (const task of reviewRounds) if (task.rounds > 3) stuckReasons.push(`${task.taskId} lleva ${task.rounds} rondas de revisión completas`);
-  if (consecutiveErrors >= 5) watchReasons.push(`${consecutiveErrors} errores seguidos en el hilo principal`);
+  if (trailingErrors >= 5) watchReasons.push(`${consecutiveErrors} errores seguidos en el hilo principal`);
   const verdict = stuckReasons.length ? "stuck" : watchReasons.length ? "watch" : "moving";
 
   // Candidate mistake records; never run.
   /** @type {Map<string, string>} */
   const suggestions = new Map();
   for (const loop of loops) {
-    const slug = mistakeSlug(loop.tool, loop.error);
+    const slug = mistakeSlug(loop.tool, `${loop.classification} ${loop.errorClass}`);
     suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${loop.evidence}`);
   }
   for (const denial of denials.filter((group) => group.repeated)) {
@@ -406,6 +414,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
       lastTurnFinished: finished,
       loops,
       consecutiveErrors,
+      historicalFailures: errors.length,
       reviewRounds,
       pendingReviews,
     },
@@ -431,9 +440,9 @@ export function formatThreadHealth(result) {
   const lines = [result.verdict === "stuck" ? `Trabado: ${reasons}` : result.verdict === "watch" ? `Vigilar: ${reasons}` : "Moviéndose"];
   lines.push(`Sesión ${result.session}${result.thread ? ` (hilo T3 ${result.thread})` : ""}; última actividad ${stuck.lastActivityAt ?? "n/d"}${stuck.idleMinutes === null ? "" : ` (hace ${stuck.idleMinutes} min)`}; ${result.transcripts.subagents} subagentes.`);
   for (const loop of stuck.loops) {
-    lines.push(loop.kind === "tool" ? `  Bucle: ${loop.tool} ×${loop.repeats}: ${loop.input} → ${clip(loop.error, 100)}` : `  Error repetido ×${loop.repeats}: ${clip(loop.error, 120)}`);
+    lines.push(`  Bucle${loop.resolved ? " (resuelto)" : ""}: ${loop.tool} (${loop.classification}) ×${loop.repeats} → ${loop.errorClass}; evidencia ${loop.evidence}`);
   }
-  lines.push(`  Máximo de errores seguidos: ${stuck.consecutiveErrors}.`);
+  lines.push(`  Máximo de errores seguidos: ${stuck.consecutiveErrors}; fallos históricos: ${stuck.historicalFailures}.`);
   for (const task of stuck.reviewRounds) lines.push(`  Revisión ${task.taskId}: ${task.rounds} rondas, ${task.attempts} intentos fallidos, último veredicto ${task.lastVerdict ?? "—"}.`);
   if (stuck.pendingReviews) lines.push(`  Revisiones sin recibo todavía: ${stuck.pendingReviews}.`);
 
