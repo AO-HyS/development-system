@@ -48,6 +48,31 @@ export const directiveTestInstructions = Object.freeze([
 ]);
 
 /**
+ * The imperative subset of directiveTestInstructions that check-no-tests applies to product documents:
+ * test commands (runner invocations included) and requests to write, keep or run tests. Mentions (bare
+ * tool names, "testable", "test surface", coverage) describe rather than direct and stay release-gardener only.
+ * @type {ReadonlyArray<RegExp>}
+ */
+export const documentTestDirectives = Object.freeze([
+  /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi,
+  /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
+  /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
+  // Runner commands in prose count only as an imperative "run" or as a list item that starts with the command.
+  /(?:^\s*(?:[-*+]|\d+[.)])?\s*|[.,:;!?]\s+|\b(?:then|and|always|also|first|now)\s+)run (?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/gi,
+  /^\s*(?:[-*+]|\d+[.)])?\s*(?:\$\s+)?(?:(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test|node --test|pytest)|node --test)\b/gi,
+]);
+
+/**
+ * Runner commands on a line of a shell code fence (sh, bash, console, unlabeled...), after an optional
+ * `$ ` prompt and environment assignments.
+ * @type {ReadonlyArray<RegExp>}
+ */
+export const shellRunnerCommands = Object.freeze([
+  /^\s*(?:\$\s+)?(?:\w+=\S*\s+)*(?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/g,
+]);
+const SHELL_FENCE = /^(?:|sh|bash|zsh|shell|console|shell-session|fish|powershell|ps1?|cmd)$/i;
+
+/**
  * A directive is allowed only when a negation sits directly before the matched action, with at most one
  * word between ("do not write a regression test").
  * @param {string} before Text of the line preceding the match.
@@ -70,15 +95,36 @@ function stripInlineMarkdown(line) {
 /**
  * Lines of `text` that direct an agent to write or run automated tests and are not negated.
  * @param {string} text
+ * @param {ReadonlyArray<RegExp>} [patterns] Defaults to documentTestDirectives.
+ * @param {ReadonlyArray<RegExp>} [fencePatterns] Applied to raw lines inside shell code fences.
  * @returns {Array<{line: number, text: string}>} 1-based line numbers.
  */
-export function findTestDirectives(text) {
+export function findTestDirectives(text, patterns = documentTestDirectives, fencePatterns = shellRunnerCommands) {
   /** @type {Array<{line: number, text: string}>} */
   const hits = [];
+  /** @type {{marker: string, shell: boolean} | null} */
+  let fence = null;
   text.split("\n").forEach((line, index) => {
+    if (fence) {
+      // A closing fence repeats the opening character at least as many times, with nothing after it.
+      const closing = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line);
+      if (closing && closing[1][0] === fence.marker[0] && closing[1].length >= fence.marker.length) {
+        fence = null;
+        return;
+      }
+      if (!fence.shell) return;
+    } else {
+      // A backtick fence's info string cannot contain backticks (that is an inline code span).
+      const opening = /^ {0,3}(?:(`{3,})([^`]*)|(~{3,})(.*))$/.exec(line);
+      if (opening) {
+        fence = { marker: opening[1] ?? opening[3], shell: SHELL_FENCE.test((opening[2] ?? opening[4]).trim().split(/\s/)[0]) };
+        return;
+      }
+    }
     const plain = stripInlineMarkdown(line);
-    const hit = directiveTestInstructions.some((pattern) =>
-      [...plain.matchAll(pattern)].some((match) => !negatedClause(plain.slice(0, match.index))));
+    const hit = patterns.some((pattern) =>
+      [...plain.matchAll(pattern)].some((match) => !negatedClause(plain.slice(0, match.index))))
+      || (fence?.shell === true && fencePatterns.some((pattern) => [...line.matchAll(pattern)].length > 0));
     if (hit) hits.push({ line: index + 1, text: line });
   });
   return hits;

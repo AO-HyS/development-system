@@ -12,7 +12,7 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 /** Catalog 0.52.0 ships the quote-aware 2.0.0 policy from artifacts/1.34.1/skills/internal/global-agent-guardrails. */
 const guardCatalogVersion = "0.54.0";
 /** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
-const guardSetupVersion = "1.36.0";
+const guardSetupVersion = "1.36.1";
 /** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**
