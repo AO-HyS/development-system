@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/1.36.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "fdfeed52e24d8b2f1954384ebdf53f0ad8b5f93ff260f0a0041c1a7804d38b36",
+      "sha256": "5aa6cdf767e8c087ef7ae369746c726ce86297b1c70c317dbc3fdcc6dfaa0016",
       "expectedMirrorOf": null
     },
     {

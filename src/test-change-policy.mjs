@@ -49,14 +49,16 @@ export const directiveTestInstructions = Object.freeze([
 
 /**
  * The imperative subset of directiveTestInstructions that check-no-tests applies to product documents:
- * test commands and requests to write, keep or run tests. Mentions (tool names, "testable", "test
- * surface", coverage) describe rather than direct and stay release-gardener only.
+ * test commands (runner invocations included) and requests to write, keep or run tests. Mentions (bare
+ * tool names, "testable", "test surface", coverage) describe rather than direct and stay release-gardener only.
  * @type {ReadonlyArray<RegExp>}
  */
 export const documentTestDirectives = Object.freeze([
   /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi,
   /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
   /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
+  /\brun (?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/gi,
+  /\b(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test)\b/gi,
 ]);
 
 /**

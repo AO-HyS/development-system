@@ -1,10 +1,10 @@
 // @ts-check
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { directiveTestInstructions, findTestDirectives } from "../src/test-change-policy.mjs";
+import { directiveTestInstructions, findTestDirectives, negatedClause } from "../src/test-change-policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // 1.36.1 narrows the check-no-tests document scan that 1.36.0 introduced: product documents are
@@ -49,12 +49,25 @@ const outputJson = (path, value) => output(path, JSON.stringify(value, null, 2) 
 function assert(condition, message) {
   if (!condition) throw new Error(`Release ${version} source check failed: ${message}`);
 }
+/** @param {string} directory @returns {Promise<string[]>} */
+async function files(directory) {
+  const entries = await readdir(resolve(root, directory), { withFileTypes: true });
+  const nested = await Promise.all(entries.map(entry => {
+    const path = `${directory}/${entry.name}`;
+    return entry.isDirectory() ? files(path) : Promise.resolve(entry.isFile() ? [path] : []);
+  }));
+  return nested.flat().sort();
+}
 
 // The product-document scan reports directives and ignores descriptions; the gardener stays strict.
 for (const line of [
   "Run `pnpm test` before you push.",
   "Write a regression test for the fix.",
   "Preserve tests for unknown hosts.",
+  "Run `node --test` before pushing.",
+  "Run `npx playwright test`.",
+  "Run `pytest`.",
+  "Then `pnpm exec vitest` checks the change.",
 ]) assert(findTestDirectives(line).length === 1, `document scan misses a directive: ${line}`);
 for (const line of [
   "The rule for this project: aohys has no automated tests. Do not create, run, or keep unit, integration, E2E, or browser tests.",
@@ -62,6 +75,7 @@ for (const line of [
   "2. Prefer objective, testable rules over aesthetic preference.",
   "form validation and test locality live in",
   "do not write a regression test",
+  "The repository removed vitest and Playwright in 1.30.",
 ]) assert(findTestDirectives(line).length === 0, `document scan reports a description: ${line}`);
 assert(findTestDirectives("Prefer testable rules.", directiveTestInstructions).length === 1, "gardener list lost the strict mention patterns");
 
@@ -69,7 +83,7 @@ const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toStri
 const header = `# Development contract ${previous}`;
 assert(contractSource.startsWith(`${header}\n`), "previous contract header");
 const contract = contractSource.replace(header, `# Development contract ${version}`).trimEnd()
-  + `\n\n## ${version}: check-no-tests reads directives, not mentions\n\n\`development-system check-no-tests\` reports a product document line only when it gives a test command or asks to write, keep or run tests. Descriptions such as tool names, "testable", "test surface" or coverage are no longer findings, and installed skill trees (\`.agents/skills\`, \`.claude/skills\` and similar) are skipped because the release gardener governs their catalog and upstream content. Historical records a repository keeps can be listed in \`config/no-tests-allow.json\`. The release gardener still applies the strict list to every installed instruction.\n`;
+  + `\n\n## ${version}: check-no-tests reads directives, not mentions\n\n\`development-system check-no-tests\` reports a product document line only when it gives a test-runner command or asks for test creation, retention or execution. Descriptive mentions of testing tools or practices are no longer findings, and installed skill trees (\`.agents/skills\`, \`.claude/skills\` and similar) are skipped because the release gardener governs their catalog and upstream content. Historical records a repository keeps can be listed in \`config/no-tests-allow.json\`. The release gardener still applies its stricter list, mentions included, to every installed instruction.\n`;
 await output(`${prefix}/contract.md`, contract);
 
 const manifest = JSON.parse((await bytes(`manifests/${previous}.json`)).toString());
@@ -90,6 +104,25 @@ for (const artifact of manifest.artifacts) {
 assert(updatedCount >= 1, "previous manifest has no development-contract artifact");
 const skillCatalog = manifest.artifacts.find((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === "skill-catalog");
 assert(skillCatalog?.sourcePath === `catalog/${catalogVersion}.json`, `patch release must reuse catalog ${catalogVersion}`);
+
+// Gardener check (as in 1.36.0): no manifest artifact or installed catalog skill asks for automated
+// tests. Released instructions keep the strict list, mentions included.
+const catalog = JSON.parse((await bytes(`catalog/${catalogVersion}.json`)).toString());
+const instructionPaths = new Set(manifest.artifacts.map((/** @type {{sourcePath:string}} */ artifact) => artifact.sourcePath));
+for (const directory of new Set(catalog.skills.flatMap((/** @type {{variants:{sourceDirectory:string}[]}} */ skill) =>
+  skill.variants.map(variant => variant.sourceDirectory)))) {
+  for (const path of await files(directory)) instructionPaths.add(path);
+}
+/** @type {string[]} */
+const directiveHits = [];
+for (const path of [...instructionPaths].filter(path => /\.(?:md|toml|ya?ml)$/.test(path)).sort()) {
+  (await bytes(path)).toString().split("\n").forEach((line, index) => {
+    if (directiveTestInstructions.some(pattern => [...line.matchAll(pattern)].some(match => !negatedClause(line.slice(0, match.index))))) {
+      directiveHits.push(`${relative(root, resolve(root, path))}:${index + 1}: ${line.trim()}`);
+    }
+  });
+}
+assert(directiveHits.length === 0, `instructions ask for automated tests:\n${directiveHits.join("\n")}`);
 await outputJson(`manifests/${version}.json`, manifest);
 
 const pkg = JSON.parse((await bytes("package.json")).toString());
