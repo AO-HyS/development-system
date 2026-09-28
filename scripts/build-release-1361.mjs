@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSkillCatalog } from "../src/skills.mjs";
 import { directiveTestInstructions, findTestDirectives, negatedClause } from "../src/test-change-policy.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -67,7 +68,8 @@ for (const line of [
   "Run `node --test` before pushing.",
   "Run `npx playwright test`.",
   "Run `pytest`.",
-  "Then `pnpm exec vitest` checks the change.",
+  "Before pushing, run pytest.",
+  "- `npx playwright test` before release.",
 ]) assert(findTestDirectives(line).length === 1, `document scan misses a directive: ${line}`);
 for (const line of [
   "The rule for this project: aohys has no automated tests. Do not create, run, or keep unit, integration, E2E, or browser tests.",
@@ -76,7 +78,13 @@ for (const line of [
   "form validation and test locality live in",
   "do not write a regression test",
   "The repository removed vitest and Playwright in 1.30.",
+  "The removed command was `npx playwright test`.",
+  "The old workflow used to run pytest.",
+  "- Jest was removed.",
+  "```ts\npytest\n```",
 ]) assert(findTestDirectives(line).length === 0, `document scan reports a description: ${line}`);
+assert(findTestDirectives("Before pushing:\n```sh\n$ node --test\nCI=1 pytest -q\nnpx vitest run\n```\npytest is gone.").length === 3,
+  "document scan misses runner commands in a shell fence");
 assert(findTestDirectives("Prefer testable rules.", directiveTestInstructions).length === 1, "gardener list lost the strict mention patterns");
 
 const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toString();
@@ -108,6 +116,9 @@ assert(skillCatalog?.sourcePath === `catalog/${catalogVersion}.json`, `patch rel
 // Gardener check (as in 1.36.0): no manifest artifact or installed catalog skill asks for automated
 // tests. Released instructions keep the strict list, mentions included.
 const catalog = JSON.parse((await bytes(`catalog/${catalogVersion}.json`)).toString());
+// The reused catalog's skill folders must still match their recorded hashes.
+const catalogErrors = await validateSkillCatalog(catalog, root);
+if (catalogErrors.length) throw new Error(catalogErrors.join("\n"));
 const instructionPaths = new Set(manifest.artifacts.map((/** @type {{sourcePath:string}} */ artifact) => artifact.sourcePath));
 for (const directory of new Set(catalog.skills.flatMap((/** @type {{variants:{sourceDirectory:string}[]}} */ skill) =>
   skill.variants.map(variant => variant.sourceDirectory)))) {

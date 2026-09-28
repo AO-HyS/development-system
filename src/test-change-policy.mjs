@@ -57,9 +57,20 @@ export const documentTestDirectives = Object.freeze([
   /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi,
   /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
   /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
-  /\brun (?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/gi,
-  /\b(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test)\b/gi,
+  // Runner commands in prose count only as an imperative "run" or as a list item that starts with the command.
+  /(?:^\s*(?:[-*+]|\d+[.)])?\s*|[.,:;!?]\s+|\b(?:then|and|always|also|first|now)\s+)run (?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/gi,
+  /^\s*(?:[-*+]|\d+[.)])?\s*(?:\$\s+)?(?:(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test)|node --test)\b/gi,
 ]);
+
+/**
+ * Runner commands on a line of a shell code fence (sh, bash, console, unlabeled...), after an optional
+ * `$ ` prompt and environment assignments.
+ * @type {ReadonlyArray<RegExp>}
+ */
+export const shellRunnerCommands = Object.freeze([
+  /^\s*(?:\$\s+)?(?:\w+=\S*\s+)*(?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/g,
+]);
+const SHELL_FENCE = /^(?:|sh|bash|zsh|shell|console|shell-session|fish|powershell|ps1?|cmd)$/i;
 
 /**
  * A directive is allowed only when a negation sits directly before the matched action, with at most one
@@ -85,15 +96,24 @@ function stripInlineMarkdown(line) {
  * Lines of `text` that direct an agent to write or run automated tests and are not negated.
  * @param {string} text
  * @param {ReadonlyArray<RegExp>} [patterns] Defaults to documentTestDirectives.
+ * @param {ReadonlyArray<RegExp>} [fencePatterns] Applied to raw lines inside shell code fences.
  * @returns {Array<{line: number, text: string}>} 1-based line numbers.
  */
-export function findTestDirectives(text, patterns = documentTestDirectives) {
+export function findTestDirectives(text, patterns = documentTestDirectives, fencePatterns = shellRunnerCommands) {
   /** @type {Array<{line: number, text: string}>} */
   const hits = [];
+  /** @type {{marker: string, shell: boolean} | null} */
+  let fence = null;
   text.split("\n").forEach((line, index) => {
+    const delimiter = /^\s*(`{3,}|~{3,})\s*([\w-]*)/.exec(line);
+    if (delimiter && (!fence || delimiter[1].startsWith(fence.marker))) {
+      fence = fence ? null : { marker: delimiter[1], shell: SHELL_FENCE.test(delimiter[2]) };
+      return;
+    }
     const plain = stripInlineMarkdown(line);
     const hit = patterns.some((pattern) =>
-      [...plain.matchAll(pattern)].some((match) => !negatedClause(plain.slice(0, match.index))));
+      [...plain.matchAll(pattern)].some((match) => !negatedClause(plain.slice(0, match.index))))
+      || (fence?.shell === true && fencePatterns.some((pattern) => [...line.matchAll(pattern)].length > 0));
     if (hit) hits.push({ line: index + 1, text: line });
   });
   return hits;

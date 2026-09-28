@@ -24,6 +24,16 @@ opportunity-os plan): listed per repository in config/no-tests-allow.json.
 nutri-plan keeps 14 live findings for its rescue thread (it does not run
 check-no-tests). Pins move to 1.36.1 before merging.
 
+Astra ds-1361-diff round 1 (do not merge: README phrase tripped the scan,
+direct runner commands escaped, builder lacked the strict gardener scan) fixed
+in 71d0d4f: runner command patterns, gardener scan over manifest artifacts and
+catalog skill directories, reworded contract and README. Checks at 71d0d4f:
+builder check, typecheck, roster check, check-no-tests (DS and five products: 0),
+isolated HOME healthy. Round 2 running (out /tmp/ds1360/review-1361/out-r2).
+Product branches are fast-forward over their remotes (no force push needed).
+Next: merge #126, promote, tag v1.36.1, prerelease, real HOME setup, re-pin with
+/tmp/ds1360/rollout/pin-1361.mjs, PRs, Astra rollout review, merges/promotions.
+
 # Previous — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
 
 Approved 2026-09-27: "vamos a hacer los cambios pertinentes y vamos a llevar
