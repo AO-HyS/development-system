@@ -37,7 +37,12 @@ in 5ad700c: jg cd/quoted-subcommand/expansion bypasses, thread-health no longer
 prints raw commands or error text (and masks quoted guard input), last usage row
 per message, verdict from unresolved failures, steward installs mistakes.mjs
 (pre-1.36.0 state upgrades), Markdown-aware negation, three-clause scope line,
-working-backwards 1.36.0 copy. Round 2 running.
+working-backwards 1.36.0 copy. Round 2 (3 open + 1 new Medium) fixed in
+5b96352: canonical jg containment (symlinks), denials from fixed fields only,
+per-transcript fingerprinted loops. Round 3: every High closed; 2 Medium
+(whitespace-normalized fingerprint, progress text counted as final answer) fixed
+in b055464 and probed; no round 4 (no open Critical/High), so those two fixes
+are unreviewed by Astra. Gap: guard denials without `blockedBy` show as "other".
 
 Held by the user (2026-09-27): no release until they answer on 8 generic
 thread-quality rules taken from the NutriPlan rescue prompt (per-surface
