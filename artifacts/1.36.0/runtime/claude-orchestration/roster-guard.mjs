@@ -501,7 +501,8 @@ function imageCall() {
 // [relative root] [--max-source-bytes N] [--concurrency N] [--no-cache]`), optionally
 // piped into head/tail/wc/sort/uniq/cut/rg/grep. jg subcommands (auth, doctor, skill,
 // cache) and help/version words are denied even when quoted, a double-quoted question may
-// not hold $, ` or \, and a cd before jg must be a plain relative path (no quotes, -, ..).
+// not hold $, ` or \, and a cd before jg and the jg root must be plain relative paths (no
+// quotes, -, ..) that resolve inside the working directory with symlinks followed.
 // Filter-disabling flags, substitutions, file redirects and command lists are denied too.
 const MAPPER_HELP = 'code-mapper Bash runs only git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), optionally piped into head/tail/wc/sort/uniq/cut/rg/grep. Use Grep, Glob and Read for everything else.';
 // jevgrep for the mapper: null when allowed, else why not. Works on raw shell words
@@ -510,7 +511,14 @@ const MAPPER_HELP = 'code-mapper Bash runs only git show/log/diff/blame/status/r
 const JG_OPTIONS = new Set(['--max-source-bytes', '--concurrency', '--no-cache']);
 // From `jg --help`; jevgrep sees the unquoted word, so a quoted "auth" still dispatches.
 const JG_RESERVED = new Set(['auth', 'doctor', 'skill', 'cache', 'help', 'version', '--help', '-h', '--version']);
-function jgRefusal(step) {
+// A jg directory must resolve (symlinks followed) to the working directory or inside it.
+const JG_BASE = (() => { try { return fs.realpathSync(input.cwd ?? process.cwd()); } catch { return null; } })();
+function jgInside(dir) {
+  let real;
+  try { real = fs.realpathSync(dir); } catch { return false; }
+  return !!JG_BASE && (real === JG_BASE || real.startsWith(JG_BASE + path.sep));
+}
+function jgRefusal(step, dir = JG_BASE ?? '.') {
   const words = step.match(/(?:'[^']*'|"(?:\\.|[^"\\])*"|[^\s'"])+/g) ?? [];
   if (words.length === 2 && words[1] === '--version') return null;
   const question = words[1] ?? '';
@@ -523,6 +531,7 @@ function jgRefusal(step) {
   if (words[i] !== undefined && !words[i].startsWith('-')) {
     const root = words[i];
     if (!/^[\w@%+=:,.\/-]+$/.test(root) || root.startsWith('/') || root.split('/').includes('..')) return `The jg root \`${root}\` must be a plain relative path inside the working directory (no leading / or -, no .. segment, no quotes, ~, $ or globs).`;
+    if (!jgInside(path.resolve(dir, root))) return `The jg root \`${root}\` must be an existing directory that resolves inside the working directory (symlinks are followed).`;
     i += 1;
   }
   for (; i < words.length; i += 1) {
@@ -580,13 +589,17 @@ function mapperBash() {
   if (!parsed) refuse('Command lists, subshells, input redirects and background jobs are not allowed.');
   let { segments, separators } = parsed;
   const cdMatch = separators[0] === '&&' ? segments[0].match(/^cd\s+("[^"]+"|'[^']+'|[^\s"']+)$/) : null;
+  let jgDir = JG_BASE ?? '.';
   if (cdMatch) {
     // jg reads a whole tree, so its cd prefix must stay inside the working directory.
     const next = shellWords(segments[1] ?? '');
     const cdPath = cdMatch[1];
-    if (next[0] === 'jg' && !(next.length === 2 && next[1] === '--version')
-      && (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..'))) {
-      refuse(`\`cd ${cdPath}\` before jg must be a plain relative path inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment).`);
+    if (next[0] === 'jg' && !(next.length === 2 && next[1] === '--version')) {
+      if (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..')
+        || !jgInside(path.resolve(JG_BASE ?? '.', cdPath))) {
+        refuse(`\`cd ${cdPath}\` before jg must be a plain relative path that resolves inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment; symlinks are followed).`);
+      }
+      jgDir = path.resolve(JG_BASE ?? '.', cdPath);
     }
     segments = segments.slice(1);
     separators = separators.slice(1);
@@ -599,7 +612,7 @@ function mapperBash() {
   const [first, ...rest] = steps.map(shellWords);
   let ok = false;
   if (first[0] === 'jg') {
-    const why = jgRefusal(steps[0]);
+    const why = jgRefusal(steps[0], jgDir);
     if (why) refuse(why);
     ok = true;
   } else if (first[0] === 'git') {

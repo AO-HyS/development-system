@@ -28,8 +28,26 @@ steward repeatedMistakes, W2b doc-directive scan + vendored skip + identical-mir
 residue skip + AggregateError rollback, W2c verification-scope line in completion
 reports + delivery recap. Coordinator: config/no-tests-allow.json for historical
 records (docs/releases/, docs/spec.md, the 2026-07-28 benchmark) and "clear seams"
-in docs/architecture-reference-pack.md. In progress: W3a global instructions,
-W3b skill copies; next W4 release builder, then Astra diff review.
+in docs/architecture-reference-pack.md. W3a global instructions, W3b skill
+copies, W4 builder/catalog 0.54.0/manifest/ADR 0063, W5 `thread-health` done;
+candidate c3f38df installed healthy in an isolated HOME.
+
+Astra diff round 1 (ds-1360-diff, do not merge: 4 High, 4 Medium, 1 Low) fixed
+in 5ad700c: jg cd/quoted-subcommand/expansion bypasses, thread-health no longer
+prints raw commands or error text (and masks quoted guard input), last usage row
+per message, verdict from unresolved failures, steward installs mistakes.mjs
+(pre-1.36.0 state upgrades), Markdown-aware negation, three-clause scope line,
+working-backwards 1.36.0 copy. Round 2 running.
+
+Held by the user (2026-09-27): no release until they answer on 8 generic
+thread-quality rules taken from the NutriPlan rescue prompt (per-surface
+integration, change strategy after 3 failures, non-blocking checkpoints, what is
+not acceptance, no silent scope widening, notes are not proof, stop/termination
+conditions, ledger + thread-health at checkpoints).
+
+Real HOME finding: the weekly steward is orphaned (plist and logs, no state or
+runner; MODULE_NOT_FOUND each run). Rollout: disable/clean the orphan, then
+`development-steward-schedule-enable` with 1.36.0.
 
 ## Previous — Development System 1.35.0 and 1.35.1 (stable review rounds, advisory Jev, report sections)
 

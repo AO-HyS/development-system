@@ -1,5 +1,6 @@
 // @ts-check
 
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +16,7 @@ const policyPath = resolve(dirname(fileURLToPath(import.meta.url)), "../claude/o
 /**
  * @typedef {{input: number, output: number, cacheRead: number, cacheCreation: number, total: number}} Tokens
  * @typedef {{tool: string, classification: string, errorClass: string, repeats: number, resolved: boolean, evidence: string}} Loop
- * @typedef {{id: string, name: string, classification: string, file: string, line: number}} ToolCall
+ * @typedef {{id: string, name: string, classification: string, fingerprint: string, file: string, line: number}} ToolCall
  */
 
 /** @param {string} home @param {string} value */
@@ -30,21 +31,6 @@ function readJsonLines(file) {
     try { return [JSON.parse(line)]; } catch { return []; }
   });
 }
-
-/** @param {string} text */
-function redact(text) {
-  return text
-    .replace(/\b(sk|pk|rk|ghp|gho|ghs|xox[abp])[-_][A-Za-z0-9_-]{8,}/g, "[redactado]")
-    .replace(/\b([A-Za-z_]*(?:TOKEN|SECRET|PASSWORD|API_KEY|APIKEY|AUTH)[A-Za-z_]*)=\S+/gi, "$1=[redactado]")
-    .replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, "$1[redactado]");
-}
-
-/** @param {string} text @param {number} max */
-function clip(text, max) {
-  const flat = redact(text.replace(/\s+/g, " ").trim());
-  return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
-}
-
 
 /** @param {unknown} content @returns {string} */
 function resultText(content) {
@@ -63,6 +49,46 @@ function classifyCall(name, input) {
     return /^[a-z][\w.-]*$/.test(word) ? word : "command";
   }
   return name;
+}
+
+/** @param {unknown} value @returns {unknown} */
+function sortKeys(value) {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(/** @type {Record<string, unknown>} */ (value)[key])]));
+  }
+  return value;
+}
+
+// Internal grouping fingerprint of the exact call; never emitted.
+/** @param {string} name @param {unknown} input */
+function fingerprintCall(name, input) {
+  const record = /** @type {Record<string, unknown>} */ (input ?? {});
+  const normalized = name === "Bash" && typeof record.command === "string"
+    ? JSON.stringify({ command: record.command.replace(/\s+/g, " ").trim() })
+    : JSON.stringify(sortKeys(record));
+  return createHash("sha256").update(`${name}\u0000${normalized}`).digest("hex");
+}
+
+const DENIAL_LABELS = /** @type {Record<string, string>} */ ({
+  "owned-paths": "Owned paths inválidos",
+  tier: "tier de Jev",
+  "open-decision": "decisión abierta",
+  "codex-review": "revisión fuera de Codex",
+  "codex-computer-use": "computer use fuera de Codex",
+  retired: "rol retirado",
+});
+
+// Denial description from fixed, pattern-checked fields only; the guard reason is never read.
+/** @param {any} event */
+function describeDenial(event) {
+  const safe = (/** @type {unknown} */ value, /** @type {RegExp} */ pattern) => (typeof value === "string" && pattern.test(value) ? value : "");
+  const blockedBy = safe(event.blockedBy, /^[\w-]+$/) || "other";
+  const mode = safe(event.mode, /^[\w:-]+$/);
+  const tool = safe(event.tool, /^[\w:-]+$/);
+  const type = safe(event.type, /^[\w:-]+$/);
+  const where = [mode, tool, type].filter(Boolean).join(" ");
+  return { blockedBy, where, description: `${DENIAL_LABELS[blockedBy] ?? blockedBy}${where ? ` (${where})` : ""}` };
 }
 
 // Error class derived by pattern; the error text itself is never emitted.
@@ -243,7 +269,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
         for (const part of content) {
           if (part?.type === "tool_use" && typeof part.id === "string") {
             const name = String(part.name ?? "tool");
-            calls.set(part.id, { id: part.id, name, classification: classifyCall(name, part.input), file, line: index + 1 });
+            calls.set(part.id, { id: part.id, name, classification: classifyCall(name, part.input), fingerprint: fingerprintCall(name, part.input), file, line: index + 1 });
           }
         }
         if (isFinalAssistantText(entry)) finalAnswers.push({ file, seq });
@@ -261,7 +287,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
           errors.push({ call, errorClass: classifyError(resultText(part.content)), file, line: index + 1, seq });
           if (isMain) { run += 1; consecutiveErrors = Math.max(consecutiveErrors, run); }
         } else {
-          if (call) successes.push({ key: `${call.name}\u0000${call.classification}`, file, seq });
+          if (call) successes.push({ key: call.fingerprint, file, seq });
           if (isMain) run = 0;
         }
       }
@@ -273,17 +299,17 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
     addUsage(isMain ? scopes.main : scopes.subagents, usage);
   }
 
-  // Failure groups keyed only by safe fields. A group is resolved when a later successful call
-  // of the same tool and classification, or a final assistant answer, follows its last failure
-  // in the same transcript.
+  // Failure groups keyed by transcript, internal call fingerprint and error class. A group is
+  // resolved when a later successful call with the same fingerprint, or a final assistant answer,
+  // follows its last failure in the same transcript.
   /** @type {Map<string, Loop & {key: string, file: string, lastSeq: number}>} */
   const groups = new Map();
   for (const error of errors) {
     const tool = error.call?.name ?? "tool";
     const classification = error.call?.classification ?? tool;
-    const callKey = `${tool}\u0000${classification}`;
+    const callKey = error.call?.fingerprint ?? `${tool}\u0000${classification}`;
     const evidence = `${error.file}:${error.line}${error.call ? `#${error.call.id}` : ""}`;
-    const groupKey = `${callKey}\u0000${error.errorClass}`;
+    const groupKey = `${error.file}\u0000${callKey}\u0000${error.errorClass}`;
     const group = groups.get(groupKey) ?? { tool, classification, errorClass: error.errorClass, repeats: 0, resolved: false, evidence, key: callKey, file: error.file, lastSeq: 0 };
     group.repeats += 1;
     group.lastSeq = Math.max(group.lastSeq, error.seq);
@@ -338,20 +364,25 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   const reviewRounds = [...tasks.values()];
 
   // Guard ledger: denials for this session. A denial is the guard doing its job, not a thread fault.
-  const ledger = readJsonLines(join(expandHome(home, policy.stateDir ?? "~/.development-system/private/runs/claude-orchestration"), "ledger.jsonl"))
-    .filter((event) => event?.session === sessionId && (!event.at || Date.parse(event.at) >= sinceMs));
-  /** @type {Map<string, {reason: string, count: number, repeated: boolean}>} */
+  const ledgerFile = join(expandHome(home, policy.stateDir ?? "~/.development-system/private/runs/claude-orchestration"), "ledger.jsonl");
+  /** @type {{event: any, line: number}[]} */
+  const ledgerRows = existsSync(ledgerFile) ? readFileSync(ledgerFile, "utf8").split("\n").flatMap((text, index) => {
+    if (!text.trim()) return [];
+    try { return [{ event: JSON.parse(text), line: index + 1 }]; } catch { return []; }
+  }) : [];
+  const ledgerInWindow = ledgerRows.filter(({ event }) => event?.session === sessionId && (!event.at || Date.parse(event.at) >= sinceMs));
+  const ledger = ledgerInWindow.map(({ event }) => event);
+  /** @type {Map<string, {description: string, blockedBy: string, where: string, count: number, repeated: boolean, evidence: string}>} */
   const denialGroups = new Map();
   let gitIndexRefusals = 0;
-  for (const event of ledger) {
+  for (const { event, line } of ledgerInWindow) {
     if (event.decision !== "deny") continue;
     if (event.mode === "writer-bash") { gitIndexRefusals += 1; continue; }
-    // Guard reasons quote the refused input in backticks or quotes; keep only the rule text.
-    const reason = clip(String(event.reason ?? "sin motivo").replace(/`[^`]*`|"[^"]*"|'[^']*'/g, "`…`"), 160);
-    const group = denialGroups.get(reason) ?? { reason, count: 0, repeated: false };
+    const { description, blockedBy, where } = describeDenial(event);
+    const group = denialGroups.get(description) ?? { description, blockedBy, where, count: 0, repeated: false, evidence: `${ledgerFile}:${line}` };
     group.count += 1;
     group.repeated = group.count >= 3;
-    denialGroups.set(reason, group);
+    denialGroups.set(description, group);
   }
   const denials = [...denialGroups.values()].sort((a, b) => b.count - a.count);
   const writerHoldsExpired = ledger.filter((event) => event.event === "writer-hold-expired").length;
@@ -394,8 +425,8 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
     suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${loop.evidence}`);
   }
   for (const denial of denials.filter((group) => group.repeated)) {
-    const slug = mistakeSlug("guard", denial.reason);
-    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${mainFile}`);
+    const slug = mistakeSlug("guard", `${denial.blockedBy} ${denial.where}`);
+    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${denial.evidence}`);
   }
 
   return {
@@ -448,7 +479,7 @@ export function formatThreadHealth(result) {
 
   lines.push("", "Instrucciones");
   if (instructions.denials.length === 0) lines.push("  El guard no frenó nada en esta sesión.");
-  for (const denial of instructions.denials) lines.push(`  guard frenó: ${clip(denial.reason, 120)} ×${denial.count}${denial.repeated ? " (repetido)" : ""}`);
+  for (const denial of instructions.denials) lines.push(`  guard frenó: ${denial.description} ×${denial.count}${denial.repeated ? " (repetido)" : ""}; evidencia ${denial.evidence}`);
   lines.push(`  Escritores frenados al tocar el índice de git: ${instructions.gitIndexRefusals}; holds de escritor expirados: ${instructions.writerHoldsExpired}; revisiones sin Task-Id: ${instructions.reviewsWithoutTaskId}.`);
 
   lines.push("", "Costo");
