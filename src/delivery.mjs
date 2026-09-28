@@ -159,6 +159,47 @@ function visualPlanHtml(plan) {
   });
 }
 
+const CHECK_STEPS = ["test", "validate", "changed_validation", "review", "qa", "full_certification", "provider_readiness"];
+const EFFECT_LABELS = /** @type {Record<string, string>} */ ({
+  commit: "commit created",
+  push: "branch pushed",
+  open_pr: "pull request opened",
+  publish_preview: "preview published",
+});
+
+/**
+ * Verification scope line built only from the steps this run recorded.
+ * @param {any} details
+ */
+function verificationScopeLine(details) {
+  /** @type {string[]} */
+  const covered = [];
+  for (const entry of details.evidence) {
+    if (!CHECK_STEPS.includes(entry.step) || entry.omitted) continue;
+    const name = entry.step === "review"
+      ? `review (${entry.lane})`
+      : entry.step === "qa"
+        ? `qa (${details.plan.qa.level})`
+        : entry.step;
+    if (!covered.includes(name)) covered.push(name);
+  }
+  const notCovered = ["behavior outside these checks"];
+  for (const entry of details.evidence) {
+    if (!entry.omitted) continue;
+    notCovered.push(`${entry.step} (omitted: ${entry.alternativeEvidence ?? entry.reason ?? "no reason recorded"})`);
+  }
+  if (details.plan.qa.level === "omitted") notCovered.push("no browser or computer-use evidence is recorded");
+  else notCovered.push(`browser or computer-use evidence beyond what the qa step reported`);
+  const effects = details.evidence
+    .filter((/** @type {any} */ entry) => entry.step in EFFECT_LABELS && !entry.omitted)
+    .map((/** @type {any} */ entry) => entry.step === "open_pr"
+      ? `${EFFECT_LABELS.open_pr} (${details.pullRequestUrl})`
+      : entry.step === "publish_preview"
+        ? `${EFFECT_LABELS.publish_preview} (${details.previewUrl})`
+        : EFFECT_LABELS[entry.step]);
+  return `Verification scope: covers ${covered.length > 0 ? covered.join(", ") : "no checks"}; does not cover ${notCovered.join(", ")}; real effects: ${effects.length > 0 ? effects.join(", ") : "no real effects"}.`;
+}
+
 /** @param {any} details */
 function recapMarkdown(details) {
   const link = (/** @type {string} */ url) => encodeURI(url).replaceAll("(", "%28").replaceAll(")", "%29");
@@ -193,6 +234,8 @@ function recapMarkdown(details) {
   lines.push(
     ``,
     `## Detail`,
+    ``,
+    verificationScopeLine(details),
     ``,
     `- TDD: ${details.plan.tdd.reason} — ${details.plan.tdd.evidence}`,
     `- QA: ${details.plan.qa.reason} — ${details.plan.qa.alternativeEvidence ?? details.plan.qa.level}`,
@@ -410,7 +453,7 @@ export async function runImplementPreview(options) {
   if (!isReviewUrl(pullRequestUrl) || !isReviewUrl(previewUrl)) {
     return { ok: false, status: "failed", step: "decision-surface", reason: "Valid HTTP(S) PR and preview URLs are required", visualPlanPath };
   }
-  const recapDetails = { plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl };
+  const recapDetails = { plan: options.plan, failuresAndCorrections, pullRequestUrl, previewUrl, evidence };
   let recapDocument;
   try {
     recapDocument = await (options.documentWriter ?? writeTechnicalDocument)({

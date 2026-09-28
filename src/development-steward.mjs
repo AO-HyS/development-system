@@ -1,5 +1,7 @@
 // @ts-check
 
+import { listMistakes } from "./mistakes.mjs";
+
 export const primaryRepositoryAllowlist = Object.freeze([
   { id: "aohys", repository: "AO-HyS/aohys.com", name: "AO HyS" },
   { id: "casa-roca", repository: "corrortiz/casa-roca", name: "Casa Roca" },
@@ -65,9 +67,11 @@ function normalizeUpstream(item) {
 /**
  * Reconcile one scheduled, read-only Development Steward run.
  * Collection adapters provide evidence; this core never contacts or mutates a repository.
+ * Repeated mistakes come from the private mistake log in the steward's HOME when `home` is supplied.
  * @param {unknown} input
+ * @param {{home?: string}} [options]
  */
-export function buildDevelopmentStewardReview(input) {
+export function buildDevelopmentStewardReview(input, { home } = {}) {
   const value = isRecord(input) ? input : {};
   /** @type {string[]} */
   const errors = [];
@@ -175,6 +179,10 @@ export function buildDevelopmentStewardReview(input) {
     action: { title: item.title, reason: item.detail, capability: item.device, minutes: item.device === "mobile" ? 5 : 15 },
   }));
 
+  const repeatedMistakes = home
+    ? listMistakes({ home, repeated: true }).mistakes.map((mistake) => ({ id: mistake.id, incidents: mistake.incidents, proposedControl: mistake.proposedControl ?? null }))
+    : [];
+
   return {
     schemaVersion: 1,
     contractVersion: "1.5.0",
@@ -189,6 +197,7 @@ export function buildDevelopmentStewardReview(input) {
       title: "Development Steward weekly review",
       summary: reportItems.length === 0 ? "No primary repository needs proven human action." : `${reportItems.length} bounded items need attention.`,
       items: reportItems,
+      repeatedMistakes,
     },
     checkInEvidence,
     draftChanges,

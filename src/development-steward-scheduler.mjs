@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 export const developmentStewardLaunchAgentLabel = "com.aohys.development-steward";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const artifactRoot = resolve(repositoryRoot, "artifacts/1.5.11/skills/internal/development-steward");
+const artifactRoot = resolve(repositoryRoot, "artifacts/1.36.0/skills/internal/development-steward");
 
 /** @param {unknown} error */
 function missing(error) {

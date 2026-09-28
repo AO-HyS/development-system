@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { TEST_CONFIG_PATTERN_SOURCES, TEST_FILE_PATTERN_SOURCES, TEST_FILE_PATTERNS } from "./test-change-policy.mjs";
+import { findTestDirectives, TEST_CONFIG_PATTERN_SOURCES, TEST_FILE_PATTERN_SOURCES, TEST_FILE_PATTERNS } from "./test-change-policy.mjs";
 const RUNNER = /\b(?:vitest|jest|mocha|ava|cypress\s+run|playwright\s+test|node\s+--test|pytest|karma\s+start)\b/;
 const CI_TEST = /(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?test\b/;
 const TEST_DEPENDENCIES = new Set([
@@ -9,14 +9,24 @@ const TEST_DEPENDENCIES = new Set([
 ]);
 const TEST_DEPENDENCY_PREFIXES = ["@vitest/", "@testing-library/", "jest-"];
 const WORKFLOW = /^\.github\/workflows\/[^/]+\.ya?ml$/;
+/** Vendored Python environments are never repository tests. */
+const VENDORED_SEGMENT = /(?:^|\/)(?:site-packages|\.venv|venv)(?:\/|$)/;
+/** Live instruction documents: README*.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md at any depth, and docs/**\/*.md. */
+const INSTRUCTION_DOCUMENT = /(?:^|\/)(?:README[^/]*|AGENTS|CLAUDE|CONTRIBUTING)\.md$|^docs\/.+\.md$/;
+/** Historical or published records that are not live instructions. */
+const NON_INSTRUCTION_DOCUMENT = /^(?:docs\/current-work\.md|docs\/adr\/|artifacts\/|manifests\/|catalog\/)|(?:^|\/)node_modules\/|(?:^|\/)CHANGELOG[^/]*$/;
+/** Blockquote lines quote history or other sources rather than instruct. */
+const BLOCKQUOTE = /^\s*>/;
 
 /**
- * @typedef {{path: string, kind: "test-file" | "test-config" | "test-script" | "test-dependency" | "ci-test-step", detail: string}} NoTestsFinding
+ * @typedef {{path: string, kind: "test-file" | "test-config" | "test-script" | "test-dependency" | "ci-test-step" | "doc-directive", detail: string}} NoTestsFinding
  */
 
 /**
- * Reports automated tests, runner configuration, test scripts, test dependencies and CI test steps.
- * Files come from git (tracked plus untracked, excluding ignored files).
+ * Reports automated tests, runner configuration, test scripts, test dependencies, CI test steps and live
+ * instruction documents that direct an agent to write or run tests.
+ * Files come from git (tracked plus untracked, excluding ignored files); allow prefixes and vendored
+ * Python environments (site-packages, .venv, venv) are skipped.
  * @param {{root?: string, allow?: string[]}} [options]
  * @returns {{ok: boolean, operation: "check-no-tests", root: string, findings: NoTestsFinding[]}}
  */
@@ -27,7 +37,7 @@ export function findAutomatedTests({ root = process.cwd(), allow = [] } = {}) {
   const files = execFileSync("git", ["ls-files", "-co", "--exclude-standard", "-z"], {
     cwd: repository, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024,
   }).split("\0").filter(Boolean);
-  const unique = [...new Set(files)].filter((path) => !allowed(path)).sort();
+  const unique = [...new Set(files)].filter((path) => !allowed(path) && !VENDORED_SEGMENT.test(path)).sort();
 
   /** @type {NoTestsFinding[]} */
   const findings = [];
@@ -42,6 +52,7 @@ export function findAutomatedTests({ root = process.cwd(), allow = [] } = {}) {
     }
     if (path === "package.json" || path.endsWith("/package.json")) findings.push(...packageFindings(repository, path));
     if (WORKFLOW.test(path)) findings.push(...workflowFindings(repository, path));
+    if (INSTRUCTION_DOCUMENT.test(path) && !NON_INSTRUCTION_DOCUMENT.test(path)) findings.push(...documentFindings(repository, path));
   }
   return { ok: findings.length === 0, operation: "check-no-tests", root: repository, findings };
 }
@@ -94,4 +105,11 @@ function workflowFindings(repository, path) {
     RUNNER.test(line) || CI_TEST.test(line)
       ? [{ path, kind: /** @type {const} */ ("ci-test-step"), detail: `line ${index + 1}: ${line.trim()}` }]
       : []);
+}
+
+/** @param {string} repository @param {string} path @returns {NoTestsFinding[]} */
+function documentFindings(repository, path) {
+  return findTestDirectives(readText(repository, path).replace(/\r/g, ""))
+    .filter(({ text }) => !BLOCKQUOTE.test(text))
+    .map(({ line, text }) => ({ path, kind: /** @type {const} */ ("doc-directive"), detail: `line ${line}: ${text.trim().slice(0, 120)}` }));
 }

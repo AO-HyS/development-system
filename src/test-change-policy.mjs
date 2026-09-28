@@ -31,3 +31,41 @@ export const TEST_FILE_PATTERNS = Object.freeze(TEST_FILE_PATTERN_SOURCES.map((s
 export function isTestPath(path) {
   return TEST_FILE_PATTERNS.some((pattern) => pattern.test(path));
 }
+
+/**
+ * Instructions that direct an agent to write or run automated tests. Shared with the release builders'
+ * gardener check. Negation is action-scoped: see negatedClause.
+ * @type {ReadonlyArray<RegExp>}
+ */
+export const directiveTestInstructions = Object.freeze([
+  /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi, /A test covers/gi, /test coverage/gi,
+  /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
+  /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
+  /\b(?:vitest|jest|playwright test|node --test|pytest)\b/gi,
+  /missing tests/gi, /\btest executor\b/gi,
+  /\btestab(?:le|ility)\b/gi, /\btest (?:surface|seams?|locality)\b/gi, /\bunit\/contract\/integration\b/gi,
+  /\bunit, integration\b/gi, /\bexecuted tests\b/gi,
+]);
+
+/**
+ * A directive is allowed only when a negation sits directly before the matched action, with at most one
+ * word between ("do not write a regression test").
+ * @param {string} before Text of the line preceding the match.
+ */
+export const negatedClause = (/** @type {string} */ before) => /(?:\b(?:no|not|never|without|nor|avoid)\b|n't\b)(?:\s+\w+)?\s*$/i.test(before);
+
+/**
+ * Lines of `text` that direct an agent to write or run automated tests and are not negated.
+ * @param {string} text
+ * @returns {Array<{line: number, text: string}>} 1-based line numbers.
+ */
+export function findTestDirectives(text) {
+  /** @type {Array<{line: number, text: string}>} */
+  const hits = [];
+  text.split("\n").forEach((line, index) => {
+    const hit = directiveTestInstructions.some((pattern) =>
+      [...line.matchAll(pattern)].some((match) => !negatedClause(line.slice(0, match.index))));
+    if (hit) hits.push({ line: index + 1, text: line });
+  });
+  return hits;
+}
