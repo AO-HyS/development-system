@@ -3859,14 +3859,14 @@
           "destination": ".agents/skills/orchestrate-work",
           "expectedMirrorOf": null,
           "sourceDirectory": "artifacts/1.36.0/skills/internal/orchestrate-work",
-          "folderSha256": "7aa59fa76751a68673d3192f2d1c864716b4d947484578d5f50d71f9561a1c4d"
+          "folderSha256": "4b6a06b795c82618eb08853abb72fe529b7260facab57a18e8831abbd6c88241"
         },
         {
           "id": "orchestrate-work.claude",
           "harness": "claude",
           "sourceDirectory": "artifacts/1.36.0/skills/internal/orchestrate-work",
           "destination": ".claude/skills/orchestrate-work",
-          "folderSha256": "7aa59fa76751a68673d3192f2d1c864716b4d947484578d5f50d71f9561a1c4d",
+          "folderSha256": "4b6a06b795c82618eb08853abb72fe529b7260facab57a18e8831abbd6c88241",
           "expectedMirrorOf": "orchestrate-work.codex",
           "install": "symlink"
         }

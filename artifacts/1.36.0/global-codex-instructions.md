@@ -72,7 +72,9 @@ real verification without being asked: computer use, browser, and the
 repository's verification CLI and feature map. Report passed / failed / not
 reached with evidence. Completion reports state in Detail a `Verification scope:`
 (`Alcance de la verificación:`) line: what the checks cover, what they do not,
-and the real effects (charges, emails, writes) or none.
+and the real effects (charges, emails, writes) or none. Typecheck, HTTP 200 or a
+clean console is not acceptance. After 3 failed attempts at one problem,
+change strategy.
 
 ## Decisions
 

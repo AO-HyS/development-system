@@ -90,6 +90,15 @@ Contract 1.36.0 with catalog 0.54.0:
   alarms: a long task that keeps moving cheaply is healthy. Loops print a
   suggested `mistake add` command; nothing is recorded automatically. Codex
   threads are reported as not supported yet.
+- **Rules for long runs.** The NutriPlan rescue thread stayed unstuck and
+  honest because its hand-written prompt carried eight generic rules. They move
+  into the orchestrate-work 1.36.0 copy so every project's threads get them:
+  integrate per closed surface, change strategy after three failed attempts,
+  non-blocking checkpoints, "typecheck OK / HTTP 200 / no console errors" is
+  not acceptance, no silent scope widening, continuity notes are not proof,
+  stop only on a real blocker with continuity ready, and a ledger with
+  thread-health at checkpoints. The global instructions carry the acceptance
+  and three-attempt rules for both hosts.
 
 ## Consequences
 

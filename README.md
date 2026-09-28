@@ -14,7 +14,10 @@ environments, the residue audit skips byte-identical catalog mirrors, and
 background writer holds no longer expire as foreground holds.
 `development-system thread-health --thread <t3-thread-id>` tells whether a long
 Claude Code thread is moving, needs watching or is stuck, which guard stops it
-hit, and what it costs.
+hit, and what it costs. orchestrate-work now carries eight rules for long runs
+(integrate per surface, change strategy after three failures, non-blocking
+checkpoints, what is not acceptance, no silent scope widening, notes are not
+proof, when to stop, ledger plus thread-health).
 
 ```sh
 ./bin/development-system setup --version 1.36.0

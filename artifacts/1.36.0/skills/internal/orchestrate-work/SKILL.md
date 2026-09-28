@@ -95,6 +95,31 @@ parent keeps the acceptance rubric and judges the resulting values. Complete
 Impeccable and independent capable critique, resolve material findings, and
 then capture final media.
 
+## Keep long runs moving and honest
+
+1. Integrate per closed surface: once a surface passes its real verification
+   and review, open its PR and merge it to develop (where develop merges are
+   authorized) before opening the next. Do not batch everything to the end.
+2. After 3 failed attempts at the same problem, stop repeating it: re-examine
+   the cause, change the strategy, and record why.
+3. Checkpoints do not wait: at each surface boundary state progress, blocker
+   and next step in one short update, then continue without asking.
+4. "Implemented", "typecheck OK", "HTTP 200" or "no console errors" is not
+   acceptance. Only behavior observed against the acceptance criteria passes;
+   what was not exercised is reported as not reached.
+5. No silent scope widening. When a gate blocks on unrelated code, report the
+   exact file and rule, and fix it only if it is inside the authorized scope.
+6. Continuity notes are not proof. On resume, confirm branch, HEAD and pending
+   files briefly, reuse valid evidence, and do not re-audit everything.
+7. Stop only on a real blocker (missing authorization, one-way decision,
+   missing capability) with continuity ready: done, pending, evidence, next
+   step. Otherwise continue until the stated termination condition holds.
+8. For multi-surface or multi-session work, keep a ledger in
+   `docs/current-work.md`: start, acceptance per surface, evidence and status.
+   At each checkpoint of a Claude Code thread run
+   `development-system thread-health --session <id>` and act on `stuck` or
+   `watch`; record repeated mistakes with `development-system mistake add`.
+
 ## Finish
 
 Inspect the integrated diff against the full objective, correct material
