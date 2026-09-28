@@ -35,9 +35,54 @@ raised three Medium fence edge cases (non-shell fences, delimiters with trailing
 text, `pnpm exec pytest` list items); fixed with builder probes in the next
 commit. No fourth round: no open Critical or High finding (round rule); those
 three fixes are coordinator-verified only.
-Product branches are fast-forward over their remotes (no force push needed).
-Next: merge #126, promote, tag v1.36.1, prerelease, real HOME setup, re-pin with
-/tmp/ds1360/rollout/pin-1361.mjs, PRs, Astra rollout review, merges/promotions.
+
+1.36.1 released 2026-09-27: #126 and #127 merged (main 664f0c1, develop
+fast-forwarded), tag v1.36.1, prerelease asset sha256 5005ee18…9fbc verified
+after download. Real HOME setup from 664f0c1: audit healthy 1.36.1.
+`skills:probe` needs `AOHYS_CODEX_PATH` (the default ChatGPT.app path has no
+codex binary); it succeeded, and audit-skills stays invalid only for the
+Claude-variant live evidence (ADR 0003, as before). The PATH
+`development-system` pointed at a manually linked 1.34.1 package; relinked to
+~/.development-system/packages/1.36.1 (mistake stale-global-cli-used-for-audit).
+
+Rollout PRs (chore/development-system-1.36.0, pinned to 1.36.1, adapters at
+contract 1.36.1, frozen install, check-no-tests 0, audit-repository prepared
+with the pinned binary): eteria #287, aohys.com #201 (plus contract mirror and
+environment.yaml), the-barber-central #352, casa-roca #146, opportunity-os #75
+(base main), nutri-plan #500 (git data API commit 456b21f; local checkout left
+to its rescue thread). The completed ds-1361-rollout review said "do not merge":
+the Barber and AOHYS research documents still prescribed automated tests, and
+AOHYS .codex/AGENTS.md did not match the manifest source. Corrected the two
+historical documents without erasing their other findings; the AOHYS mirror now
+has the exact SHA-256 2230c22151e462a935dcd1b788fee1feb007809feef55e6829539cdc6f6dde7e.
+A fresh independent Astra review of these corrections returned "merge", with no
+blocking findings; it was a correction review, not a new full rollout audit.
+
+Integrated on develop: eteria #287 (13d40b5), aohys.com #201 (bb1dc68),
+the-barber-central #352 (e36a592), casa-roca #146 (a3299d3; merged by its
+other owner), nutri-plan #500 (8dfd948; the rescue checkout was untouched).
+Opportunity-os #75 merged to main (9e32996). Eteria #288 merged to main
+(3784f76), Release Train 36457833517 succeeded and the public domain was
+observed. AOHYS #202 merged to main (d719c87), Release Train 36457780615
+succeeded and the public domain was observed. Opportunity-os Pages deployment
+8a8ac60b-cf0a-441f-882d-584862f74408 has source 9e32996; the public
+sign-in page was observed, but authenticated behavior was not reached.
+Casa Roca and NutriPlan remain on develop by instruction; NutriPlan's exact
+develop Release Train 36457412592 succeeded. Barber follow-up #354 passed its
+PR gate and merged to develop at 0d998d1 after the concurrent #353 Preview
+Release Train 36459173788 finished successfully. The exact develop push train
+36460523301 succeeded (selective deploy skipped because #354 changed only
+documentation). #353 brought unrelated onboarding changes onto develop; its
+owner still needs shared Preview acceptance before any combined main promotion.
+
+Separate pending defect: `development-system thread-health --thread
+5e527747-cdcb-4cb1-9622-8666634f0c56` exits 1 with ENOENT for installed
+`packages/1.36.1/package/claude/orchestration/policy.json`. A "moving" status
+is not proof of healthy execution. The historical-test-directive mistake was
+recorded for the two distinct product incidents and is now a proposed guard;
+the stale AOHYS mirror was recorded separately. Published 1.36.1 was not
+republished. DS gates typecheck, release:prepare, roster:check, check-no-tests
+passed; no automated tests were run.
 
 # Previous — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
 
