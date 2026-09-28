@@ -70,6 +70,8 @@ for (const line of [
   "Run `pytest`.",
   "Before pushing, run pytest.",
   "- `npx playwright test` before release.",
+  "- pnpm exec pytest -q",
+  "```node --test``` before pushing.",
 ]) assert(findTestDirectives(line).length === 1, `document scan misses a directive: ${line}`);
 for (const line of [
   "The rule for this project: aohys has no automated tests. Do not create, run, or keep unit, integration, E2E, or browser tests.",
@@ -82,9 +84,12 @@ for (const line of [
   "The old workflow used to run pytest.",
   "- Jest was removed.",
   "```ts\npytest\n```",
+  "```js\nconst command = `\nnpx playwright test\n`;\n```",
 ]) assert(findTestDirectives(line).length === 0, `document scan reports a description: ${line}`);
 assert(findTestDirectives("Before pushing:\n```sh\n$ node --test\nCI=1 pytest -q\nnpx vitest run\n```\npytest is gone.").length === 3,
   "document scan misses runner commands in a shell fence");
+assert(findTestDirectives("~~~sh\ncat <<'EOF'\n~~~example\nEOF\npytest\n~~~").length === 1,
+  "a delimiter with trailing text closes a shell fence");
 assert(findTestDirectives("Prefer testable rules.", directiveTestInstructions).length === 1, "gardener list lost the strict mention patterns");
 
 const contractSource = (await bytes(`artifacts/${previous}/contract.md`)).toString();

@@ -59,7 +59,7 @@ export const documentTestDirectives = Object.freeze([
   /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
   // Runner commands in prose count only as an imperative "run" or as a list item that starts with the command.
   /(?:^\s*(?:[-*+]|\d+[.)])?\s*|[.,:;!?]\s+|\b(?:then|and|always|also|first|now)\s+)run (?:npx |bunx |yarn |pnpm (?:exec |dlx )?)?(?:vitest|jest|mocha|playwright test|node --test|pytest)\b/gi,
-  /^\s*(?:[-*+]|\d+[.)])?\s*(?:\$\s+)?(?:(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test)|node --test)\b/gi,
+  /^\s*(?:[-*+]|\d+[.)])?\s*(?:\$\s+)?(?:(?:npx|bunx|yarn|pnpm exec|pnpm dlx) (?:vitest|jest|mocha|playwright test|node --test|pytest)|node --test)\b/gi,
 ]);
 
 /**
@@ -105,10 +105,21 @@ export function findTestDirectives(text, patterns = documentTestDirectives, fenc
   /** @type {{marker: string, shell: boolean} | null} */
   let fence = null;
   text.split("\n").forEach((line, index) => {
-    const delimiter = /^\s*(`{3,}|~{3,})\s*([\w-]*)/.exec(line);
-    if (delimiter && (!fence || delimiter[1].startsWith(fence.marker))) {
-      fence = fence ? null : { marker: delimiter[1], shell: SHELL_FENCE.test(delimiter[2]) };
-      return;
+    if (fence) {
+      // A closing fence repeats the opening character at least as many times, with nothing after it.
+      const closing = /^ {0,3}(`{3,}|~{3,})\s*$/.exec(line);
+      if (closing && closing[1][0] === fence.marker[0] && closing[1].length >= fence.marker.length) {
+        fence = null;
+        return;
+      }
+      if (!fence.shell) return;
+    } else {
+      // A backtick fence's info string cannot contain backticks (that is an inline code span).
+      const opening = /^ {0,3}(?:(`{3,})([^`]*)|(~{3,})(.*))$/.exec(line);
+      if (opening) {
+        fence = { marker: opening[1] ?? opening[3], shell: SHELL_FENCE.test((opening[2] ?? opening[4]).trim().split(/\s/)[0]) };
+        return;
+      }
     }
     const plain = stripInlineMarkdown(line);
     const hit = patterns.some((pattern) =>

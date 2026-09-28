@@ -29,7 +29,12 @@ direct runner commands escaped, builder lacked the strict gardener scan) fixed
 in 71d0d4f: runner command patterns, gardener scan over manifest artifacts and
 catalog skill directories, reworded contract and README. Checks at 71d0d4f:
 builder check, typecheck, roster check, check-no-tests (DS and five products: 0),
-isolated HOME healthy. Round 2 running (out /tmp/ds1360/review-1361/out-r2).
+isolated HOME healthy. Round 2 (3 closed or partly; new: shell fences, descriptive
+command lines, catalog validation) fixed in 9fba84f. Round 3 closed all five and
+raised three Medium fence edge cases (non-shell fences, delimiters with trailing
+text, `pnpm exec pytest` list items); fixed with builder probes in the next
+commit. No fourth round: no open Critical or High finding (round rule); those
+three fixes are coordinator-verified only.
 Product branches are fast-forward over their remotes (no force push needed).
 Next: merge #126, promote, tag v1.36.1, prerelease, real HOME setup, re-pin with
 /tmp/ds1360/rollout/pin-1361.mjs, PRs, Astra rollout review, merges/promotions.
