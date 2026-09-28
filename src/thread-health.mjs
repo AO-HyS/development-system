@@ -60,12 +60,12 @@ function sortKeys(value) {
   return value;
 }
 
-// Internal grouping fingerprint of the exact call; never emitted.
+// Internal grouping fingerprint of the exact call (command bytes unchanged); never emitted.
 /** @param {string} name @param {unknown} input */
 function fingerprintCall(name, input) {
   const record = /** @type {Record<string, unknown>} */ (input ?? {});
   const normalized = name === "Bash" && typeof record.command === "string"
-    ? JSON.stringify({ command: record.command.replace(/\s+/g, " ").trim() })
+    ? JSON.stringify({ command: record.command })
     : JSON.stringify(sortKeys(record));
   return createHash("sha256").update(`${name}\u0000${normalized}`).digest("hex");
 }
@@ -180,7 +180,8 @@ function isConversation(entry) {
 function isFinalAssistantText(entry) {
   if (entry?.type !== "assistant" || !Array.isArray(entry.message?.content)) return false;
   const content = entry.message.content;
-  return content.some((/** @type {any} */ part) => part?.type === "text" && String(part.text ?? "").trim())
+  return entry.message.stop_reason !== "tool_use"
+    && content.some((/** @type {any} */ part) => part?.type === "text" && String(part.text ?? "").trim())
     && !content.some((/** @type {any} */ part) => part?.type === "tool_use");
 }
 
@@ -235,8 +236,10 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   const errors = [];
   /** @type {{key: string, file: string, seq: number}[]} */
   const successes = [];
-  /** @type {{file: string, seq: number}[]} */
-  const finalAnswers = [];
+  /** @type {{file: string, seq: number, id: unknown}[]} */
+  const answerCandidates = [];
+  // Claude streams one message as several rows; text followed by a tool_use row of the same id is progress.
+  const toolUseMessageIds = new Set();
   let consecutiveErrors = 0;
   let run = 0;
   let seq = 0;
@@ -272,7 +275,8 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
             calls.set(part.id, { id: part.id, name, classification: classifyCall(name, part.input), fingerprint: fingerprintCall(name, part.input), file, line: index + 1 });
           }
         }
-        if (isFinalAssistantText(entry)) finalAnswers.push({ file, seq });
+        if (content.some((/** @type {any} */ part) => part?.type === "tool_use") || message.stop_reason === "tool_use") toolUseMessageIds.add(message.id);
+        if (isFinalAssistantText(entry)) answerCandidates.push({ file, seq, id: message.id });
         // Claude streams several rows per message id; the last one carries the complete usage.
         const usage = message.usage;
         const id = message.id;
@@ -294,6 +298,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
     }
   }
   const trailingErrors = run;
+  const finalAnswers = answerCandidates.filter((answer) => !answer.id || !toolUseMessageIds.has(answer.id));
   for (const { model, usage, isMain } of lastUsage.values()) {
     addUsage(byModel[model] ??= emptyTokens(), usage);
     addUsage(isMain ? scopes.main : scopes.subagents, usage);
@@ -403,7 +408,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
 
   // Verdict.
   const idle = lastActivityMs === -Infinity ? null : Math.round(((now - lastActivityMs) / 60_000) * 10) / 10;
-  const finished = isFinalAssistantText(lastMainEntry);
+  const finished = isFinalAssistantText(lastMainEntry) && !toolUseMessageIds.has(lastMainEntry?.message?.id);
   /** @type {string[]} */
   const stuckReasons = [];
   /** @type {string[]} */
