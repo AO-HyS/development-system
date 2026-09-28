@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 export const developmentStewardLaunchAgentLabel = "com.aohys.development-steward";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const artifactRoot = resolve(repositoryRoot, "artifacts/1.5.11/skills/internal/development-steward");
+const artifactRoot = resolve(repositoryRoot, "artifacts/1.36.0/skills/internal/development-steward");
 
 /** @param {unknown} error */
 function missing(error) {
@@ -99,6 +99,7 @@ export function getDevelopmentStewardSchedulerPaths({ home }) {
     prompt: insideHome(resolvedHome, ".development-system/steward/prompt.md"),
     stewardContract: insideHome(resolvedHome, ".development-system/steward/development-steward.mjs"),
     checkInContract: insideHome(resolvedHome, ".development-system/steward/check-in.mjs"),
+    mistakesModule: insideHome(resolvedHome, ".development-system/steward/mistakes.mjs"),
     state: insideHome(resolvedHome, ".development-system/steward/scheduler-state.json"),
     reports: insideHome(resolvedHome, ".development-system/steward/reports"),
     report: insideHome(resolvedHome, ".development-system/steward/reports/latest.json"),
@@ -188,12 +189,12 @@ export async function installDevelopmentStewardScheduler(options) {
   if (!Number.isInteger(uid) || Number(uid) < 0) throw new Error("A numeric macOS uid is required");
   const paths = getDevelopmentStewardSchedulerPaths({ home });
   const launchctl = options.launchctl ?? defaultLaunchctl;
-  for (const path of [paths.runner, paths.prompt, paths.stewardContract, paths.checkInContract, paths.state, paths.report, paths.stdout, paths.stderr, paths.launchAgent]) {
+  for (const path of [paths.runner, paths.prompt, paths.stewardContract, paths.checkInContract, paths.mistakesModule, paths.state, paths.report, paths.stdout, paths.stderr, paths.launchAgent]) {
     await assertNoSymlinkParents(home, path);
   }
 
   const previousState = await readOptional(paths.state);
-  const targets = [paths.runner, paths.prompt, paths.stewardContract, paths.checkInContract, paths.launchAgent, paths.state, paths.stdout, paths.stderr];
+  const targets = [paths.runner, paths.prompt, paths.stewardContract, paths.checkInContract, paths.mistakesModule, paths.launchAgent, paths.state, paths.stdout, paths.stderr];
   if (previousState === null) {
     for (const target of targets) {
       if (await readOptional(target) !== null) throw new Error(`Refusing to replace unmanaged scheduler file: ${target}`);
@@ -202,7 +203,13 @@ export async function installDevelopmentStewardScheduler(options) {
     let parsed;
     try { parsed = JSON.parse(previousState.toString("utf8")); }
     catch { throw new Error("Refusing to replace scheduler with invalid managed state"); }
-    const expectedPaths = { runner: paths.runner, prompt: paths.prompt, stewardContract: paths.stewardContract, checkInContract: paths.checkInContract, launchAgent: paths.launchAgent };
+    /** @type {Record<string, string>} */
+    const expectedPaths = { runner: paths.runner, prompt: paths.prompt, stewardContract: paths.stewardContract, checkInContract: paths.checkInContract, mistakesModule: paths.mistakesModule, launchAgent: paths.launchAgent };
+    // State written before 1.36.0 has no mistakesModule; upgrade it unless an unmanaged file sits there.
+    if (parsed.schemaVersion === 1 && parsed.files && !("mistakesModule" in parsed.files)) {
+      if (await readOptional(paths.mistakesModule) !== null) throw new Error(`Refusing to replace unmanaged scheduler file: ${paths.mistakesModule}`);
+      delete expectedPaths.mistakesModule;
+    }
     if (parsed.schemaVersion !== 1 || parsed.label !== developmentStewardLaunchAgentLabel ||
         Object.entries(expectedPaths).some(([key, path]) => parsed.files?.[key]?.path !== path)) {
       throw new Error("Refusing to replace scheduler with invalid managed state");
@@ -228,11 +235,12 @@ export async function installDevelopmentStewardScheduler(options) {
   }
   if (await readOptional(paths.report) !== null) await chmod(paths.report, 0o600);
 
-  const [runner, prompt, stewardContract, checkInContract] = await Promise.all([
+  const [runner, prompt, stewardContract, checkInContract, mistakesModule] = await Promise.all([
     readFile(resolve(artifactRoot, "scripts/runner.mjs")),
     readFile(resolve(artifactRoot, "references/prompt.md")),
     readFile(resolve(repositoryRoot, "src/development-steward.mjs")),
     readFile(resolve(repositoryRoot, "src/check-in.mjs")),
+    readFile(resolve(repositoryRoot, "src/mistakes.mjs")),
   ]);
   const plist = Buffer.from(buildDevelopmentStewardLaunchAgent({
     nodePath, codexPath, runnerPath: paths.runner, promptPath: paths.prompt,
@@ -252,6 +260,7 @@ export async function installDevelopmentStewardScheduler(options) {
       prompt: { path: paths.prompt, sha256: sha256(prompt), mode: "0600" },
       stewardContract: { path: paths.stewardContract, sha256: sha256(stewardContract), mode: "0600" },
       checkInContract: { path: paths.checkInContract, sha256: sha256(checkInContract), mode: "0600" },
+      mistakesModule: { path: paths.mistakesModule, sha256: sha256(mistakesModule), mode: "0600" },
       launchAgent: { path: paths.launchAgent, sha256: sha256(plist), mode: "0600" },
     },
     authorization: { merge: false, release: false, production: false },
@@ -268,6 +277,7 @@ export async function installDevelopmentStewardScheduler(options) {
     await writeAtomic(paths.prompt, prompt);
     await writeAtomic(paths.stewardContract, stewardContract);
     await writeAtomic(paths.checkInContract, checkInContract);
+    await writeAtomic(paths.mistakesModule, mistakesModule);
     await writeAtomic(paths.launchAgent, plist);
     await writeAtomic(paths.state, state);
     const loaded = await runLaunchctl(["bootstrap", `gui/${uid}`, paths.launchAgent], launchctl);
@@ -302,6 +312,7 @@ export async function auditDevelopmentStewardScheduler(options) {
       prompt: paths.prompt,
       stewardContract: paths.stewardContract,
       checkInContract: paths.checkInContract,
+      mistakesModule: paths.mistakesModule,
       launchAgent: paths.launchAgent,
       stdout: paths.stdout,
       stderr: paths.stderr,
@@ -318,8 +329,8 @@ export async function auditDevelopmentStewardScheduler(options) {
   catch { return { status: "drifted", valid: false, loaded: false, problems: ["scheduler state is not valid JSON"], paths }; }
   if (state.schemaVersion !== 1 || state.label !== developmentStewardLaunchAgentLabel) problems.push("scheduler state contract is invalid");
   /** @type {Record<string, string>} */
-  const managedFiles = { runner: paths.runner, prompt: paths.prompt, stewardContract: paths.stewardContract, checkInContract: paths.checkInContract, launchAgent: paths.launchAgent };
-  for (const key of ["runner", "prompt", "stewardContract", "checkInContract", "launchAgent"]) {
+  const managedFiles = { runner: paths.runner, prompt: paths.prompt, stewardContract: paths.stewardContract, checkInContract: paths.checkInContract, mistakesModule: paths.mistakesModule, launchAgent: paths.launchAgent };
+  for (const key of ["runner", "prompt", "stewardContract", "checkInContract", "mistakesModule", "launchAgent"]) {
     const expected = state.files?.[key];
     const managedPath = managedFiles[key];
     if (!expected || typeof expected.path !== "string" || typeof expected.sha256 !== "string") {
@@ -374,7 +385,7 @@ export async function disableDevelopmentStewardScheduler(options) {
   const launchctl = options.launchctl ?? defaultLaunchctl;
   const unloaded = await runLaunchctl(["bootout", `gui/${uid}/${developmentStewardLaunchAgentLabel}`], launchctl);
   if (unloaded.status !== 0 && !notLoaded(unloaded)) throw new Error(`launchctl bootout failed: ${(unloaded.stderr ?? unloaded.stdout ?? "").trim()}`);
-  for (const path of [audit.paths.launchAgent, audit.paths.runner, audit.paths.prompt, audit.paths.stewardContract, audit.paths.checkInContract, audit.paths.state, audit.paths.stdout, audit.paths.stderr]) {
+  for (const path of [audit.paths.launchAgent, audit.paths.runner, audit.paths.prompt, audit.paths.stewardContract, audit.paths.checkInContract, audit.paths.mistakesModule, audit.paths.state, audit.paths.stdout, audit.paths.stderr]) {
     await removeIfPresent(path);
   }
   return { status: "disabled", alreadyDisabled: false, reportsPreservedAt: audit.paths.reports, paths: audit.paths };

@@ -34,6 +34,8 @@ import {
 } from "./claude-orchestration.mjs";
 import { auditReportGate, enableReportGate, rollbackReportGate } from "./report-gate.mjs";
 import { findAutomatedTests } from "./no-tests.mjs";
+import { addMistake, listMistakes } from "./mistakes.mjs";
+import { formatThreadHealth, threadHealth } from "./thread-health.mjs";
 import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
 import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
 import {
@@ -238,7 +240,74 @@ function formatHuman(result) {
 }
 
 /** @param {string[]} argv */
+function parseMistakeArguments(argv) {
+  const [, subcommand, ...tokens] = argv;
+  if (subcommand !== "add" && subcommand !== "list") throw new Error("Usage: development-system mistake <add|list> [options]");
+  /** @type {{subcommand: "add" | "list", home: string, json: boolean, repeated: boolean, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} */
+  const options = { subcommand, home: homedir(), json: false, repeated: false };
+  const valueFlags = subcommand === "add"
+    ? { "--home": "home", "--id": "id", "--incident": "incident", "--evidence": "evidence", "--summary": "summary", "--fix": "fix", "--control": "control", "--repository": "repository" }
+    : { "--home": "home" };
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "--json") { options.json = true; continue; }
+    if (token === "--repeated" && subcommand === "list") { options.repeated = true; continue; }
+    const key = /** @type {Record<string, string>} */ (valueFlags)[token];
+    if (!key) throw new Error(`Unknown option for mistake ${subcommand}: ${token}`);
+    const value = tokens[index + 1];
+    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
+    /** @type {Record<string, unknown>} */ (options)[key] = value;
+    index += 1;
+  }
+  return options;
+}
+
+/** @param {Record<string, unknown>} result */
+function formatMistake(result) {
+  if (result.operation === "mistake-add") {
+    return result.status === "duplicate"
+      ? `Mistake ${result.id} incident ${result.incident} already recorded.`
+      : `Recorded mistake ${result.id} (${result.incidents} distinct incidents).`;
+  }
+  const mistakes = /** @type {{id: string, incidents: string[], summary: string | null, hint?: string}[]} */ (Array.isArray(result.mistakes) ? result.mistakes : []);
+  if (mistakes.length === 0) return result.repeated ? "No repeated mistakes recorded." : "No mistakes recorded.";
+  return mistakes.flatMap((mistake) => [
+    `${mistake.id}: ${mistake.incidents.length} incidents — ${mistake.summary ?? "no summary"}`,
+    ...(mistake.hint ? [`  ${mistake.hint}`] : []),
+  ]).join("\n");
+}
+
+/** @param {string[]} argv */
+function parseThreadHealthArguments(argv) {
+  /** @type {{home: string, json: boolean, idleMinutes: number, session?: string, thread?: string, since?: string}} */
+  const options = { home: homedir(), json: false, idleMinutes: 20 };
+  const valueFlags = { "--home": "home", "--session": "session", "--thread": "thread", "--since": "since", "--idle-minutes": "idleMinutes" };
+  const tokens = argv.slice(1);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "--json") { options.json = true; continue; }
+    const key = /** @type {Record<string, string>} */ (valueFlags)[token];
+    if (!key) throw new Error(`Unknown option for thread-health: ${token}`);
+    const value = tokens[index + 1];
+    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
+    /** @type {Record<string, unknown>} */ (options)[key] = key === "idleMinutes" ? Number(value) : value;
+    index += 1;
+  }
+  return options;
+}
+
+/** @param {string[]} argv */
 export async function run(argv) {
+  if (argv[0] === "thread-health") {
+    const { json, ...options } = parseThreadHealthArguments(argv);
+    const result = threadHealth(options);
+    return { result, output: json ? JSON.stringify(result) : formatThreadHealth(result), json };
+  }
+  if (argv[0] === "mistake") {
+    const { subcommand, home, json, repeated, ...fields } = parseMistakeArguments(argv);
+    const result = subcommand === "add" ? addMistake({ home, ...fields }) : listMistakes({ home, repeated });
+    return { result, output: json ? JSON.stringify(result) : formatMistake(result), json };
+  }
   if (argv[0] === "governance") {
     const { runGovernance } = await import("../runtime/jev-governance/cli.mjs");
     return runGovernance(argv.slice(1));
@@ -487,7 +556,7 @@ export async function run(argv) {
   } else if (command === "development-steward") {
     if (!options.input) throw new Error("development-steward requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
-    result = buildDevelopmentStewardReview(input);
+    result = buildDevelopmentStewardReview(input, { home: options.home });
   } else if (command === "development-steward-schedule-enable") {
     if (!options.projectsRoot) throw new Error("development-steward-schedule-enable requires --projects-root <path>");
     if (!options.codexPath) throw new Error("development-steward-schedule-enable requires --codex-path <absolute-path>");
@@ -561,7 +630,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

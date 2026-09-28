@@ -1,4 +1,60 @@
-# Current work — Development System 1.35.0 and 1.35.1 (stable review rounds, advisory Jev, report sections)
+# Current work — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
+
+Approved 2026-09-27: "vamos a hacer los cambios pertinentes y vamos a llevar
+todo a producción en todos los repos hasta donde se pueda ... Hay que hacer
+todo". Origin: research thread 4c1d09c0 (Backpass, Matt /retro, Kent, Opus 5.5
+guide, jevgrep) and two cross-reviews that agreed on five points. Root
+/Users/corrortiz/Documents/AO/development-system, branch
+feat/development-system-1.36.0 from develop cd04df7.
+
+Plan /tmp/ds1360/plan.md (R1-R7, D1-D12, writers W1-W4) under Astra review
+(Task-Id ds-1360-plan). Decisions: adopt jevgrep 0.4.0 with the prepaid
+TypeSafe Jev and no measurement gate (user: build, then prune); Augment removed
+(REPO_NOT_FOUND for AO-HyS, unused).
+
+Operator steps done: jg 0.4.0 installed globally, `jg auth --provider
+typesafe --stdin` from the existing credential file, `jg doctor` verified, a
+live search returned the right guard lines in 5 s; auggie removed from
+~/.claude.json with `claude mcp remove auggie -s user` (backup in
+~/.development-system/private/backups/ds-1360-mcp). The Codex entry in
+~/.codex/config.toml is guarded against agent writes: the user runs
+`codex mcp remove auggie`. Claude memory duplicates of the global rules were
+archived to ~/.development-system/private/memory-archive-20260927.
+
+Status: plan reviewed by Astra (round 1: 3 High, 4 Medium folded in as F1-F7).
+Writers done and checked: W1 roster guard jg allowlist + background holds + pruned
+rule (5,895 -> 5,455 bytes), W1b cd-before-jg refusal, W2a `mistake add|list` +
+steward repeatedMistakes, W2b doc-directive scan + vendored skip + identical-mirror
+residue skip + AggregateError rollback, W2c verification-scope line in completion
+reports + delivery recap. Coordinator: config/no-tests-allow.json for historical
+records (docs/releases/, docs/spec.md, the 2026-07-28 benchmark) and "clear seams"
+in docs/architecture-reference-pack.md. W3a global instructions, W3b skill
+copies, W4 builder/catalog 0.54.0/manifest/ADR 0063, W5 `thread-health` done;
+candidate c3f38df installed healthy in an isolated HOME.
+
+Astra diff round 1 (ds-1360-diff, do not merge: 4 High, 4 Medium, 1 Low) fixed
+in 5ad700c: jg cd/quoted-subcommand/expansion bypasses, thread-health no longer
+prints raw commands or error text (and masks quoted guard input), last usage row
+per message, verdict from unresolved failures, steward installs mistakes.mjs
+(pre-1.36.0 state upgrades), Markdown-aware negation, three-clause scope line,
+working-backwards 1.36.0 copy. Round 2 (3 open + 1 new Medium) fixed in
+5b96352: canonical jg containment (symlinks), denials from fixed fields only,
+per-transcript fingerprinted loops. Round 3: every High closed; 2 Medium
+(whitespace-normalized fingerprint, progress text counted as final answer) fixed
+in b055464 and probed; no round 4 (no open Critical/High), so those two fixes
+are unreviewed by Astra. Gap: guard denials without `blockedBy` show as "other".
+
+Held by the user (2026-09-27): no release until they answer on 8 generic
+thread-quality rules taken from the NutriPlan rescue prompt (per-surface
+integration, change strategy after 3 failures, non-blocking checkpoints, what is
+not acceptance, no silent scope widening, notes are not proof, stop/termination
+conditions, ledger + thread-health at checkpoints).
+
+Real HOME finding: the weekly steward is orphaned (plist and logs, no state or
+runner; MODULE_NOT_FOUND each run). Rollout: disable/clean the orphan, then
+`development-steward-schedule-enable` with 1.36.0.
+
+## Previous — Development System 1.35.0 and 1.35.1 (stable review rounds, advisory Jev, report sections)
 
 Approved 2026-09-27: "Sí tú arranca 1.35. Haces todo lo necesario para que
 llegue a producción en todos lados donde puede llegar a producción." Root
@@ -481,7 +537,7 @@ feat/claude-code-parity-1.31.0, stacked on feat/headroom-observed-delivery-1.30.
   Codex config.toml, 18 role TOMLs and hooks.json unchanged; AGENTS.md changed
   only by the appended Claude section.
 - Operator configuration: plugins github, vercel, sentry, cloudflare, stripe,
-  expo, convex, linear, exa; MCPs auggie, mobbin, expect, posthog, mercadopago
+  expo, convex, linear, exa; MCPs mobbin, expect, posthog, mercadopago
   (Codex had those two as MCP only); instructionFiles =
   claude-md-and-agents-md; impeccable hook repaired; 14 non-catalog skills
   linked; dangling links and superseded files kept under private backup.

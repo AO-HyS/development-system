@@ -1,5 +1,28 @@
 # AOHYS Development System
 
+## Release 1.36.0 / catalog 0.54.0
+
+Release 1.36.0 installs shorter shared global instructions with a Codex and a
+Claude Code host section, and adds `development-system mistake add|list`, a
+private mistake log that retro and development-steward read so a mistake seen
+twice can become a hard rule. Completion documents now require a
+verification-scope line (`Alcance de la verificación:` / `Verification scope:`).
+Catalog 0.54.0 adds the jevgrep skill (the operator installs
+`@dzhng/jevgrep@0.4.0`; code-mapper may run a restricted `jg` form).
+check-no-tests also reads live instruction documents and skips vendored Python
+environments, the residue audit skips byte-identical catalog mirrors, and
+background writer holds no longer expire as foreground holds.
+`development-system thread-health --thread <t3-thread-id>` tells whether a long
+Claude Code thread is moving, needs watching or is stuck, which guard stops it
+hit, and what it costs. orchestrate-work now carries eight rules for long runs
+(integrate per surface, change strategy after three failures, non-blocking
+checkpoints, what is not acceptance, no silent scope widening, notes are not
+proof, when to stop, ledger plus thread-health).
+
+```sh
+./bin/development-system setup --version 1.36.0
+```
+
 ## Release 1.35.1 / catalog 0.53.1
 
 Release 1.35.1 moves orchestrate-work to a copy whose close-every-task step

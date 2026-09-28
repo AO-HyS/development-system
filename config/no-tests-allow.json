@@ -1,0 +1,7 @@
+{
+  "allow": [
+    "docs/releases/",
+    "docs/spec.md",
+    "docs/changed-validation-benchmark-2026-07-28.md"
+  ]
+}

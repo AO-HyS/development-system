@@ -297,6 +297,31 @@ async function directoryHash(directory) {
   return hash.digest("hex");
 }
 
+/**
+ * Mirror identity: a mirror is identical only when its original's hash is known and equal.
+ * @param {string | null | undefined} mirrorHash
+ * @param {string | null | undefined} originalHash
+ * @returns {"identical" | "mismatch"}
+ */
+export function mirrorIdentity(mirrorHash, originalHash) {
+  return originalHash && mirrorHash === originalHash ? "identical" : "mismatch";
+}
+
+/**
+ * Whether `directory` is a byte-identical copy of a catalog skill folder whose recorded hash is
+ * `folderSha256`. Missing, unreadable or symbolic-link-bearing directories are not identical.
+ * @param {string} directory
+ * @param {string | undefined} folderSha256
+ */
+export async function isIdenticalCatalogMirror(directory, folderSha256) {
+  if (!folderSha256) return false;
+  try {
+    return mirrorIdentity(await directoryHash(directory), folderSha256) === "identical";
+  } catch {
+    return false;
+  }
+}
+
 /** Hash an arbitrary managed entry without following symbolic links. @param {string} root */
 async function entryIntegrityHash(root) {
   const hash = createHash("sha256");
@@ -635,10 +660,7 @@ export async function auditSkillCatalog(options) {
     .filter((skill) => skill.expectedMirrorOf)
     .map((skill) => {
       const original = byId.get(skill.expectedMirrorOf);
-      const status =
-        original?.directoryHash && skill.directoryHash === original.directoryHash
-          ? "identical"
-          : "mismatch";
+      const status = mirrorIdentity(skill.directoryHash, original?.directoryHash);
       if (status !== "identical") problems.push(`${skill.id} mirror does not match ${skill.expectedMirrorOf}`);
       return { artifact: skill.id, expectedMirrorOf: skill.expectedMirrorOf, status };
     });
@@ -1137,9 +1159,13 @@ export async function synchronizeSkillCatalog(options) {
       }
       await atomicWriteJson(agentLockPath, nextAgentLock);
     } catch (error) {
-      await restoreSkillSnapshot({ home, snapshotRoot, entries });
-      await rm(statePath, { force: true });
-      await rm(snapshotRoot, { recursive: true, force: true });
+      try {
+        await restoreSkillSnapshot({ home, snapshotRoot, entries });
+        await rm(statePath, { force: true });
+        await rm(snapshotRoot, { recursive: true, force: true });
+      } catch (restoreError) {
+        throw new AggregateError([error, restoreError], `Skill sync failed (${error instanceof Error ? error.message : String(error)}) and its restore failed (${restoreError instanceof Error ? restoreError.message : String(restoreError)}); checkpoint retained at ${snapshotRoot}`);
+      }
       throw error;
     }
 
