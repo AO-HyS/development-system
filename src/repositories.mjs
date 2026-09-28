@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, readdir, readlink, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, relative, resolve, sep } from "node:path";
 
-import { hasBehaviorSignature } from "./skills.mjs";
+import { hasBehaviorSignature, isIdenticalCatalogMirror } from "./skills.mjs";
 import {
   antiSlopDiagnosticOnlyMetrics,
   antiSlopExcludedMetrics,
@@ -19,6 +19,9 @@ const catalogArtifact = currentManifest.artifacts.find((/** @type {{logicalName:
 if (!catalogArtifact) throw new Error(`Contract ${contractVersion} has no skill catalog`);
 const currentCatalog = JSON.parse(await readFile(new URL(`../${catalogArtifact.sourcePath}`, import.meta.url), "utf8"));
 const skillCatalogVersion = currentCatalog.catalogVersion;
+/** Catalog skill destinations mapped to the recorded folder hash of their catalog original. @type {Map<string, string>} */
+const catalogSkillFolders = new Map(currentCatalog.skills.flatMap((/** @type {{variants: Array<{destination: string, folderSha256?: string}>}} */ skill) =>
+  skill.variants.flatMap((variant) => (variant.folderSha256 ? [[variant.destination, variant.folderSha256]] : []))));
 const antiSlopUpstream = Object.freeze({
   catalogSkill: "install-anti-slop",
   repository: "https://github.com/dmmulroy/anti-slop",
@@ -552,7 +555,19 @@ async function detectResidue(repository, entries, identityName) {
   const residue = [];
   /** @type {Array<{path:string, marker:string, reason:string}>} */
   const allowedReferences = [];
+  /** @type {Map<string, boolean>} */
+  const identicalMirrors = new Map();
   for (const entry of entries) {
+    // A declared catalog skill copied byte-identically carries the catalog's own product examples;
+    // it is not repository residue. A copy that drifted from the catalog is still scanned.
+    const mirror = [...catalogSkillFolders].find(([destination]) => entry.path.startsWith(`${destination}/`));
+    if (mirror) {
+      const [destination, folderSha256] = mirror;
+      if (!identicalMirrors.has(destination)) {
+        identicalMirrors.set(destination, await isIdenticalCatalogMirror(resolve(repository, destination), folderSha256));
+      }
+      if (identicalMirrors.get(destination)) continue;
+    }
     const contents = await readableText(repository, entry.path);
     for (const marker of foreignProductMarkers) {
       if (marker === owned) continue;

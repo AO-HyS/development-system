@@ -1,0 +1,4 @@
+interface:
+  display_name: "Development Steward"
+  short_description: "Weekly drift and upstream review for five primary repos"
+  default_prompt: "Run the allowlisted Development Steward review and produce one concise private report for Check-in."
