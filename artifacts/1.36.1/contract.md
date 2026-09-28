@@ -1,0 +1,112 @@
+# Development contract 1.36.1
+
+This profile supersedes mandatory governance as the default. Historical contracts remain immutable.
+
+## Advisory development profile
+
+New sessions request Sol 6 High at normal speed; keep the already selected parent.
+For nontrivial work, Luna 6 High with requested priority collects bounded source
+facts before Astra 6 XHigh authors the implementation plan. A distinct fresh
+Astra 6 XHigh reviews requirements, evidence and the plan before writers start.
+Sol 6 Medium handles general writing; Luna 6 High priority handles exact and
+mechanical packets. Independent Astra 6 XHigh reviews the integrated result.
+Tiny deterministic edits proceed directly with relevant repository checks.
+
+Follow coding-orchestration/references/jev-advisory.md. Jev advises at useful
+routing, decision and correction boundaries. The parent decides, dispatches with
+native host tools, integrates and verifies. No Jev per-tool or Stop gate is active.
+An unavailable or malformed classification records failure; the parent can
+continue authorized work with an explicit rationale. Advice never grants
+permission, proves execution, or substitutes for independent review and evidence.
+
+Keep one writer per surface; parallelize only disjoint eligible work. Preserve
+historical runs and unresolved ownership without treating them as new-run gates.
+Do not resume or silently revalidate an older governed run under this profile.
+The obsolete automatic controller remains disabled. OpenCode is not a default.
+
+A roster requests model, effort and speed; actual host/provider metadata establishes
+observed identity and tier. Report missing metadata as unknown. No silent fallback.
+Astra planning and review stay XHigh. Optional coordinator effort changes use the
+native host and retain actual observations; they require no Jev permission token
+and do not establish cache reuse without provider evidence.
+
+For nontrivial delivery, provide a readable HTML report using the installed
+working-backwards report helper, including behavior passed/failed/not reached,
+elapsed time, evidence and material gaps. Preserve the field-notebook presentation,
+margin questions, browser drafts and revisioned batch submission. Markdown is
+supplementary. Serve sanitized report assets through the authorized temporary
+tunnel; state its actual URL and availability/expiry. Keep secrets and private
+transcripts outside its served directory. A report is not acceptance evidence.
+
+## Installation and recovery
+
+The manifest explicitly selects advisory-parent-execution. Setup removes only managed Jev handlers, preserves unrelated guards and records a reversible transition. Reinstall retains its original rollback boundary. Rollback preflights backup bytes and hook drift before writes. Old runs remain historical without granting new execution or acceptance.
+
+## HTML report continuity
+
+The field-notebook reader and margin questions from source fb6b5dd968281cd1a5c5563b940047102982a2fa are retained, with integration corrections documented separately. Browser drafts, revisioned batch submissions, file-open copy/download, maps, charts, media, themes and offline assets remain. Opening a report grants no implementation or release authority.
+
+## Repository preparation correction
+
+Initialize and normalize generate the advisory repository adapter. Product-specific lifecycle extensions survive normalization; shared lifecycle policy comes from this version. The paired skill catalog is 0.54.0.
+
+
+## Automated tests and evidence
+
+No automated tests anywhere: do not create, run or restore them; delete them
+when found (`check-no-tests` and the guard enforce this). Every task includes
+real verification without being asked: computer use, browser, and the
+repository's verification CLI and feature map. Report passed / failed / not
+reached with evidence.
+
+## Headroom transport evidence
+
+Headroom is an explicit same-account per-invocation option. Keep the existing
+Codex binary and CODEX_HOME, preserve caller arguments, and request lossless,
+cache-conservative operation. Provider cache reuse can still change request
+bytes; do not promise byte identity. Keep native usage from the parent and every
+actual descendant separate from proxy counters, and separate requested model or
+tier from observed identity. Use launch/completion events instead of polling.
+Proxy counters and token deltas are descriptive; without complete controlled
+evidence, do not claim Headroom caused savings.
+
+
+## T3 app-server launch correction
+
+Place the Headroom provider overrides after the app-server subcommand. Codex applies command-line configuration in this position when T3 supplies its own -c settings. Ordinary exec argument ordering remains unchanged. This corrects launch configuration; transport coverage and provider usage still require observed evidence.
+
+## Claude Code harness
+
+Claude Code is a native harness. Catalog 0.50.0 links every catalogued skill into .claude/skills from its installed copy. ~/.claude/CLAUDE.md is an operator link to the shared ~/.codex/AGENTS.md, which carries a short Claude Code host section. The destructive-command guard covers Codex hooks and Claude Code user settings. Headroom per-invocation launch is available for Claude Code. Plugins, MCP servers and other Claude settings remain operator configuration outside this manifest. File installation does not prove discovery, loading or behavioral influence.
+
+## Claude Code orchestration roster
+
+Contract 1.32.0 installs seventeen Claude Code subagent roles into .claude/agents, the orchestration rule into .claude/rules and the roster guard with its policy under .codex/development-system/runtime/claude-orchestration. Roles form tier ladders for implement, plan and review work (Haiku, Opus low, medium and high, Fable 5.1), and the guard asks Jev which tier each packet needs, refusing a mismatched packet once and naming the role at Jev's tier. Fable roles run only when Jev picks that tier or gives it a probability of at least 0.4, or the packet carries a Fable scope: line; otherwise they are refused every time. Allowed tiered dispatches are logged to tier-memory.jsonl; a dispatch repeated at a higher tier counts as escalated, and Jev sees those outcomes for similar packets from the same repository. Jev's route and tier refusals happen at most once per packet and at most three times per session, and a Jev failure proceeds. claude-orchestration-enable merges the guard hooks and two subagent limits into ~/.claude/settings.json; claude-orchestration-rollback restores prior bytes or removes only the managed entries, and must run before a contract rollback or downgrade. Installed files do not prove that Claude Code loads the roster or that the guard influenced a session; that needs observed-session evidence.
+
+## Real verification, no automated tests and report launch
+
+Contract 1.33.0 replaces automated tests with real verification: computer use, the browser or a product verification CLI is part of every task. `development-system check-no-tests --root <repository> --json` reports automated test files, test runner configuration, test scripts, test dependencies and CI test steps among git's tracked and untracked files; a repository may list reviewed path prefixes in config/no-tests-allow.json. Catalog 0.51.0 gives the command guard two more rules: test-file-write blocks creating or modifying test files or runner configuration while deleting them stays allowed, and guard-config-write blocks writing the guard's own hook configuration or installed skill outside the Development System guardrails commands. A Stop report gate asks once per session that changed files for the completion report, generated with development-system document and served through the reader tunnel, and fails open; Claude Code receives it through claude-orchestration-enable and Codex through report-gate-enable. The Claude roster no longer uses Haiku: Explore, code-mapper, docs-researcher and mechanical-worker run on Sonnet at low effort for mechanical work only. Installed files do not prove that a harness runs these hooks or that they influenced a session; that needs observed-session evidence.
+
+## Astra reviews through codex-review
+
+Contract 1.34.0 moves plan, diff, security and visual reviews to Astra XHigh through `codex-review.mjs`, installed with the Claude orchestration runtime. It runs `codex exec` in a read-only sandbox on the review packet (images through `--image`), writes findings.md, the event stream and a receipt, and prints one JSON receipt line with the requested model and effort and the observed ones read from the Codex session log, or unknown. The coordinator launches it in the background and is woken when it exits, so it never polls or sleeps. From the fourth round of the same objective a `Round rationale:` line naming an open critical or high finding is required; otherwise remaining findings become documented gaps or next-version work. At most five reviews run at once, and the Stop report gate waits while one is running. A `--computer-use` mode runs one Codex Computer Use operator at a time through the same launcher, and browser-qa runs only as a declared fallback. The Fable reviewers plan-reviewer and security-reviewer are retired, and the Claude reviewers run only with a declared `Codex fallback:` line that the report states. A halted or failed subagent's packet is split into smaller packets and dispatched again rather than absorbed by the coordinator. Installed files do not prove that a harness runs these hooks or that they influenced a session; that needs observed-session evidence.
+
+## No automated tests in any repository
+
+Contract 1.34.1 removes every remaining instruction that asked for automated tests, so the global instructions, the skills, the repository adapter and the anti-slop lanes carry one rule set: no automated tests; every task ends with real verification (computer use, the browser, the repository's verification CLI and feature map); reviews run on Astra XHigh through codex-review launched in the background, and Claude reviewers run only with a declared `Codex fallback:` line. The global instructions name real verification, lint, React Doctor and Astra reviews as the checks that answer different questions. Catalog 0.52.0 rewrites behavioral-evidence to independent real verification plus a check that the change adds no automated tests, without the test-change gate; setup-ts-deep-modules drops the tests-through-entry-points rule, its test folder and its example test; flow-implement, simplify-code and codebase-design drop their remaining test instructions; posthog-observability and its audit require passing real verification evidence (the verification CLI, the browser or computer use) before preparing a draft fix. setup-pre-commit, resolving-merge-conflicts, triage, to-spec, improve-codebase-architecture and agent-browser move to 1.34.1 copies that verify with lint, typecheck and real verification instead of test runs; migrate-to-shoehorn, a test-fixture migration skill, is retired and its installed copies are cleaned up. The orchestration contract replaces its preserve-existing-tests default with the same no-tests rule. The Codex implementer and fast-implementer agents prove each change with real verification and never add automated tests; the Codex reviewer looks for missing real verification evidence, test_runner keeps its id but only runs the assigned checks, the backend-specialist and code-mapper prompts no longer return tests, coding-orchestration calls a repository's oracle a verification oracle, and the vercel-react-best-practices README no longer asks to extract or regenerate LLM test cases. to-tickets asks for real verification in every vertical slice; working-backwards and the architecture reference pack plan real verification without test locality or test-layer boundaries; codebase-design and improve-codebase-architecture call the interface the verification surface; better-interface, interface-review, prototype, decisions, review-thread, convex-guardian, retro, global-agent-guardrails, setup-matt-pocock-skills, triage and the Codex performance-auditor agent drop their remaining test wording. The Codex qa-planner agent plans verification CLI, browser and computer-use checks, measure-development-run ranks executed real verification checks as evidence, and the anti-slop module-mocking rule points only to real interfaces. The stack quality profiles replace the focused-tests oracle with real-verification. The generated repository adapter replaces the reviewed test-change policy and weakened-assertion review with the no-tests rule enforced by `development-system check-no-tests`, and its command list never names a script that runs automated tests. The anti-slop lanes keep their ids and order: behavior-first-evidence-design derives the real verification evidence from the objective, test-value-review confirms the change adds no automated tests and that real verification evidence exists, and the deletion pass and independent verification no longer mention test code. Setup now reports the original skill-sync error together with any rollback error. The earlier sections that describe Fable or Haiku roles are history: the Fable reviewers are retired and Haiku is not used. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.
+
+## Stable review rounds, advisory Jev and fixed report sections
+
+Contract 1.35.0 fixes the orchestration defects observed in the NutriPlan rescue of 2026-09-27. codex-review requires a `Task-Id: <slug>` line for reviews and counts rounds per task and repository, so rewording the objective no longer resets the count. A round counts only when Codex exits cleanly and findings.md ends with a `Verdict:` line; every other ending is recorded in attempts.jsonl and does not count. A complete round is not approval. Reservation of a review slot runs under an ownership-aware lock, so concurrent launches cannot exceed the cap, and a lock is reclaimed only when its owner process is gone. When an earlier complete round exists for the task, its findings are copied into the new run and the reviewer states for each one whether it is fixed, still open or dismissed. `--out` must be a new or empty directory. The roster guard runs Jev in advisory mode: it classifies each writer or planner packet and records the suggested route without refusing. `Owned paths:` accepts one path per entry, comma-separated or one `- path` line each, with `*` and a trailing `/**` as the only globs; prose is denied with the format instead of being guessed. The six writer roles carry a `writer-bash` hook that denies Git commands that change the index, the history or the working tree, because the coordinator owns staging and commits; it is a habit stop, not a security boundary. Writers never restructure code so a lint or React Doctor rule stops recognizing it. An expired writer hold is logged as `writer-hold-expired`. `development-system document` requires completion Markdown to open with at most 600 characters and then the sections Qué se hizo, Hallazgos, Qué sigue and Detalle (What was done, Findings, What's next and Detail in English), and rejects tables in every kind unless the packet sets `allowTables: true`; the delivery recap follows the English sections. Catalog 0.53.0 moves flow-implement, coding-orchestration and working-backwards to 1.35.0 copies that describe these sections, `allowTables`, and that a chat-only request produces no document and no tunnel. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.
+
+## Report sections in orchestrate-work
+
+Contract 1.35.1 moves orchestrate-work to a 1.35.1 copy whose close-every-task step prescribes the completion sections that `development-system document` has required since 1.35.0: at most 600 characters with the result, then Qué se hizo, Hallazgos, Qué sigue and Detalle, with no tables unless `allowTables: true`, and no document or tunnel when the user asks for the answer in the chat only. Catalog 0.53.1 carries that copy. The release build now fails when any installed instruction names the retired report sections. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.
+
+## 1.36.0: pruned instructions, mistake log, verification scope, jevgrep
+
+Contract 1.36.0 installs shorter shared global instructions at `.codex/AGENTS.md`: one shared body with a Codex host section and a Claude Code host section, under 8,640 bytes. `development-system mistake add|list` records mistakes in a private, append-only store at `~/.development-system/private/mistakes.jsonl` with mode 0600; `mistake list --repeated` groups ids seen in two or more incidents, and retro and development-steward read it before they analyze, so a repeated mistake becomes a proposed hard rule at the highest level that can hold it. `development-system document` now requires completion documents to carry a verification-scope line in Detalle (`Alcance de la verificación:`, or `Verification scope:` in English) that states what the verification covers, what it does not cover and the real effects. Catalog 0.54.0 moves retro, development-steward, orchestrate-work, flow-implement and working-backwards to 1.36.0 copies that describe these steps and adds the jevgrep skill; the operator installs `@dzhng/jevgrep@0.4.0` and authenticates it, and agents never install or authenticate it. The roster guard allows code-mapper one restricted form, `jg "<question>" [relative root]`, and records a writer dispatched with `run_in_background` as a background hold: before the agent id is known the hold is not expired as a lost foreground dispatch, and it lasts until the writer finishes, an explicit release or the maximum hold age. `development-system check-no-tests` also reports live instruction documents (README, AGENTS.md, CLAUDE.md, CONTRIBUTING.md and docs) that direct an agent to write or run automated tests, and skips vendored Python environments. The repository residue audit skips catalog skill copies that are byte-identical to their catalog original. `development-system thread-health` reads a Claude Code thread and reports whether it is moving, needs watching or is stuck (idle time, repeated identical failures, review rounds past three), which guard stops it hit, and its token cost; it measures no throughput and only suggests `mistake add` commands. The 1.36.0 orchestrate-work copy adds eight rules for long runs: integrate each closed surface before opening the next, change strategy after three failed attempts at one problem, report checkpoints without waiting, treat typecheck, HTTP 200 or a clean console as not acceptance, never widen scope silently, verify continuity notes briefly instead of trusting them, stop only on a real blocker with continuity ready, and keep a ledger with thread-health at checkpoints; the shared global instructions carry the acceptance and three-attempt rules. Installed files do not prove that a harness follows these instructions; that needs observed-session evidence.
+
+## 1.36.1: check-no-tests reads directives, not mentions
+
+`development-system check-no-tests` reports a product document line only when it gives a test-runner command or asks for test creation, retention or execution. Descriptive mentions of testing tools or practices are no longer findings, and installed skill trees (`.agents/skills`, `.claude/skills` and similar) are skipped because the release gardener governs their catalog and upstream content. Historical records a repository keeps can be listed in `config/no-tests-allow.json`. The release gardener still applies its stricter list, mentions included, to every installed instruction.

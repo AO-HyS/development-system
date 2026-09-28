@@ -106,6 +106,12 @@ Contract 1.36.0 with catalog 0.54.0:
   line is added; there is no compatibility window.
 - Repositories whose README or docs tell agents to run tests now fail
   check-no-tests until the text changes or an allow prefix covers it.
+  1.36.1 correction: the 1.36.0 scan used the release gardener list, which
+  also flags descriptions (tool names, "testable", "test surface"), and it
+  read installed skill trees; the product rollout found 44 findings across
+  five repositories, most of them descriptions. Product documents now use only
+  the directive patterns (test commands, write/keep/run tests) and skill trees
+  are skipped; the gardener keeps the strict list for released instructions.
 - The mistake log is private to the operator's HOME and is never installed or
   published.
 - code-mapper gains one network-capable command; searches send eligible source

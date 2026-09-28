@@ -1,4 +1,45 @@
-# Current work — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
+# Current work — Development System 1.36.1 and the 1.36.0 product rollout
+
+1.36.0 released 2026-09-27 (#124, #125; main d769494; tag v1.36.0; prerelease
+asset sha256 287b732c…2fabd0 verified) and installed in the real HOME (healthy;
+steward orphan repaired, backup under
+~/.development-system/private/backups/ds-1360-steward-orphan).
+
+Rollout (branch chore/development-system-1.36.0 in each product): pins on
+eteria, aohys.com (plus mirror refresh and byte-identical mirrors in
+.prettierignore), the-barber-central, casa-roca and opportunity-os committed;
+nutri-plan branch created through the git data API (9638cd2). pnpm installed
+1.36.0 with the frozen lockfile in the five local repositories. The inline lock
+format (casa-roca, the-barber-central, opportunity-os) needed a second pass
+for `version:`.
+
+Blocker found live: the 1.36.0 check-no-tests document scan used the strict
+gardener list and read skill trees: 44 findings in five products, most of them
+descriptions; aohys and casa-roca pre-push failed. Fix 1.36.1 (branch
+fix/development-system-1.36.1 from develop d769494): product documents use only
+directive patterns, skill trees are skipped, catalog 0.54.0 reused
+(scripts/build-release-1361.mjs). Remaining findings are real directives in
+historical records (aohys and the-barber-central research, casa-roca dated plan,
+opportunity-os plan): listed per repository in config/no-tests-allow.json.
+nutri-plan keeps 14 live findings for its rescue thread (it does not run
+check-no-tests). Pins move to 1.36.1 before merging.
+
+Astra ds-1361-diff round 1 (do not merge: README phrase tripped the scan,
+direct runner commands escaped, builder lacked the strict gardener scan) fixed
+in 71d0d4f: runner command patterns, gardener scan over manifest artifacts and
+catalog skill directories, reworded contract and README. Checks at 71d0d4f:
+builder check, typecheck, roster check, check-no-tests (DS and five products: 0),
+isolated HOME healthy. Round 2 (3 closed or partly; new: shell fences, descriptive
+command lines, catalog validation) fixed in 9fba84f. Round 3 closed all five and
+raised three Medium fence edge cases (non-shell fences, delimiters with trailing
+text, `pnpm exec pytest` list items); fixed with builder probes in the next
+commit. No fourth round: no open Critical or High finding (round rule); those
+three fixes are coordinator-verified only.
+Product branches are fast-forward over their remotes (no force push needed).
+Next: merge #126, promote, tag v1.36.1, prerelease, real HOME setup, re-pin with
+/tmp/ds1360/rollout/pin-1361.mjs, PRs, Astra rollout review, merges/promotions.
+
+# Previous — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
 
 Approved 2026-09-27: "vamos a hacer los cambios pertinentes y vamos a llevar
 todo a producción en todos los repos hasta donde se pueda ... Hay que hacer
