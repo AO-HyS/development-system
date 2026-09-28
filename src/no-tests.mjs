@@ -13,8 +13,11 @@ const WORKFLOW = /^\.github\/workflows\/[^/]+\.ya?ml$/;
 const VENDORED_SEGMENT = /(?:^|\/)(?:site-packages|\.venv|venv)(?:\/|$)/;
 /** Live instruction documents: README*.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md at any depth, and docs/**\/*.md. */
 const INSTRUCTION_DOCUMENT = /(?:^|\/)(?:README[^/]*|AGENTS|CLAUDE|CONTRIBUTING)\.md$|^docs\/.+\.md$/;
-/** Historical or published records that are not live instructions. */
-const NON_INSTRUCTION_DOCUMENT = /^(?:docs\/current-work\.md|docs\/adr\/|artifacts\/|manifests\/|catalog\/)|(?:^|\/)node_modules\/|(?:^|\/)CHANGELOG[^/]*$/;
+/**
+ * Historical or published records that are not live instructions, and installed skill trees
+ * (.agents/skills, .claude/skills, ...), whose catalog or upstream content the release gardener governs.
+ */
+const NON_INSTRUCTION_DOCUMENT = /^(?:docs\/current-work\.md|docs\/adr\/|artifacts\/|manifests\/|catalog\/)|(?:^|\/)node_modules\/|(?:^|\/)CHANGELOG[^/]*$|(?:^|\/)\.[\w-]+\/skills\//;
 /** Blockquote lines quote history or other sources rather than instruct. */
 const BLOCKQUOTE = /^\s*>/;
 

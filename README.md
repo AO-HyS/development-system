@@ -1,5 +1,18 @@
 # AOHYS Development System
 
+## Release 1.36.1 / catalog 0.54.0
+
+Release 1.36.1 narrows the check-no-tests document scan from 1.36.0: a product
+document line is a finding only when it gives a test command or asks to write,
+keep or run tests. Tool names, "testable", "test surface" and coverage
+descriptions are not findings, and installed skill trees (`.agents/skills`,
+`.claude/skills` and similar) are skipped. The release gardener keeps the strict
+list. Catalog 0.54.0 and every other artifact are unchanged.
+
+```sh
+./bin/development-system setup --version 1.36.1
+```
+
 ## Release 1.36.0 / catalog 0.54.0
 
 Release 1.36.0 installs shorter shared global instructions with a Codex and a
@@ -268,7 +281,7 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.35.1
+./bin/development-system setup --version 1.36.1
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable

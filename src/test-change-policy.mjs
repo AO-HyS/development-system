@@ -48,6 +48,18 @@ export const directiveTestInstructions = Object.freeze([
 ]);
 
 /**
+ * The imperative subset of directiveTestInstructions that check-no-tests applies to product documents:
+ * test commands and requests to write, keep or run tests. Mentions (tool names, "testable", "test
+ * surface", coverage) describe rather than direct and stay release-gardener only.
+ * @type {ReadonlyArray<RegExp>}
+ */
+export const documentTestDirectives = Object.freeze([
+  /\b(?:pnpm|npm|yarn|bun)(?: run)? test(?::[\w-]+)?\b/gi, /then tests\b/gi, /focused tests/gi,
+  /\b(?:add|write|create|require|keep|preserve)s? (?:a |new |focused |more |the |existing )?(?:unit |e2e |regression |integration )?(?:tests?|test files|test suites?)\b/gi,
+  /\brun (?:the |all |your |existing |focused )?(?:unit |e2e |integration |regression )?tests\b/gi,
+]);
+
+/**
  * A directive is allowed only when a negation sits directly before the matched action, with at most one
  * word between ("do not write a regression test").
  * @param {string} before Text of the line preceding the match.
@@ -70,14 +82,15 @@ function stripInlineMarkdown(line) {
 /**
  * Lines of `text` that direct an agent to write or run automated tests and are not negated.
  * @param {string} text
+ * @param {ReadonlyArray<RegExp>} [patterns] Defaults to documentTestDirectives.
  * @returns {Array<{line: number, text: string}>} 1-based line numbers.
  */
-export function findTestDirectives(text) {
+export function findTestDirectives(text, patterns = documentTestDirectives) {
   /** @type {Array<{line: number, text: string}>} */
   const hits = [];
   text.split("\n").forEach((line, index) => {
     const plain = stripInlineMarkdown(line);
-    const hit = directiveTestInstructions.some((pattern) =>
+    const hit = patterns.some((pattern) =>
       [...plain.matchAll(pattern)].some((match) => !negatedClause(plain.slice(0, match.index))));
     if (hit) hits.push({ line: index + 1, text: line });
   });
