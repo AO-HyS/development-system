@@ -1,5 +1,14 @@
 # AOHYS Development System
 
+## Local candidate 1.38.0 / catalog 0.56.0
+
+External capability refresh with pinned upstream sources and preserved local
+adapters; Impeccable engine 0.1.7. This candidate is not published. Application
+production deployment is unnecessary. See [ADR 0065](docs/adr/0065-external-skills-refresh.md)
+and the versioned refresh provenance. The published installation below remains
+1.37.0 until a separately authorized release.
+
+
 ## Release 1.37.0 / catalog 0.55.0
 
 Release 1.37.0 requests `gpt-6.1-sol` High for new Codex sessions, planning,
