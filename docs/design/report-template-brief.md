@@ -33,3 +33,18 @@ strip; puts next steps before main points), v2 "Paneles" (soft borderless
 weather panels), v3 "Cielo y margen" (sky band, reading column, margin notes
 and evidence). Prototypes in `mocks/r3/`; payload `decision-r3.json`.
 Selection pending.
+
+Variant round result (2026-09-29, literal): "Me gusta una combinación del
+original con ahora, no necesitas tener el icono. A lo mucho, tendrías el icono
+de AO HyS que tenemos por algún lado [...] Me gusta que se vean los siguientes
+pasos. Me gusta que esté resumido. O sea, va en buen camino eso."
+- `identity.glyph`: no weather glyph; at most the AO HyS mark
+  (`opportunity-os/public/aohys-logo.png`, 256px PNG).
+- `composition`: combine Original (r2) and Ahora (r3/v1): next steps visible
+  in the first view, summarized top.
+Combined comp: `mocks/r4/combinado/` (Original top two columns + Ahora
+forecast strip as one surface; no weather glyph; AO HyS mark 22px in the
+meta line). Strip ends at y 609 at 1440x900. Click-to-ask and Enviar
+("Enviado y copiado") exercised in a browser; clipboard content not
+observable headless. Independent critique running (Task-Id
+report-template-r4-critique).
