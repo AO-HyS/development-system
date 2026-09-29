@@ -1,6 +1,26 @@
 # Technical Reader Design System
 
-## Field-notebook reports, version 1.29.0
+## Shared AO HyS reports and questionnaires, version 1.40.0
+
+The approved r5/p2 direction in [the report template brief](docs/design/report-template-brief.md)
+supersedes the field-notebook presentation below for standalone reports and
+questionnaires. Canonical workflow Readers retain their existing presentation.
+
+- AO HyS paper, ink, honey, olive and apricot tokens in light mode; warm charcoal
+  and lifted controls in dark mode. A visible theme switch starts from the system
+  preference and persists the reader's choice. Embedded fonts and assets stay offline.
+- A summarized opening and visible next steps put the result and reader decisions
+  in the first view. Size, weight and spacing establish hierarchy across desktop
+  and phone layouts. Reports and questionnaires use the same CSS and controls.
+- Contextual questions stay attached to their source. A composer closes through
+  its close button, Escape or outside click; nonempty drafts remain editable and
+  can be deleted. Touch and keyboard controls expose the same actions.
+- Enviar saves revisioned batches on the local reader server and also copies
+  them. Messages distinguish saved, copied and failed outcomes. File-open reports
+  keep copy/download; drafts, question schemas and security boundaries remain.
+- Maps, charts, code, media, evidence, reduced motion and offline reading remain.
+
+## Historical field-notebook reports, version 1.29.0
 
 Standalone reports (`presentation: "report"`) supersede the 1.8.1 paper below
 with a field notebook. Canonical workflow Readers are unchanged. Source of the

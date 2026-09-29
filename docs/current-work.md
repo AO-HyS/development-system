@@ -1,3 +1,27 @@
+# Current work — 1.40 integration verification (2026-09-29)
+
+Approved independent plan implemented in new immutable candidate trees; source
+review corrected real packet findings, generic next-step strip, in-flight outcome
+visibility and long-heading legacy drafts. No remaining source blocking findings.
+Questionnaire additional questions have normalization/draft/import/export/recovery
+parity; actual questions-only browser POST saved receipt and copied without choices.
+Report actual POST and clipboard readback passed; forced clipboard-denial saved a
+receipt with selectable text, edits cleared stale fallback and copy retry did not
+change server revision. QA effects confined to private isolated HOME.
+
+Candidate builder/pins 1.40/0.58 and explicit CLI import updated; provisional hashes
+regenerate after each UI correction. Typecheck/roster/releaseprepare/no-tests passed.
+Independent visual review in progress. T3 browser evaluate/interaction operational,
+snapshot/resize intermittently fail because preview reports hidden; one real light
+screenshot captured, phone/dark and stable notes remain pending. User asked to open
+preview, no extra publication permission asked. Do not lower visual acceptance.
+
+Next: finish real browser/visual evidence, exact committed-package isolated install,
+publish canonical release then final1.40 consumer rollout. Three task worktrees
+exist and owner dirty checkouts preserved. No consumer push/PR/deployment yet.
+
+---
+
 # Current work — report redesign1.40.0 and final six-repo rollout (2026-09-29)
 
 User explicitly requested production of T3 thread

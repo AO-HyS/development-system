@@ -1,13 +1,24 @@
 # AOHYS Development System
 
-## Local candidate 1.38.0 / catalog 0.56.0
+## Release 1.40.0 / catalog 0.58.0
 
-External capability refresh with pinned upstream sources and preserved local
-adapters; Impeccable engine 0.1.7. This candidate is not published. Application
-production deployment is unnecessary. See [ADR 0065](docs/adr/0065-external-skills-refresh.md)
-and the versioned refresh provenance. The published installation below remains
-1.37.0 until a separately authorized release.
+The approved [AO HyS r5/p2 template](docs/design/report-template-brief.md)
+now serves completion reports and questionnaires through one shared presentation.
+Reports open with a summarized result and visible next steps. Both surfaces use
+AO HyS light/dark colors, a visible persistent theme switch and contextual
+questions with closable composers, retained drafts and deletion. Enviar saves a
+revisioned batch when served and also copies it; save and clipboard outcomes
+remain separate. Existing question schemas, same-origin protections and offline
+report capabilities remain. Technical document generation uses the new renderer.
 
+Catalog 0.58.0 changes only working-backwards and grill-with-docs. Published
+1.39.0 account recovery guidance and its runtime remain intact; historical
+artifacts and manifests remain immutable. Installation does not establish live
+host loading or product acceptance.
+
+```sh
+./bin/development-system setup --version 1.40.0
+```
 
 ## Release 1.37.0 / catalog 0.55.0
 
