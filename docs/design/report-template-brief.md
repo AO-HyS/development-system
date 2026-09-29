@@ -48,3 +48,10 @@ meta line). Strip ends at y 609 at 1440x900. Click-to-ask and Enviar
 ("Enviado y copiado") exercised in a browser; clipboard content not
 observable headless. Independent critique running (Task-Id
 report-template-r4-critique).
+Critique of the combined comp (Codex out of quota until 2026-10-03; Claude
+visual-reviewer fallback, Task-Id report-template-r4-critique): round 1
+"partial" (2560 strip misaligned, De ti below the phone fold, flat dark strip,
+lower grid misaligned, repeated "publicado"); ten fixes applied, title now
+"1.36.1 repartido a seis productos" (two-way decision). Round 2 "approve with
+minor findings"; the remaining dark De ti tint, invisible glow and 1440 gap
+were fixed by the coordinator; phone strip headings measured aligned (x 39).

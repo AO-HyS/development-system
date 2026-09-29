@@ -1,3 +1,30 @@
+# Current work — Codex account recovery (2026-09-29)
+
+Canonical root /Users/corrortiz/Documents/AO/development-system, branch
+feat/codex-account-fallback, base3d72079 (completed local1.38.0 retained after
+branching from updated develop). Unrelated .impeccable/ and private/ preserved.
+
+Objective: Claude discovers both existing local Codex homes, tries the next on
+confirmed availability failures, then dispatches a fresh native Claude reviewer
+or browser executor with declared evidence and the same acceptance standard.
+No credentials copied; cancellation, safety refusal and possible browser effects
+must not trigger replay. Requested parent Sol6.1High retained; observed child
+identity/effort/tier unknown unless reported by host.
+
+Endpoint: reviewed local candidate/new immutable1.39.0 plus isolated install,
+real verification and readable report. Publication, push, main and production
+not authorized. No automated tests or evals. Actual HOME rollout separate.
+Owned sources: claude/orchestration/codex-review.mjs, policy, guard, rules;
+new version artifacts/manifest/builder and minimal fallback guidance.
+Checks: typecheck, release:prepare, roster:check, check-no-tests, isolated HOME
+setup/audit and live launcher/hooks with bounded provider invocations.
+Evidence: private/codex-account-fallback. Done when these commands pass and
+account discovery plus receipt-driven fallback is observed without side-effect
+replay; remaining capability/availability gaps reported rather than passed.
+Next: independent plan review before writer, integrate and independent final review.
+
+---
+
 # Current work — external skills refresh (2026-09-29)
 
 Root /Users/corrortiz/Documents/AO/development-system; canonical checkout,
