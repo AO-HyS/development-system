@@ -1,18 +1,38 @@
 # Current work — 1.39.0 production publication (2026-09-29)
 
-User explicitly authorized “Perfecto, lleva a la producción.” Continue the
-accepted account-recovery candidate through feature→develop→main and the
-canonical GitHub release, with a source-bound package and downloaded readback.
-Canonical checkout/branch feat/codex-account-fallback retained; unrelated dirty
-report-design work, .impeccable/ and private/ remain outside the publication.
-No product application deployment is required by this tooling-only change.
+Completed after explicit user production authorization. PR#137 integrated into
+develop, PR#138 into main; stable/latest release v1.39.0 published at
+https://github.com/AO-HyS/development-system/releases/tag/v1.39.0.
+Canonical release/tag/package source bed4843b5641e791aad7cfff15f3c8f514f69d3d.
+Exact uploaded/downloaded SHA256:
+e6856f3364492904e4cf34a3ebed6983db27866260e42895516cec0ba69fae4a.
 
-Prior independent source/integrated reviews and actual runtime evidence remain
-valid. Repeated required gates typecheck, release:prepare, roster:check and
-check-no-tests passed. There are no GitHub workflows or branch protection/ruleset
-requirements; local gates and independent evidence remain the release basis.
-Next: publish reviewed source through PRs, package exact final main commit,
-verify isolated installation and exact uploaded/downloaded package provenance.
+Canonical checkout retained on feat/codex-account-fallback, fast-forwarded to
+final main without altering unrelated dirty report-design work, .impeccable/
+or private/. No product application deployment required or performed.
+Prior1.38.0 immutable reviewed dependency included; historical versions retained.
+
+Required local gates passed and runtime surface unchanged from accepted review.
+No GitHub workflows or branch protection/rulesets configured; external Codesmith
+check skipped. Independent publication-contract/packer review no blockers.
+Exact final-main package isolated setup and contract/Claude audits healthy;
+GitHub download/tag/provenance/digest readback matched. Published package then
+installed at ~/.development-system/packages/1.39.0-bed4843/package;
+both CLI links target it. Operator setup and contract/Claude audits healthy,
+all four runtime hashes match published snapshots. Previous packages/backups
+retained. Initial final hash readback used wrong path; corrected from manifest
+without repeating successful installation.
+
+Evidence: private/codex-account-fallback/production-release.json,
+production-isolated-install.json, production-operator-install.json and
+production-document-receipt.json. Actual profile recovery/native independent
+review and capability gaps remain as recorded below; native application computer
+use not reached and auxiliary Haiku role unknown. No tests/evals/broad scenarios.
+Report-only tunnel URL/expiry unchanged, sanitized served report updated:
+https://dog-understood-coat-collaborative.trycloudflare.com/369fd0686f315b02f73f1e8a25f366fe/served/report.html
+Expires2026-09-30T00:34:48.063Z, process-dependent; reader execsession49899
+is the only task-owned live process. Next: new Claude session loads installed
+instructions. Publication and installation complete; no pending required release.
 
 ---
 

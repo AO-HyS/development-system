@@ -55,3 +55,25 @@ lower grid misaligned, repeated "publicado"); ten fixes applied, title now
 "1.36.1 repartido a seis productos" (two-way decision). Round 2 "approve with
 minor findings"; the remaining dark De ti tint, invisible glow and 1440 gap
 were fixed by the coordinator; phone strip headings measured aligned (x 39).
+
+Feedback on the combined comp (2026-09-29, literal): "No me están gustando los
+colores. No me está gustando que, cuando empiezo una plática, no puedo cerrarla
+de ninguna manera, solo mandando el comentario. No estoy viendo cómo se vería
+la de las preguntas. Creo que necesita mucho polish. ¿Por qué no cargas
+impeccable y te aseguras de que se vea muchísimo mejor en todas las materias?
+[...] tiene que haber una manera de cambiar de oscuro a brillo."
+- `identity.palette`: current sky/amber rejected; three palette candidates next
+  (one from the AO HyS site tokens: ink #473c33, paper #fbf8f3, honey #fce3a6,
+  olive #d6e2b4, apricot #fdd2b1).
+- `interaction.composer-close`: a question draft can be closed without sending
+  (close button, Esc, click outside), and deleted.
+- `variant.questions`: show the questions variant of the same template.
+- `theme.toggle`: visible light/dark switch (system default, choice persists).
+- Full Impeccable polish pass.
+Polish round r5 (`mocks/r5/`, built from shared `r5/src/` so both pages use
+the same CSS/components): three palettes (`?palette=p1|p2|p3`; p2 = AO HyS
+tokens), light/dark toggle persisted in localStorage, closable composer (×,
+Esc, click outside; empty draft discarded; text kept as editable note;
+Eliminar), questions variant `preguntas.html`. Interactions exercised in a
+browser. Palette decision page: `decision-r5.json`. Finish critique Task-Id
+report-template-r5-polish-critique.
