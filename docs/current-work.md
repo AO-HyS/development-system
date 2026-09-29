@@ -1,3 +1,53 @@
+# Current work — report redesign1.40.0 and final six-repo rollout (2026-09-29)
+
+User explicitly requested production of T3 thread
+cafc99ea-2383-4209-b177-6e287bb4bf6e (Report template redesign), plus all
+six consumer repos where gates admit. Approved r5 prototype and code map in
+~/.development-system/private/design/report-template-r1 are preserved.
+Take over integration in this canonical checkout; the prior Claude thread is
+waiting for permission and has no active source writer. Preserve all its local
+brief commits. New1.40 must retain published1.39 fallback and immutable history.
+
+Consumer1.39 baselines are prepared/verified but NOT pushed: AOHYS46fc99b,
+Eteria9643653, Casa653c691; frozen install/normalhooks/qualitycertify passed.
+AOHYS formatter drift detected/corrected, allcanonical skill/artifact hashes
+restored with explicit generated-file exclusions. Retain failed first receipt.
+Final consumer adoption will go straight to published1.40 to avoid duplicate
+provider deployments. Production of Casa/Nutri still requires unrelated product
+acceptance and strict develop→main admission; no bypass.
+
+User authorized three task worktrees at AO/.worktrees/ds1390-{barber,nutri,opportunity}
+and their removal when finished. Active owner checkouts/dirty bytes preserved.
+Evidence private/codex-account-fallback/rollout139/authorized-worktrees.json.
+DS canonical task branch1.40 starts from updateddevelop plus retained reviewed
+1.39/doc continuity. No extra DS worktree/clone needed or created.
+
+Next: independent1.40 plan review, implement approved shared report/question
+presentation and realrevisionedsend+clipboard, actualT3browser observation and
+independentvisual/source critique, newimmutableversion/catalog, isolatedinstall,
+canonicalrelease and finalconsumerrollout/gates, thensafe taskworktreecleanup.
+No automatedtests/evals. Existing reader exec49899 expires00:34:48UTC.
+
+---
+
+# Current work — 1.39.0 six-repository rollout (2026-09-29)
+
+User requested all repos through production wherever possible, continuing the
+completed published1.39.0 recovery change. Six primary adopters: AOHYS, Eteria,
+Barber, Casa Roca, Opportunity OS and NutriPlan. Preserve canonical roots,
+current owners/dirty work and product acceptance gates; no new worktrees/clones.
+Tooling pins/adapters/live mirrors only. Use release surface classification
+before provider calls; no automatic deployment of unrelated product changes.
+
+Read-only mapper inventory and independent plan/review in progress. Jev advisory
+classification succeeded; parent retains general implementation route with
+exact packets after planning. Evidence private/codex-account-fallback/rollout139.
+Published tag/package/HOME remain verified; do not republish immutable assets.
+Next: inspect local gates, prepare scoped candidates preserving checkout bytes,
+review, integrate and promote with per-repo passed/failed/not-reached readback.
+
+---
+
 # Current work — 1.39.0 production publication (2026-09-29)
 
 Completed after explicit user production authorization. PR#137 integrated into
