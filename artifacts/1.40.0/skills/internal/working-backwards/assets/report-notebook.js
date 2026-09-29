@@ -10,7 +10,13 @@
   const themeButtons = [...document.querySelectorAll('[data-theme-toggle]')];
   const applyTheme = (theme) => {
     root.dataset.theme = theme;
-    themeButtons.forEach((button) => button.setAttribute('aria-pressed', String(theme === 'dark')));
+    const label = theme === 'dark' ? (es ? 'Cambiar a tema claro' : 'Use light theme') : (es ? 'Cambiar a tema oscuro' : 'Use dark theme');
+    themeButtons.forEach((button) => {
+      button.setAttribute('aria-pressed', String(theme === 'dark'));
+      button.setAttribute('aria-label', label);
+      const span = button.querySelector('span');
+      if (span) span.textContent = label;
+    });
   };
   const savedTheme = store.get('ds-report-theme');
   if (savedTheme === 'dark' || savedTheme === 'light') applyTheme(savedTheme);
@@ -76,10 +82,6 @@
   const preference = matchMedia('(prefers-color-scheme: dark)');
   if (!savedTheme) applyTheme(preference.matches ? 'dark' : 'light');
   preference.addEventListener('change', () => { if (!store.get('ds-report-theme')) applyTheme(preference.matches ? 'dark' : 'light'); });
-  themeButtons.forEach(button => {
-    const update = () => { const label = root.dataset.theme === 'dark' ? (es ? 'Cambiar a tema claro' : 'Use light theme') : (es ? 'Cambiar a tema oscuro' : 'Use dark theme'); button.setAttribute('aria-label', label); const span = button.querySelector('span'); if (span) span.textContent = label; };
-    update(); button.addEventListener('click', () => queueMicrotask(update)); preference.addEventListener('change', update);
-  });
   document.querySelectorAll('a[href^="http"]').forEach(link => { link.target = '_blank'; link.rel = 'noopener noreferrer'; });
 
   const grill = Boolean(document.querySelector('#questionnaire'));
@@ -133,7 +135,7 @@
     if(!active)return;const value=active.querySelector(':scope > .ask-composer textarea')?.value.trim()||'';
     if(!value){if(editing){questions=questions.filter(q=>q.id!==editing.id);editing=null;changed();}return;}
     const now=new Date().toISOString();
-    if(editing){if(editing.question!==value){editing.question=value;editing.updatedAt=now;changed();}}
+    if(editing){const excerpt=excerptOf(active),section=sectionOf(active);if(editing.question!==value||editing.excerpt!==excerpt||editing.section!==section){editing.question=value;editing.excerpt=excerpt;editing.section=section;editing.updatedAt=now;changed();}}
     else {
       if(questions.length>=200){announce(es?'Máximo 200 preguntas.':'Maximum 200 questions.','error');return;}
       editing={id:crypto.randomUUID(),blockId:active.dataset.q,section:sectionOf(active),excerpt:excerptOf(active),question:value,createdAt:now,updatedAt:now};questions.push(editing);changed();
@@ -151,7 +153,7 @@
     block.classList.add('is-asking');render();
     const composer=document.createElement('form');composer.className='ask-composer';
     composer.innerHTML=`<p class="ask-excerpt"></p><label class="field-label">${es?'Tu pregunta':'Your question'}<textarea class="field" maxlength="2000" rows="3" placeholder="${es?'¿Qué quieres preguntar?':'What do you want to ask?'}"></textarea></label><div class="ask-actions"><button type="submit" class="ask-save">${es?'Guardar pregunta':'Save question'}</button><button type="button" class="ask-cancel" aria-label="${es?'Cerrar pregunta':'Close question'}">${es?'Cerrar':'Close'}</button></div>`;
-    composer.querySelector('.ask-excerpt').textContent=editing?.excerpt||excerptOf(block);const input=composer.querySelector('textarea');input.value=editing?.question||'';
+    composer.querySelector('.ask-excerpt').textContent=excerptOf(block);const input=composer.querySelector('textarea');input.value=editing?.question||'';
     composer.addEventListener('submit',event=>{event.preventDefault();event.stopPropagation();if(input.value.trim())close(true);else input.focus();});
     composer.querySelector('.ask-cancel').onclick=event=>{event.stopPropagation();close(true);};
     input.addEventListener('input',()=>{flush();updateActions();});

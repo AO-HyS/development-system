@@ -1,3 +1,64 @@
+# Current work — 1.39 production rollout and 1.40 visual gate (2026-09-29)
+
+This entry supersedes the rollout strategy in older entries below. Published and
+installed DS1.39.0 remains the production baseline. Because the T3 visual gate
+for1.40 is incomplete, approved consumers adopted1.39 without waiting for1.40.
+User publication/worktree/removal authority remains in force; do not ask again.
+
+- AOHYS: PR205/206 merged, main79f1ba4b060671648ee6a0b1aa24f6594dc59816.
+  Production run36646414853 passed; Pages52d7f589-dd2a-4029-b81c-c5621de1ccc8
+  source79f1ba4 and canonical public smoke confirmed.
+- Eteria: PR291/292 merged, main4e7634ead6bcedda791799402f3acc07d744e6a3.
+  Production run36646412826 passed; Pages ea169fc6-ef51-48e5-ae43-c02c3e894ab6
+  source4e7634e and canonical public smoke confirmed.
+- Opportunity: PR78 merged, main2c3085215308c4bf4be6fb937cd916d69a08dcb8.
+  Main CI passed; existing Pages project published exact source, deployment
+  2d29b855-6bc9-491b-9bfa-caf6810d9bf4, alias and unique URL bytes match.
+- Barber: PR365 merged into developf08e5b6; zero-target tooling lane confirmed.
+  Status-first recovery requires main ancestry. PR366 passed CI but normal merge
+  was rejected by strict up-to-date policy. Replacement carrier PR367 contains
+  currentdevelop andmain, exactunchangedtree0518ae56d58191ee7074d4dfdaedc91df4bf9798
+  andH b601b1b428609f478da8d79e9816b9c1506abc60, independently plan/source reviewed.
+  Strict Release admission and subsequent canonical promotion remain pending.
+- Casa: PR148 open, required Vercel previews absent; dashboard has no Git link.
+  No provider reconfiguration or ad hoc deploy. Pending receipt acceptance also
+  blocks production of unrelated develop history.
+- Nutri: local candidate1b6bc0237fa60198c8c955484cc2379ab7607b90 retained.
+  Four metadata files only. Certification fails unchanged Calendar side borders;
+  readiness rejects non-development-scoped Convex key. No push/PR/production,
+  no unrelated product edits or credential changes to bypass gates.
+
+1.40 exact candidatecbf2dc06abaacd73a36086ef3aefe34819c37993, draft PR139,
+source review and required local gates passed. Candidate package extracted and
+installed in isolated HOME; setup/core/Claude audits healthy. No operator1.40
+installation, main/tag/release yet. Real report/questionnaire POST, clipboard,
+draft/recovery and controlled failure observations passed in isolated QA state.
+Independent visual review reached desktop and phone light/dark and found two
+bounded blockers: mobile theme text overflow/stale direction, and inherited
+question context containing editor controls. Corrected only shared JS/CSS copies;
+regenerated1.40 manifest/catalog and required checks passed. New served report
+HTML707d08a49f879d94dd342840f5b1a3682a7aac9877432c993a1aad92df8cbc90
+and questionnaireHTMLe0e74eebffe39f815eab2fe75e824828dd59b5af8c7303516e1db85da2d9446f
+match local bytes. Independent reviewer owns current affected real visual checks.
+Do not substitute DOM checks for visual acceptance.
+
+Evidence: private/report140/{consumer139clean-receipt.json,
+consumer139worktrees-receipt.json,consumer139worktrees-release-receipt.json,
+candidate-isolated-install.json,pack.json,browser-observations.json,
+browser-questionnaire-observations.json}. Public-facing report must sanitize logs.
+Normal release effects included Convex deploys, preview seeds/contact smoke,
+Cloudflare uploads and synthetic CSP smoke; authenticated acceptance not reached.
+No automated tests/evals or broad DS suite used.
+
+Three authorized task worktrees remain until release worker finishes, then remove
+only ds1390-{barber,nutri,opportunity} normally, retaining local refs/receipts and
+preserving concurrently dirty owner roots. No force removal or other cleanup.
+Active report reader session68325 expires2026-09-30T01:20:07.161Z; questionnaire
+session42434 is task-owned and must stop after QA. Older reader49899 expires
+2026-09-30T00:34:48.063Z. Check exact live process ownership before stopping.
+
+---
+
 # Current work — 1.40 integration verification (2026-09-29)
 
 Approved independent plan implemented in new immutable candidate trees; source

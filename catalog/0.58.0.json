@@ -1620,7 +1620,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.40.0/skills/internal/grill-with-docs",
           "destination": ".agents/skills/grill-with-docs",
-          "folderSha256": "b94d8786ef0b560ecc76c85f70c0bd7505f7c0b73b8e5f5567c7b382d5c4b024",
+          "folderSha256": "c0270c32468333853e86d396dc5bdb6a06779601f43e5ecf9e1626dd47908d70",
           "expectedMirrorOf": null
         },
         {
@@ -1628,7 +1628,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/1.40.0/skills/internal/grill-with-docs",
           "destination": ".claude/skills/grill-with-docs",
-          "folderSha256": "b94d8786ef0b560ecc76c85f70c0bd7505f7c0b73b8e5f5567c7b382d5c4b024",
+          "folderSha256": "c0270c32468333853e86d396dc5bdb6a06779601f43e5ecf9e1626dd47908d70",
           "expectedMirrorOf": "grill-with-docs.codex",
           "install": "symlink"
         }
@@ -1714,7 +1714,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.40.0/skills/internal/working-backwards",
           "destination": ".agents/skills/working-backwards",
-          "folderSha256": "466b6c5b7c58d2d0f957345e5016999895df76ade507e35bd31cf30f3a823784",
+          "folderSha256": "45a18dbe07e43422028667193a70f301c622e11a9d73ce749bebca9c54b960ac",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",
@@ -1729,7 +1729,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/1.40.0/skills/internal/working-backwards",
           "destination": ".claude/skills/working-backwards",
-          "folderSha256": "466b6c5b7c58d2d0f957345e5016999895df76ade507e35bd31cf30f3a823784",
+          "folderSha256": "45a18dbe07e43422028667193a70f301c622e11a9d73ce749bebca9c54b960ac",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",

@@ -529,3 +529,5 @@ html[data-theme="dark"]{--bg:#191715;--surface:#211e1b;--edge:#35302b;--divider:
 @media print{body,html{background:white!important;color:#222!important}.meta button,.section-ask,.question-rail,.ask-composer,.note-actions,.brief-footer button{display:none!important}.top,.lower,.strip{display:block}.points,.detail,.you,.team{width:100%;padding:12px 0;background:none}.next{break-inside:avoid}main{max-width:none;padding:0}.detail{max-width:none}.document-map.is-expanded{position:static}.map-image{max-width:100%;width:100%}.table-fold:not([open])>*:not(summary){display:block!important}}
 
 .strip.is-single{grid-template-columns:minmax(0,1fr)}.strip.is-single .brief-section{margin-bottom:0}.theme-control{border:0;background:transparent;padding:8px;color:var(--ink-3);cursor:pointer;display:inline-flex;align-items:center;gap:8px}.theme-control span{font-size:.8125rem}
+.theme-control svg{flex:none;width:20px;height:20px;display:block}
+@media(max-width:600px){.theme-control{justify-content:center;padding:0}.theme-control span{display:none}}
