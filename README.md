@@ -1,5 +1,24 @@
 # AOHYS Development System
 
+## Release 1.37.0 / catalog 0.55.0
+
+Release 1.37.0 requests `gpt-6.1-sol` High for new Codex sessions, planning,
+independent review and browser execution; general writers request Medium.
+Luna remains the fast research and exact-writing model. Advisory policy 1.4.0
+uses `sol61_high_decision`, and Headroom accepts the new model id while retaining
+explicit legacy selections. Claude roster tiers and review guard behavior stay
+unchanged. These mappings are provisional and require observed runtime identity
+and capabilities; this release makes no benchmark or performance claim.
+Catalog 0.55.0 carries the corresponding current instructions.
+See [ADR 0064](docs/adr/0064-sol61-high-defaults.md).
+
+```sh
+./bin/development-system setup --version 1.37.0
+```
+
+The release summaries below are historical. Their model selections are
+superseded by 1.37.0 where they differ from the current profile.
+
 ## Release 1.36.1 / catalog 0.54.0
 
 Release 1.36.1 narrows the check-no-tests document scan from 1.36.0: a product
@@ -237,7 +256,7 @@ an input roster, a requested version snapshot, or the executing package's
 distributed artifacts; editing one does not reconfigure running agents. Pass the
 selected model/effort through the host's supported dispatch and verify runtime.
 `serviceTier` is propagated to the Codex CLI; an omitted tier requests normal
-`default` speed. The new Codex profile requests the default service tier. Planners/reviewers request Astra XHigh. Fast native researchers default to Luna High; all profiles retain role-specific sandboxes and require observed identity.
+`default` speed. The new Codex profile requests the default service tier. Planners/reviewers request Sol 6.1 High. Fast native researchers default to Luna High; all profiles retain role-specific sandboxes and require observed identity.
 
 ## Requirements
 
@@ -250,7 +269,7 @@ selected model/effort through the host's supported dispatch and verify runtime.
 Install a single tooling dependency in a product repository:
 
 ```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.34.0/aohys-development-system-1.34.0.tgz
+pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.37.0/aohys-development-system-1.37.0.tgz
 pnpm exec aohys-development-system setup
 ```
 
@@ -258,7 +277,7 @@ pnpm exec aohys-development-system setup
 `governance-hooks-audit` confirms managed Jev hooks are disabled; live host
 behavior is checked separately. `rollback` restores the actual prior profile.
 It preserves credentials and does not rewrite the host's selected model.
-For an explicitly selected new T3 coordinator thread, request Sol 6 High through
+For an explicitly selected new T3 coordinator thread, request Sol 6.1 High through
 the supported per-thread setting. This does not replace the current session
 parent or require a global model-config change. Record the actual runtime model
 and service tier separately when observable.
@@ -281,12 +300,12 @@ From a canonical checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.36.1
+./bin/development-system setup --version 1.37.0
 ./bin/development-system guardrails-enable
 ./bin/development-system claude-orchestration-enable
 ./bin/development-system report-gate-enable
 pnpm run skills:probe
-./bin/development-system audit-skills --version 0.53.1 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
+./bin/development-system audit-skills --version 0.55.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
 ./bin/development-system guardrails-audit
 ./bin/development-system audit
 ./bin/development-system validate
@@ -464,7 +483,7 @@ contract are recorded in
 
 No secret phrase is required. Requests such as these map to the same explicit operations:
 
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.34.0`; audit advisory hooks and the paired catalog 0.51.0
+- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.37.0`; audit advisory hooks and the paired catalog 0.55.0
 - “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
 - “Audita mi instalación sin cambiar nada” → `audit`
 - “Comprueba que sigo usando la versión canónica” → `validate`

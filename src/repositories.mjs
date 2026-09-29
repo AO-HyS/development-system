@@ -884,10 +884,10 @@ A bounded worker executes its packet without restarting parent routing.
 
 For nontrivial implementation, follow the installed
 \`coding-orchestration/references/jev-advisory.md\` recipe. Keep the selected
-parent. New sessions request Sol 6 High; Luna 6 High priority gathers bounded
-facts, Astra 6 XHigh plans, and a different fresh Astra 6 XHigh reviews the
-plan. Sol 6 Medium writes general packets, Luna 6 High priority writes exact
-packets, and an independent Astra 6 XHigh reviews the integrated result. Jev
+parent. New sessions request Sol 6.1 High; Luna 6 High priority gathers bounded
+facts, Sol 6.1 High plans, and a different fresh Sol 6.1 High reviews the
+plan. Sol 6.1 Medium writes general packets, Luna 6 High priority writes exact
+packets, and an independent Sol 6.1 High reviews the integrated result. Jev
 advises at useful decisions; the parent dispatches through native host tools.
 No per-tool or Stop gate is active. Preserve observed model identity and report
 capability gaps. Backend and other nonvisual features need the same criterion
@@ -917,12 +917,12 @@ integrated candidate stabilizes. Choose checks by the changed public behavior.
 This repository has no automated tests: \`development-system check-no-tests\`
 guards it and lint runs it. Every task ends with real verification through the
 repository's verification CLI and feature map, the browser or computer use.
-Reviews run on Astra XHigh through codex-review launched in the background;
+Reviews run on Sol 6.1 High through codex-review launched in the background;
 Claude reviewers run only with a declared \`Codex fallback:\` line.
 Use the local construction recipes and existing components for screens, forms
 and authorized server operations. Simplification, correction and objective
 verification are responsibilities. Tiny direct work stays with the parent;
-nontrivial features retain their independent Astra plan and final reviews.
+nontrivial features retain their independent Sol 6.1 High plan and final reviews.
 Select additional specialists by affected risk and preserve the parent's final
 judgment. Reject unsupported green-check claims. File counts and style scores
 are not gates.
