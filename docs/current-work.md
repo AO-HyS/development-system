@@ -30,7 +30,18 @@ branch and Nutri AOH-168 branch remain intact; their owners integrate updated
 develop without resetting preserved candidate work. Earlier report-template
 commits remain on docs/report-template-brief at096dbf2; private/ retained.
 
-Evidence /tmp/ds1370; final persistent report will be under private/reports/ds1370.
+Evidence /tmp/ds1370; report private/reports/ds1370/report.html, rendered by
+the installed document helper and read in the T3 browser. Temporary tunnel
+expires 2026-09-29T21:19:06.803Z (HTTP 200 confirmed):
+https://strengths-ltd-invest-champion.trycloudflare.com/f05f052967ebf12e8a4150c9a1e527ba/ds1370/report.html
+
+CLI global default remains gpt-6-astra/xhigh. guard-config-write at installed
+policy.json:86 blocks agent edits to ~/.codex/config.toml. User received an
+operator-only terminal command preserving all other bytes plus a backup; readback
+still pending. Do not bypass the guard through another write mechanism.
+Barber promotion run36617501008 failed because exact Preview36617492780
+was still active; no failed static gate. Wait for that Preview receipt before
+retrying the promotion gate.
 No application process or automatic continuation is owned by this task. Report
 reader temporary tunnel is the only remaining task process, with bounded expiry.
 Next: confirm Barber promotion and final production release job receipts, publish
