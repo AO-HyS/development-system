@@ -55,3 +55,47 @@ lower grid misaligned, repeated "publicado"); ten fixes applied, title now
 "1.36.1 repartido a seis productos" (two-way decision). Round 2 "approve with
 minor findings"; the remaining dark De ti tint, invisible glow and 1440 gap
 were fixed by the coordinator; phone strip headings measured aligned (x 39).
+
+Feedback on the combined comp (2026-09-29, literal): "No me están gustando los
+colores. No me está gustando que, cuando empiezo una plática, no puedo cerrarla
+de ninguna manera, solo mandando el comentario. No estoy viendo cómo se vería
+la de las preguntas. Creo que necesita mucho polish. ¿Por qué no cargas
+impeccable y te aseguras de que se vea muchísimo mejor en todas las materias?
+[...] tiene que haber una manera de cambiar de oscuro a brillo."
+- `identity.palette`: current sky/amber rejected; three palette candidates next
+  (one from the AO HyS site tokens: ink #473c33, paper #fbf8f3, honey #fce3a6,
+  olive #d6e2b4, apricot #fdd2b1).
+- `interaction.composer-close`: a question draft can be closed without sending
+  (close button, Esc, click outside), and deleted.
+- `variant.questions`: show the questions variant of the same template.
+- `theme.toggle`: visible light/dark switch (system default, choice persists).
+- Full Impeccable polish pass.
+Polish round r5 (`mocks/r5/`, built from shared `r5/src/` so both pages use
+the same CSS/components): three palettes (`?palette=p1|p2|p3`; p2 = AO HyS
+tokens), light/dark toggle persisted in localStorage, closable composer (×,
+Esc, click outside; empty draft discarded; text kept as editable note;
+Eliminar), questions variant `preguntas.html`. Interactions exercised in a
+browser. Palette decision page: `decision-r5.json`. Finish critique Task-Id
+report-template-r5-polish-critique.
+Codex finish critique r5 round 1 (run 20260929T224307896Z-9129f0, "do not
+merge"): composer in Detalle collapsed to 20px; "Enviado y copiado" claimed a
+send that did not happen; demo states exported as user answers; no touch
+affordance; questions page ceremony; weak control borders; excess vertical gaps.
+All fixed (send is now honest: "Copiado. Pégalo en el chat."; empty start,
+`?demo=1` for captures; build enforces control borders ≥3:1). p2 wash halved
+and dark lifted to warm charcoal. Round 2 confirmation running.
+
+Palette decision (2026-09-29, literal): "Los colores del sitio están muy
+bien, ándale. Ahora sí, dame uno o dos ejemplos para ver cómo quedan, y te
+vamos mejorando según vayamos obteniendo." `identity.palette`: p2 AO HyS
+(light and dark). Next: two real examples (a work report and a question
+round) on the r5 template, then iterate.
+Examples on the approved template: `mocks/r5/ejemplo-trabajo.html` (this
+work's real status, with a real question) and `mocks/r5/ejemplo-preguntas.html`
+(three real decisions for the real template), built from `r5/src/` with
+`ejemplos.md` as content.
+Codex r5 round 2 (run 20260929T225241701Z-1618ef): six findings closed. New
+Medium (stale text kept in the failed-copy box after a change) fixed by the
+coordinator in `resetSend()`. Low kept open on purpose: the button stays
+"Enviar" because the user asked for Enviar that also copies; the real template
+will save and copy (pending the examples' question 1).

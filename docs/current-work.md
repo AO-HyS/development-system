@@ -1,18 +1,173 @@
+# Current work — 1.39 production rollout and 1.40 visual gate (2026-09-29)
+
+This entry supersedes the rollout strategy in older entries below. Published and
+installed DS1.39.0 remains the production baseline. Because the T3 visual gate
+for1.40 is incomplete, approved consumers adopted1.39 without waiting for1.40.
+User publication/worktree/removal authority remains in force; do not ask again.
+
+- AOHYS: PR205/206 merged, main79f1ba4b060671648ee6a0b1aa24f6594dc59816.
+  Production run36646414853 passed; Pages52d7f589-dd2a-4029-b81c-c5621de1ccc8
+  source79f1ba4 and canonical public smoke confirmed.
+- Eteria: PR291/292 merged, main4e7634ead6bcedda791799402f3acc07d744e6a3.
+  Production run36646412826 passed; Pages ea169fc6-ef51-48e5-ae43-c02c3e894ab6
+  source4e7634e and canonical public smoke confirmed.
+- Opportunity: PR78 merged, main2c3085215308c4bf4be6fb937cd916d69a08dcb8.
+  Main CI passed; existing Pages project published exact source, deployment
+  2d29b855-6bc9-491b-9bfa-caf6810d9bf4, alias and unique URL bytes match.
+- Barber: PR365 merged into developf08e5b6; zero-target tooling lane confirmed.
+  Status-first recovery requires main ancestry. PR366 passed CI but normal merge
+  was rejected by strict up-to-date policy. Replacement carrier PR367 contains
+  currentdevelop andmain, exactunchangedtree0518ae56d58191ee7074d4dfdaedc91df4bf9798
+  andH b601b1b428609f478da8d79e9816b9c1506abc60, independently plan/source reviewed.
+  Strict Release admission and subsequent canonical promotion remain pending.
+- Casa: PR148 open, required Vercel previews absent; dashboard has no Git link.
+  No provider reconfiguration or ad hoc deploy. Pending receipt acceptance also
+  blocks production of unrelated develop history.
+- Nutri: local candidate1b6bc0237fa60198c8c955484cc2379ab7607b90 retained.
+  Four metadata files only. Certification fails unchanged Calendar side borders;
+  readiness rejects non-development-scoped Convex key. No push/PR/production,
+  no unrelated product edits or credential changes to bypass gates.
+
+1.40 exact candidatecbf2dc06abaacd73a36086ef3aefe34819c37993, draft PR139,
+source review and required local gates passed. Candidate package extracted and
+installed in isolated HOME; setup/core/Claude audits healthy. No operator1.40
+installation, main/tag/release yet. Real report/questionnaire POST, clipboard,
+draft/recovery and controlled failure observations passed in isolated QA state.
+Independent visual review reached desktop and phone light/dark and found two
+bounded blockers: mobile theme text overflow/stale direction, and inherited
+question context containing editor controls. Corrected only shared JS/CSS copies;
+regenerated1.40 manifest/catalog and required checks passed. New served report
+HTML707d08a49f879d94dd342840f5b1a3682a7aac9877432c993a1aad92df8cbc90
+and questionnaireHTMLe0e74eebffe39f815eab2fe75e824828dd59b5af8c7303516e1db85da2d9446f
+match local bytes. Independent reviewer owns current affected real visual checks.
+Do not substitute DOM checks for visual acceptance.
+
+Evidence: private/report140/{consumer139clean-receipt.json,
+consumer139worktrees-receipt.json,consumer139worktrees-release-receipt.json,
+candidate-isolated-install.json,pack.json,browser-observations.json,
+browser-questionnaire-observations.json}. Public-facing report must sanitize logs.
+Normal release effects included Convex deploys, preview seeds/contact smoke,
+Cloudflare uploads and synthetic CSP smoke; authenticated acceptance not reached.
+No automated tests/evals or broad DS suite used.
+
+Three authorized task worktrees remain until release worker finishes, then remove
+only ds1390-{barber,nutri,opportunity} normally, retaining local refs/receipts and
+preserving concurrently dirty owner roots. No force removal or other cleanup.
+Active report reader session68325 expires2026-09-30T01:20:07.161Z; questionnaire
+session42434 is task-owned and must stop after QA. Older reader49899 expires
+2026-09-30T00:34:48.063Z. Check exact live process ownership before stopping.
+
+---
+
+# Current work — 1.40 integration verification (2026-09-29)
+
+Approved independent plan implemented in new immutable candidate trees; source
+review corrected real packet findings, generic next-step strip, in-flight outcome
+visibility and long-heading legacy drafts. No remaining source blocking findings.
+Questionnaire additional questions have normalization/draft/import/export/recovery
+parity; actual questions-only browser POST saved receipt and copied without choices.
+Report actual POST and clipboard readback passed; forced clipboard-denial saved a
+receipt with selectable text, edits cleared stale fallback and copy retry did not
+change server revision. QA effects confined to private isolated HOME.
+
+Candidate builder/pins 1.40/0.58 and explicit CLI import updated; provisional hashes
+regenerate after each UI correction. Typecheck/roster/releaseprepare/no-tests passed.
+Independent visual review in progress. T3 browser evaluate/interaction operational,
+snapshot/resize intermittently fail because preview reports hidden; one real light
+screenshot captured, phone/dark and stable notes remain pending. User asked to open
+preview, no extra publication permission asked. Do not lower visual acceptance.
+
+Next: finish real browser/visual evidence, exact committed-package isolated install,
+publish canonical release then final1.40 consumer rollout. Three task worktrees
+exist and owner dirty checkouts preserved. No consumer push/PR/deployment yet.
+
+---
+
+# Current work — report redesign1.40.0 and final six-repo rollout (2026-09-29)
+
+User explicitly requested production of T3 thread
+cafc99ea-2383-4209-b177-6e287bb4bf6e (Report template redesign), plus all
+six consumer repos where gates admit. Approved r5 prototype and code map in
+~/.development-system/private/design/report-template-r1 are preserved.
+Take over integration in this canonical checkout; the prior Claude thread is
+waiting for permission and has no active source writer. Preserve all its local
+brief commits. New1.40 must retain published1.39 fallback and immutable history.
+
+Consumer1.39 baselines are prepared/verified but NOT pushed: AOHYS46fc99b,
+Eteria9643653, Casa653c691; frozen install/normalhooks/qualitycertify passed.
+AOHYS formatter drift detected/corrected, allcanonical skill/artifact hashes
+restored with explicit generated-file exclusions. Retain failed first receipt.
+Final consumer adoption will go straight to published1.40 to avoid duplicate
+provider deployments. Production of Casa/Nutri still requires unrelated product
+acceptance and strict develop→main admission; no bypass.
+
+User authorized three task worktrees at AO/.worktrees/ds1390-{barber,nutri,opportunity}
+and their removal when finished. Active owner checkouts/dirty bytes preserved.
+Evidence private/codex-account-fallback/rollout139/authorized-worktrees.json.
+DS canonical task branch1.40 starts from updateddevelop plus retained reviewed
+1.39/doc continuity. No extra DS worktree/clone needed or created.
+
+Next: independent1.40 plan review, implement approved shared report/question
+presentation and realrevisionedsend+clipboard, actualT3browser observation and
+independentvisual/source critique, newimmutableversion/catalog, isolatedinstall,
+canonicalrelease and finalconsumerrollout/gates, thensafe taskworktreecleanup.
+No automatedtests/evals. Existing reader exec49899 expires00:34:48UTC.
+
+---
+
+# Current work — 1.39.0 six-repository rollout (2026-09-29)
+
+User requested all repos through production wherever possible, continuing the
+completed published1.39.0 recovery change. Six primary adopters: AOHYS, Eteria,
+Barber, Casa Roca, Opportunity OS and NutriPlan. Preserve canonical roots,
+current owners/dirty work and product acceptance gates; no new worktrees/clones.
+Tooling pins/adapters/live mirrors only. Use release surface classification
+before provider calls; no automatic deployment of unrelated product changes.
+
+Read-only mapper inventory and independent plan/review in progress. Jev advisory
+classification succeeded; parent retains general implementation route with
+exact packets after planning. Evidence private/codex-account-fallback/rollout139.
+Published tag/package/HOME remain verified; do not republish immutable assets.
+Next: inspect local gates, prepare scoped candidates preserving checkout bytes,
+review, integrate and promote with per-repo passed/failed/not-reached readback.
+
+---
+
 # Current work — 1.39.0 production publication (2026-09-29)
 
-User explicitly authorized “Perfecto, lleva a la producción.” Continue the
-accepted account-recovery candidate through feature→develop→main and the
-canonical GitHub release, with a source-bound package and downloaded readback.
-Canonical checkout/branch feat/codex-account-fallback retained; unrelated dirty
-report-design work, .impeccable/ and private/ remain outside the publication.
-No product application deployment is required by this tooling-only change.
+Completed after explicit user production authorization. PR#137 integrated into
+develop, PR#138 into main; stable/latest release v1.39.0 published at
+https://github.com/AO-HyS/development-system/releases/tag/v1.39.0.
+Canonical release/tag/package source bed4843b5641e791aad7cfff15f3c8f514f69d3d.
+Exact uploaded/downloaded SHA256:
+e6856f3364492904e4cf34a3ebed6983db27866260e42895516cec0ba69fae4a.
 
-Prior independent source/integrated reviews and actual runtime evidence remain
-valid. Repeated required gates typecheck, release:prepare, roster:check and
-check-no-tests passed. There are no GitHub workflows or branch protection/ruleset
-requirements; local gates and independent evidence remain the release basis.
-Next: publish reviewed source through PRs, package exact final main commit,
-verify isolated installation and exact uploaded/downloaded package provenance.
+Canonical checkout retained on feat/codex-account-fallback, fast-forwarded to
+final main without altering unrelated dirty report-design work, .impeccable/
+or private/. No product application deployment required or performed.
+Prior1.38.0 immutable reviewed dependency included; historical versions retained.
+
+Required local gates passed and runtime surface unchanged from accepted review.
+No GitHub workflows or branch protection/rulesets configured; external Codesmith
+check skipped. Independent publication-contract/packer review no blockers.
+Exact final-main package isolated setup and contract/Claude audits healthy;
+GitHub download/tag/provenance/digest readback matched. Published package then
+installed at ~/.development-system/packages/1.39.0-bed4843/package;
+both CLI links target it. Operator setup and contract/Claude audits healthy,
+all four runtime hashes match published snapshots. Previous packages/backups
+retained. Initial final hash readback used wrong path; corrected from manifest
+without repeating successful installation.
+
+Evidence: private/codex-account-fallback/production-release.json,
+production-isolated-install.json, production-operator-install.json and
+production-document-receipt.json. Actual profile recovery/native independent
+review and capability gaps remain as recorded below; native application computer
+use not reached and auxiliary Haiku role unknown. No tests/evals/broad scenarios.
+Report-only tunnel URL/expiry unchanged, sanitized served report updated:
+https://dog-understood-coat-collaborative.trycloudflare.com/369fd0686f315b02f73f1e8a25f366fe/served/report.html
+Expires2026-09-30T00:34:48.063Z, process-dependent; reader execsession49899
+is the only task-owned live process. Next: new Claude session loads installed
+instructions. Publication and installation complete; no pending required release.
 
 ---
 
