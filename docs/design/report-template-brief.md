@@ -94,3 +94,8 @@ Examples on the approved template: `mocks/r5/ejemplo-trabajo.html` (this
 work's real status, with a real question) and `mocks/r5/ejemplo-preguntas.html`
 (three real decisions for the real template), built from `r5/src/` with
 `ejemplos.md` as content.
+Codex r5 round 2 (run 20260929T225241701Z-1618ef): six findings closed. New
+Medium (stale text kept in the failed-copy box after a change) fixed by the
+coordinator in `resetSend()`. Low kept open on purpose: the button stays
+"Enviar" because the user asked for Enviar that also copies; the real template
+will save and copy (pending the examples' question 1).
