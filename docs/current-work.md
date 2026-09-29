@@ -1,3 +1,30 @@
+# Current work — external skills refresh (2026-09-29)
+
+Root /Users/corrortiz/Documents/AO/development-system; canonical checkout,
+branch chore/external-skills-refresh-20260929 from develop adb00fb. The previous
+docs/report-template-brief branch, .impeccable/ and private/ were preserved.
+
+User request: update installed external skills (Impeccable, Matt Pocock and all
+others). Local tooling update only; application production deploy is unnecessary.
+No publication, push, release or production action is authorized by this task.
+
+Candidate 1.38.0 / catalog 0.56.0; immutable external artifact refresh, preserve
+AO-owned workflows and local adapters. Sources staged at exact upstream commits,
+Matt d81f3a, Impeccable skill 4.3.1 / CLI 4.1.0 already latest; native engine 0.1.7
+release asset SHA verified and engine-probe observed. Upstream removed
+resolving-merge-conflicts and convex-performance-audit: retained last available.
+Plan review corrections applied: active installs after candidate review/snapshots,
+audit-skills separate from contract audit. No tests/evals created/run/restored.
+
+Evidence/staging: /tmp/external-skills-refresh-20260929 (source inventory, exact
+refs, merge notes, two disjoint candidate writers, Jev advice and parent decision).
+Pending: integrate artifacts/provenance, four local gates, isolated setup/audits,
+independent integrated review, authorized local installation with backups, native
+skill observation, sanitized HTML report. Existing unrelated work remains owned
+by its prior thread. No background product processes started.
+
+---
+
 # Current work — Development System 1.37.0 delivery
 
 Canonical root /Users/corrortiz/Documents/AO/development-system.
