@@ -84,6 +84,20 @@ the stale AOHYS mirror was recorded separately. Published 1.36.1 was not
 republished. DS gates typecheck, release:prepare, roster:check, check-no-tests
 passed; no automated tests were run.
 
+## Operator note — Sonnet 5.5 for the Claude Sonnet roles (2026-09-28)
+
+No contract change: the roster names the `sonnet` alias, and Claude Code maps
+it. 2.1.282 resolved `sonnet` to claude-sonnet-5 and did not recognize
+claude-sonnet-5-5; 2.1.284 resolves it to claude-sonnet-5-5. The real HOME was
+moved to 2.1.284 (`claude install 2.1.284`; 2.1.282 kept for rollback) and
+auto-updates were turned on (`autoUpdates: true` in ~/.claude.json,
+`autoUpdatesChannel: "latest"` in ~/.claude/settings.json; backups
+`*.bak-20260928201542`). Observed: code-mapper, Explore and docs-researcher ran
+on claude-sonnet-5-5 (`modelUsage`), Explore and docs-researcher through the
+T3 headroom launcher, which execs ~/.local/bin/claude. Not observed: an actual
+auto-update, mechanical-worker by itself. Pending decision: whether
+exact-implementer moves to Sonnet (that would be a contract change).
+
 # Previous — Development System 1.36.0 (pruned instructions, mistake log, verification scope, jevgrep, cleanup)
 
 Approved 2026-09-27: "vamos a hacer los cambios pertinentes y vamos a llevar
