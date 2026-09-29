@@ -918,7 +918,14 @@ This repository has no automated tests: \`development-system check-no-tests\`
 guards it and lint runs it. Every task ends with real verification through the
 repository's verification CLI and feature map, the browser or computer use.
 Reviews run on Sol 6.1 High through codex-review launched in the background;
-Claude reviewers run only with a declared \`Codex fallback:\` line.
+The launcher discovers local Codex credential homes and tries the next only on
+confirmed availability failures. If its receipt says fallback_required with
+fallback.eligible true, immediately dispatch a fresh native Claude reviewer or
+browser-qa with \`fallback.prompt\` copied verbatim. It includes the original packet
+and reason/receipt/packet binding lines. The guard verifies the full dispatched
+packet, hash, root, mode and Task-Id, and rejects resumed fallback agents. Keep the review independent and report this authorized
+provider change. Cancellation, refusal and uncertain computer-use effects require
+correction or reconciliation; never replay actions or call an incomplete check passed.
 Use the local construction recipes and existing components for screens, forms
 and authorized server operations. Simplification, correction and objective
 verification are responsibilities. Tiny direct work stays with the parent;
