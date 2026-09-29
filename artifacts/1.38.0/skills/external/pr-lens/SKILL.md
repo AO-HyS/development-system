@@ -22,7 +22,7 @@ Decide where the diagram lands before you write it: a canvas, or an SVG and a pu
 3. **Validate, and fix**
 
    ```bash
-   npx @coldtea/pr-lens-cli@latest validate .pr-lens/graph.json
+   npx @coldtea/pr-lens-cli@0.11.0 validate .pr-lens/graph.json
    ```
 
    Fix every failure and run it again. Do not render an invalid document; do not "work around" a failure by deleting the element it names.
@@ -30,7 +30,7 @@ Decide where the diagram lands before you write it: a canvas, or an SVG and a pu
 4. **Render.**
 
    ```bash
-   npx @coldtea/pr-lens-cli@latest render .pr-lens/graph.json --theme light
+   npx @coldtea/pr-lens-cli@0.11.0 render .pr-lens/graph.json --theme light
    ```
 
    Render light by default unless the user requests another theme. The SVGs, the manifest and `drawn.graph.json` land in a directory of their own under `.pr-lens/`, named after the document's title. The render prints that path, so read it from there. The CLI adds `.pr-lens/` to the repository's .gitignore. Do not commit any of it. These files are rebuilt from the diff whenever anyone wants them again. Each SVG is named after its view, the theme and a content hash; `manifest.json` lists them by lens and view, so read the names from there or from the directory.
@@ -46,7 +46,7 @@ Decide where the diagram lands before you write it: a canvas, or an SVG and a pu
    Once explicitly authorized, publish with the exact rendered path:
 
    ```bash
-   npx @coldtea/pr-lens-cli@latest canvas push .pr-lens/<drawing>/drawn.graph.json
+   npx @coldtea/pr-lens-cli@0.11.0 canvas push .pr-lens/<drawing>/drawn.graph.json
    ```
 
    Pass the path the render printed. A bare `canvas push` finds the drawing when the checkout holds only one; with more than one it lists them and asks which, so always pass the path.
@@ -101,7 +101,7 @@ An uploaded image loads for every reader of the merge request. A raw file URL on
    On any forge where `--attach` is not an option, publish the SVGs somewhere durable and let the CLI compose the comment instead:
 
    ```bash
-   npx @coldtea/pr-lens-cli@latest comment \
+   npx @coldtea/pr-lens-cli@0.11.0 comment \
      --graph .pr-lens/<drawing>/drawn.graph.json \
      --manifest .pr-lens/<drawing>/manifest.json \
      --asset-base-url https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<dir>
@@ -123,7 +123,7 @@ Once a canvas is pushed, you can answer questions about it on the canvas itself.
 After canvas access is authorized, run this once, when the user wants to talk about a canvas they have open or are about to open. Name the drawing you pushed, the same path as the push:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas open .pr-lens/<drawing>/drawn.graph.json
+npx @coldtea/pr-lens-cli@0.11.0 canvas open .pr-lens/<drawing>/drawn.graph.json
 ```
 
 It opens one browser tab that follows you. Only that tab moves. Anyone else reading the same link sees the canvas as it was. Every command below talks to that tab, and takes the same path as `--drawing`. Always pass it: a checkout can hold several canvases, and the path says which one you mean.
@@ -131,15 +131,15 @@ It opens one browser tab that follows you. Only that tab moves. Anyone else read
 **When the user gives you a link to a canvas you did not push**, like `https://prlens.dev/c/<id>`, open it with the link. This works from any folder, as long as the canvas is not private:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas open --canvas https://prlens.dev/c/<id>
+npx @coldtea/pr-lens-cli@0.11.0 canvas open --canvas https://prlens.dev/c/<id>
 ```
 
-The CLI saves a copy of the drawing to `.pr-lens/canvases/<id>.graph.json`. Take the ids for your answer from that file. In the commands below, use `--canvas <id>` in place of `--drawing`. A private canvas opens only for its owner, after they run `npx @coldtea/pr-lens-cli@latest auth login`.
+The CLI saves a copy of the drawing to `.pr-lens/canvases/<id>.graph.json`. Take the ids for your answer from that file. In the commands below, use `--canvas <id>` in place of `--drawing`. A private canvas opens only for its owner, after they run `npx @coldtea/pr-lens-cli@0.11.0 auth login`.
 
 **When the user says "this", "here" or "what I selected", look first.** They clicked a component, dragged a box or picked a part of a drawing in the tab, and you cannot see it:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas look --drawing .pr-lens/<drawing>/drawn.graph.json
+npx @coldtea/pr-lens-cli@0.11.0 canvas look --drawing .pr-lens/<drawing>/drawn.graph.json
 ```
 
 It prints JSON: the diagram they are on (`diagram.stage`, ready to paste into a step), what is on screen (`inFrame`), what they selected (`scope`), the answer they have open, and the drawing hung under the canvas (`fork`), if there is one. Answer about `scope` when it is set. `following: false` means they left agent mode: tell them the answer is waiting rather than saying you moved their canvas.
@@ -147,7 +147,7 @@ It prints JSON: the diagram they are on (`diagram.stage`, ready to paste into a 
 **Answer** with a JSON file, or `-` to pipe it in:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas answer .pr-lens/answer.json --drawing .pr-lens/<drawing>/drawn.graph.json
+npx @coldtea/pr-lens-cli@0.11.0 canvas answer .pr-lens/answer.json --drawing .pr-lens/<drawing>/drawn.graph.json
 ```
 
 ```json
@@ -182,7 +182,7 @@ npx @coldtea/pr-lens-cli@latest canvas answer .pr-lens/answer.json --drawing .pr
 **"Take me to X"** is a camera move, not an answer:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas show --drawing .pr-lens/<drawing>/drawn.graph.json \
+npx @coldtea/pr-lens-cli@0.11.0 canvas show --drawing .pr-lens/<drawing>/drawn.graph.json \
   --diagram send-pipeline --focus send-pipeline/enqueue --open send-pipeline/enqueue
 ```
 
@@ -191,7 +191,7 @@ npx @coldtea/pr-lens-cli@latest canvas show --drawing .pr-lens/<drawing>/drawn.g
 **"What's inside X", "expand on X" or "break X down"** is a drawing. Write a small graph document of X's insides (up to ten nodes) and hang it under X:
 
 ```bash
-npx @coldtea/pr-lens-cli@latest canvas fork .pr-lens/inside-x.json --from x --drawing .pr-lens/<drawing>/drawn.graph.json
+npx @coldtea/pr-lens-cli@0.11.0 canvas fork .pr-lens/inside-x.json --from x --drawing .pr-lens/<drawing>/drawn.graph.json
 ```
 
 The sketch can leave out `schemaVersion`, `kind` and `provenance`; they come from the canvas.
@@ -374,7 +374,7 @@ map:
       lane: functions
 ```
 
-`references/config.md` has the full format and the recipes. Validate it the same way: `npx @coldtea/pr-lens-cli@latest validate .github/pr-lens.yml`.
+`references/config.md` has the full format and the recipes. Validate it the same way: `npx @coldtea/pr-lens-cli@0.11.0 validate .github/pr-lens.yml`.
 
 A `match` beginning with `id:` addresses one node exactly; anything else is a path glob matched against a node's file paths. Prefer the glob, because it keeps holding when the next run names the node differently. A lane pin may name a lane the document never declared: the band is created, and takes the id for its label, so give it one a reader would want to see.
 

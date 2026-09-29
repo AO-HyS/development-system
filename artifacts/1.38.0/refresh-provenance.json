@@ -606,7 +606,7 @@
       "adapted": true,
       "previousSource": "artifacts/1.6.0/skills/internal/pr-lens",
       "directory": "artifacts/1.38.0/skills/external/pr-lens",
-      "folderSha256": "653c3f1d5be6bfcb07515754737ad68a54fc7b0ec2dd9ece0ade9ac2d02f0149"
+      "folderSha256": "c581131fe8222b368f7fb1f94af16edc27f4ef563da7989422438eb3fca11240"
     },
     {
       "name": "agent-browser",
@@ -1198,7 +1198,7 @@
       "repository": "https://github.com/Lum1104/Understand-Anything",
       "commit": "b05cc3b20990afca537b4fc0a49b4d7fbdc65bb0",
       "path": "understand-anything-plugin/skills/understand",
-      "folderSha256": "da1533cf6228ec8a7400cbb8b2ec4191dd452470ca6670cc48e95da0162d650d",
+      "folderSha256": "a8d550a485ff62357934dd7f796b23015b116b6daa024659384917053cb07e4c",
       "adaptedToOperatorPolicy": true,
       "changed": true
     },

@@ -18,9 +18,14 @@ audit-skills separate from contract audit. No tests/evals created/run/restored.
 
 Evidence/staging: /tmp/external-skills-refresh-20260929 (source inventory, exact
 refs, merge notes, two disjoint candidate writers, Jev advice and parent decision).
-Pending: integrate artifacts/provenance, four local gates, isolated setup/audits,
-independent integrated review, authorized local installation with backups, native
-skill observation, sanitized HTML report. Existing unrelated work remains owned
+Completed: artifact/provenance integration, four local gates, isolated setup and
+healthy contract audit; skill hashes/mirrors/scanner health passed separately from
+missing operational receipts. A native Codex invocation loaded two updated skills;
+Impeccable engine 0.1.7 returned real detector findings on a local fixture.
+Independent review found two Understand issues, corrected before installation:
+legacy runtime directory compatibility and removal of automatic archive deletion.
+Pending: narrow correction review, updated candidate isolated setup/audit, local
+installation with backups and readback, native plugin update checks, HTML report. Existing unrelated work remains owned
 by its prior thread. No background product processes started.
 
 ---

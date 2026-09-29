@@ -27,7 +27,11 @@ Only catalog-managed capabilities are part of the contract installer. Standalone
 editable skills keep their upstream lock and a private reversible receipt.
 Understand-Anything's linked skill directories are updated as a subset, preserving
 the rest of its checkout; avoid a whole-repository pull that would restore unrelated
-upstream test files. Provider-managed builtins and runtime/plugin bundles use their
+upstream test files. A compatibility adapter uses the preserved core's legacy
+data directory when resolveUaDir is absent, so skill-only updates do not split
+graphs, fingerprints or ignores across storage roots. Automatic deletion of old
+scratch archives is omitted; cleanup requires an inventory and exact authority.
+Provider-managed builtins and runtime/plugin bundles use their
 native manager and are never overwritten as loose skills. Do not manually change
 provider caches, accounts or permission settings.
 

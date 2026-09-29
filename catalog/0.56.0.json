@@ -2766,7 +2766,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/1.38.0/skills/external/pr-lens",
           "destination": ".agents/skills/pr-lens",
-          "folderSha256": "653c3f1d5be6bfcb07515754737ad68a54fc7b0ec2dd9ece0ade9ac2d02f0149",
+          "folderSha256": "c581131fe8222b368f7fb1f94af16edc27f4ef563da7989422438eb3fca11240",
           "expectedMirrorOf": null
         },
         {
@@ -2774,7 +2774,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/1.38.0/skills/external/pr-lens",
           "destination": ".claude/skills/pr-lens",
-          "folderSha256": "653c3f1d5be6bfcb07515754737ad68a54fc7b0ec2dd9ece0ade9ac2d02f0149",
+          "folderSha256": "c581131fe8222b368f7fb1f94af16edc27f4ef563da7989422438eb3fca11240",
           "expectedMirrorOf": "pr-lens.codex",
           "install": "symlink"
         }
