@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.37.0",
+  "activeMode": "advisory-parent-execution",
+  "sources": [
+    {
+      "sourcePath": "runtime/jev-advisory/cli.mjs",
+      "artifactPath": "artifacts/1.37.0/advisory-runtime/cli.mjs",
+      "destination": ".codex/development-system/advisory-runtime/cli.mjs",
+      "sha256": "081283d9b4c1fd8db331cf2223a5cc2c0de86da1335f4bd0754d6db82bb5b889"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/provenance.json",
+      "artifactPath": "artifacts/1.37.0/advisory-runtime/provenance.json",
+      "destination": ".codex/development-system/advisory-runtime/provenance.json",
+      "sha256": "caa7b13ae2b13e8e8a9468aff8805536d98e1bea9adc6514a6a92327c68b1d1f"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/src/orchestration.mjs",
+      "artifactPath": "artifacts/1.37.0/advisory-runtime/src/orchestration.mjs",
+      "destination": ".codex/development-system/advisory-runtime/src/orchestration.mjs",
+      "sha256": "a0babd842cd5b28417208c0713f94d9f560ae6b25797a2c61446282e194715ce"
+    },
+    {
+      "sourcePath": "runtime/jev-advisory/config/1.4.0/orchestration-policy.json",
+      "artifactPath": "artifacts/1.37.0/advisory-runtime/config/1.4.0/orchestration-policy.json",
+      "destination": ".codex/development-system/advisory-runtime/config/1.4.0/orchestration-policy.json",
+      "sha256": "397b2858401298b4da9d57396b75e9c5fdcdaf4d0bbd4d9d66b7597eaeabc014"
+    }
+  ],
+  "historicalGovernance": "installed-for-explicit-history-only-no-global-hooks",
+  "operationalEvidence": "Isolated checks and copying do not establish actual host capability or provider identity."
+}

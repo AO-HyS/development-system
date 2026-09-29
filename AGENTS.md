@@ -14,6 +14,18 @@ keep their existing branch. Worktrees require an explicit request for that task,
 including experiments. Preserve pending work before switching branches. Read and
 update `docs/current-work.md` so a resumed session does not restart the work.
 
+## Codex host model profile
+
+Preserve the parent selected at session start. New sessions request
+`gpt-6.1-sol` High at normal speed. For nontrivial work, Luna 6 High priority
+collects bounded source facts; Sol 6.1 High plans; a distinct fresh Sol 6.1 High
+reviews the plan before writing; and an independent Sol 6.1 High reviews the
+integrated result. General writers request Sol 6.1 Medium; exact and mechanical
+packets request Luna 6 High priority. Planning and review remain independent.
+Mappings are provisional until observed runtime evidence confirms identity,
+effort, tier and required browser or vision capabilities. Never silently change
+provider or reduce acceptance when a capability is unavailable.
+
 ## Canonical-source rules
 
 - Treat `artifacts/` and `manifests/` as immutable published contract versions. Change behavior in a new semantic version rather than rewriting a published version.
