@@ -1198,7 +1198,7 @@
       "repository": "https://github.com/Lum1104/Understand-Anything",
       "commit": "b05cc3b20990afca537b4fc0a49b4d7fbdc65bb0",
       "path": "understand-anything-plugin/skills/understand",
-      "folderSha256": "a8d550a485ff62357934dd7f796b23015b116b6daa024659384917053cb07e4c",
+      "folderSha256": "0140187d62bd63245fa3d20d86c0a5743dd35adfbd960c0c06ec0a24f77e3004",
       "adaptedToOperatorPolicy": true,
       "changed": true
     },
