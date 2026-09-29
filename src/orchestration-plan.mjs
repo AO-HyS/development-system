@@ -181,10 +181,8 @@ function fastChainRoute(routeSlot) {
 }
 
 /**
- * Evidence-bound adversarial fallback route kept for complex independent
- * review lanes: Factory Fable 5.1 medium, Devin Fable 5.1 medium, then Astra
- * `gpt-6-astra` high as the declared fallback. The resolved model stays null
- * until a matching runtime receipt.
+ * Independent adversarial review follows the current declared roster chain.
+ * The resolved model stays null until a matching runtime receipt.
  */
 function adversarialReviewRoute() {
   return antiSlopAdversarialRoute();
