@@ -2,31 +2,54 @@
 
 Root /Users/corrortiz/Documents/AO/development-system; canonical checkout,
 branch chore/external-skills-refresh-20260929 from develop adb00fb. The previous
-docs/report-template-brief branch, .impeccable/ and private/ were preserved.
+docs/report-template-brief branch, .impeccable/ and private/ remain preserved.
 
-User request: update installed external skills (Impeccable, Matt Pocock and all
-others). Local tooling update only; application production deploy is unnecessary.
-No publication, push, release or production action is authorized by this task.
+Requested installed external skill refresh completed locally. No application
+production deployment is required. No push, release, package publication,
+main promotion or product rollout occurred or is authorized by this task.
 
-Candidate 1.38.0 / catalog 0.56.0; immutable external artifact refresh, preserve
-AO-owned workflows and local adapters. Sources staged at exact upstream commits,
-Matt d81f3a, Impeccable skill 4.3.1 / CLI 4.1.0 already latest; native engine 0.1.7
-release asset SHA verified and engine-probe observed. Upstream removed
-resolving-merge-conflicts and convex-performance-audit: retained last available.
-Plan review corrections applied: active installs after candidate review/snapshots,
-audit-skills separate from contract audit. No tests/evals created/run/restored.
+Installed unpublished candidate 1.38.0 / catalog 0.56.0 from exact source
+bebde4f2a918b3c244cdfd6596f593d6a2ea55f9. Package SHA256
+62fa13d500b03443daeb0d8141f0d056f365edadfb55b64cd604ff7175448eb8.
+Both local CLI links now target the immutable local package. 70 external source
+references refreshed; 19 managed content directories changed. 33 standalone
+directories read back at their recorded hashes, 31 updated. AO-owned capability
+content and prior immutable versions preserved. Understand linked repo updates
+only its eight skill directories; core and data layout retained. Automatic
+archive purge and broad unknown-owner cleanup removed before installation.
 
-Evidence/staging: /tmp/external-skills-refresh-20260929 (source inventory, exact
-refs, merge notes, two disjoint candidate writers, Jev advice and parent decision).
-Completed: artifact/provenance integration, four local gates, isolated setup and
-healthy contract audit; skill hashes/mirrors/scanner health passed separately from
-missing operational receipts. A native Codex invocation loaded two updated skills;
-Impeccable engine 0.1.7 returned real detector findings on a local fixture.
-Independent review found two Understand issues, corrected before installation:
-legacy runtime directory compatibility and removal of automatic archive deletion.
-Pending: narrow correction review, updated candidate isolated setup/audit, local
-installation with backups and readback, native plugin update checks, HTML report. Existing unrelated work remains owned
-by its prior thread. No background product processes started.
+Matt d81f3a; Impeccable stable skill4.3.1, npmCLI4.1.0 (already latest), native
+engine0.1.7 verified asset hash/handshake/detection; JevgrepCLI0.7.0 installed with
+ignore-scripts, files observation without provider requests. PR Lens instructions
+pinCLI0.11.0, help checked but full rendering not reached. Two removed upstream
+skills retained at last available versions: resolving-merge-conflicts and
+convex-performance-audit. Claude marketplace refreshed and seven skill-bearing
+plugins up_to_date by native receipts. Codex Convex authoritative1.10.0 already
+current; OpenAI/system provider-managed bundles not manually modified.
+
+Verification: typecheck/releaseprepare/roster/check-no-tests passed; source and
+packaged isolated HOME setup and contract audit healthy. Operator contract audit
+healthy; skill catalog/hash/mirror/link scans have no non-operational problems.
+audit-skills remains INVALID for missing/stale formal operational evidence;
+exhaustive loading/influence of all skills is not accepted. One fresh native
+Codex invocation loaded two exact files; real Impeccable fixture and Understand
+isolated ignore generation observed. Independent source and installed reviews
+have no blockers. No automated tests or evals created/run/restored.
+
+Private backup/receipts and local package recovery:
+/Users/corrortiz/.development-system/private/skills-update-20260929.
+CLI prior targets, metadata, standalone trees and old engine backed up.
+Report uses installed document helper with unchanged notebook/questions design:
+private/reports/external-skills-20260929/report.html. Sanitized report-only tunnel:
+https://environments-missed-accidents-certification.trycloudflare.com/ae19d0c18311304fd6fa8e1b348e9779/report/report.html
+HTTP200; expires2026-09-29T23:35:07.821Z. Native T3 DOM observed headings/scope,
+no overflow and question editor open/cancel, no questions sent. T3 screenshot
+failed on client; no visual acceptance from DOM claimed. Only owned live process
+is bounded report reader (exec session71453). Open a new host session to refresh
+skill inventory. No remaining required local update; distribution/publication is
+separate if later requested. Prior operational evidence is preserved, not silently
+revalidated. Model call usage in report is invocation-specific, not agent totals;
+Headroom was not requested and no savings attribution made.
 
 ---
 
