@@ -1,3 +1,21 @@
+# Current work — 1.39.0 production publication (2026-09-29)
+
+User explicitly authorized “Perfecto, lleva a la producción.” Continue the
+accepted account-recovery candidate through feature→develop→main and the
+canonical GitHub release, with a source-bound package and downloaded readback.
+Canonical checkout/branch feat/codex-account-fallback retained; unrelated dirty
+report-design work, .impeccable/ and private/ remain outside the publication.
+No product application deployment is required by this tooling-only change.
+
+Prior independent source/integrated reviews and actual runtime evidence remain
+valid. Repeated required gates typecheck, release:prepare, roster:check and
+check-no-tests passed. There are no GitHub workflows or branch protection/ruleset
+requirements; local gates and independent evidence remain the release basis.
+Next: publish reviewed source through PRs, package exact final main commit,
+verify isolated installation and exact uploaded/downloaded package provenance.
+
+---
+
 # Current work — Codex account recovery (2026-09-29)
 
 Completed local installation 1.39.0 / catalog0.57.0. Canonical root
