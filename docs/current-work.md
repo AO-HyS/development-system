@@ -22,13 +22,19 @@ Mistake roots recorded privately for executable modes and mirror destinations.
 Rollout feature PRs: AOHYS#203, Eteria#289, Barber#363, Casa#147,
 Opportunity#77, Nutri#509, all merged. Promotions AOHYS#204/Eteria#290 merged;
 Barber#364 merged to main0a8719c after the exact Preview and promotion gate passed.
-Production run36618975120 started; its completion is not yet observed. Opportunity goes to
+Production run36618975120 completed SUCCESS (all static gates, deploy and Release). Opportunity goes to
 main directly (its old develop is obsolete). Casa/Nutri remain develop only:
-their production branches contain unrelated receipt/full-app changes and gates.
+promoting develop would also include unrelated receipt/full-app changes with
+their own acceptance gates.
 AOHYS/Eteria/Opportunity/Casa canonical checkouts advanced by safe fast-forward;
 package1.37.0 installed with frozen lockfile/ignore-scripts. Barber onboarding
-branch and Nutri AOH-168 branch remain intact; their owners integrate updated
-develop without resetting preserved candidate work. Earlier report-template
+branch retains its five product commits: published tooling commit8a219ee was
+cherry-picked locally as7210c0b (five tooling paths only); all other tracked blobs
+are unchanged fromda71b473. Frozen ignore-scripts install, no-tests(0findings)
+and installed roster13/13 passed. Do not push or deploy this owner branch.
+The prior product evidence remains bound toda71b473; it does not certify7210c0b.
+Nutri AOH-168 already pins1.37.0 at live readback; four dirty product files are
+owned elsewhere and untouched. Earlier report-template
 commits remain on docs/report-template-brief at096dbf2; private/ retained.
 
 Evidence /tmp/ds1370; report private/reports/ds1370/report.html, rendered by
@@ -36,23 +42,36 @@ the installed document helper and read in the T3 browser. Temporary tunnel
 expires 2026-09-29T21:19:06.803Z (HTTP 200 confirmed):
 https://strengths-ltd-invest-champion.trycloudflare.com/f05f052967ebf12e8a4150c9a1e527ba/ds1370/report.html
 
-CLI global default remains gpt-6-astra/xhigh. guard-config-write at installed
-policy.json:86 blocks agent edits to ~/.codex/config.toml. User received an
-operator-only terminal command preserving all other bytes plus a backup; readback
-still pending. Do not bypass the guard through another write mechanism.
+CLI global default readback is gpt-6.1-sol/high. Comparing with the operator
+backup confirms only the two requested assignments changed. The agent never
+executed the write script or bypassed guard-config-write. CLAUDE.md links the
+updated global AGENTS; installed codex-review policy and fallback both6.1/high.
+HOME and Claude orchestration audits healthy; advisory status1.37/1.4 requests
+Sol6.1High (no network). Six active checkout entrypoint/adapter instructions
+have no Astra route; historical versions and explicit compatibility retained.
 Barber promotion run36617501008 initially failed because exact
 Preview36617492780 was active; no failed static gate. Preview then succeeded;
 only the failed promotion job was rerun and passed, and #364 was merged.
-Main Release Train36618975120 is pending; do not claim production deployment
-acceptance from the merge alone.
+Main Release Train36618975120 succeeded; pipeline/deployment evidence does
+not replace product acceptance for separately owned feature branches.
 No application process or automatic continuation is owned by this task. Report
 reader temporary tunnel is the only remaining task process, with bounded expiry.
 Published sanitized HTML report; canonical checkout returns to develop.
-Remaining: operator executes the prepared configuration command; read back the
-two global keys, then confirm Barber production run36618975120. The manual
-command is python3 private/operator/set-codex-default.py from this root; it
-backs up the file, changes exactly two global assignments and verifies bytes.
-The script was syntax-checked but never executed by the agent.
+Independent final correction review approved7210c0b with no blockers. Current
+installed roster has13Sol6.1/Luna candidates; advisory and Claude review
+policy/fallback requestSol6.1High. No automatic Astra route remains in those
+active surfaces; explicit operator selection and immutable history remain.
+Bounded source audit found no automatic Astra candidate in catalog0.55 or
+current roster. Remaining source references support explicit supplied profiles,
+pricing, migration descriptions or disabled historical execution. A stale planner
+comment was corrected to describe current roster-driven routing. No new model
+exercise or eval. Sanitized report refreshed and browser readback passed.
+This final documentation receipt records the completed model-selection scope;
+return to develop after publication. Casa/Nutri product production remains under
+their separate owner acceptance gates. Published1.37.0 remains immutable; no new runtime release is needed
+for the confirmed readbacks or the local tooling cherry-pick.
+The manual script private/operator/set-codex-default.py stays preserved; its
+operator result was verified from the backup, without an agent write.
 
 ## Previous continuity (historical snapshot; verify before resume)
 

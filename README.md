@@ -10,6 +10,8 @@ explicit legacy selections. Claude roster tiers and review guard behavior stay
 unchanged. These mappings are provisional and require observed runtime identity
 and capabilities; this release makes no benchmark or performance claim.
 Catalog 0.55.0 carries the corresponding current instructions.
+The current automatic routes and Claude review defaults use Sol 6.1; Astra
+remains available through an explicit operator selection.
 See [ADR 0064](docs/adr/0064-sol61-high-defaults.md).
 
 ```sh
