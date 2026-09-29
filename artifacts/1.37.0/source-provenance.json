@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "1.37.0",
+  "previousContract": "1.36.1",
+  "decision": "docs/adr/0064-sol61-high-defaults.md",
+  "executionMode": "advisory-parent-execution",
+  "jevAdvisory": "1.4.0",
+  "roleRoster": "gpt-6.1-sol-high-for-former-astra-roles;general-writing-medium;luna-unchanged",
+  "report": "shared-field-notebook-retained",
+  "evidence": "requested-profiles-provisional;no-model-exercise"
+}

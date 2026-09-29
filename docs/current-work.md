@@ -1,3 +1,26 @@
+# Current work — Development System 1.37.0: GPT-6.1 Sol defaults
+
+Root /Users/corrortiz/Documents/AO/development-system; canonical checkout.
+Branch feat/development-system-1.37.0-sol61 from develop 664f0c1.
+User authorizes new version production publication, HOME installation and active
+repository tooling rollout. No benchmark, evaluations, automated tests or model
+exercise. Plan /tmp/ds1370/plan.md independently reviewed: no blocking findings.
+Previous report-template work preserved on docs/report-template-brief at096dbf2;
+untracked private/ preserved. Historical governed runs remain untouched.
+
+Requested profiles: former Astra roles→gpt-6.1-sol/high; new sessions6.1/high;
+general writing6.1/medium; Luna unchanged. Mapping evidence remains provisional.
+Jev classification skipped under no-runs request; exact migration decided from
+source facts and fresh independent plan review. Parent owns release generator,
+contract/catalog/artifacts/package and integration; active_sources owns current
+runtime/adapter/instruction sources only. No overlapping writer paths.
+
+Status: implementing1.37.0/catalog0.55.0; mandatory static checks and isolated
+HOME/package installation next, followed by independent final diff review.
+Evidence /tmp/ds1370; no active application or evaluation processes.
+
+## Previous continuity (historical snapshot; verify before resume)
+
 # Current work — Development System 1.36.1 and the 1.36.0 product rollout
 
 1.36.0 released 2026-09-27 (#124, #125; main d769494; tag v1.36.0; prerelease
