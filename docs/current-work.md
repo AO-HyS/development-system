@@ -21,7 +21,8 @@ Mistake roots recorded privately for executable modes and mirror destinations.
 
 Rollout feature PRs: AOHYS#203, Eteria#289, Barber#363, Casa#147,
 Opportunity#77, Nutri#509, all merged. Promotions AOHYS#204/Eteria#290 merged;
-Barber#364 pending final release check at this snapshot. Opportunity goes to
+Barber#364 merged to main0a8719c after the exact Preview and promotion gate passed.
+Production run36618975120 started; its completion is not yet observed. Opportunity goes to
 main directly (its old develop is obsolete). Casa/Nutri remain develop only:
 their production branches contain unrelated receipt/full-app changes and gates.
 AOHYS/Eteria/Opportunity/Casa canonical checkouts advanced by safe fast-forward;
@@ -39,13 +40,19 @@ CLI global default remains gpt-6-astra/xhigh. guard-config-write at installed
 policy.json:86 blocks agent edits to ~/.codex/config.toml. User received an
 operator-only terminal command preserving all other bytes plus a backup; readback
 still pending. Do not bypass the guard through another write mechanism.
-Barber promotion run36617501008 failed because exact Preview36617492780
-was still active; no failed static gate. Wait for that Preview receipt before
-retrying the promotion gate.
+Barber promotion run36617501008 initially failed because exact
+Preview36617492780 was active; no failed static gate. Preview then succeeded;
+only the failed promotion job was rerun and passed, and #364 was merged.
+Main Release Train36618975120 is pending; do not claim production deployment
+acceptance from the merge alone.
 No application process or automatic continuation is owned by this task. Report
 reader temporary tunnel is the only remaining task process, with bounded expiry.
-Next: confirm Barber promotion and final production release job receipts, publish
-sanitized final HTML report, return canonical checkout to develop.
+Published sanitized HTML report; canonical checkout returns to develop.
+Remaining: operator executes the prepared configuration command; read back the
+two global keys, then confirm Barber production run36618975120. The manual
+command is python3 private/operator/set-codex-default.py from this root; it
+backs up the file, changes exactly two global assignments and verifies bytes.
+The script was syntax-checked but never executed by the agent.
 
 ## Previous continuity (historical snapshot; verify before resume)
 
