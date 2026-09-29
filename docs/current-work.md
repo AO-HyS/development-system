@@ -1,23 +1,51 @@
-# Current work — Development System 1.37.0: GPT-6.1 Sol defaults
+# Current work — Development System 1.37.0 delivery
 
-Root /Users/corrortiz/Documents/AO/development-system; canonical checkout.
-Branch feat/development-system-1.37.0-sol61 from develop 664f0c1.
-User authorizes new version production publication, HOME installation and active
-repository tooling rollout. No benchmark, evaluations, automated tests or model
-exercise. Plan /tmp/ds1370/plan.md independently reviewed: no blocking findings.
-Previous report-template work preserved on docs/report-template-brief at096dbf2;
-untracked private/ preserved. Historical governed runs remain untouched.
+Canonical root /Users/corrortiz/Documents/AO/development-system.
+User explicitly authorized new version publication, HOME install and tooling
+rollout to all six active repos; no benchmarks, evals or model exercises.
 
-Requested profiles: former Astra roles→gpt-6.1-sol/high; new sessions6.1/high;
-general writing6.1/medium; Luna unchanged. Mapping evidence remains provisional.
-Jev classification skipped under no-runs request; exact migration decided from
-source facts and fresh independent plan review. Parent owns release generator,
-contract/catalog/artifacts/package and integration; active_sources owns current
-runtime/adapter/instruction sources only. No overlapping writer paths.
+Released 2026-09-29: #128 develop, #129 main dd16ae359907cb80068ad5bd82f86883e6037d7f,
+GitHub release/tag v1.37.0, catalog0.55.0. Exact downloaded tarball SHA256:
+de02b2bbee235822c537b994e4eeb469f937ec5dee155f5fcc8220239cbd2761.
+HOME setup from that source commit; audit, guardrails, Claude orchestration and
+report gate healthy. Isolated source and packaged setups/audits passed, as did
+typecheck, rostercheck, releaseprepare and check-no-tests. Live guard denied a
+synthetic destructive command (never executed) and invalid role; denial message
+names Sol6.1High. No agent exercise or Jev network classification was launched.
 
-Status: implementing1.37.0/catalog0.55.0; mandatory static checks and isolated
-HOME/package installation next, followed by independent final diff review.
-Evidence /tmp/ds1370; no active application or evaluation processes.
+Requested: new session/former Astra roles gpt-6.1-sol/high, general writers
+6.1/medium, Luna unchanged; keep selected parent. Independent plan/integrated
+review passed. Rollout review found four stale AOHYS skill mirrors; corrected in
+a22c72f and re-review confirmed all7 full trees/56files byte-identical.
+Mistake roots recorded privately for executable modes and mirror destinations.
+
+Rollout feature PRs: AOHYS#203, Eteria#289, Barber#363, Casa#147,
+Opportunity#77, Nutri#509, all merged. Promotions AOHYS#204/Eteria#290 merged;
+Barber#364 pending final release check at this snapshot. Opportunity goes to
+main directly (its old develop is obsolete). Casa/Nutri remain develop only:
+their production branches contain unrelated receipt/full-app changes and gates.
+AOHYS/Eteria/Opportunity/Casa canonical checkouts advanced by safe fast-forward;
+package1.37.0 installed with frozen lockfile/ignore-scripts. Barber onboarding
+branch and Nutri AOH-168 branch remain intact; their owners integrate updated
+develop without resetting preserved candidate work. Earlier report-template
+commits remain on docs/report-template-brief at096dbf2; private/ retained.
+
+Evidence /tmp/ds1370; report private/reports/ds1370/report.html, rendered by
+the installed document helper and read in the T3 browser. Temporary tunnel
+expires 2026-09-29T21:19:06.803Z (HTTP 200 confirmed):
+https://strengths-ltd-invest-champion.trycloudflare.com/f05f052967ebf12e8a4150c9a1e527ba/ds1370/report.html
+
+CLI global default remains gpt-6-astra/xhigh. guard-config-write at installed
+policy.json:86 blocks agent edits to ~/.codex/config.toml. User received an
+operator-only terminal command preserving all other bytes plus a backup; readback
+still pending. Do not bypass the guard through another write mechanism.
+Barber promotion run36617501008 failed because exact Preview36617492780
+was still active; no failed static gate. Wait for that Preview receipt before
+retrying the promotion gate.
+No application process or automatic continuation is owned by this task. Report
+reader temporary tunnel is the only remaining task process, with bounded expiry.
+Next: confirm Barber promotion and final production release job receipts, publish
+sanitized final HTML report, return canonical checkout to develop.
 
 ## Previous continuity (historical snapshot; verify before resume)
 
