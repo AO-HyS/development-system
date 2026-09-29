@@ -77,3 +77,10 @@ Esc, click outside; empty draft discarded; text kept as editable note;
 Eliminar), questions variant `preguntas.html`. Interactions exercised in a
 browser. Palette decision page: `decision-r5.json`. Finish critique Task-Id
 report-template-r5-polish-critique.
+Codex finish critique r5 round 1 (run 20260929T224307896Z-9129f0, "do not
+merge"): composer in Detalle collapsed to 20px; "Enviado y copiado" claimed a
+send that did not happen; demo states exported as user answers; no touch
+affordance; questions page ceremony; weak control borders; excess vertical gaps.
+All fixed (send is now honest: "Copiado. Pégalo en el chat."; empty start,
+`?demo=1` for captures; build enforces control borders ≥3:1). p2 wash halved
+and dark lifted to warm charcoal. Round 2 confirmation running.
