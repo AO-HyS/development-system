@@ -84,3 +84,13 @@ affordance; questions page ceremony; weak control borders; excess vertical gaps.
 All fixed (send is now honest: "Copiado. Pégalo en el chat."; empty start,
 `?demo=1` for captures; build enforces control borders ≥3:1). p2 wash halved
 and dark lifted to warm charcoal. Round 2 confirmation running.
+
+Palette decision (2026-09-29, literal): "Los colores del sitio están muy
+bien, ándale. Ahora sí, dame uno o dos ejemplos para ver cómo quedan, y te
+vamos mejorando según vayamos obteniendo." `identity.palette`: p2 AO HyS
+(light and dark). Next: two real examples (a work report and a question
+round) on the r5 template, then iterate.
+Examples on the approved template: `mocks/r5/ejemplo-trabajo.html` (this
+work's real status, with a real question) and `mocks/r5/ejemplo-preguntas.html`
+(three real decisions for the real template), built from `r5/src/` with
+`ejemplos.md` as content.
