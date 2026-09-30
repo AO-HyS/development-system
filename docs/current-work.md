@@ -1,3 +1,103 @@
+# Current work — DS 1.40.0 production delivery complete where admitted (2026-09-29)
+
+This entry supersedes earlier pending states. User authorization covers production
+of Codex account recovery and the approved report redesign from T3 thread
+cafc99ea-2383-4209-b177-6e287bb4bf6e, six principal consumers where their gates admit,
+and removal of only the three exact authorized task worktrees.
+
+Canonical root: /Users/corrortiz/Documents/AO/development-system.
+Resumed branch: feat/development-system-1.40.0. Parent owns final continuity/report. All release and source writers are quiesced;
+Barber canonical final status exited0 and ownership returned. Preserve private evidence and unrelated owner work.
+
+## Published contract and observation
+
+DS 1.40.0 stable/latest is published, retaining immutable 1.39/account recovery.
+Source/tag/package/main: a03913fab379b8566a4809b954a61e97b4b9fccd; PR139/140 merged.
+Package SHA256: b36642399a490062b7ff98cd6952babf8ee892b9af01819632048524b52237ac.
+All 3340 package files, hashes/modes, uploaded/downloaded bytes and 90 manifest
+hashes match. Isolated core/Claude audits and authorized operator installation
+passed. Both CLI links target ~/.development-system/packages/1.40.0-a03913f/package;
+10 shared report asset copies match. Earlier 1.39 and backups remain preserved.
+Parent repeated isolated audits, tar digest and live CLI link readback.
+Evidence: private/report140/release/production140-receipt.json and
+coordinator-done-when.json.
+
+Independent source and visual review passed after bounded corrections. Theme
+icon/ARIA updates together on phone; existing notes preserve IDs/text and regain
+clean context. Actual revisioned POST, clipboard readback, draft recovery and
+controlled failure observations remain valid. Final correction observation wrote
+local draft metadata only, without POST. Phone CSS468x1013 and desktop1536x960
+observed; exact390 not reached. Evidence: visual-correction-receipt.json and
+browser-observations.json/questionnaire-observations.json under private/report140.
+Do not infer new Claude host loading or application computer-use fallback.
+
+## Consumer endpoints
+
+- AOHYS: PR207/208 merged; main2e88639092a75df10bb9c1f5d4796bde4320983c.
+  Production36648832825 passed; provider627fcf6a-5c7d-47cf-8f20-a39de3fd877c
+  matches source. Public smoke/live release SHA marker match; authenticated acceptance not reached.
+- Eteria: PR293/294 merged; main9b61ce7c83e4acb30ad207ec7aa496007e24470e.
+  Production36648845191 passed; provider94fc2456-c8df-4e45-8ba8-860eb64ea2e7
+  matches source. Public smoke passed; authenticated acceptance not reached.
+- Opportunity: PR80 merged; main337e7e33e7827b553e78b12cff78d04d52bc84bb.
+  Exact push Quality36648632646 passed. Existing Pages production deployment
+  9fadb8f2-1820-4413-a4ca-1c655b612233 matches source. T3 browser alias and unique
+  URL return200 with HTML SHAfe9d07b16412578aa77950a89541f65c8518102edc5da57b5e57d0d2f006d2de,
+  equal to the actual build. Authenticated Today landing observed read-only;
+  no business action/end-to-end acceptance. urllib403 also occurs for old deployment;
+  cause unknown and diagnostic retained. No Convex/worker change.
+- Barber: 1.39 production36648381873 verified. Reviewed four-file140 candidate
+  240a234b5d542b27117979e992a6a1e563673bcf normal merged PR369, develop
+  24038e75dc22297ac936dd426821467952b3c76e. Exact Preview36649591140 verified,
+  finaldigestf6286ab8b6058361c5a2073e70a95d3e9965f98aed8e2d9821e26973f015cd0f.
+  Qualified tooling139->140; targets/deployments/providerSmokes empty.
+  Canonical promotion PR370 normal merged main86dfcf607ed52f60ef652c1daf6d615dd1afcec5.
+  Exact canonical production36650292733 passed; finaldigest
+  44f861d6413dcecc9e0daba7043291a064ae9baa94be2efb1a08e477e41acb09.
+  Final tooling gate passed with zero deployment/provider targets. No extra dispatch/admin bypass.
+  A future release must reconcile main ancestry through the protected normal path;
+  post-promotion ancestry state does not invalidate the verified140 endpoint.
+- Casa: PR148 open at candidate7d22ef4ea52f94aa0be8454934c4e12cca0f39a9.
+  Static/policy gates pass; both mandatory Vercel previews absent and financial
+  behavior acceptance pending. Dashboard has no Git link. No provider reconfiguration,
+  ad hoc deployment or main merge. Existing candidate remains recoverable.
+- NutriPlan: local candidatea78287aa5313f3667927cc57703c4d17be3e24a9 preserved on
+  chore/development-system-1.40.0. Frozen install/hooks/source review pass only;
+  unchanged Calendar Impeccable findings and Convex development-key readiness fail.
+  No product/credential edits, push, PR or production. Owner work preserved.
+
+Normal AOHYS/Eteria releases exercised Convex sync/deploy, Preview seeds and
+Cloudflare uploads/synthetic CSP. AOHYS enabled Preview lead/email smoke ran;
+email delivery acceptance was not inspected. No production contact flag, payment,
+or destructive product-data cleanup. Opportunity browser was read-only.
+Evidence: private/report140/consumer140-clean-release-receipt.json,
+opportunity140-parent-receipt.json, consumer140-worktrees-receipt.json and
+barber140-release-receipt.json.
+
+## Cleanup and final delivery
+
+All three authorized task worktrees removed normally after their owners quiesced.
+Local refs/candidates and each canonical owner HEAD/status were retained unchanged.
+No forced removal, owner cleanup or other worktree deletion.
+Evidence: private/report140/delivery/worktree-cleanup-receipt.json.
+
+Questionnaire42434/PID7194 stopped normally after QA, files retained.
+Old task readers49899/PID76132 and68325/PID87536 stopped with verified-owner
+SIGTERM after final report GET200; source files retained. Only final reader35566
+remains, TTL expires2026-09-30T02:32:30.147Z. Installed140 r5/p2 helper generated
+the sanitized final report (HTML SHAf2873a0ef1b5b7a6d121a193ed1fad8902dac36bbcf62540a2446f2516b84ed0).
+Actual URL/expiry and availability are in private/report140/delivery/reader-receipt.json.
+Independent final narrative/evidence/cleanup review passed; final visual observation
+is retained in the delivery receipt. No private Opportunity capture is served.
+
+No automated tests, evals or broad DS suite/scenario created or run. Native
+identity/tier metadata incomplete; no Headroom/cache/savings claims.
+Remaining product gates are Casa previews/financial acceptance and Nutri quality/
+provider readiness. This docs-only continuity belongs on develop; published
+main/tag/package140 remain immutable. Keep the final reader until TTL or user close.
+
+---
+
 # Current work — 1.39 production rollout and 1.40 visual gate (2026-09-29)
 
 This entry supersedes the rollout strategy in older entries below. Published and
