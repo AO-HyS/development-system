@@ -1,5 +1,28 @@
 # AOHYS Development System
 
+## Release 1.41.0 / catalog 0.59.0
+
+The existing roster is the single source for generated host roles: Opus 5.5 UI
+and visual critique, protected Sonnet 5.5 execution, and Sol 6.1 High review and
+computer use. T3 child delegation and preview are preferred; cross-provider
+source writing remains gated. Automatic Jev dispatch advice is disabled.
+Writers require an executable `Done when:` packet; account recovery is retained.
+
+Development Steward separates session collection from resolved recommendations,
+deduplicates PRs across revisions, and requires a clean revision with no active
+writer before proposing at most one useful reviewed PR per repository. One
+weekly scheduler replaces the legacy collector without deleting its history.
+Weekly maintenance does not merge PRs or deploy products.
+
+```sh
+./bin/development-system setup --version 1.41.0
+```
+
+See [ADR 0068](docs/adr/0068-t3-native-role-generation-and-steward-retro.md).
+File installation is distinct from observed host loading and product acceptance.
+The sections below record earlier releases; their superseded routing defaults
+do not override the active versioned contract.
+
 ## Release 1.40.0 / catalog 0.58.0
 
 The approved [AO HyS r5/p2 template](docs/design/report-template-brief.md)
