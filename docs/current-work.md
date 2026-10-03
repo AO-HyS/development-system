@@ -1,51 +1,52 @@
-# Current work — DS 1.41.0 T3-native production delivery
+# Current work — DS 1.41.0 production delivery
 
-User approved the corrected plan in T3 thread f6ef1cab-5fa9-4b94-8273-ab72420240bb
-and explicitly authorized implementation through production on 2026-10-03.
+The operator authorized the corrected plan through production in T3 thread
+f6ef1cab-5fa9-4b94-8273-ab72420240bb on 2026-10-03. Implementation is published
+and installed; retained operational gaps are explicit below.
 
-Root: /Users/corrortiz/Documents/AO/development-system (canonical checkout).
-Source branch: feat/development-system-1.41.0-t3-v2. Base: 6f3ab020408b446c1a7171568a063c0a7e023289.
-Source integrated through PRs #142 (develop) and #143 (main).
+Root: /Users/corrortiz/Documents/AO/development-system, canonical checkout.
 Parent: existing Sol 6.1 High. Preserve unrelated untracked .impeccable/ and private/.
-No new worktree. Existing published versions and operator history remain immutable.
+No new worktree. Source PRs #142/#143 and guidance PRs #144/#145 are merged.
+Release v1.41.0 source: b0aea5e344fd01027d53878a68a7ec9a785a575b.
+Contract 1.41.0; catalog 0.59.0. Old published versions and history are unchanged.
 
-## Objective
+## Completed
 
-Extend the existing agent roster as the single role authority; generate host profiles;
-Opus UI/visual critique, Sonnet bounded execution, Sol 6.1 High review/computer use.
-Use T3 tools directly for cross-provider review; keep code writers on protected routes.
-Remove automatic Jev tier/route calls from normal dispatch; retain explicit advice and
-CLI account recovery. Correct history discovery and maintain a deduplicated weekly
-retro through the existing steward, with useful reviewed PRs and no automatic merge.
+- Existing roster generates host roles, writer packet guard and native Codex profiles.
+- Opus UI/visual critique, protected Sonnet execution, Sol review/computer use;
+  cross-provider source writing stays gated. Automatic Jev dispatch advice is off.
+- Steward separates collection and recommendation resolution, deduplicates PRs across
+  revisions and requires explicit clean ownership before one useful reviewed PR per repo.
+- Independent source review found three issues; all corrected and rereviewed without blockers.
+- Focused role/roster/type/release/no-tests checks passed; extracted package checks passed.
+- Isolated setup/contract and guard audits passed. Published download matches SHA256
+  389f97ef864f43c626ded24b0a77eaf0fc97225144eba294821e7e79f55bf191.
+- Operator setup and command launchers now use the downloaded package; contract,
+  Claude orchestration and guard audits are healthy with source bound to release commit.
+- Forty real thread records collected; repeat skipped forty. This is collection evidence,
+  not forty semantic acceptance reviews. No PRs or product writes from this collection.
+- Legacy launchd collector disabled, history retained. One T3 weekly schedule active,
+  Mondays 09:00 America/Mexico_City; next 2026-10-05T15:00:00Z; first run not yet occurred.
 
-NutriPlan official Convex lint scope correction is handed to a user-launched thread
-through a separate prompt, develop only, preserving the two active feature threads.
-This task does not edit NutriPlan business code or merge their feature branches.
+## Retained gaps and next action
 
-## Status and next action
-
-- NutriPlan prompt delivered; both bounded source writers completed and released ownership.
-- Generated role policy, writer packet guard, ledger and new release catalog implemented.
-- Focused role/roster/type/release/no-tests checks passed; 40 real session records collected
-  and all 40 skipped on repeat. This is collection evidence, not forty semantic reviews.
-- Independent review found package omission, recommendation starvation and obsolete
-  active contract narratives; all corrected and independently reviewed without blockers.
-- Extracted candidate passed role/roster/release checks. Isolated HOME setup and contract,
-  Claude orchestration and guard audits are healthy. Skill files/links are complete;
-  fresh catalog-wide host influence remains not reached, reported separately.
-- Claude Opus delegated computer use to Codex Sol High. Navigation was observed;
-  child screenshots/mobile remained not reached because its T3 preview host was unavailable.
-- Parent Sol obtained one desktop screenshot; independent Opus found no legibility blocker.
-  This does not cover mobile, the whole page or a rendered reference comparison.
-- Next: publish reviewed main tarball, operator setup, replace legacy schedule only after
-  disabling it, and final production receipts/report. Preserve caller branch/task continuity.
-- Publication endpoint: reviewed GitHub release tarball and verified installed contract;
-  consumers only advance tooling when their active ownership and release gates admit.
-- No tests/evals; no broad scenario/verify suite. Production business data stays untouched.
+- Claude Opus delegated to Codex Sol High and navigation was observed. Child screenshots
+  and mobile were not reached because the preview host was unavailable. Parent Sol saved
+  one desktop image; Opus independently found no legibility blocker in that captured area.
+  Whole-page/mobile/reference comparison remains not reached.
+- All 242 managed skill variants exist and are loadable; no broken links, duplicate or
+  orphaned catalog entries. Fresh host influence evidence is missing/stale, so skills audit
+  remains invalid for operational certification. File installation is not host loading.
+- Secondary T3 Codex Headroom instance remains unavailable; its lock was not manipulated.
+- NutriPlan Convex lint prompt handed off for a new user-launched develop-only thread.
+  Its two active feature branches remain untouched; Casa/Barber had no confirmed lint defect.
+- Next normal work uses the new profiles. Resolve capability gaps on a useful real task;
+  weekly PRs require independent review and human merge, no automated product release.
 
 ## Evidence
 
-Approved plan: ~/.development-system/private/reports/t3v2-plan-external-review2-20261003/plan.md.
-Release receipts: ~/.development-system/private/releases/1.41.0/.
-Jev routing receipt: jev-routing.json; parent chose general_implementation explicitly.
-Historical continuity: [through 1.40.0](https://github.com/AO-HyS/development-system/blob/6f3ab020408b446c1a7171568a063c0a7e023289/docs/current-work.md); exact local copy retained privately.
+Release: https://github.com/AO-HyS/development-system/releases/tag/v1.41.0.
+Private receipts and NutriPlan prompt: ~/.development-system/private/releases/1.41.0/.
+Installed package: ~/.development-system/packages/1.41.0-b0aea5e/package/.
+Report tunnel reader process: session 5596, expires 2026-10-03T22:54:04.020Z.
+Historical continuity: immutable Git docs/current-work.md at 6f3ab020; exact private archive retained.
