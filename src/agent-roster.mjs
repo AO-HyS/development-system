@@ -60,6 +60,43 @@ export function validateAgentRoster(input) {
       }
     }
   }
+  // Older published rosters remain schemaVersion 1; extended profiles are optional
+  // there, but once supplied every generated host must agree with this source.
+  if (input.hostProfiles !== undefined) {
+    const profiles = input.hostProfiles;
+    if (!isRecord(profiles) || profiles.schemaVersion !== 1) errors.push('hostProfiles.schemaVersion must be 1');
+    else {
+      const instructions = profiles.instructions;
+      if (!isRecord(instructions) || !nonEmpty(instructions.codex) || !nonEmpty(instructions.claude)) errors.push('hostProfiles.instructions requires both host sections');
+      const codex = profiles.codex;
+      if (!isRecord(codex) || !isRecord(codex.roles) || Object.keys(codex.roles).length === 0) errors.push('hostProfiles.codex.roles must be non-empty');
+      else for (const [name, role] of Object.entries(codex.roles)) {
+        if (!isRecord(role) || !nonEmpty(role.model) || !reasoningLevels.has(String(role.reasoningEffort)) || !['default', 'priority'].includes(String(role.serviceTier))) errors.push(`Invalid Codex role profile: ${name}`);
+      }
+      const claude = profiles.claude;
+      if (!isRecord(claude) || !isRecord(claude.policy) || !isRecord(claude.policy.roster) || !isRecord(claude.agents)) errors.push('hostProfiles.claude requires policy roster and agent templates');
+      else {
+        const policy = claude.policy;
+        const requiredWriterFields = ['Objective:', 'Root:', 'Revision:', 'Owned paths:', 'Settled decisions:', 'Actions:', 'Authorization:', 'Checks:', 'Stop conditions:', 'Evidence receipt:', 'Done when:'];
+        const writerMarkers = policy.writerMarkers;
+        if (!Array.isArray(writerMarkers) || requiredWriterFields.some((field) => !writerMarkers.includes(field))) errors.push('Protected writers require the complete execution contract fields');
+        if (!isRecord(policy.jev) || policy.jev.mode !== 'off') errors.push('Normal generated Claude dispatch must disable automatic Jev');
+        if (!isRecord(policy.primaryVisualReview) || policy.primaryVisualReview.enabled !== true || policy.primaryVisualReview.role !== 'visual-reviewer' || policy.primaryVisualReview.fresh !== true || policy.primaryVisualReview.sourceWrites !== false) errors.push('Primary visual review must be enabled, fresh and read-only');
+        for (const [name, role] of Object.entries(/** @type {Record<string, unknown>} */ (policy.roster))) {
+          if (!isRecord(role)) { errors.push(`Invalid Claude role: ${name}`); continue; }
+          const template = claude.agents[name];
+          if (!nonEmpty(template) || !String(template).includes(`model: ${role.model}\n`)) errors.push(`Claude agent template/model mismatch: ${name}`);
+          if (role.writer === true) {
+            if (Array.isArray(policy.readOnlyModels) && policy.readOnlyModels.includes(role.model)) errors.push(`Writer model is read-only: ${name}`);
+            if (!String(template).includes('roster-guard.mjs" writer-bash')) errors.push(`Writer Git protection missing: ${name}`);
+            if (role.model === 'sonnet' && !['mechanical-worker', 'exact-implementer', 'implementer'].includes(name)) errors.push(`Sonnet writer must be a named protected role: ${name}`);
+          }
+        }
+        for (const name of Object.keys(claude.agents)) if (!(name in /** @type {Record<string, unknown>} */ (policy.roster))) errors.push(`Claude template lacks role: ${name}`);
+      }
+      if (!isRecord(profiles.t3) || profiles.t3.sourceWritersAdmitted !== false) errors.push('Unverified T3 source writers must remain unadmitted');
+    }
+  }
   return { valid: errors.length === 0, errors };
 }
 

@@ -48,6 +48,7 @@ const runtimeTopLevelPaths = [
   "artifacts",
   "manifests",
   "catalog",
+  "claude",
   "scripts",
   "benchmarks/suite.json",
   "docs/architecture-reference-pack.md",
