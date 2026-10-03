@@ -1,5 +1,6 @@
 // @ts-check
 
+import { reconcileStewardRetro } from "./steward-retro.mjs";
 import { listMistakes } from "./mistakes.mjs";
 
 export const primaryRepositoryAllowlist = Object.freeze([
@@ -7,6 +8,7 @@ export const primaryRepositoryAllowlist = Object.freeze([
   { id: "casa-roca", repository: "corrortiz/casa-roca", name: "Casa Roca" },
   { id: "the-barber-central", repository: "AO-HyS/the-barber-central", name: "The Barber Central" },
   { id: "nutri-plan", repository: "AO-HyS/nutri-plan", name: "NutriPlan" },
+  { id: "development-system", repository: "AO-HyS/development-system", name: "Development System" },
   { id: "eteria", repository: "AO-HyS/eteria", name: "ETERIA" },
 ]);
 
@@ -31,7 +33,7 @@ export function getDevelopmentStewardSchedule() {
     schemaVersion: 1,
     operation: "development-steward-schedule",
     cadence: "weekly",
-    runner: "macos-launchd-codex-exec",
+    runner: "t3-scheduler-preferred-launchd-compatibility",
     localTime: { weekday: "monday", hour: 9, minute: 0 },
     activation: "development-steward-schedule-enable",
     audit: "development-steward-schedule-audit",
@@ -91,13 +93,17 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
       revision: null,
       error: "repository-evidence-missing",
       upstream: [],
+      clean: false,
+      activeWriter: true,
       evaluations: [],
     };
     const revision = text(repository.revision);
     const localError = text(repository.error);
+    const statusUnproven = repository.status !== undefined && !["healthy", "action-needed", "blocked"].includes(String(repository.status));
     const verifiedRevision = revision && /^[a-f0-9]{40}$/i.test(revision) ? revision : null;
     const evaluations = Array.isArray(repository.evaluations) ? repository.evaluations.filter(isRecord).map((evaluation) => ({
       id: text(evaluation.id) ?? "unknown-evaluation",
+      changeId: text(evaluation.changeId) ?? text(evaluation.id),
       area: text(evaluation.area) ?? "unknown",
       state: text(evaluation.state) ?? "unproven",
       summary: text(evaluation.summary) ?? "Evidence missing.",
@@ -111,14 +117,16 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
     return {
       ...allowlisted,
       revision: verifiedRevision,
+      clean: repository.clean === true,
+      activeWriter: repository.activeWriter !== false,
       status: localError || repository.status === "blocked"
         ? "blocked-local"
-        : verifiedRevision === null
+        : verifiedRevision === null || statusUnproven
           ? "unproven"
           : needsAction
             ? "action-needed"
             : "healthy",
-      error: localError ?? (verifiedRevision === null ? "repository-revision-unproven" : null),
+      error: localError ?? (verifiedRevision === null ? "repository-revision-unproven" : statusUnproven ? "repository-status-unproven" : null),
       upstream,
       evaluations,
     };
@@ -156,10 +164,12 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
     if (!added) break;
   }
   const draftChanges = repositories.flatMap((repository) => repository.evaluations
-    .filter((evaluation) => evaluation.state === "action-needed" && evaluation.deterministic && evaluation.safeUpdate && evaluation.focusedChecks.length > 0)
+    .filter((evaluation) => errors.length === 0 && repository.revision !== null && repository.status === "action-needed" && repository.clean === true && repository.activeWriter === false && evaluation.changeId !== null && evaluation.state === "action-needed" && evaluation.deterministic && evaluation.safeUpdate && evaluation.focusedChecks.length > 0)
     .map((evaluation) => ({
       repositoryId: repository.id,
       evaluationId: evaluation.id,
+      changeId: evaluation.changeId,
+      revision: repository.revision,
       action: "prepare-branch-and-draft-pr",
       focusedChecks: evaluation.focusedChecks,
       autoMerge: false,
@@ -185,7 +195,7 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
 
   return {
     schemaVersion: 1,
-    contractVersion: "1.5.0",
+    contractVersion: "1.41.0",
     operation: "development-steward",
     valid: errors.length === 0,
     errors,
@@ -205,4 +215,15 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
     externalWriteIntents: [],
     externalSideEffects: [],
   };
+}
+
+/** Reconcile durable session cursors separately from pending publication recommendations.
+ * @param {unknown} input
+ * @param {{home: string}} options
+ */
+export async function processDevelopmentStewardReview(input, { home }) {
+  const review = buildDevelopmentStewardReview(input, { home });
+  if (!review.valid) return { ...review, retro: null };
+  const retro = await reconcileStewardRetro(input, review, { home, allowedIds });
+  return { ...review, draftChanges: retro.draftChanges, retro };
 }

@@ -51,7 +51,7 @@ import { planParallelWork } from "./parallel-work.mjs";
 import { planReleaseTrain } from "./release-train-v2.mjs";
 import { buildCheckIn } from "./check-in.mjs";
 import { buildLinearHygienePlan } from "./linear-hygiene.mjs";
-import { buildDevelopmentStewardReview } from "./development-steward.mjs";
+import { processDevelopmentStewardReview } from "./development-steward.mjs";
 import {
   auditDevelopmentStewardScheduler,
   disableDevelopmentStewardScheduler,
@@ -556,7 +556,7 @@ export async function run(argv) {
   } else if (command === "development-steward") {
     if (!options.input) throw new Error("development-steward requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
-    result = buildDevelopmentStewardReview(input, { home: options.home });
+    result = await processDevelopmentStewardReview(input, { home: options.home });
   } else if (command === "development-steward-schedule-enable") {
     if (!options.projectsRoot) throw new Error("development-steward-schedule-enable requires --projects-root <path>");
     if (!options.codexPath) throw new Error("development-steward-schedule-enable requires --codex-path <absolute-path>");
