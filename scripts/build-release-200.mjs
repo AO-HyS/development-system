@@ -136,21 +136,21 @@ for (const artifact of manifest.artifacts) {
       "Stable review rounds, advisory Jev and fixed report sections", "Report sections in orchestrate-work",
       "1.36.0: pruned instructions, mistake log, verification scope, jevgrep",
       "1.36.1: check-no-tests reads directives, not mentions", "1.37.0: GPT-6.1 Sol defaults",
-      "1.38.0: external capability refresh",
+      "1.38.0: external capability refresh", "Active release and maintenance",
     ]);
-    const active = original.split(/(?=^## )/m).filter(section => {
+    const active = original.replace(/\n## Generated host role profiles[\s\S]*$/, "").split(/(?=^## )/m).filter(section => {
       const heading = section.match(/^## ([^\n]+)/)?.[1];
       return !heading || !retiredSections.has(heading);
     }).join("");
-    const current = active.replace(/^# [^\n]+/, `# ${title} ${version}`)
+    const current = active.replace(/\b0\.59\.0\b/g, catalogVersion).replace(/^# [^\n]+/, `# ${title} ${version}`)
       .replace(/The paired skill catalog is [\d.]+\./g, `The paired skill catalog is ${catalogVersion}.`)
       .replace(/Catalog 0\.50\.0 links/, `Catalog ${catalogVersion} links`)
       .replace(/Preserve the field-notebook presentation,/, "Use the approved AO HyS r5/p2 presentation,")
       .replace(/^Initialize and normalize generate.*$/gm, "Repository adapter generation is retired. Read product AGENTS.md, README and task-relevant docs; no replacement index is required. The paired skill catalog is " + catalogVersion + ".");
     // Replace prior active model paragraphs rather than layering contradictory defaults.
-    const paragraphs = current.split(/\n\n+/).filter(paragraph => !/Sol 6\.1 Medium|Luna supplies|Sonnet.*low effort|General writing|Exact\/mechanical writing/.test(paragraph));
+    const paragraphs = current.replace(/The current skill catalog is 0\.59\.0\./g, `The current skill catalog is ${catalogVersion}.`).split(/\n\n+/).filter(paragraph => !/Sol 6\.1 Medium|Luna supplies|Sonnet.*low effort|General writing|Exact\/mechanical writing/.test(paragraph));
     const instructions = paragraphs.join("\n\n") + "\n\n## Shared tooling without repository adapters\n\nUse the global development-system installation for agent work, reports and skills. Discover repository context from AGENTS.md, README and task-relevant docs. No generated adapter or mandatory replacement index. Product-local dependencies provide explicit versioned CI checks only. T3 owns delegated tasks, history, preview and weekly scheduling; run-worker is optional external CLI recovery, never a T3 task route. Legacy launchd enable and adapter generators fail before writes. Setup and rollback reconcile package, contract, catalog, managed hooks and launchers as one serialized recoverable transaction. Run doctor and record actual package/renderer provenance; file-copy success is not operational loading.\n" + "\n\n## Active release and maintenance\n\n"
-      + "Historical release narratives are superseded; consult immutable contract 1.40.0 for history. "
+      + "Historical release narratives are superseded; consult immutable contract 1.41.0 for history. "
       + "The current skill catalog is " + catalogVersion + ". Use the installed report helper with passed/failed/not reached and Verification scope in Detail. "
       + "Keep stable review task IDs, complete receipt validation for declared fallback and one source writer per surface. "
       + "Record correction root causes with development-system mistake add; repeated incidents propose a code or guard control. "
@@ -172,6 +172,9 @@ for (const file of await files(prefix)) {
   if (/\.(md|toml|ya?ml)$/.test(file)) {
     const text = (await bytes(file)).toString();
     requireValid(!/^(?:<{7}|={7}|>{7})/m.test(text), `conflict marker: ${file}`);
+    requireValid(!/Initialize and normalize generate|installed repository adapter|development-steward-schedule-enable\/audit/.test(text), `retired active guidance: ${file}`);
+    const declaredCatalogs = [...text.matchAll(/(?:current skill catalog is|paired skill catalog is|Catalog) (\d+\.\d+\.\d+)/g)];
+    requireValid(declaredCatalogs.every(match => match[1] === catalogVersion), `active catalog guidance drift: ${file}`);
     requireValid(findTestDirectives(text, directiveTestInstructions).length === 0, `automated test instruction: ${file}`);
   }
 }

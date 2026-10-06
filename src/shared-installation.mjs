@@ -162,11 +162,15 @@ async function restore(home, journal, requireAfter) {
       await cp(await confined(home, `${journal.backupRoot}/${entry.backup}`, true), stage, { recursive: true, dereference: false, verbatimSymlinks: true });
       if (await integrity(stage) !== entry.before) throw new Error(`Staged recovery integrity mismatch: ${entry.path}`);
     }
-    await rm(target, { recursive: true, force: true });
+    // Move the entire existing entry atomically. Recursive deletion of a live
+    // destination could be interrupted with a partial hash that cannot resume.
+    const trash = resolve(backupRoot, `retired-${randomUUID()}`);
+    if (await statOrNull(target)) await rename(target, trash);
     if (entry.before !== null) {
       await mkdir(dirname(target), { recursive: true, mode: 0o700 });
       await rename(stage, target);
     }
+    await rm(trash, { recursive: true, force: true });
   }
   journal.restoring = null;
   await atomicJson(await confined(home, journalPath), journal);

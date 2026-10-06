@@ -7,7 +7,7 @@ description: Run the scheduled, read-only weekly maintenance review for the six 
 
 Run headlessly every week. The initial allowlist is exactly AO HyS, Casa Roca, The Barber Central, NutriPlan, ETERIA, and Development System. Never add another repository without explicit opt-in.
 
-T3 scheduler is the preferred current-host runner. Audit both T3 scheduled tasks and the existing macOS LaunchAgent before activation: retain exactly one recurring runner, never activate a duplicate. Keep one stable task and return results to its owning thread. Monday 09:00 local is the existing cadence; activation requires explicit authorization. Legacy launchd remains a read-only collector compatibility option, managed by `development-steward-schedule-enable/audit/disable`; disable preserves historical reports and the durable retro ledger. No schedule is enabled by loading this skill.
+T3 scheduler is the preferred current-host runner. Audit both T3 scheduled tasks and the existing macOS LaunchAgent before activation: retain exactly one recurring runner, never activate a duplicate. Keep one stable task and return results to its owning thread. Monday 09:00 local is the existing cadence; activation requires explicit authorization. Legacy launchd activation is retired even from an ordinary terminal. Only `development-steward-schedule-audit` and `development-steward-schedule-disable` remain for inspection and disabling; preserve historical reports and the durable retro ledger. No schedule is enabled by loading this skill.
 
 Request Sol 6.1 High for collection and computer use; report observed identity or unknown, never infer it from the request. Quota recovery uses existing bounded authorized profile recovery and receipts, with no silent provider change.
 
