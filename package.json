@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "2.0.0",
-  "contractVersion": "2.0.0",
+  "version": "2.0.1",
+  "contractVersion": "2.0.1",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -35,7 +35,7 @@
     "check:no-tests": "./bin/development-system check-no-tests",
     "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run validate:repository && pnpm run release:prepare",
-    "release:prepare": "node ./scripts/build-release-200.mjs --check",
+    "release:prepare": "node ./scripts/build-release-201.mjs --check",
     "release:pack": "node ./scripts/pack-distribution.mjs",
     "roles:check": "node ./scripts/build-role-policy.mjs --check",
     "roles:generate": "node ./scripts/build-role-policy.mjs --write"
@@ -62,6 +62,10 @@
     "README.md",
     "LICENSE",
     "runtime/",
-    "claude/"
+    "claude/",
+    "docs/package-distribution.md",
+    "docs/repository-preparation.md",
+    "docs/workflow/branch-first.md",
+    "docs/adr/0069-one-shared-agent-installation.md"
   ]
 }
