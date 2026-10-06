@@ -218,14 +218,21 @@ export async function setupSharedInstallation(options) {
       const packageRoot = await confined(home, packageRelative);
       const existing = await statOrNull(packageRoot);
       if (!existing) {
-        await mkdir(packageRoot, { recursive: true, mode: 0o700 });
+        const stage = `${packageRoot}.candidate-${randomUUID()}`;
+        await mkdir(stage, { recursive: true, mode: 0o700 });
+        try {
         for (const [file, metadata] of source.files) {
           verifyPackageFile(source, file, metadata.sha256);
-          const destination = resolve(packageRoot, file);
+          const destination = resolve(stage, file);
           await mkdir(dirname(destination), { recursive: true });
           await cp(resolve(root, file), destination, { errorOnExist: true, force: false });
         }
-        await cp(resolve(root, '.development-system-package.json'), resolve(packageRoot, '.development-system-package.json'), { errorOnExist: true, force: false });
+        await cp(resolve(root, '.development-system-package.json'), resolve(stage, '.development-system-package.json'), { errorOnExist: true, force: false });
+        const stagedSource = loadPackageSource(stage);
+        if (!stagedSource || stagedSource.commit !== source.commit) throw new Error('Staged package identity mismatch');
+        for (const [file, metadata] of stagedSource.files) verifyPackageFile(stagedSource, file, metadata.sha256);
+        await rename(stage, packageRoot);
+        } finally { await rm(stage, { recursive: true, force: true }); }
       }
       const installedSource = loadPackageSource(packageRoot);
       if (!installedSource || installedSource.commit !== source.commit) throw new Error('Installed package identity mismatch');
