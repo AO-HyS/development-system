@@ -63,6 +63,9 @@ import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
+import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation } from "./shared-installation.mjs";
+import { updateSharedInstallation } from "./shared-update.mjs";
+import { loadPackageSource } from "./package-source.mjs";
 import { resolveModelRoute } from "./model-routing.mjs";
 import { readProviderFailures, recordProviderFailure } from "./provider-availability.mjs";
 import { auditGovernanceHooks, enableGovernanceHooks, rollbackGovernanceHooks, withGovernanceHookRollback } from "./governance-installation.mjs";
@@ -319,13 +322,24 @@ export async function run(argv) {
   const { command, options } = parseArguments(argv);
   let result;
 
-  if (command === "setup") {
+  if (command === "shared-audit" || command === "doctor") {
+    result = await auditSharedInstallation({ home: options.home, root: repositoryRoot });
+  } else if (command === "recover-shared") {
+    result = await rollbackSharedInstallation({ home: options.home, recover: true });
+  } else if (command === "update") {
+    result = await updateSharedInstallation({ home: options.home, version: options.version, sourceRoot: options.sourceRoot });
+  } else if (command === "setup") {
+    if (!loadPackageSource(repositoryRoot)) {
+      result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot });
+      return { result, output: options.json ? JSON.stringify(result) : formatHuman(result), json: options.json };
+    }
     const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
     const version = options.version ?? metadata.contractVersion ?? metadata.version;
     const manifest = JSON.parse(await readFile(resolve(repositoryRoot, "manifests", `${version}.json`), "utf8"));
     const catalogArtifact = manifest.artifacts.find((/** @type {{logicalName: string}} */ artifact) => artifact.logicalName === "skill-catalog");
     if (!catalogArtifact) throw new Error(`Contract ${version} has no skill catalog`);
     const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogArtifact.sourcePath), "utf8"));
+    result = await setupSharedInstallation({ home: options.home, root: repositoryRoot, version, install: async () => {
     const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
     let governance;
     try {
@@ -333,7 +347,7 @@ export async function run(argv) {
         governance = await enableGovernanceHooks({ home: options.home });
       }
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
-      result = { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(governance ? { governance } : {}) };
+      return { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(governance ? { governance } : {}) };
     } catch (error) {
       const original = error instanceof Error ? error.message : String(error);
       // A failing rollback must not hide the skill-sync error that caused it.
@@ -359,6 +373,7 @@ export async function run(argv) {
       const recovery = installation.reinstalled ? "existing contract reinstalled; skill sync restored its prior state" : "contract installation rolled back";
       throw new Error(`Setup skill synchronization failed; ${recovery}: ${original}`, { cause: error });
     }
+    }});
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");
     result = await installVersion({
@@ -371,11 +386,15 @@ export async function run(argv) {
   } else if (command === "validate") {
     result = await validateInstallation({ home: options.home });
   } else if (command === "rollback") {
+    if (existsSync(resolve(options.home, ".development-system/shared-installation.json"))) {
+      result = await rollbackSharedInstallation({ home: options.home });
+    } else {
     const installation = await auditInstallation({ home: options.home });
     if (installation.status === "unsafe") throw new Error(installation.problems.join("; "));
     result = installation.executionMode === "advisory-parent-execution"
       ? await rollbackInstallation({ home: options.home })
       : await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
+    }
   } else if (command === "audit-skills" || command === "sync-skills") {
     const catalog = await readSkillCatalog(options.version);
     if (command === "audit-skills") {
@@ -484,7 +503,8 @@ export async function run(argv) {
   } else if (command === "document") {
     if (!options.input) throw new Error("document requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
-    result = { operation: "document", ...(await writeTechnicalDocument({ home: options.home, input })) };
+    if (options.mode && options.mode !== "historical") throw new Error("document --mode only accepts historical");
+    result = { operation: "document", ...(await writeTechnicalDocument({ home: options.home, input, historical: options.mode === "historical" })) };
   } else if (command === "definition-route") {
     if (!options.input) throw new Error("definition-route requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
@@ -630,7 +650,7 @@ export async function run(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

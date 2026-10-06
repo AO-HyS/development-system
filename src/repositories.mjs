@@ -524,20 +524,6 @@ async function repositoryIdentity(repository, files) {
   };
 }
 
-/** @param {string} repository */
-async function managedProductName(repository) {
-  try {
-    const contract = JSON.parse(
-      await readFile(resolve(repository, managedFiles[0]), "utf8"),
-    );
-    const name = contract?.product?.name;
-    return typeof name === "string" && name.trim() ? name.trim() : null;
-  } catch (error) {
-    if (isMissing(error) || error instanceof SyntaxError) return null;
-    throw error;
-  }
-}
-
 /** @param {string} identityName */
 function ownMarker(identityName) {
   const normalized = identityName.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -608,8 +594,8 @@ function allowedReferenceReason(line, marker) {
   return "product-scoped-impeccable-integration";
 }
 
-/** @param {any} commands @param {Array<{logicalName:string,states:{discovered:boolean}}>} skills @param {Array<unknown>} residue @param {boolean} managed */
-function readinessGaps(commands, skills, residue, managed) {
+/** @param {any} commands @param {Array<{logicalName:string,states:{discovered:boolean}}>} skills @param {Array<unknown>} residue */
+function readinessGaps(commands, skills, residue) {
   /** @type {string[]} */
   const gaps = [];
   for (const capability of structuralCapabilities) {
@@ -621,36 +607,6 @@ function readinessGaps(commands, skills, residue, managed) {
   );
   if (skills.some((skill) => !skill.states.discovered && !discoveredSkillNames.has(skill.logicalName))) {
     gaps.push("inert-skill-installation");
-  }
-  if (!managed) gaps.push("development-system-adapter-not-installed");
-  return gaps;
-}
-
-/** @param {string} repository @param {string[]} files */
-async function managedVersionGaps(repository, files) {
-  /** @type {string[]} */
-  const gaps = [];
-  if (files.includes(managedFiles[0])) {
-    try {
-      const contract = JSON.parse(await readFile(resolve(repository, managedFiles[0]), "utf8"));
-      if (
-        contract.contractVersion !== contractVersion ||
-        contract.operatorPrerequisites?.skillCatalogVersion !== skillCatalogVersion
-      ) gaps.push("stale-development-system-contract");
-    } catch {
-      gaps.push("invalid-development-system-contract");
-    }
-  }
-  for (const [path, command] of [
-    [managedFiles[1], "$working-backwards"],
-  ]) {
-    if (!files.includes(path)) continue;
-    const contents = await readFile(resolve(repository, path), "utf8");
-    if (
-      !contents.includes(`Contract version: \`${contractVersion}\``) ||
-      !contents.includes(`skill catalog \`${skillCatalogVersion}\``) ||
-      !contents.includes(command)
-    ) gaps.push("stale-codex-adapter");
   }
   return gaps;
 }
@@ -767,7 +723,7 @@ export async function auditRepository(options) {
     }
   }
   const identity = await repositoryIdentity(repository, files);
-  const productName = (await managedProductName(repository)) ?? identity.name;
+  const productName = identity.name;
   /** @type {Record<string, Array<any>>} */
   const inventory = { instructions: [], skills: [], agents: [], droids: [], hooks: [] };
   for (const path of files) {
@@ -796,12 +752,7 @@ export async function auditRepository(options) {
   ];
   const residueResult = await detectResidue(repository, governedEntries, identity.name);
   const residue = residueResult.residue;
-  const managed = managedFiles.every((path) => files.includes(path));
-  const baseGaps = readinessGaps(identity.commands, inventory.skills, residue, managed);
-  const versionGaps = await managedVersionGaps(repository, files);
-  const sharedVersionGaps = versionGaps.filter((gap) => !gap.startsWith("stale-codex-") && !gap.startsWith("stale-factory-"));
-  const codexGaps = [...baseGaps, ...sharedVersionGaps, ...versionGaps.filter((gap) => gap.startsWith("stale-codex-"))];
-  if (!files.includes(".codex/development-system/repository.md")) codexGaps.push("missing-codex-equivalent");
+  const codexGaps = readinessGaps(identity.commands, inventory.skills, residue);
   const readiness = {
     codex: { status: codexGaps.length === 0 ? "prepared" : "needs-preparation", gaps: [...new Set(codexGaps)] },
     t3code: { status: codexGaps.length === 0 ? "prepared" : "needs-preparation", adapter: "codex", gaps: [...new Set(codexGaps)] },
@@ -840,467 +791,18 @@ export async function auditRepository(options) {
   };
 }
 
-/** @param {any} command */
-function commandLine(command) {
-  return command ? `- ${command.command}` : "- Not configured; repository owner action required.";
+/** Adapter generation is retired; repository context lives in task-relevant docs.
+ * @param {{repository:string, confirm?:string}} _options
+ */
+export async function initializeRepository(_options) {
+  throw new Error("initialize-repository is retired in Development System 2.0. Read the repository AGENTS.md, README and task-relevant docs; use the shared installation. No repository files were written.");
 }
 
-/** @param {any} command */
-function providerReadinessLine(command) {
-  return command
-    ? `- ${command.command}`
-    : "- Conditional: required only when auth, data, migration, seed, role, provider-config, or environment surfaces change; no universal command is configured.";
-}
-
-/** @param {any} audit @param {"codex"} harness */
-function adapterContentsWithProviderReadiness(audit, harness) {
-  const rules = [];
-  if (audit.stack.includes("react")) rules.push("- React: preserve component locality, accessibility, state ownership and the approved visual language. React Doctor is advisory unless this repository makes it a gate.");
-  if (audit.stack.includes("convex")) rules.push("- Convex: keep argument and return validators, explicit authorization, tenant boundaries and indexed bounded reads. Follow the product's schema and migration contract.");
-  return `# Development System repository adapter
-
-Contract version: \`${contractVersion}\`
-Product: \`${audit.product.name}\`
-Harness: \`${harness}\`
-
-Codex uses the native repository adapter; T3 Code consumes the Codex-compatible
-surface. This describes installed guidance, not proof of discovery or behavior.
-Preserve this product's domain, stack, commands, release policy and design.
-
-## Requested workflow and completion
-
-Optimize **rápido → bien → barato**: delivery of the complete usable result,
-including corrections. The starting conversation model remains the orchestrator;
-it chooses available agents within the user's provider and capability limits.
-The roster recommends defaults; it does not replace the selected parent. Design,
-visual critique and Computer Use require actual vision/browser capability.
-Restricted provider families stay restricted in descendants.
-
-Use \`drive-development-flow\` to select only the requested stage. Clear work
-proceeds through \`$flow-implement\`; an existing spec or settled decisions do not
-require another grill. Use \`coding-orchestration\` or an already selected
-\`orchestrate-work\` method for useful delegation, integration and verification.
-A bounded worker executes its packet without restarting parent routing.
-
-For nontrivial implementation, follow the installed
-\`coding-orchestration/references/jev-advisory.md\` recipe. Keep the selected
-parent. New sessions request Sol 6.1 High; Luna 6 High priority gathers bounded
-facts, Sol 6.1 High plans, and a different fresh Sol 6.1 High reviews the
-plan. Sol 6.1 Medium writes general packets, Luna 6 High priority writes exact
-packets, and an independent Sol 6.1 High reviews the integrated result. Jev
-advises at useful decisions; the parent dispatches through native host tools.
-No per-tool or Stop gate is active. Preserve observed model identity and report
-capability gaps. Backend and other nonvisual features need the same criterion
-coverage and acceptance chain.
-
-Explicit discovery or definition can use \`$wayfinder\`, \`$grill-with-docs\`,
-\`$working-backwards\`, \`$to-spec\` or \`$to-tickets\` when available. Ordinary work
-does not load these stages automatically. \`$flow-code-review\` reviews a diff;
-\`review-thread\` audits execution claims. \`simplify-code\`, \`pstack-engineering\`
-and \`orchestration-pilot\` are optional for their specific requests or bottlenecks.
-The internal \`orchestration-plan\` operation describes a work graph; it is not
-a skill, a dispatcher or an authorization receipt.
-
-Define observable behavior, relevant checks and the authorized endpoint. Continue
-implementation, verification and corrections until those criteria are met. Reuse
-valid decisions and evidence on resume. Preserve user authorization across turns;
-prepare the reviewable result before asking for a genuinely missing decision.
-Commit, push, PR, merge, release, production, external writes and paid activation
-follow the request and repository policy. One instruction may authorize several
-operations. A native goal requires an explicit user request; its persistence never expands authority.
-A plan or installed skill grants no additional authority; platform and repository protections remain.
-
-## Proportional verification and design
-
-Use changed validation for ordinary feedback and required certification once the
-integrated candidate stabilizes. Choose checks by the changed public behavior.
-This repository has no automated tests: \`development-system check-no-tests\`
-guards it and lint runs it. Every task ends with real verification through the
-repository's verification CLI and feature map, the browser or computer use.
-Reviews run on Sol 6.1 High through codex-review launched in the background;
-The launcher discovers local Codex credential homes and tries the next only on
-confirmed availability failures. If its receipt says fallback_required with
-fallback.eligible true, immediately dispatch a fresh native Claude reviewer or
-browser-qa with \`fallback.prompt\` copied verbatim. It includes the original packet
-and reason/receipt/packet binding lines. The guard verifies the full dispatched
-packet, hash, root, mode and Task-Id, and rejects resumed fallback agents. Keep the review independent and report this authorized
-provider change. Cancellation, refusal and uncertain computer-use effects require
-correction or reconciliation; never replay actions or call an incomplete check passed.
-Use the local construction recipes and existing components for screens, forms
-and authorized server operations. Simplification, correction and objective
-verification are responsibilities. Tiny direct work stays with the parent;
-nontrivial features retain their independent Sol 6.1 High plan and final reviews.
-Select additional specialists by affected risk and preserve the parent's final
-judgment. Reject unsupported green-check claims. File counts and style scores
-are not gates.
-
-Repeat checks only for relevant edits, failures, required gates or unresolved
-concerns. Preserve exit codes and still-valid evidence. Never bypass hooks or CI.
-Documentation and internal-only changes do not inherit browser work without an
-affected product surface. Prove provider readiness when the changed auth, data,
-migration, seed, role or environment contract requires it.
-
-For visual implementation, open the approved direction and accessible reference
-images. \`design-quality\` coordinates Impeccable and independent visual-capable
-critique; resolve material findings before \`evidence-capture\` packages final
-media. Diagnostic screenshots can precede that review. Existing reviewed media
-needs media validation, not another design cycle. Respect this repository's
-browser mechanism and privacy rules. Report unavailable capabilities honestly.
-
-## Context and architecture
-
-Read product docs for the affected boundary: architecture when changing module
-ownership, schema/auth docs for data work, design context for visual changes and
-release guidance for publication. A typo does not require a full repository map.
-The installed architecture reference pack supports product-convergence work;
-it does not impose a folder template. Preserve dependency direction, public
-interfaces, feature state ownership and cohesive modules. Development System owns
-global agent guardrails, anti-slop tooling and release-train capabilities; local
-files supply product contracts rather than duplicating the global coordinator.
-
-Use native host tools and compact worker packets with exact ownership, behavior,
-checks and completion receipts. Receive meaningful completion events instead of
-repeated unchanged status requests. Batch independent reads and
-keep one writer per surface. Independent writes require disjoint ownership and
-parent-owned integration. Planner output never performs writes. The contained
-anti-slop installer remains the only supported installer entrypoint and rejects
-path traversal and symlink escapes, including under force.
-
-Global \`exa-search\` uses public-web retrieval only when requested or opted in;
-never send secrets, private source, private URLs, PII or PHI. This adapter does
-not call or activate a paid service. Agent guardrails are defense in depth,
-not permission or a sandbox.
-
-## Stack rules
-
-${rules.join("\n") || "- Apply this repository's detected stack and validated commands."}
-
-## Repository commands
-
-Review
-
-${commandLine(audit.commands.review)}
-
-Changed validation
-
-${commandLine(audit.commands.changedValidation)}
-
-Full certification
-
-${commandLine(audit.commands.certification)}
-
-Provider readiness
-
-${providerReadinessLine(audit.commands.providerReadiness)}
-
-Legacy validation alias
-
-${commandLine(audit.commands.validation)}
-
-QA
-
-${commandLine(audit.commands.qa)}
-
-Preview
-
-${commandLine(audit.commands.preview)}
-
-## Installation and final report
-
-Synchronize global skill catalog \`${skillCatalogVersion}\` with the pinned
-Development System package. Installation and structural readiness do not prove
-live loading; T3 and other hosts need their own observations. Ordinary completion
-uses a concise outcome, checks, remaining gaps and usable links. Generate a
-standalone document only when requested or needed for the agreed evidence package.
-Keep source, local runtime, PR, Preview and production claims distinct.
-`;
-}
-
-/** @param {unknown} contract */
-function repositoryContractContents(contract) {
-  const serialized = JSON.stringify(contract, null, 2);
-  return `${serialized.replace(
-    /\[\n((?:\s+(?:"(?:\\.|[^"\\])*"|true|false|null|-?\d+(?:\.\d+)?),?\n)+)\s*\]/g,
-    (match, body, offset, source) => {
-      const values = JSON.parse(`[${body.trim()}]`);
-      const compact = JSON.stringify(values).replaceAll(",", ", ");
-      const lineStart = source.lastIndexOf("\n", offset) + 1;
-      const prefixLength = offset - lineStart;
-      return prefixLength + compact.length <= 80 ? compact : match;
-    },
-  )}\n`;
-}
-
-/** @param {string} repository @param {string} managedPath */
-async function assertManagedPathSafe(repository, managedPath) {
-  let current = repository;
-  for (const segment of managedPath.split("/")) {
-    current = resolve(current, segment);
-    try {
-      if ((await lstat(current)).isSymbolicLink()) {
-        throw new Error(`Managed repository path cannot traverse a symbolic link: ${managedPath}`);
-      }
-    } catch (error) {
-      if (!isMissing(error)) throw error;
-      return;
-    }
-  }
-}
-
-/** @param {string} target @param {string} contents */
-async function writeIfChanged(target, contents) {
-  let existing = null;
-  try {
-    existing = await readFile(target, "utf8");
-  } catch (error) {
-    if (!isMissing(error)) throw error;
-  }
-  if (existing === contents) return false;
-  await mkdir(dirname(target), { recursive: true, mode: 0o755 });
-  const temporary = `${target}.tmp-${process.pid}-${randomUUID()}`;
-  await writeFile(temporary, contents, { mode: 0o644, flag: "wx" });
-  await rename(temporary, target);
-  return true;
-}
-
-/** @param {any} audit @param {"initialize" | "normalize"} mode */
-function repositoryContract(audit, mode) {
-  return {
-    schemaVersion: 1,
-    contractVersion,
-    preparation: { mode, mutationScope: [...managedFiles, ...retiredManagedFiles] },
-    product: {
-      name: audit.product.name,
-      packageName: audit.product.packageName,
-      packageManager: audit.product.packageManager,
-      stack: audit.stack,
-    },
-    preserved: audit.preserved,
-    commands: audit.commands,
-    harnesses: {
-      codex: { adapter: "native", contract: ".codex/development-system/repository.md" },
-      t3code: {
-        adapter: "codex",
-        contract: ".codex/development-system/repository.md",
-        operationalEvidence: "structural-inheritance-not-independently-probed",
-      },
-    },
-    lifecycle: {
-      automatic: {
-        router: "drive-development-flow",
-        stageSelection: "requested-flow-or-working-backwards-intent",
-        specialStages: "working-backwards-intent-aware-others-explicit-user-invocation-only",
-        progressLimit: "request-authority-and-human-gates",
-        recommendationEffect: "read-only",
-      },
-      terminalSliceContract: {
-        objectives: 1,
-        required: ["constraints", "exact-scope", "evidence-and-validation", "verifiable-stop-condition", "authorization-boundaries"],
-      },
-      nativeGoal: {
-        creation: "explicit-user-request-only",
-        persistenceEffect: "no-scope-or-authorization-expansion",
-      },
-      explicitCommands: {
-        codex: ["wayfinder", "grill-with-docs", "to-spec", "to-tickets", "flow-implement", "flow-code-review", "working-backwards", "parallel-work", "simplify-code", "orchestration-pilot", "check-in"],
-      },
-      implementPreview: {
-        command: "flow-implement",
-        requiresNamedTerminalSlice: true,
-        terminalState: "ready-for-human",
-        autonomousOperations: ["implement", "real-verification", "validate", "review", "correct", "proportional-qa"],
-        checksAreDevelopmentSubsteps: true,
-        externalStateAuthorization: "request-and-repository-policy",
-        deliveryAuthorization: "request-and-repository-policy",
-      },
-      promotion: {
-        operations: ["merge", "release", "production"],
-        authorization: "separate-exact-human-request",
-      },
-    },
-    deliveryPolicy: {
-      ordinaryPush: "changed-validation",
-      fullCertification: "once-per-candidate",
-      qaSelection: "observable-risk",
-      sharedPreview: "once-per-candidate",
-      providerReadiness: "before-shared-preview-when-affected",
-    },
-    antiSlop: {
-      schema: "executable-lane-contract-v1",
-      activation: "explicit-orchestration-plan-only",
-      ordinaryWork: "parent-owned-responsibilities-with-proportional-review-not-mandatory-lanes",
-      upstream: antiSlopUpstream,
-      phases: antiSlopPhases.map((phase) => ({
-        order: phase.order,
-        id: phase.id,
-        ownerRole: phase.ownerRole,
-        laneType: phase.laneType,
-        writable: phase.writable,
-        dependsOn: [...phase.dependsOn],
-      })),
-      automatedTests: "none-real-verification-only",
-      independentVerification: "oracle-derived-from-objective-and-public-interface",
-      excludedMetrics: [...antiSlopExcludedMetrics],
-      diagnosticOnlyMetrics: [...antiSlopDiagnosticOnlyMetrics],
-      installerSafety: {
-        entrypoint: "scripts/install.mjs",
-        refuses: [
-          "absolute-targets",
-          "empty-dot-or-parent-segments",
-          "backslash-targets",
-          "symlink-ancestors-or-target-escape",
-        ],
-        forceBehaviorPreserved: true,
-      },
-      factoryCoverage: {
-        policy: antiSlopFactoryCoverage.policy,
-        installedSkillsRequired: antiSlopFactoryCoverage.installedSkillsRequired,
-      },
-    },
-    operatorPrerequisites: {
-      skillCatalogVersion,
-      installationScope: "global",
-      readinessScope: "repository-adapter-only",
-      requiredSkills: [
-        "drive-development-flow",
-        "coding-orchestration",
-        "simplify-code",
-        "behavioral-evidence",
-        "install-anti-slop",
-        "wayfinder",
-        "grill-with-docs",
-        "to-spec",
-        "to-tickets",
-        "flow-implement",
-        "flow-code-review",
-        "working-backwards",
-        "parallel-work",
-        "orchestration-pilot",
-        "check-in",
-        "release-train",
-        "convex-guardian",
-        "posthog-observability",
-        "linear-hygiene",
-        "development-steward",
-        "exa-search",
-        "global-agent-guardrails",
-      ],
-    },
-    conditionalCapabilities: {
-      providerReadiness: {
-        configured: Boolean(audit.commands.providerReadiness),
-        requiredWhen: providerReadinessSurfaces,
-      },
-    },
-    rules: {
-      react: audit.stack.includes("react"),
-      convex: audit.stack.includes("convex"),
-      preserveProductIdentity: true,
-    },
-    architectureBaseline: {
-      reference: "~/.codex/development-system/architecture-reference-pack.md",
-      productDimensions: [...productArchitectureDimensions],
-      developmentSystemManaged: [...developmentSystemManagedCapabilities],
-      componentBoundary: "cohesion-responsibility-state-ownership-public-interface-not-line-count",
-      migrationEffect: "baseline-only-no-product-refactor",
-    },
-    architectureDiagnostic: audit.architectureDiagnostic,
-    services: {
-      paidActivation: false,
-      paidActivationMeaning: "adapter-generation-does-not-call-or-enable-paid-services",
-    },
-  };
-}
-
-/** @param {{repository:string, confirm?:string}} options @param {"initialize" | "normalize"} mode */
-async function prepareRepository(options, mode) {
-  if (options.confirm !== mode) throw new Error(`${mode}-repository requires --confirm ${mode}`);
-  const repository = resolve(options.repository);
-  for (const path of [...managedFiles, ...retiredManagedFiles]) await assertManagedPathSafe(repository, path);
-  /** @type {any} */
-  let existingContract;
-  try {
-    existingContract = JSON.parse(await readFile(resolve(repository, managedFiles[0]), "utf8"));
-  } catch (error) {
-    if (!isMissing(error) && !(error instanceof SyntaxError)) throw error;
-    if (error instanceof SyntaxError && mode === "initialize") throw new Error("Repository has an invalid managed contract; use normalize-repository");
-  }
-  if (mode === "initialize") {
-    if (existingContract && (existingContract.contractVersion !== contractVersion || existingContract.preparation?.mode !== "initialize")) {
-      throw new Error("Repository already has a different managed contract; use normalize-repository");
-    }
-  }
-  const audit = await auditRepository({ repository });
-  const contract = repositoryContract(audit, mode);
-  // Product-specific extensions survive normalization; generated lifecycle policy wins.
-  if (existingContract?.lifecycle && typeof existingContract.lifecycle === "object" && !Array.isArray(existingContract.lifecycle)) {
-    for (const [key, value] of Object.entries(existingContract.lifecycle)) {
-      if (!(key in contract.lifecycle)) {
-        /** @type {Record<string, unknown>} */ (contract.lifecycle)[key] = value;
-      }
-    }
-  }
-  const outputs = {
-    [managedFiles[0]]: repositoryContractContents(contract),
-    [managedFiles[1]]: adapterContentsWithProviderReadiness(audit, "codex"),
-  };
-  /** @type {string[]} */
-  const changedFiles = [];
-  for (const [path, contents] of Object.entries(outputs)) {
-    if (await writeIfChanged(resolve(repository, path), contents)) changedFiles.push(path);
-  }
-  /** @type {string[]} */
-  const removedFiles = [];
-  for (const path of retiredManagedFiles) {
-    try {
-      await unlink(resolve(repository, path));
-      removedFiles.push(path);
-    } catch (error) {
-      if (!isMissing(error)) throw error;
-    }
-  }
-  const postAudit = await auditRepository({ repository });
-  const missingCapabilities = structuralCapabilities.filter((capability) => !postAudit.commands[capability]);
-  const readiness = Object.fromEntries(
-    Object.entries(postAudit.readiness).map(([harness, result]) => [harness, result.status]),
-  );
-  const prepared = Object.values(readiness).every((status) => status === "prepared");
-  return {
-    ok: prepared,
-    operation: `${mode}-repository`,
-    status: changedFiles.length === 0 && removedFiles.length === 0 ? "unchanged" : "updated",
-    repositoryRoot: repository,
-    changedFiles,
-    removedFiles,
-    preservedFiles: [...audit.preserved.releasePolicyFiles, ...audit.preserved.designFiles, "package.json"].filter((path, index, values) => values.indexOf(path) === index),
-    missingCapabilities,
-    conditionalCapabilities: {
-      providerReadiness: {
-        configured: Boolean(postAudit.commands.providerReadiness),
-        requiredWhen: providerReadinessSurfaces,
-      },
-    },
-    readiness,
-    remainingGaps: Object.fromEntries(
-      Object.entries(postAudit.readiness).map(([harness, result]) => [harness, result.gaps]),
-    ),
-    paidServicesActivated: false,
-    externalSideEffects: [
-      ...changedFiles.map((path) => ({ type: "managed-write", path })),
-      ...removedFiles.map((path) => ({ type: "managed-remove", path })),
-    ],
-  };
-}
-
-/** @param {{repository:string, confirm?:string}} options */
-export async function initializeRepository(options) {
-  return prepareRepository(options, "initialize");
-}
-
-/** @param {{repository:string, confirm?:string}} options */
-export async function normalizeRepository(options) {
-  return prepareRepository(options, "normalize");
+/** @param {{repository:string, confirm?:string}} _options */
+export async function normalizeRepository(_options) {
+  throw new Error("normalize-repository is retired in Development System 2.0. Remove legacy adapters only in a reviewed migration preserving product-specific documentation. No repository files were written.");
 }
 
 export const repositoryContractVersion = contractVersion;
+// Compatibility inventory for bounded retirement, never an installation requirement.
 export const repositoryManagedFiles = [...managedFiles];
