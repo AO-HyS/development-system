@@ -36,9 +36,10 @@ repository/release authority, Todo's remote D1 boundary, Opportunity ownership,
 live Devin loading and all generated native writer-role admission. No file-copy,
 source build or report is treated as full product acceptance.
 
-Private ledger and readable sanitized report:
+Private ledger and report destination:
 ~/.development-system/private/reports/shared-tooling-cleanup-20261006.
-The ledger retains exact revisions, checks, reviews, PR states and report/tunnel
-receipts. Keep private transcripts/secrets outside served assets. Preserve
+The ledger retains exact revisions, checks, reviews and PR states. Report/tunnel
+receipts are added only after generation and readback. Keep private transcripts
+and secrets outside served assets. Preserve
 untracked .impeccable/ and private/ in this root. Earlier continuity remains
 available in Git history; report current facts from the ledger, not old notes.
