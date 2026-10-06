@@ -21,22 +21,32 @@ interruption recovery remains not reached; file-copy success does not prove host
 role loading. Fresh tasks in all three products actually consumed the shared CLI
 and global orchestration guidance; generated host-role loading remains unverified.
 
-Consumer delivery as of 2026-10-06 04:05 UTC:
+Consumer delivery as of 2026-10-06 04:22 UTC:
 
 - Casa Roca #152/#153 merged; main c0a11d8. Both existing Vercel applications are
   Ready in production with exact source and assigned aliases. Public home and
   dashboard sign-in were observed through T3; authenticated behavior was not
   exercised. The sign-in exposes Development mode (existing identity-config gap).
-- Barber #417 merged to develop b137bac5; exact Preview run 37411565954 is in
-  progress. Existing canonical promotion #418 is linked to this thread and must
-  be refreshed after exact Preview evidence and integrated promotion review.
+- Barber #417 merged to develop b137bac5; Preview run 37411565954 succeeded.
+  Independent integrated promotion review found no blockers. Canonical promotion
+  #418 merged through the normal recovery CLI; main f06bdb3 and production run
+  37412116218 succeeded. The normal exact production validator verified its final
+  receipt, digest and four targets. Reconciliation #419 merged to develop
+  651b61b9 with the same tree; run 37412704936 succeeded.
 - NutriPlan #545 merged to develop 91523167 after two fresh review rounds and
   normal local checks. The obsolete optional automated certification runner now
-  fails immediately before effects. Preview run 37411934035 is in progress.
-  Main f87f010 remains many earlier clinical/runtime changes behind develop. The
-  production manifest passes source validation (40 operations); this tooling
-  receipt does not establish those features' acceptance or live data readiness.
-  Preserve protected promotion and do not infer production readiness from it.
+  fails immediately before effects. Preview run 37411934035 succeeded, including
+  bootstrap and permission/identity/access backfills; modified-data counts were
+  not audited. Main f87f010 retains the prior clinical application release.
+  Promoting the large unrelated clinical backlog remains separate product work.
+
+The approved success criterion explicitly requires a central update, one machine
+update and observed consumption in new tasks across the three products, without
+requiring application publication. CLI and global skill consumption were observed
+in all three. The earlier finalization incorrectly made Nutri's broad clinical
+release a prerequisite; that scope expansion is withdrawn and logged privately.
+Do not promote unrelated clinical changes to close this tooling delivery. Safe
+Casa/Barber application publication was additionally authorized and performed.
 
 CI pins are retained: Casa/Nutri 1.37.0, Barber 1.40.0. Specific no-tests commands
 check their exact local installations; agent skills/reports/orchestration use the
@@ -49,8 +59,9 @@ is public. Weekly Steward stays in the existing T3 Monday 09:00 Mexico agenda an
 reads the active contract; launchd is disabled/unloaded. No customer messages,
 charges, destructive cleanup or new paid infrastructure were requested/performed.
 
-Pending: actual consumer release receipts and final report/goal reconciliation.
-Preserve unrelated untracked .impeccable/ and private/.
+Pending: independent closure audit against the approved plan and final report/goal
+reconciliation. Retained verification gaps above are not passed results. Preserve
+unrelated untracked .impeccable/ and private/.
 
 ## Historical — DS 1.41.0 production delivery
 
