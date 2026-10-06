@@ -5,8 +5,10 @@
 // authority claims. Every document is editorial evidence, never verification.
 
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdir, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { chmod, lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { auditSharedInstallation, runtimeProvenance } from "./shared-installation.mjs";
 
 import { normalizeDocumentEvidence } from "./document-evidence.mjs";
 
@@ -240,9 +242,9 @@ function validatePacket(input) {
   };
 }
 
-/** @param {string} value */
+/** @param {string|Buffer} value */
 function sha256Hex(value) {
-  return createHash("sha256").update(value, "utf8").digest("hex");
+  return createHash("sha256").update(value).digest("hex");
 }
 
 /**
@@ -250,11 +252,20 @@ function sha256Hex(value) {
  * HOME/.development-system/private/documents. File names are derived from a
  * deterministic content hash, never from user paths. Fails closed on invalid
  * input, collisions with different bytes, or symlinked targets.
- * @param {{home: string, input: unknown}} options
+ * @param {{home: string, input: unknown, historical?:boolean}} options
  */
 export async function writeTechnicalDocument(options) {
   if (!nonEmptyString(options.home)) throw new Error("Technical document generation requires --home");
   const validated = validatePacket(options.input);
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const runtime = await runtimeProvenance(root);
+  const active = await lstat(resolve(options.home, '.development-system/shared-installation.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+  if (validated.kind === 'completion' && active && !options.historical) {
+    const audit = await auditSharedInstallation({ home: options.home, root });
+    if (!audit.ok || runtime.dirty) throw new Error(`Completion report requires the active shared installation: ${audit.problems.join('; ')}. Explicit historical rendering uses --mode historical.`);
+  }
+  const rendererPath = 'artifacts/1.40.0/skills/internal/working-backwards/scripts/t3-reader.mjs';
+  const provenance = { ...runtime, rendererPath, rendererSha256: sha256Hex(await readFile(resolve(root, rendererPath))), activeInstallation: active, historical: options.historical === true };
   const packet = { ...validated, evidence: await normalizeDocumentEvidence(isRecord(options.input) ? options.input.evidence : undefined, validated.language === "en" ? "en" : "es") };
   const { buildTechnicalReaderModel, renderTechnicalReaderHtml } = await import("../artifacts/1.40.0/skills/internal/working-backwards/scripts/t3-reader.mjs");
   const model = buildTechnicalReaderModel({
@@ -276,7 +287,7 @@ export async function writeTechnicalDocument(options) {
   });
   if (model.workflow.implementationAuthorized === true) throw new Error("Technical documents must never carry workflow authority");
   const html = renderTechnicalReaderHtml(model);
-  const packetJson = JSON.stringify({ schemaVersion: 1, ...packet }, null, 2) + "\n";
+  const packetJson = JSON.stringify({ schemaVersion: 1, ...packet, provenance }, null, 2) + "\n";
   const identifier = `${slugify(packet.title)}-${sha256Hex(packetJson + html).slice(0, 16)}`;
   if (!SAFE_ID.test(identifier)) throw new Error("Technical document identifier is unsafe");
   const directory = resolve(options.home, ".development-system", "private", "documents");
@@ -316,6 +327,7 @@ export async function writeTechnicalDocument(options) {
 
   return {
     generated: true,
+    provenance,
     kind: packet.kind,
     id: identifier,
     markdownPath,

@@ -1,5 +1,32 @@
 # AOHYS Development System
 
+## Release 2.0.0 / catalog 0.60.0
+
+One active Development System installation supplies agent skills, roles, guards,
+reports and tools on this computer. Products retain their AGENTS.md, README and
+task-relevant documentation; no generated repository adapter or replacement
+index is required. Pinned local packages remain only for explicit CI checks.
+
+```sh
+# From the committed canonical checkout; verify in an isolated HOME first.
+./bin/development-system setup --home /absolute/home --json
+# After first adoption, one central update changes tooling for new tasks.
+development-system update --version 2.0.0 --json
+development-system doctor --json
+```
+
+Setup and rollback recover the immediately previous complete installation,
+including package, contract, catalog, hooks and launchers. Reports record actual
+package and renderer provenance. T3 owns child tasks, history, preview and weekly
+scheduling. Legacy adapter generators and launchd activation fail before writes.
+Native writer profiles alone do not establish enforced ownership or Git controls;
+this run uses sequential coordinator edits and independent read-only review.
+
+See [distribution](docs/package-distribution.md),
+[repository discovery](docs/repository-preparation.md) and
+[ADR 0069](docs/adr/0069-one-shared-agent-installation.md).
+Installation is distinct from fresh-host loading and accepted behavior.
+
 ## Release 1.41.0 / catalog 0.59.0
 
 The existing roster is the single source for generated host roles: Opus 5.5 UI
