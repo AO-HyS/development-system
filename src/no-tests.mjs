@@ -157,6 +157,7 @@ function nativeCommand(command) {
     const requested = [];
     for (let index = 0; index < tokens.length; index++) {
       const token = tokens[index];
+      if (token.startsWith("#")) break;
       if (token === "-x" || token === "--exclude-task") { excluded.add(tokens[++index]); continue; }
       if (token.startsWith("--exclude-task=")) { excluded.add(token.slice("--exclude-task=".length)); continue; }
       if (token.startsWith("-x") && token.length > 2) { excluded.add(token.slice(2)); continue; }
@@ -241,9 +242,12 @@ function workflowCommand(line) {
   const match = /^\s*-?\s*run:\s*(.*?)\s*$/.exec(line);
   if (!match) return line;
   const command = match[1];
-  if (command.startsWith("'") && command.endsWith("'")) return command.slice(1, -1).replace(/''/g, "'");
-  if (command.startsWith('"') && command.endsWith('"')) {
-    try { return JSON.parse(command); } catch { return command; }
+  // Recognize the scalar boundary separately from its optional YAML comment.
+  const single = /^'((?:[^']|'')*)'\s*(?:#.*)?$/.exec(command);
+  if (single) return single[1].replace(/''/g, "'");
+  const double = /^("(?:[^"\\]|\\.)*")\s*(?:#.*)?$/.exec(command);
+  if (double) {
+    try { return JSON.parse(double[1]); } catch { return double[1]; }
   }
   return command;
 }
