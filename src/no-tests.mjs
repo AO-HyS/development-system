@@ -110,7 +110,7 @@ function packageFindings(repository, path) {
 /** @param {string} repository @param {string} path @returns {NoTestsFinding[]} */
 function workflowFindings(repository, path) {
   return readText(repository, path).split(/\r?\n/).flatMap((line, index) =>
-    RUNNER.test(line) || CI_TEST.test(line) || nativeCommand(line.replace(/^\s*-?\s*run:\s*/, ""))
+    RUNNER.test(line) || CI_TEST.test(line) || nativeCommand(workflowCommand(line))
       ? [{ path, kind: /** @type {const} */ ("ci-test-step"), detail: `line ${index + 1}: ${line.trim()}` }]
       : []);
 }
@@ -151,14 +151,21 @@ function nativeCommand(command) {
     if (/^#|^(?:echo|printf)\b/.test(text)) return false;
     if (/^(?:k6\s+run|swift\s+test)\b/.test(text)) return true;
     if (/^(?:bash\s+|sh\s+)?["']?[^\s;|&]*\/tests?\.sh["']?(?:\s|$)/.test(text)) return true;
-    const tokens = text.match(/"[^"]*"|'[^']*'|[^\s]+/g) ?? [];
-    if (!/^(?:.*\/)?gradlew?$/.test((tokens.shift() ?? "").replace(/^["']|["']$/g, ""))) return false;
+    const tokens = (text.match(/"[^"]*"|'[^']*'|[^\s]+/g) ?? []).map((token) => token.replace(/^["']|["']$/g, ""));
+    if (!/^(?:.*\/)?gradlew?$/.test(tokens.shift() ?? "")) return false;
+    const excluded = new Set();
+    const requested = [];
     for (let index = 0; index < tokens.length; index++) {
-      if (tokens[index] === "-x" || tokens[index] === "--exclude-task") { index++; continue; }
-      if (tokens[index].startsWith("--exclude-task=")) continue;
-      if (/(?:^|:)(?:test|test[A-Z]\w*UnitTest|connected\w*AndroidTest|connectedCheck|device\w*AndroidTest)$/.test(tokens[index])) return true;
+      const token = tokens[index];
+      if (token === "-x" || token === "--exclude-task") { excluded.add(tokens[++index]); continue; }
+      if (token.startsWith("--exclude-task=")) { excluded.add(token.slice("--exclude-task=".length)); continue; }
+      if (token.startsWith("-x") && token.length > 2) { excluded.add(token.slice(2)); continue; }
+      requested.push(token);
     }
-    return false;
+    return requested.some((task) =>
+      /(?:^|:)(?:test|test[A-Z]\w*UnitTest|connected\w*AndroidTest|connectedCheck|device\w*AndroidTest)$/.test(task)
+      && !excluded.has(task) && !excluded.has(task.split(":").at(-1))
+    );
   });
 }
 
@@ -225,4 +232,18 @@ function commandSegments(command) {
   }
   segments.push(segment);
   return segments;
+}
+
+/** Decode YAML scalar quoting only for explicit workflow run values.
+ * @param {string} line @returns {string}
+ */
+function workflowCommand(line) {
+  const match = /^\s*-?\s*run:\s*(.*?)\s*$/.exec(line);
+  if (!match) return line;
+  const command = match[1];
+  if (command.startsWith("'") && command.endsWith("'")) return command.slice(1, -1).replace(/''/g, "'");
+  if (command.startsWith('"') && command.endsWith('"')) {
+    try { return JSON.parse(command); } catch { return command; }
+  }
+  return command;
 }
