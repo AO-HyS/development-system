@@ -1,51 +1,45 @@
-# Current work — shared tooling adoption cleanup
+# Current work — shared tooling cleanup closeout
 
-Root: /Users/corrortiz/Documents/AO/development-system, canonical checkout.
-Branch: fix/shared-tooling-adoption-cleanup, base15fa667. Parent: selected
-Sol6.1 High; direct sequential edits, read-only facts and independent review.
-User authorized the cleanup of known existing repos and current shared tooling.
-Retained DS publication/global adoption authority; NutriPlan endpoint develop only.
-No new worktrees, tests/evals, product data writes or customer operations.
+Canonical root: /Users/corrortiz/Documents/AO/development-system.
+Task started 2026-10-06; selected parent Sol 6.1 High. Sequential parent edits,
+fresh read-only facts and independent reviews; no admitted writing children.
+No worktree, automated tests/evals, product data or customer operations.
 
-Previous 2.0.0 delivery is complete and installed at source37e86fd; independent
-closure audit and all original acceptance receipts are in the private report
-shared-system-implementation-20261005. Do not reopen the unrelated Nutri clinical
-release. Previous continuity is preserved in immutable Git history.
+Development System 2.0.1 and 2.0.2 are reviewed, merged to develop/main, publicly
+released and installed globally. Active package/contract2.0.2, catalog0.60.0,
+public source a2990946228a491803c87d6d9d109fd5b0458bcd. Doctor passes. Isolated
+update/rollback/readoption and actual fresh instruction consumption passed.
+Published contracts/catalogs remain immutable; rollback tuples remain available.
 
-Plan review found stale launchd activation in Steward receipts and incomplete
-package doc shipment. Both are included in the correction. Patch2.0.1 preserves
-published 2.0.0 and catalog0.60; changes current instructions, adds a static release
-gate, corrects the known Casa repository identity and advertises the T3 scheduler.
-Only exact current docs are added to package inventories.
+README and distribution instructions use one global installation per computer,
+ordinary AGENTS/README/task docs, CI-only product pins and T3-owned orchestration.
+Current doc release checks, correct Steward scheduler/Casa identity and bounded
+no-tests scanner fixes are published. Scanner covers declared Markdown paths,
+literal web/native commands and actual files; it is not exhaustive language or
+native hook evidence. Global tool adoption requires no product release.
 
-Known registered product roots: Casa/Nutri/Barber already use global tooling;
-aohys, opportunity-os, home-expenses, eteria, todo and house-organization are
-inventoried. Opportunity .gitignore and Barber's modified product spec belong to
-other work and remain untouched. Existing local commits and branch refs remain.
-AOHYS Devin uses repo-local shared copies: replace its provisioning before
-retiring those copies. Domain skills, CI pins, quality and release gates stay.
+Known consumer cleanup candidates preserve runtime sources/release boundaries:
+AOHYS PR209 and ETERIA PR295 source-reviewed with CI/certification passing.
+Home, Todo and House final candidates retire exact adapters/foreign guidance and
+automated-test scaffolding, run actual CI-only2.0.2 and have focused web/native
+build receipts. Independent final review and feature PR publication are closing.
+Existing unpublished develop refs and native generated outputs are preserved.
 
-Pending: implement reviewed bounded corrections, focused verification, independent
-integration review, authorized publication/adoption, and actual fresh consumption.
-Keep crash recovery, all generated host-role loading and product acceptance limits
-explicit if unobserved; file-copy success is not loading.
+Casa/Nutri/Barber already use global tooling; no product changes here. NutriPlan
+remains develop only; do not reopen the unrelated clinical production release.
+Barber dirty product spec remains another owner's work. Opportunity's redesign
+branch and dirty .gitignore remain untouched pending ownership reconciliation;
+a concrete private patch is retained, not applied or published.
 
-Evidence/report: ~/.development-system/private/reports/shared-tooling-cleanup-20261006.
-Only sanitized served assets may be public. Preserve untracked .impeccable/ and
-private/ in this root. No task-owned tunnel has been started yet.
+Remaining operation-specific decisions: product merges subject to their actual
+repository/release authority, Todo's remote D1 boundary, Opportunity ownership,
+live Devin loading and all generated native writer-role admission. No file-copy,
+source build or report is treated as full product acceptance.
 
-Verification found no-tests false findings for deleted tracked paths and missed
-native/k6 surfaces. A fresh Sol High plan review approved a bounded checker-only
-fix, preserving published write-guard patterns. Current actual consumer checks
-pass after native boilerplate retirement; native builds are being verified.
-Home Expenses also retains foreign Atlas agent docs/workflow: exact foreign
-surfaces are retired without product/release changes. New checker CI pins are
-needed in repos with native builds after the patch release is published.
-
-Follow-up branch fix/live-agent-instruction-coverage, base6a1cf62 after approved
-2.0.1 publication9cf2427 and global adoption. Independent product review found
-active Home GitHub prompts missing from the no-tests selector and Todo CI
-skipping its root guard. Fresh Sol High plan review approved checker-only2.0.2
-coverage of exact configured instruction trees, with unchanged catalog/guards.
-Only new contract/manifest versions are generated. Native product app sources
-remain unchanged; old assertion coverage and all-role loading are not claimed.
+Private ledger and report destination:
+~/.development-system/private/reports/shared-tooling-cleanup-20261006.
+The ledger retains exact revisions, checks, reviews and PR states. Report/tunnel
+receipts are added only after generation and readback. Keep private transcripts
+and secrets outside served assets. Preserve
+untracked .impeccable/ and private/ in this root. Earlier continuity remains
+available in Git history; report current facts from the ledger, not old notes.
