@@ -350,39 +350,18 @@ async function runCommand(argv) {
     if (!catalogArtifact) throw new Error(`Contract ${version} has no skill catalog`);
     const catalog = JSON.parse(await readFile(resolve(repositoryRoot, catalogArtifact.sourcePath), "utf8"));
     result = await setupSharedInstallation({ home: options.home, root: repositoryRoot, version, install: async () => {
-    const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
-    let governance;
-    try {
+      const installation = await installVersion({ home: options.home, version, sourceCommit: options.sourceCommit });
+      let governance;
       if (executionMode(manifest) === "governed-hook-execution" && manifest.artifacts.some((/** @type {{logicalName:string}} */ artifact) => artifact.logicalName === "governance-runtime-hook-launcher-mjs")) {
         governance = await enableGovernanceHooks({ home: options.home });
       }
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
-      return { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(governance ? { governance } : {}) };
-    } catch (error) {
-      const original = error instanceof Error ? error.message : String(error);
-      // A failing rollback must not hide the skill-sync error that caused it.
-      /** @type {string[]} */
-      const rollbackFailures = [];
-      if (governance?.changed) {
-        try {
-          await rollbackGovernanceHooks({ home: options.home });
-        } catch (rollbackError) {
-          rollbackFailures.push(`governance hook rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
-        }
-      }
-      if (!installation.reinstalled) {
-        try {
-          await rollbackInstallation({ home: options.home });
-        } catch (rollbackError) {
-          rollbackFailures.push(`contract installation rollback failed: ${rollbackError instanceof Error ? rollbackError.message : String(rollbackError)}`);
-        }
-      }
-      if (rollbackFailures.length > 0) {
-        throw new Error(`Setup skill synchronization failed: ${original}; ${rollbackFailures.join("; ")}`, { cause: error });
-      }
-      const recovery = installation.reinstalled ? "existing contract reinstalled; skill sync restored its prior state" : "contract installation rolled back";
-      throw new Error(`Setup skill synchronization failed; ${recovery}: ${original}`, { cause: error });
-    }
+      // Activation belongs to this complete transaction; standalone mutators
+      // cannot change the receipt or race a shared update.
+      const guardrails = await enableGlobalGuardrails({ home: options.home });
+      const claudeOrchestration = await enableClaudeOrchestration({ home: options.home });
+      const reportGate = await enableReportGate({ home: options.home });
+      return { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, guardrails, claudeOrchestration, reportGate, ...(governance ? { governance } : {}) };
     }});
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");

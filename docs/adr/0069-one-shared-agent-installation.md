@@ -18,7 +18,9 @@ and preserves unique product content. Structural command/QA/preview criteria sta
 Standalone contract, skill and hook mutators remain available only on an
 unadopted HOME. They acquire the same installation lock and reject an active
 shared receipt or pending journal. Adopted installations change through the
-complete setup/update/rollback/recovery transaction.
+complete setup/update/rollback/recovery transaction. Setup activates command
+guards, report hooks and Claude role admission inside that transaction; their
+configuration and activation state are covered by its recovery snapshot.
 
 T3 owns app-owned task execution/history/browser/scheduling. Shared pure planning,
 acceptance and operation-specific authority controls remain. Retire launchd enable

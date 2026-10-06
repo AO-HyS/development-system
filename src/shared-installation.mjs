@@ -110,7 +110,8 @@ function managedPaths(manifest, catalog) {
     ...(catalog.cleanup ?? []), '.development-system/state.json', '.development-system/installed-manifest.json',
     '.development-system/snapshots', '.development-system/skills-lock.json', '.development-system/skill-sync-state.json',
     '.development-system/skill-snapshots', '.agents/.skill-lock.json', '.codex/hooks.json', '.claude/settings.json',
-    '.development-system/governance-hooks.json', statePath, ...launchers];
+    '.development-system/governance-hooks.json', '.development-system/guardrails/state.json',
+    '.development-system/claude-orchestration/state.json', '.development-system/private/report-gate/state.json', statePath, ...launchers];
 }
 /** @param {string[]} paths */
 function compactPaths(paths) {
