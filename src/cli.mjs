@@ -63,7 +63,7 @@ import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
-import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation } from "./shared-installation.mjs";
+import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation, withLegacyInstallationMutation } from "./shared-installation.mjs";
 import { updateSharedInstallation } from "./shared-update.mjs";
 import { loadPackageSource } from "./package-source.mjs";
 import { resolveModelRoute } from "./model-routing.mjs";
@@ -301,6 +301,16 @@ function parseThreadHealthArguments(argv) {
 
 /** @param {string[]} argv */
 export async function run(argv) {
+  const standaloneMutators = ["install", "sync-skills", "rollback-skills", "guardrails-enable", "guardrails-rollback", "claude-orchestration-enable", "claude-orchestration-rollback", "report-gate-enable", "report-gate-rollback", "governance-hooks-enable", "governance-hooks-rollback"];
+  if (standaloneMutators.includes(argv[0])) {
+    const { options } = parseArguments(argv);
+    return withLegacyInstallationMutation({ home: options.home, operation: argv[0], run: () => runCommand(argv) });
+  }
+  return runCommand(argv);
+}
+
+/** @param {string[]} argv */
+async function runCommand(argv) {
   if (argv[0] === "thread-health") {
     const { json, ...options } = parseThreadHealthArguments(argv);
     const result = threadHealth(options);
@@ -386,14 +396,16 @@ export async function run(argv) {
   } else if (command === "validate") {
     result = await validateInstallation({ home: options.home });
   } else if (command === "rollback") {
-    if (existsSync(resolve(options.home, ".development-system/shared-installation.json"))) {
+    if (existsSync(resolve(options.home, ".development-system/shared-installation.json")) || existsSync(resolve(options.home, ".development-system/shared-installation-pending.json"))) {
       result = await rollbackSharedInstallation({ home: options.home });
     } else {
-    const installation = await auditInstallation({ home: options.home });
-    if (installation.status === "unsafe") throw new Error(installation.problems.join("; "));
-    result = installation.executionMode === "advisory-parent-execution"
-      ? await rollbackInstallation({ home: options.home })
-      : await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
+    result = await withLegacyInstallationMutation({ home: options.home, operation: command, run: async () => {
+      const installation = await auditInstallation({ home: options.home });
+      if (installation.status === "unsafe") throw new Error(installation.problems.join("; "));
+      return installation.executionMode === "advisory-parent-execution"
+        ? await rollbackInstallation({ home: options.home })
+        : await withGovernanceHookRollback({ home: options.home, rollback: () => rollbackInstallation({ home: options.home }) });
+    }});
     }
   } else if (command === "audit-skills" || command === "sync-skills") {
     const catalog = await readSkillCatalog(options.version);

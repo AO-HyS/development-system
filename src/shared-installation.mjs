@@ -71,6 +71,21 @@ async function acquire(home) {
   } catch (error) { database.close(); throw new Error('Another process owns the shared installation transaction', { cause: error }); }
   return async () => { try { database.exec('ROLLBACK'); } finally { database.close(); } };
 }
+/** Legacy commands may mutate only an unadopted HOME, under the same lock.
+ * @template T
+ * @param {{home:string, operation:string, run:()=>Promise<T>}} options
+ * @returns {Promise<T>}
+ */
+export async function withLegacyInstallationMutation({ home, operation, run }) {
+  home = resolve(home);
+  const release = await acquire(home);
+  try {
+    if (await statOrNull(await confined(home, statePath, true)) || await statOrNull(await confined(home, journalPath, true))) {
+      throw new Error(`${operation} cannot mutate a shared or pending installation; use setup/update, rollback or recover-shared for the complete tuple`);
+    }
+    return await run();
+  } finally { await release(); }
+}
 /** @param {string} root @param {string} version */
 async function releaseInputs(root, version) {
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Contract version must be a semantic version');

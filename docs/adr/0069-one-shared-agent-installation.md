@@ -15,6 +15,11 @@ Repository context is discovered on demand from existing product docs. No adapte
 or replacement mandatory index is generated. Retirement removes only known paths
 and preserves unique product content. Structural command/QA/preview criteria stay.
 
+Standalone contract, skill and hook mutators remain available only on an
+unadopted HOME. They acquire the same installation lock and reject an active
+shared receipt or pending journal. Adopted installations change through the
+complete setup/update/rollback/recovery transaction.
+
 T3 owns app-owned task execution/history/browser/scheduling. Shared pure planning,
 acceptance and operation-specific authority controls remain. Retire launchd enable
 for this T3-owned profile, even from an ordinary terminal. External process recovery
