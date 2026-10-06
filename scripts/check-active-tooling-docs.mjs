@@ -19,7 +19,7 @@ export function activeToolingDocFindings(text, file) {
   for (const [index, line] of text.split(/\r?\n/u).entries()) {
     const delimiter = /^\s*(`{3,}|~{3,})/.exec(line);
     if (delimiter) { fence = fence === null ? delimiter[1][0] : fence === delimiter[1][0] ? null : fence; continue; }
-    const command = fence !== null ? line.trim() : /\b(?:run|use|execute|invoke|ejecuta|usa)\b/i.test(line) ? line : '';
+    const command = fence !== null ? line.trim() : (line.includes('`') || /(?:^|\s)(?:pnpm|development-system|aohys-development-system)\s|\b(?:run|use|execute|invoke|ejecuta|usa)\b/i.test(line)) ? line : '';
     if (!command || command.startsWith('#')) continue;
     if (fence === null && /\b(?:retired|never|do not|no longer|fail before|retirad[oa]|no ejecutes)\b/i.test(command)) continue;
     if (retired.test(command)) findings.push(`${file}:${index + 1}: retired shared-tooling command in current instructions`);
