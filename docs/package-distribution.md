@@ -22,7 +22,7 @@ their already loaded context and selected model.
 Updates need no product repository edit:
 
 ```sh
-development-system update --version 2.0.1 --json
+development-system update --version 2.0.2 --json
 development-system doctor --json
 ```
 

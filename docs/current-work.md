@@ -41,3 +41,11 @@ pass after native boilerplate retirement; native builds are being verified.
 Home Expenses also retains foreign Atlas agent docs/workflow: exact foreign
 surfaces are retired without product/release changes. New checker CI pins are
 needed in repos with native builds after the patch release is published.
+
+Follow-up branch fix/live-agent-instruction-coverage, base6a1cf62 after approved
+2.0.1 publication9cf2427 and global adoption. Independent product review found
+active Home GitHub prompts missing from the no-tests selector and Todo CI
+skipping its root guard. Fresh Sol High plan review approved checker-only2.0.2
+coverage of exact configured instruction trees, with unchanged catalog/guards.
+Only new contract/manifest versions are generated. Native product app sources
+remain unchanged; old assertion coverage and all-role loading are not claimed.

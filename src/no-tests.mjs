@@ -15,8 +15,8 @@ const NATIVE_CONTENT = /\.(?:gradle|gradle\.kts|sh|rb|xcscheme)$|(?:^|\/)(?:Pack
 const WORKFLOW = /^\.github\/workflows\/[^/]+\.ya?ml$/;
 /** Vendored Python environments are never repository tests. */
 const VENDORED_SEGMENT = /(?:^|\/)(?:site-packages|\.venv|venv)(?:\/|$)/;
-/** Live instruction documents: README*.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md at any depth, and docs/**\/*.md. */
-const INSTRUCTION_DOCUMENT = /(?:^|\/)(?:README[^/]*|AGENTS|CLAUDE|CONTRIBUTING)\.md$|^docs\/.+\.md$/;
+/** Live repository guidance plus root-anchored GitHub and native host Markdown instructions. */
+const INSTRUCTION_DOCUMENT = /(?:^|\/)(?:README[^/]*|AGENTS|CLAUDE|CONTRIBUTING)\.md$|^docs\/.+\.md$|^\.github\/(?:copilot-instructions\.md|(?:prompts|instructions|context)\/.+\.md)$|^\.(?:codex\/(?:commands|prompts)|claude\/commands|factory\/commands)\/.+\.md$/;
 /**
  * Historical or published records that are not live instructions, and installed skill trees
  * (.agents/skills, .claude/skills, ...), whose catalog or upstream content the release gardener governs.
