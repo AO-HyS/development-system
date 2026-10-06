@@ -40,7 +40,7 @@ Contract 1.40.0 supersedes the field-notebook report presentation with the appro
 
 ## Repository preparation correction
 
-Initialize and normalize generate the advisory repository adapter. Product-specific lifecycle extensions survive normalization; shared lifecycle policy comes from this version. The paired skill catalog is 0.60.0.
+Repository adapter generation is retired. Read product AGENTS.md, README and task-relevant docs; no replacement index is required. The paired skill catalog is 0.60.0.
 
 ## Automated tests and evidence
 

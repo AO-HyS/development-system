@@ -1714,7 +1714,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.0.0/skills/internal/working-backwards",
           "destination": ".agents/skills/working-backwards",
-          "folderSha256": "3fff5fb2c12434875b907e7b35d3599c37e4c03ea4bd19102d024a440170a67d",
+          "folderSha256": "49916cd05c5f4d4d67c35174f3adbbce915d0476fe8a258cb47f672a532a9411",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",
@@ -1729,7 +1729,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.0.0/skills/internal/working-backwards",
           "destination": ".claude/skills/working-backwards",
-          "folderSha256": "3fff5fb2c12434875b907e7b35d3599c37e4c03ea4bd19102d024a440170a67d",
+          "folderSha256": "49916cd05c5f4d4d67c35174f3adbbce915d0476fe8a258cb47f672a532a9411",
           "executableFiles": [
             "scripts/t3-workflow.mjs",
             "scripts/t3-reader.mjs",
