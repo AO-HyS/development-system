@@ -4,7 +4,7 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current package and contract: **2.0.1**. Shared skill catalog: **0.60.0**.
+Current package and contract: **2.0.2**. Shared skill catalog: **0.60.0**.
 
 ## New and existing repositories
 
@@ -35,7 +35,7 @@ Verify with an isolated HOME before authorized installation into the operator's
 HOME. Ensure ~/.local/bin is on PATH. After first adoption, update once:
 
 ```sh
-development-system update --version 2.0.1 --json
+development-system update --version 2.0.2 --json
 development-system doctor --json
 ```
 
@@ -68,7 +68,7 @@ Reports use the active global CLI and approved shared presentation:
 development-system document --input /absolute/private/packet.json --json
 ```
 
-Receipts include package/source and renderer path/hash. Package 2.0.1 deliberately
+Receipts include package/source and renderer path/hash. Package 2.0.2 deliberately
 retains the approved renderer from artifact 1.40.0. Completion reports reject a
 package that differs from the active installation; explicit historical reports
 mark that exception. A report is editorial evidence, not product acceptance.
