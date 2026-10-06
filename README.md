@@ -104,3 +104,9 @@ preparation gate rejects retired commands in current tooling instructions.
 installation decision. Previous release narratives and interfaces remain in
 [immutable Git history](https://github.com/AO-HyS/development-system/blob/7bdd14a80231eede98fbe999b3a9ba2085864fc0/README.md);
 they are not current installation instructions.
+
+The no-tests CLI also checks native Kotlin test directories, literal native
+runner/configuration declarations and k6 workflows. Deleted tracked files are
+ignored. Native checker coverage is separate from the unchanged published
+write-guard policy; it does not prove native hook prevention. Dynamically
+constructed commands remain outside this bounded detector.

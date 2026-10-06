@@ -33,3 +33,11 @@ explicit if unobserved; file-copy success is not loading.
 Evidence/report: ~/.development-system/private/reports/shared-tooling-cleanup-20261006.
 Only sanitized served assets may be public. Preserve untracked .impeccable/ and
 private/ in this root. No task-owned tunnel has been started yet.
+
+Verification found no-tests false findings for deleted tracked paths and missed
+native/k6 surfaces. A fresh Sol High plan review approved a bounded checker-only
+fix, preserving published write-guard patterns. Current actual consumer checks
+pass after native boilerplate retirement; native builds are being verified.
+Home Expenses also retains foreign Atlas agent docs/workflow: exact foreign
+surfaces are retired without product/release changes. New checker CI pins are
+needed in repos with native builds after the patch release is published.
