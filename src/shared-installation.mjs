@@ -105,6 +105,11 @@ function compactPaths(paths) {
 export async function runtimeProvenance(root) {
   const metadata = JSON.parse(await readFile(resolve(root, 'package.json'), 'utf8'));
   const source = loadPackageSource(root);
+  if (source) {
+    // Runtime identity also requires the installed package bytes to match its
+    // inventory, including transitive renderer assets and imported helpers.
+    for (const [file, declared] of source.files) verifyPackageFile(source, file, declared.sha256);
+  }
   const commit = source?.commit ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
   if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error('Runtime source has no exact revision');
   const dirty = source ? false : Boolean(execFileSync('git', ['status', '--porcelain', '--', 'src', 'package.json', 'artifacts', 'manifests', 'catalog'], { cwd: root, encoding: 'utf8' }).trim());
