@@ -50,3 +50,34 @@ Private receipts and NutriPlan prompt: ~/.development-system/private/releases/1.
 Installed package: ~/.development-system/packages/1.41.0-b0aea5e/package/.
 Report tunnel reader process: session 5596, expires 2026-10-03T22:54:04.020Z.
 Historical continuity: immutable Git docs/current-work.md at 6f3ab020; exact private archive retained.
+
+## 2026-10-05 — AO-HyS review settings (external configuration)
+
+The operator authorized replacing automatic Copilot reviews with Codex reviews,
+using personal Codex credits, and explicitly authorized their existing Google
+Chrome session. This is external configuration work; the canonical checkout stays
+on develop. This continuity note is the only tracked repository edit; preserve
+unrelated .impeccable/ and private/. No product code, package, merge or deployment.
+
+- Removed only copilot_code_review from Barber ruleset 16678420; other rules,
+  conditions and bypass actors preserved and read back from GitHub.
+- All eight AO-HyS repositories have Codex Automatic review on, All PRs, On PR open.
+  Each page was reloaded in Chrome and its persisted settings observed.
+- Personal ChatGPT Pro account observed. Use credits for reviews enabled and
+  reloaded; no credit purchase or automatic reload enabled. Exhaustive review off.
+- Personal Copilot automatic review, new pushes and draft review were already Off.
+  Organization/repository rulesets and default-branch workflows audited.
+- Real review requested on NutriPlan PR #525 at commit 41e6a7f04e073379a146ff0524dfb80daf355477.
+  Request comment 6008117178 received the Codex eyes reaction; summary comment
+  6008119861 reports Completed at 2026-10-06T02:35:58Z. Result comment
+  6008173207 reports no major issues for the unchanged reviewed commit. The real
+  GitHub review integration is verified; final billing reconciliation remains unverified.
+- No local automated tests or evals run; the bot request prohibits them and source pushes.
+  Browser configuration and bot acceptance do not certify its internal execution.
+
+Private receipts: ~/.development-system/private/copilot-to-codex-20261005/.
+Sanitized report: review-surface/reviews.html within that private workspace;
+existing temporary reader session 76720 expires 2026-10-06T04:09:11.971Z.
+PR linked to this T3 thread: https://github.com/AO-HyS/nutri-plan/pull/525.
+Complete: retain the configured settings; stop this thread's PR watch after the
+confirmed result. No merge or product-code remediation is authorized by this task.
