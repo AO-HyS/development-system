@@ -1,4 +1,58 @@
-# Current work — DS 1.41.0 production delivery
+# Current work — shared Development System 2.0.0
+
+Operator authority: T3 thread f6ef1cab-5fa9-4b94-8273-ab72420240bb, implementation,
+publication, global adoption and safe consumer production delivery (2026-10-05).
+Canonical checkout only; no new worktrees, automated tests or evals. Selected
+Sol 6.1 High parent writes sequentially; children remain read-only because native
+writer ownership/Git enforcement was not observed.
+
+Published and installed: PR #147 merged to develop, promotion #148 merged to main,
+release v2.0.0 at 37e86fd3d105d5ef98939b0aa2e0a658732a572a. Shared package and
+contract 2.0.0, catalog 0.60.0; actual global doctor is clean. Active launcher,
+skills and the three hook activations are within one recoverable shared tuple.
+Published artifacts/manifests remain immutable. Runtime update/rollback and report
+provenance are implemented; adapters and launchd enable are retired. T3 owns child
+tasks, history, browser and scheduling; run-worker is optional external tooling.
+
+Independent integrated review approved exact source 319b73d. Focused required
+checks, isolated install/update/rollback, failed validation restoration, partial
+mutation rejection and active/historical report provenance were observed. Crash
+interruption recovery remains not reached; file-copy success does not prove host
+role loading. Fresh tasks in all three products actually consumed the shared CLI
+and global orchestration guidance; generated host-role loading remains unverified.
+
+Consumer delivery as of 2026-10-06 04:05 UTC:
+
+- Casa Roca #152/#153 merged; main c0a11d8. Both existing Vercel applications are
+  Ready in production with exact source and assigned aliases. Public home and
+  dashboard sign-in were observed through T3; authenticated behavior was not
+  exercised. The sign-in exposes Development mode (existing identity-config gap).
+- Barber #417 merged to develop b137bac5; exact Preview run 37411565954 is in
+  progress. Existing canonical promotion #418 is linked to this thread and must
+  be refreshed after exact Preview evidence and integrated promotion review.
+- NutriPlan #545 merged to develop 91523167 after two fresh review rounds and
+  normal local checks. The obsolete optional automated certification runner now
+  fails immediately before effects. Preview run 37411934035 is in progress.
+  Main f87f010 remains many earlier clinical/runtime changes behind develop. The
+  production manifest passes source validation (40 operations); this tooling
+  receipt does not establish those features' acceptance or live data readiness.
+  Preserve protected promotion and do not infer production readiness from it.
+
+CI pins are retained: Casa/Nutri 1.37.0, Barber 1.40.0. Specific no-tests commands
+check their exact local installations; agent skills/reports/orchestration use the
+active global CLI. Other owners' work and the Nutri root note were preserved; the
+unpublished patient-profile feature remains in its existing separate checkout.
+
+Private report/evidence: ~/.development-system/private/reports/
+shared-system-implementation-20261005. Only sanitized served/implementation.html
+is public. Weekly Steward stays in the existing T3 Monday 09:00 Mexico agenda and
+reads the active contract; launchd is disabled/unloaded. No customer messages,
+charges, destructive cleanup or new paid infrastructure were requested/performed.
+
+Pending: actual consumer release receipts and final report/goal reconciliation.
+Preserve unrelated untracked .impeccable/ and private/.
+
+## Historical — DS 1.41.0 production delivery
 
 The operator authorized the corrected plan through production in T3 thread
 f6ef1cab-5fa9-4b94-8273-ab72420240bb on 2026-10-03. Implementation is published
@@ -93,13 +147,12 @@ Fresh independent plan review passed with scheduler-owner and complete-tuple
 recovery refinements. Actual Codex child writer admission/Git enforcement is not
 observed: parent writes sequentially; descendants are read-only facts/reviews.
 Published versions remain immutable. Adapter generator and launchd enable retired;
-shared transaction, global diagnostics/update and report provenance in progress.
+shared transaction, global diagnostics/update and report provenance are published
+in 2.0.0; current delivery receipts are recorded at the top of this document.
 
 Preserved the finished review-settings handoff in commit 3704081. Consumer facts:
 NutriPlan dirty module-inventory root; Barber clean reconcile-main branch differs
 from its continuity; Casa clean main. Reconcile ownership before consumer writes.
 
-Next: finish security corrections and isolated behavioral verification, obtain
-fresh independent integrated review, publish exact reviewed archive, adopt global
-installation, migrate known consumers preserving their CI checks and active work,
-and observe fresh real tooling consumption. Production is not yet complete.
+Historical implementation checkpoint superseded by the current 2.0.0 delivery
+section above. Do not repeat the completed package implementation or adoption.
