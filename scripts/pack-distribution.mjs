@@ -52,6 +52,10 @@ const runtimeTopLevelPaths = [
   "scripts",
   "benchmarks/suite.json",
   "docs/architecture-reference-pack.md",
+  "docs/package-distribution.md",
+  "docs/repository-preparation.md",
+  "docs/workflow/branch-first.md",
+  "docs/adr/0069-one-shared-agent-installation.md",
 ];
 const builderPath = "scripts/pack-distribution.mjs";
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");

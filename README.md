@@ -1,619 +1,106 @@
 # AOHYS Development System
 
-## Release 2.0.0 / catalog 0.60.0
+One shared installation supplies agent skills, instructions, roles, guards,
+reports and tools on this computer. A product repository owns its domain,
+architecture, commands, verification and release policy.
 
-One active Development System installation supplies agent skills, roles, guards,
-reports and tools on this computer. Products retain their AGENTS.md, README and
-task-relevant documentation; no generated repository adapter or replacement
-index is required. Pinned local packages remain only for explicit CI checks.
+Current package and contract: **2.0.1**. Shared skill catalog: **0.60.0**.
 
-```sh
-# From the committed canonical checkout; verify in an isolated HOME first.
-./bin/development-system setup --home /absolute/home --json
-# After first adoption, one central update changes tooling for new tasks.
-development-system update --version 2.0.0 --json
-development-system doctor --json
-```
+## New and existing repositories
 
-Setup and rollback recover the immediately previous complete installation,
-including package, contract, catalog, hooks and launchers. Reports record actual
-package and renderer provenance. T3 owns child tasks, history, preview and weekly
-scheduling. Legacy adapter generators and launchd activation fail before writes.
-Native writer profiles alone do not establish enforced ownership or Git controls;
-this run uses sequential coordinator edits and independent read-only review.
+Open the repository and work normally. No Development System adapter, local
+package, replacement index or registration is needed for agent tooling. Read its
+AGENTS.md, README and only the documents relevant to the task. If AGENTS.md is
+absent, discover the context from the existing documentation and source.
 
-See [distribution](docs/package-distribution.md),
-[repository discovery](docs/repository-preparation.md) and
-[ADR 0069](docs/adr/0069-one-shared-agent-installation.md).
-Installation is distinct from fresh-host loading and accepted behavior.
+Existing repositories may retain exact local package pins for specific CI checks.
+Those pins do not choose the shared tools used by agents. Remove stale adapter
+links and generic local tooling aliases in a reviewed migration, preserving
+unique product knowledge and unrelated work. See [repository discovery](docs/repository-preparation.md).
 
-## Release 1.41.0 / catalog 0.59.0
+## Install once per computer
 
-The existing roster is the single source for generated host roles: Opus 5.5 UI
-and visual critique, protected Sonnet 5.5 execution, and Sol 6.1 High review and
-computer use. T3 child delegation and preview are preferred; cross-provider
-source writing remains gated. Automatic Jev dispatch advice is disabled.
-Writers require an executable `Done when:` packet; account recovery is retained.
+Requirements: the supported Node.js version declared in package.json, pnpm 11,
+and a clean committed canonical checkout or verified release package. Setup is a
+computer operation; ordinary product dependency installation never changes HOME.
 
-Development Steward separates session collection from resolved recommendations,
-deduplicates PRs across revisions, and requires a clean revision with no active
-writer before proposing at most one useful reviewed PR per repository. One
-weekly scheduler replaces the legacy collector without deleting its history.
-Weekly maintenance does not merge PRs or deploy products.
-
-```sh
-./bin/development-system setup --version 1.41.0
-```
-
-See [ADR 0068](docs/adr/0068-t3-native-role-generation-and-steward-retro.md).
-File installation is distinct from observed host loading and product acceptance.
-The sections below record earlier releases; their superseded routing defaults
-do not override the active versioned contract.
-
-## Release 1.40.0 / catalog 0.58.0
-
-The approved [AO HyS r5/p2 template](docs/design/report-template-brief.md)
-now serves completion reports and questionnaires through one shared presentation.
-Reports open with a summarized result and visible next steps. Both surfaces use
-AO HyS light/dark colors, a visible persistent theme switch and contextual
-questions with closable composers, retained drafts and deletion. Enviar saves a
-revisioned batch when served and also copies it; save and clipboard outcomes
-remain separate. Existing question schemas, same-origin protections and offline
-report capabilities remain. Technical document generation uses the new renderer.
-
-Catalog 0.58.0 changes only working-backwards and grill-with-docs. Published
-1.39.0 account recovery guidance and its runtime remain intact; historical
-artifacts and manifests remain immutable. Installation does not establish live
-host loading or product acceptance.
-
-```sh
-./bin/development-system setup --version 1.40.0
-```
-
-## Release 1.37.0 / catalog 0.55.0
-
-Release 1.37.0 requests `gpt-6.1-sol` High for new Codex sessions, planning,
-independent review and browser execution; general writers request Medium.
-Luna remains the fast research and exact-writing model. Advisory policy 1.4.0
-uses `sol61_high_decision`, and Headroom accepts the new model id while retaining
-explicit legacy selections. Claude roster tiers and review guard behavior stay
-unchanged. These mappings are provisional and require observed runtime identity
-and capabilities; this release makes no benchmark or performance claim.
-Catalog 0.55.0 carries the corresponding current instructions.
-The current automatic routes and Claude review defaults use Sol 6.1; Astra
-remains available through an explicit operator selection.
-See [ADR 0064](docs/adr/0064-sol61-high-defaults.md).
-
-```sh
-./bin/development-system setup --version 1.37.0
-```
-
-The release summaries below are historical. Their model selections are
-superseded by 1.37.0 where they differ from the current profile.
-
-## Release 1.36.1 / catalog 0.54.0
-
-Release 1.36.1 narrows the check-no-tests document scan from 1.36.0: a product
-document line is a finding only when it gives a test-runner command or asks for
-test creation, retention or execution. Descriptive mentions of testing tools or
-practices are not findings, and installed skill trees (`.agents/skills`,
-`.claude/skills` and similar) are skipped. The release gardener keeps the strict
-list. Catalog 0.54.0 and every other artifact are unchanged.
-
-```sh
-./bin/development-system setup --version 1.36.1
-```
-
-## Release 1.36.0 / catalog 0.54.0
-
-Release 1.36.0 installs shorter shared global instructions with a Codex and a
-Claude Code host section, and adds `development-system mistake add|list`, a
-private mistake log that retro and development-steward read so a mistake seen
-twice can become a hard rule. Completion documents now require a
-verification-scope line (`Alcance de la verificación:` / `Verification scope:`).
-Catalog 0.54.0 adds the jevgrep skill (the operator installs
-`@dzhng/jevgrep@0.4.0`; code-mapper may run a restricted `jg` form).
-check-no-tests also reads live instruction documents and skips vendored Python
-environments, the residue audit skips byte-identical catalog mirrors, and
-background writer holds no longer expire as foreground holds.
-`development-system thread-health --thread <t3-thread-id>` tells whether a long
-Claude Code thread is moving, needs watching or is stuck, which guard stops it
-hit, and what it costs. orchestrate-work now carries eight rules for long runs
-(integrate per surface, change strategy after three failures, non-blocking
-checkpoints, what is not acceptance, no silent scope widening, notes are not
-proof, when to stop, ledger plus thread-health).
-
-```sh
-./bin/development-system setup --version 1.36.0
-```
-
-## Release 1.35.1 / catalog 0.53.1
-
-Release 1.35.1 moves orchestrate-work to a copy whose close-every-task step
-prescribes the four completion sections that `development-system document`
-requires since 1.35.0 (its 1.33.0 copy still named Veredicto and the other
-retired sections), and working-backwards to a copy that lists known issues
-instead of requiring a table. The release build now fails when any installed
-instruction names the retired sections or requires a known-issues table.
-
-```sh
-./bin/development-system setup --version 1.35.1
-```
-
-## Release 1.35.0 / catalog 0.53.0
-
-Release 1.35.0 makes review rounds and writer boundaries hold under pressure.
-`codex-review.mjs` needs a `Task-Id:` line, counts a round only when Codex ends
-with a `Verdict:` line (failed runs go to attempts.jsonl), reserves review slots
-under an ownership-aware lock, and feeds the previous round's findings into the
-next one. The roster guard runs Jev as advice, accepts `Owned paths:` only as
-one path per entry, keeps writers out of the Git index through a `writer-bash`
-hook and logs expired writer holds. `development-system document` requires
-completion reports to open with Qué se hizo, Hallazgos, Qué sigue and Detalle
-and rejects tables unless `allowTables: true`. Catalog 0.53.0 moves
-flow-implement, coding-orchestration and working-backwards to 1.35.0 copies.
-
-```sh
-./bin/development-system setup --version 1.35.0
-```
-
-## Release 1.34.1 / catalog 0.52.0
-
-Release 1.34.1 leaves one rule set in every repository and HOME: no automated
-tests; every task ends with real verification (computer use, the browser, the
-repository's verification CLI and feature map); reviews run on Astra XHigh
-through `codex-review.mjs` launched in the background. The Fable roles
-(plan-reviewer, security-reviewer) are retired and the Claude reviewers run only
-as a declared `Codex fallback:`. Catalog 0.52.0 rewrites behavioral-evidence and
-removes the remaining test instructions from setup-ts-deep-modules,
-flow-implement, simplify-code and codebase-design. The repository adapter drops
-the test-change policy for `check-no-tests`, and setup reports the original
-skill-sync error together with any rollback error.
-
-```sh
-./bin/development-system setup --version 1.34.1
-```
-
-## Release 1.34.0 / catalog 0.51.0
-
-Release 1.34.0 moves plan, diff, security and visual reviews to Astra XHigh
-through `codex-review.mjs`, installed with the Claude orchestration runtime. The
-coordinator launches it with Bash `run_in_background: true` and is woken when it
-exits; it prints one JSON receipt with the requested and observed model and
-effort. The roster guard retires plan-reviewer and security-reviewer and admits
-the Claude reviewers only with a `Codex fallback:` line. A fourth review round of
-the same objective needs a `Round rationale:` line, at most five reviews run at
-once, and the Stop report gate waits while one runs. `codex-review.mjs --computer-use`
-runs one Codex Computer Use operator at a time, and browser-qa becomes a declared fallback. Catalog 0.51.0 is unchanged.
-See [ADR 0061](docs/adr/0061-astra-reviews-through-codex-review.md).
-
-```sh
-./bin/development-system setup --version 1.34.0
-./bin/development-system claude-orchestration-enable
-```
-
-## Release 1.33.0 / catalog 0.51.0
-
-Release 1.33.0 replaces automated tests with real verification (computer use,
-the browser or a verification CLI). `check-no-tests --root <repository> --json`
-reports test files, runner configuration, test scripts, test dependencies and CI
-test steps; reviewed prefixes go in `config/no-tests-allow.json`. The command
-guard gains `test-file-write` and `guard-config-write`. A Stop report gate asks
-once per session that changed files for the completion report. The Claude roster
-drops Haiku: Explore, code-mapper, docs-researcher and mechanical-worker run on
-Sonnet at low effort. Catalog 0.51.0 updates six internal skills and removes
-the former TDD skill with reversible cleanup. Product repositories run
-`pnpm exec aohys-development-system check-no-tests --root . --json`. See
-[ADR 0060](docs/adr/0060-real-verification-no-tests-report-launch.md).
-
-```sh
-./bin/development-system setup --version 1.33.0
-./bin/development-system guardrails-enable
-./bin/development-system claude-orchestration-enable
-./bin/development-system report-gate-enable
-```
-
-## Release 1.32.0 / catalog 0.50.0
-
-Release 1.32.0 packages the Claude Code orchestration roster: seventeen tiered
-subagent roles in `.claude/agents`, the orchestration rule in `.claude/rules` and
-the roster guard with its policy. The guard asks Jev which tier each packet needs
-and keeps tier memory of escalations. Its Fable 5.1 reviewer roles were retired
-in 1.34.0: reviews run on Astra XHigh through codex-review. Activate, check and undo the guard hooks
-with `claude-orchestration-enable`, `claude-orchestration-audit` and
-`claude-orchestration-rollback`. Catalog 0.50.0 is unchanged.
-
-## Release 1.31.0 / catalog 0.50.0
-
-Release 1.31.0 adds Claude Code as a native harness without a second copy of
-anything. Catalog 0.50.0 links every catalogued skill into `.claude/skills`
-from its installed copy. The shared `~/.codex/AGENTS.md` gains a short Claude
-Code host section, and `~/.claude/CLAUDE.md` is a link to it
-(`ln -s ../.codex/AGENTS.md ~/.claude/CLAUDE.md`). The destructive-command guard
-now covers Claude Code's Bash and Monitor tools, and
-`runtime/headroom/claude.mjs` launches Claude Code through the same
-per-invocation Headroom proxy profile. Plugins, MCP servers and other Claude
-settings stay operator configuration. See
-[ADR 0058](docs/adr/0058-claude-code-harness.md).
-
-## Release 1.30.1 / catalog 0.49.0
-
-Release 1.30.1 fixes Headroom argument placement for T3's `app-server` launch:
-the provider overrides now follow the subcommand, where Codex applies them.
-Ordinary `exec` argument ordering is unchanged. This fixes launch configuration;
-it does not establish transport coverage or provider usage.
-
-Headroom delivery is an explicit, same-account opt-in for local Codex worker
-invocations. It retains the configured Codex binary and `CODEX_HOME`, uses
-lossless/cache-conservative settings, and records actual native usage separately
-from proxy counters. Requested model settings and observed runtime identities are
-reported separately. The release makes no causal savings claim; provider cache
-reuse does not promise byte-identical requests. See
-[ADR 0057](docs/adr/0057-headroom-observed-delivery.md).
-
-The native browser integration includes an invocation-scoped override for the
-documented CUA launcher and browser/computer surface declaration through the
-supported process configuration. It preserves other MCP entries and guards and
-makes no security bypass. The advisory parent execution, full GPT-6 role roster,
-independent reviews, Jev advisory 1.29.0 and customized field-notebook reports
-continue.
-
-No automated tests anywhere: do not create, run or restore them; delete them
-when found (`check-no-tests` and the guard enforce this). Every task includes
-real verification without being asked: computer use, browser, and the
-repository's verification CLI and feature map. Report passed / failed / not
-reached with evidence. A requested visual result still needs independent critique.
-
-An explicitly selected new Codex T3 coordinator thread can request Sol 6 High
-through its supported invocation setting. This is a per-thread choice; it does
-not rewrite the current session's parent or global role mappings. Actual runtime
-model identity and service tier remain separate evidence.
-
-See the [advisory decision](docs/adr/0055-advisory-execution-restoration.md),
-[report decision](docs/adr/0056-field-notebook-report-and-margin-questions.md),
-[execution recipe](artifacts/1.30.0/skills/internal/coding-orchestration/references/jev-advisory.md)
-and [package installation and recovery](docs/package-distribution.md).
-
-Exact instructions remain the default across models: ordered actions, expected
-observations, bounded corrections and resumable handoffs. Capability limits
-change task size and guidance, not acceptance or provider authorization. See
-ADR 0037 and coding-orchestration.
-
-## RÁPIDO → BIEN → BARATO
-
-Nuestra prioridad es entregar la funcionalidad completa y usable lo más rápido
-posible; después, maximizar corrección; después, minimizar costo. Medimos hasta
-el resultado, incluidas las correcciones. El modelo elegido al iniciar la
-conversación conserva la orquestación; el parent elige agentes y el roster ofrece
-recomendaciones. Cada proceso debe ayudar a llegar antes.
-
-La versión anterior 1.20.0 publicó el catálogo 0.41.0 y añade contratos de ejecución
-compactos para delegación exacta o por resultado, ownership disjunto,
-finalización por eventos y revisión explícita de cambios de tests. Conserva
-el cuestionario HTML de grill-with-docs de 1.19.1 y sus respuestas guardadas.
-
-[El sistema completo, explicado paso a paso](docs/system-flow.md).
-Ver [la decisión y sus límites](docs/adr/0032-context-scoped-skills-and-repository-guidance.md) y
-[la corrección de roles de verificación](docs/adr/0033-capability-based-verification-roles.md).
-
-Previous version 1.20.0 published catalog 0.41.0 with pinned execution contracts,
-exact-instruction and outcome-delegation modes and deterministic UI evidence
-packaging; its test-change policy gave way to the no-tests rule (1.33.0, completed
-in 1.34.1). It preserves the reusable HTML grill
-questionnaire from 1.19.1. See [the execution decision and limits](docs/adr/0035-pinned-execution-contract-and-reviewed-test-policy.md).
-Installation is not proof of model behavior, speed or token savings.
-
-The canonical, versioned source for Alejandro Ortiz Corro's development contract.
-The model selected when the conversation starts owns orchestration; the parent
-chooses agents and the editable roster provides role recommendations.
-The five core repositories are NutriPlan, The Barber Central, Casa Roca,
-aohys.com, and ETERIA.
-
-This repository owns generated development-system state. Product repositories continue to own their domain, design, stack, commands, branch policy, previews, and release train.
-
-## Editable agent roster
-
-[`config/agent-roster.json`](config/agent-roster.json) is the human-editable
-source of truth for role recommendations and available model data. Each route
-says what the agent does, when it is used, and lists candidates for an undecided
-parent. Explicit model or family choices take precedence. Change model ids or
-reasoning levels there, then run
-`pnpm roster:check`. The orchestration planner reads the same file and fails
-closed when an edit is malformed. Published `config/<version>/` rosters remain
-immutable release snapshots.
-
-This file controls the resolver, not every live host setting. `model-route` uses
-an input roster, a requested version snapshot, or the executing package's
-`config/agent-roster.json`. The installed HOME copy and native agent TOMLs are
-distributed artifacts; editing one does not reconfigure running agents. Pass the
-selected model/effort through the host's supported dispatch and verify runtime.
-`serviceTier` is propagated to the Codex CLI; an omitted tier requests normal
-`default` speed. The new Codex profile requests the default service tier. Planners/reviewers request Sol 6.1 High. Fast native researchers default to Luna High; all profiles retain role-specific sandboxes and require observed identity.
-
-## Requirements
-
-- Node.js 22 or newer
-- pnpm 11
-- A canonical Git checkout **or** the pinned GitHub release package; no Git checkout is needed for package installation.
-
-## Interface
-
-Install a single tooling dependency in a product repository:
-
-```sh
-pnpm add -D @aohys/development-system@https://github.com/AO-HyS/development-system/releases/download/v1.37.0/aohys-development-system-1.37.0.tgz
-pnpm exec aohys-development-system setup
-```
-
-`setup` installs the advisory contract, profiles and skills, and removes only managed Jev hooks.
-`governance-hooks-audit` confirms managed Jev hooks are disabled; live host
-behavior is checked separately. `rollback` restores the actual prior profile.
-It preserves credentials and does not rewrite the host's selected model.
-For an explicitly selected new T3 coordinator thread, request Sol 6.1 High through
-the supported per-thread setting. This does not replace the current session
-parent or require a global model-config change. Record the actual runtime model
-and service tier separately when observable.
-
-`pnpm ds advisory-status --json` reports the installed adviser profile and
-whether a credential is available, without printing it or calling a provider.
-The private credential location is described in the recipe. Installation hashes
-prove installed bytes; a real classification receipt proves the provider path.
-Keep both kinds of evidence separate.
-
-To reverse an upgrade, retain the prior pinned package/source and host-config
-backup. `rollback` restores the previous contract. Reinstall its catalog
-explicitly (for 1.23.5, `sync-skills --version 0.43.1` from that source);
-`rollback-skills` restores its original baseline rather than necessarily the
-previous catalog. Restore only the two backed-up host model settings if needed.
-
-Commit the lockfile, which pins the tarball integrity. A `ds` package script can alias `aohys-development-system`. Normal dependency installation never writes HOME; `setup` is an explicit local operation. See [package distribution and recovery](docs/package-distribution.md).
-
-From a canonical checkout:
+From the canonical Development System checkout:
 
 ```sh
 pnpm install --frozen-lockfile
-./bin/development-system setup --version 1.37.0
-./bin/development-system guardrails-enable
-./bin/development-system claude-orchestration-enable
-./bin/development-system report-gate-enable
-pnpm run skills:probe
-./bin/development-system audit-skills --version 0.55.0 --evidence "$HOME/.development-system/private/reports/skills-live-latest.json"
-./bin/development-system guardrails-audit
-./bin/development-system audit
-./bin/development-system validate
-./bin/development-system report-gate-rollback
-./bin/development-system claude-orchestration-rollback
-./bin/development-system guardrails-rollback
-./bin/development-system rollback-skills
-./bin/development-system rollback
-pnpm run rollout:validate
+./bin/development-system setup --home /absolute/home --json
 ```
 
-`rollout:validate` returns either `ready-for-human` or a structured list of remaining pilot gates. It verifies SHA-256-bound live evidence and pilot attestations, private recap existence, review/QA disposition, PR/preview readiness, rollback, and the prohibition on merge, release, production, paid activation, canonical HOME synchronization, and Escuela 360 work. Git owns repository history; the validator does not reproduce it with commit comparisons.
-
-Audit and prepare a product repository with distinct operations:
+Verify with an isolated HOME before authorized installation into the operator's
+HOME. Ensure ~/.local/bin is on PATH. After first adoption, update once:
 
 ```sh
-./bin/development-system audit-repository --repository /absolute/path/to/product --json
-./bin/development-system initialize-repository --repository /absolute/path/to/product --confirm initialize --json
-./bin/development-system normalize-repository --repository /absolute/path/to/product --confirm normalize --json
+development-system update --version 2.0.1 --json
+development-system doctor --json
 ```
 
-Audit never writes. Initialization and normalization manage only the Development System namespace, preserve product-owned files, and never activate paid services; see `docs/repository-preparation.md`.
+New tasks use the active shared installation. Existing threads retain their
+loaded context and selected parent model. An update does not hot-switch a thread.
+See [distribution and recovery](docs/package-distribution.md).
 
-Adapter normalization prepares a repository for the Development System; it does not refactor that product's architecture. Separate Working Backwards entry prompts for the five primary product convergence initiatives live in [`docs/product-convergence/`](docs/product-convergence/README.md).
+## Update, recovery and evidence
 
-Lifecycle requests use natural language but persist canonical operation names:
+Setup/update serializes the complete package, contract, catalog, managed files,
+hooks and launchers. Failed validation restores the previous complete tuple.
+Recovery and rollback preserve unrelated files and refuse unreconciled managed
+drift. Historical published versions remain immutable.
 
 ```sh
-./bin/development-system lifecycle-request --workflow AOH-142 --mode transition --request "Inicia grill-with-docs"
-./bin/development-system lifecycle-request --workflow AOH-142 --mode transition --request "Apruebo los requisitos"
-./bin/development-system lifecycle-status --workflow AOH-142
-./bin/development-system lifecycle-execute --workflow AOH-142 --operation validate
+development-system doctor --json
+development-system rollback --json
+development-system recover-shared --json
 ```
 
-Pass `--terminal-slice "..."` with the Implement Preview request. Use `--mode recommend` for a read-only recommendation; it never persists a transition or grants authority. Use `--json` to inspect the exact transition, authorization source, evidence, stage, and reported external side effects.
+Doctor identifies the executing and active package, contract, catalog and drift.
+Installed bytes do not prove host loading or behavioral influence. Observe actual
+CLI and skill consumption in fresh relevant tasks; report unavailable capability
+or runtime metadata as unknown. Generated writer profiles alone do not establish
+exclusive ownership or Git protections.
 
-Visual-grill routing is a separate read-only seam. It classifies natural intent,
-recovers answered decision keys and validates exploration order without creating
-a session or granting implementation:
+Reports use the active global CLI and approved shared presentation:
 
 ```sh
-./bin/development-system visual-grill-route --input /private/path/visual-brief.json --json
+development-system document --input /absolute/private/packet.json --json
 ```
 
-Working Backwards operations consume explicit JSON files:
+Receipts include package/source and renderer path/hash. Package 2.0.1 deliberately
+retains the approved renderer from artifact 1.40.0. Completion reports reject a
+package that differs from the active installation; explicit historical reports
+mark that exception. A report is editorial evidence, not product acceptance.
 
-```sh
-./bin/development-system working-backwards --input /private/path/definition.json --home /tmp/isolated-home --json
-./bin/development-system working-backwards-publication-intent --input /private/path/ticket-map.json --json
-./bin/development-system working-backwards-t3-handoff --input /private/path/handoff-input.json --json
-./bin/development-system working-backwards-handoff-freshness --input /private/path/freshness-input.json --json
-./bin/development-system working-backwards-humanlayer --input /private/path/observations.json --json
-./bin/development-system working-backwards-evaluate --input evidence/working-backwards/ticket-06-evaluation.json --json
-```
+## Orchestration and maintenance
 
-For the progressive T3 Code experience, invoke `$working-backwards` (or write `work backwards`) followed by a normal feature idea. The skill drafts one concise canonical Markdown artifact at a time under private Development System HOME, asks one high-leverage question only when needed, and advances on clear replies such as `Apruebo, sigue` or `Se ve bien, continúa`. Feedback edits the active document. A reusable offline Reader derives a plain JSON view model from Markdown plus workflow state and continuously generates a human-named `<initiative-slug>.html`: compact artifact navigation, a continuous technical document, active page outline, restrained metadata, first-class Mermaid controls, explicit-data charts, semantic tables/callouts, and filename-aware code/diff blocks. The metadata-only library alone retains `index.html`. The private terminal handoff never authorizes implementation.
+Preserve the selected parent. Use native supported same-provider agents and
+independent review. T3 owns child tasks, history, browser and scheduling. Source
+writing children require observed ownership admission and Git restrictions;
+otherwise the authorized parent edits sequentially with read-only children.
+Cross-provider writing remains gated. run-worker is optional external process
+recovery, never the route for T3-owned child tasks.
 
-These commands prepare intent, private handoff, freshness, unverified supplied HumanLayer snapshots, and evaluation evidence without a default tracker or network runtime. Gate approvals persist private workflow-specific receipts bound to normalized repository identity/revision and exact artifact evidence. Publication binds the approved map and intent; resume requires injected authority validation of an opaque consumed-intent receipt and tracker reconciliation by idempotency key. The initial HumanLayer adapter rejects remote, synchronized, auto-advancing, worktree-creating, Slack, Linear, and external modes. Ticket 06 evidence remains incomplete because independently verifiable source packets are unavailable, so it recommends no pilot and ticket 07 stays blocked. Definition, evaluation, publication, and handoff keep implementation unauthorized until Implement Preview.
+Weekly Steward uses the existing T3 schedule. Its allowlist bounds unattended
+maintenance, not which repositories may use the shared tools. Launchd activation
+and repository adapter generators are retired; no second scheduler is needed.
+Steward keeps collection separate from recommendation completion, deduplicates
+repository plus stable changeId and preserves unpublished recommendations.
 
-After `Implement Preview` is authorized, execute a private structured plan with:
+No automated tests or evals. Use focused source checks and real behavior evidence.
+No automatic product merge, release, deployment, data mutation, charges or customer
+messages are authorized by installation or a maintenance schedule.
 
-```sh
-./bin/development-system implement-preview \
-  --workflow AOH-145 \
-  --plan /private/path/implement-preview.json
-```
+## Maintaining this source
 
-The command runs one writer, independent intent/standards reviews, real verification (computer use, browser, verification CLI; no automated tests), commit, push, PR, and preview commands. It creates a private Local Visual Plan and Recap and stops at `ready-for-human`; see `docs/implement-preview.md`. It rejects promotion operations.
+Use the [branch-first workflow](docs/workflow/branch-first.md) and repository
+AGENTS.md. Required focused checks are typecheck, release:prepare, roster:check,
+check-no-tests, isolated installation and relevant real observations. Do not run a
+full scenario/verification suite without the user's explicit request. The release
+preparation gate rejects retired commands in current tooling instructions.
 
-When an authorized task contract names at least two exact work-item IDs and a
-complete matching work graph, `orchestration-plan` automatically selects
-dependency-aware parallel mode; the operator does not need to remember a
-skill name. Ticket count alone never activates it. `$parallel-work` remains a
-compatibility entry point and `$work-multiple` remains a deprecated alias.
-Dependency completion controls readiness; capacity and overlapping surfaces
-control the executable frontier. Focused checks run per lane and integration
-checks run once on one candidate. Publication remains separately authorized.
-
-Install the private weekly Development Steward on macOS after installing the
-1.5.12 contract. It runs Monday at 09:00 local time for the five allowlisted
-primary repositories and publishes one concise Check-in input without writing
-to repositories or providers:
-
-```sh
-./bin/development-system development-steward-schedule-enable \
-  --home "$HOME" \
-  --projects-root /absolute/path/to/projects \
-  --codex-path /absolute/path/to/codex \
-  --node-path /absolute/path/to/node \
-  --json
-./bin/development-system development-steward-schedule-audit --home "$HOME" --json
-./bin/development-system development-steward-schedule-disable --home "$HOME" --json
-```
-
-The validated, machine-consumable report is
-`~/.development-system/steward/reports/latest.json`; it contains both the
-normalized Steward review, its Check-in result, and derived readable Markdown.
-Disabling the scheduler unloads it but preserves completed reports.
-
-Use `--home /path/to/isolated-home` to operate on a fixture or clean environment. `install` resolves the checkout's current commit automatically; automation and fixtures may pin it explicitly with `--source-commit <40-hex-commit>`. Add `--json` for machine-readable evidence.
-
-The generated state is:
-
-```text
-HOME/
-├── .development-system/
-│   ├── installed-manifest.json
-│   ├── state.json
-│   ├── lifecycles/
-│   ├── private/
-│   └── snapshots/
-└── .codex/development-system/contract.md
-```
-
-The installed manifests record contract/catalog version, source repository, exact source commit, file/folder SHA-256 hashes, logical name, harness, destination, expected mirror, and explicit adapter contract. Direct edits under HOME are drift, not a new source of truth.
-
-`sync-skills` manages 58 logical skills across 58 physical Codex variants. T3 Code consumes the same Codex-compatible installation. Factory paths from previously installed catalogs are retired managed outputs: synchronization removes them and snapshots every replaced entry for `rollback-skills`. Historical immutable manifests still describe the harnesses supported by those old releases; they do not expand the current 1.5.x runtime surface.
-
-## Real development-run measurement
-
-Invoke `$measure-development-run` anywhere in a Codex task. It uses the first real user prompt through the invocation prompt as the evidence boundary, but its headline duration is active parent-turn time plus only proven, non-overlapping external waits. Idle gaps while a task remains open are excluded. Thread span remains visible as context. Reports are private, append-only JSON and Markdown under `~/.development-system/measurements/`.
-
-The deterministic collector records timestamps, token counters, turns, tools, observed failures, models, subagents, concurrency, and repository provenance without persisting transcript text, reasoning, tool inputs, or tool output. The evidence-backed assessment records scope completion, functional proof, code/architecture/security quality, intervention, rework, cost availability, limitations, and concrete improvements. It deliberately produces no composite score.
-
-## Operational skill evidence
-
-The audit reports six distinct states: `exists`, `discovered`, `catalogued`, `loadable`, `loaded`, and `influenced`. A copied file proves only existence. Full loading and behavioral influence require runtime evidence from the real harness. `pnpm run skills:audit` always runs the structural audit and reports live evidence as missing until a probe file is supplied; it does not point at a date-stamped file that may not exist.
-
-```sh
-pnpm run skills:probe -- --output evidence/skills-live-$(date +%F).json
-./bin/development-system audit-skills \
-  --evidence evidence/skills-live-$(date +%F).json \
-  --json
-```
-
-The probe uses read-only, ephemeral Codex execution. T3 Code consumes this same Codex-compatible skill installation, so it does not require or claim a second harness probe. The current behavioral probe covers only the critical `research` capability. `measure-development-run` requires a separate real-task invocation because its contract depends on the current Codex task. Evidence includes executable path, version, command, explicit activation/read signal, a skill-derived behavior signature, scanner errors, and catalog warnings.
-
-## Operational T3 Code evidence
-
-```sh
-pnpm run t3code:probe
-```
-
-The T3 Code probe exercises the installed application through its Codex-compatible surface and verifies that repository and authorization state remain bound to the same contract. It consumes the canonical private `skills-live-latest.json` written by the immediately preceding `skills:probe`; pass `--skill-evidence /absolute/path.json` only to use another exact evidence packet. It is separate from the Codex skill probe because a shared installation is not proof that the T3 client actually consumes it. Both probes are read-only and do not initialize, normalize, or declare any product ready.
-
-## Reproducible acceptance scenario
-
-```sh
-pnpm run scenario
-```
-
-The scenarios create isolated temporary HOMEs and repositories. They prove install/drift/reinstall/rollback, skill synchronization and rollback, inert lifecycle recommendations, ordered human gates, adapter parity and diagnostics, capability benchmark evidence, terminal-slice delivery, confrontational review convergence, private visual surfaces, read-only repository audit, idempotent initialization/normalization, product-file preservation, denial before the final gate, and one-shot merge authorization. They never touch the real HOME or contact live harnesses; `skills:probe` and `t3code:probe` are the separate live operational gates.
-
-Older Factory benchmark and parity scripts remain versioned under explicitly `legacy:*` package commands only to reproduce historical evidence. They are not part of the 1.5.16 install, certification, scheduler, guardrails, repository adapters, or normal operator path.
-
-`model-route` reads the roster's recommendations without contacting providers.
-The starting model remains the orchestrator and the parent chooses agents.
-DeepSeek/OpenCode may use available models, and a Codex parent may choose
-available GPT/Go tools. Requested and observed model IDs remain separate until
-runtime evidence matches; explicit SWE-2 lanes keep every descendant in the SWE
-family without Codex/Go fallback. Design, visual review and Computer Use require
-roles with the actual vision or browser capability needed by the task.
-See [current routing policy](docs/model-routing.md).
-
-An unshipped cloud-first Devin factory is retained only as a design proposal in
-[`docs/devin-factory/`](docs/devin-factory/README.md) and
-[ADR 0019](docs/adr/0019-cloud-first-devin-software-factory.md). It does not
-create provider blueprints or govern the executable 1.9.0 routing contract.
-
-The latest controlled ordinary-gate measurements and their reproduction
-contract are recorded in
-[`docs/changed-validation-benchmark-2026-07-28.md`](docs/changed-validation-benchmark-2026-07-28.md).
-
-## Natural-language recovery
-
-No secret phrase is required. Requests such as these map to the same explicit operations:
-
-- “Instala la versión actual del sistema de desarrollo” → `setup --version 1.37.0`; audit advisory hooks and the paired catalog 0.55.0
-- “Mide cómo funcionó esta implementación” → invoke `$measure-development-run`
-- “Audita mi instalación sin cambiar nada” → `audit`
-- “Comprueba que sigo usando la versión canónica” → `validate`
-- “Vuelve a la versión anterior del contrato” → `rollback`
-
-Before executing, the caller should identify the target HOME and requested operation. Recovery uses the installed manifest and recorded snapshots, never a conversation transcript.
-
-Installing or recovering this contract does **not** authorize merge, release, production, destructive operations, paid activation, or extraordinary paid usage. Those operations require separate, explicit authorization each time.
-
-## Repository validation
-
-Every prepared repository exposes two distinct quality interfaces:
-
-- changed validation for ordinary implementation and pre-push feedback;
-- full certification once for the integrated change.
-
-Repository adapters also record risk-selected QA, one shared branch preview
-from `develop`, and provider readiness before preview when auth, data,
-migrations, seeds, roles, or environment contracts changed. Product
-repositories still own the concrete commands and provider implementation.
-
-```sh
-pnpm run typecheck
-```
-
-Visual acceptance uses authorized Computer Use on the actual delivered document,
-including its maps, charts, controls and mobile layout. Keep browser access
-restrictions intact. The historical `reader:browser` harness is not evidence
-that a delivered report was inspected. Broad `verify` and `scenario` gates run
-only when explicitly requested, as required by AGENTS.md.
-
-Generate a private document with
-`development-system document --input packet.json --home HOME --json`.
-See the [visual document contract](artifacts/1.9.0/skills/internal/working-backwards/report-reference.md)
-for completion, review and spec explanation packets, PR Lens maps and regeneration.
-
-## Versioning
-
-Contract versions use semantic versioning. `0.0.0` is the bootstrap rollback target; `0.1.0`–`1.5.0` retain their published contracts. `1.5.0` adds Development System Next and removes Factory from newly generated contracts, catalogs, and repository adapters while T3 Code consumes the Codex-compatible surface. `1.5.6` keeps wide diagrams readable; `1.5.7` adds Topic questions and measurable orchestration; `1.5.8` adds prompt-scoped architecture references and natural no-change approvals. `1.5.9` renders the complete Working Backwards history and bounded live review. `1.5.10` makes the full Reader usable across phones, tablets, and desktop. `1.5.11` pins Matt Pocock `v1.2.3`, restores whole-frontier grilling with recommendations, removes retired upstream skills reversibly, and makes the Steward check React Doctor, both Impeccable release lines, and Matt skills explicitly. `1.5.12` makes ordinary implementation direct, definition ceremonies opt-in, and non-trivial orchestration fast-model-first. `1.5.13` adds deterministic hybrid orchestration, observed Code Mode selection, and optional simplify-code review. `1.5.14` adds opt-in product verification with a neutral Luna Computer Use runner, deterministic before/after probes, and Sol-owned semantic judgment. `1.5.15` adds exact authorized-initiative routing, dependency-ready capacity-bounded lanes, multiple specialist risks, deterministic stack bundles, Matt's current 37-skill snapshot, and one bounded PStack-inspired engineering adapter. `1.5.16` adds explicit cross-harness model fallback with honest evidence/mapping status, fail-closed exhaustion, and receipt-bound resolution while shipping catalog `0.23.0` with the new immutable `coding-orchestration` skill and `fast_implementer` agent copies. `1.5.17` makes the ordered anti-slop protocol executable and publishes catalog `0.24.0`. `1.5.18` makes live skill probes reliable with catalog `0.25.0`. `1.5.19` publishes the editable agent roster and roster-driven orchestration with catalog `0.26.0`. `1.6.0` adds Astra/Go routing, the package distribution path and catalog `0.27.0`. `1.7.0` activates the provisional Muse-first route and shares the report Reader through catalog `0.28.0`. `1.8.0` adds portable visual documents and completion/review/explanation generation with catalog `0.29.0`. `1.8.1` improves document reading order, task identity and desktop navigation with catalog `0.29.1`. Published manifests and artifacts are immutable.
-
-## Release boundary
-
-Installing this contract never grants promotion authority. Each commit, push, pull request, merge, release, deployment, paid activation, or production synchronization still follows the user's exact request and the target repository's release policy.
-
-
-Astra guidance alignment in 1.8.2 removes conflicting adapter handoffs, retains
-user authorization and adds a stop rule for redundant verification. See
-[ADR 0023](docs/adr/0023-astra-guidance-alignment.md). API-only capabilities are
-not reported as enabled in Codex/T3 without host runtime evidence.
-
-Version 1.9.0 adds embedded before/after captures and real workflow video to completion reports, with comparison controls, image expansion and reduced-motion support. The shared implementation skill captures the baseline early and requires visual evidence for backend changes that affect UI. Missing evidence stays explicit; presence does not certify the result.
-
-`pnpm verify` certifies the current roster, types, repository validation and
-canonical sources; `pnpm scenario` exercises isolated installation and recovery.
-`pnpm rollout:validate` remains an explicit audit of the July 20 historical
-pilot and requires its original private recap files. It is not a current-release
-gate; absent archived files remain an audit gap.
-
-Catalog 0.32.1 explicitly declares the existing `.codex` and `.factory`
-Impeccable compatibility copies as mirrors of the canonical `.agents` skill.
-These mirror paths do not certify another harness or create additional model routes.
+[ADR 0069](docs/adr/0069-one-shared-agent-installation.md) records the shared
+installation decision. Previous release narratives and interfaces remain in
+[immutable Git history](https://github.com/AO-HyS/development-system/blob/7bdd14a80231eede98fbe999b3a9ba2085864fc0/README.md);
+they are not current installation instructions.
