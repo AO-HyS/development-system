@@ -36,8 +36,21 @@ bytes are preserved and the correction is versioned as 2.1.1. Unknown browser
 candidates require HTTP/HTTPS plus an HTML Viewer role. Disabled unreserved
 allocator records can be unregistered without touching application/profile data.
 
-Next: package the reviewed 2.1.1 candidate, verify isolated-HOME update and adopt
-the complete tuple locally only if validation passes.
+Installed locally: package/contract 2.1.1, catalog 0.60.0, source
+967174b4cd495e1f7c88b94896d99bfe5f1c257f. Isolated-HOME update and doctor from
+the actual active package passed; complete principal tuple adoption and doctor
+also passed. Chrome/Safari records remain disabled with no active leases. The
+false disabled ChatGPT candidate was removed from allocator metadata only.
+No application bundles, profiles or cookies were changed. Independent final
+source/hash review has no actionable findings.
+
+Private receipts, package and sanitized report:
+~/.development-system/private/browser-pool-20261007. The report uses the installed
+helper; only share/report.html is served through a bounded temporary tunnel.
+Acceptance pending: owner-installed dedicated browsers and account sign-in,
+observed native application confinement/concurrency, and a compatible T3 build
+with the prepared profile patch. Existing T3 threads were not restarted.
+
 Evidence is recorded outside public source; report assets are sanitized. No
 automated tests/evals, worktrees or external publication.
 
