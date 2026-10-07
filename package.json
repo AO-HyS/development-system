@@ -1,7 +1,7 @@
 {
   "name": "@aohys/development-system",
-  "version": "2.0.2",
-  "contractVersion": "2.0.2",
+  "version": "2.1.0",
+  "contractVersion": "2.1.0",
   "private": true,
   "description": "Canonical, installable, and reversible AOHYS development contract.",
   "type": "module",
@@ -35,7 +35,7 @@
     "check:no-tests": "./bin/development-system check-no-tests",
     "validate:repository": "./bin/development-system validate-repository",
     "verify": "pnpm run roster:check && pnpm run typecheck && pnpm run validate:repository && pnpm run release:prepare",
-    "release:prepare": "node ./scripts/build-release-202.mjs --check",
+    "release:prepare": "node ./scripts/build-release-210.mjs --check",
     "release:pack": "node ./scripts/pack-distribution.mjs",
     "roles:check": "node ./scripts/build-role-policy.mjs --check",
     "roles:generate": "node ./scripts/build-role-policy.mjs --write"

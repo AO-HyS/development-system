@@ -311,6 +311,10 @@ export async function run(argv) {
 
 /** @param {string[]} argv */
 async function runCommand(argv) {
+  if (argv[0] === "browser-pool") {
+    const { runBrowserPool } = await import("../runtime/native-browser/cli.mjs");
+    return runBrowserPool(argv.slice(1));
+  }
   if (argv[0] === "thread-health") {
     const { json, ...options } = parseThreadHealthArguments(argv);
     const result = threadHealth(options);

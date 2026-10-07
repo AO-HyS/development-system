@@ -1,0 +1,56 @@
+--- a/packages/contracts/src/previewAutomation.ts
++++ b/packages/contracts/src/previewAutomation.ts
+@@ -10,6 +10,7 @@
+   PreviewViewportSize,
+ } from "./preview.ts";
+ import { ProviderInstanceId } from "./providerInstance.ts";
++import { BrowserProfileId } from "./browserProfile.ts";
+ 
+ const BoundedUrl = Schema.String.check(Schema.isTrimmed())
+   .check(Schema.isNonEmpty())
+@@ -141,6 +142,9 @@
+ 
+ export const PreviewAutomationOpenInput = Schema.Struct({
+   ...PreviewAutomationTabTargetFields,
++  profileId: Schema.optional(BrowserProfileId).annotate({
++    description: "Exact persistent desktop browser profile. Imported logins require this profile and an attached desktop. To change profiles, open a new tab with reuseExistingTab=false.",
++  }),
+   url: Schema.optional(BoundedUrl).annotate({
+     description: `Optional initial page URL. ${URL_GUIDANCE} Omit to open a blank tab.`,
+   }),
+--- a/apps/server/src/preview/ServerBrowser.ts
++++ b/apps/server/src/preview/ServerBrowser.ts
+@@ -706,6 +706,15 @@
+       adopted === undefined && (await desktopRenders(snapshot))
+         ? await connectDesktop(snapshot)
+         : null;
++    if (
++      adopted === undefined &&
++      desktop === null &&
++      snapshot.automationOwner !== undefined &&
++      snapshot.profileId !== undefined &&
++      snapshot.profileId !== INCOGNITO_BROWSER_PROFILE_ID
++    ) {
++      throw new Error("The requested persistent browser profile requires an attached desktop; an isolated server context cannot reuse its imported login.");
++    }
+     const isolatedContext =
+       adopted === undefined &&
+       desktop === null &&
+@@ -1513,6 +1522,7 @@
+                 runtime: "server",
+                 reveal: false,
+                 automationOwner: request.agentSessionId,
++                ...(open.profileId === undefined ? {} : { profileId: open.profileId }),
+               }),
+             ),
+           ));
+@@ -1527,6 +1537,9 @@
+               "A browser dialog is pending. Read preview_status and use preview_dialog first.",
+               "dialogPending",
+             );
++          if (existing && open.profileId !== undefined && open.profileId !== (existing.profileId ?? "default")) {
++            throw new BrowserControlInterrupted("This tab uses a different browser profile. Open a new tab with reuseExistingTab=false.", "tabRequired");
++          }
+           if (existing) {
+             if (url) await navigate(tab, url, "load", navigationTimeout);
+           } else {
