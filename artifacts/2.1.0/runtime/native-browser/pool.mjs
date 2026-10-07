@@ -43,7 +43,8 @@ function identifyApp(appPath) {
     // Future browsers/channels need no fixed roster or capacity increase.
     const metadata = JSON.parse(execFileSync('/usr/bin/plutil', ['-convert', 'json', '-o', '-', info], { encoding:'utf8', stdio:['ignore','pipe','ignore'], maxBuffer:2*1024*1024 }));
     const schemes = new Set((metadata.CFBundleURLTypes ?? []).flatMap((/** @type {{CFBundleURLSchemes?:string[]}} */ type) => type.CFBundleURLSchemes ?? []));
-    if (!schemes.has('http') || !schemes.has('https')) throw new Error(`App is not a registered HTTP/HTTPS browser: ${bundleId}`);
+    const htmlViewer = (metadata.CFBundleDocumentTypes ?? []).some((/** @type {{CFBundleTypeRole?:string,LSItemContentTypes?:string[],CFBundleTypeExtensions?:string[],CFBundleTypeMIMETypes?:string[]}} */ type) => type.CFBundleTypeRole === 'Viewer' && (type.LSItemContentTypes?.includes('public.html') || type.CFBundleTypeExtensions?.some(ext=>['html','htm'].includes(ext)) || type.CFBundleTypeMIMETypes?.includes('text/html')));
+    if (!schemes.has('http') || !schemes.has('https') || !htmlViewer) throw new Error(`App is not a registered HTTP/HTTPS and HTML browser: ${bundleId}`);
   }
   text(bundleId, 'bundleId');
   return { appPath:canonical, bundleId };
@@ -110,6 +111,13 @@ export function browserPool(options) {
       const resource={ id:app.bundleId, ...app, enabled:input.enabled, accounts:names, observedAt:input.enabled?input.observedAt:0, evidence:input.enabled?input.evidence:'', lastUsed:old?.lastUsed??0 };
       state.resources=state.resources.filter(r=>r.id!==resource.id); state.resources.push(resource);
       result={ operation:'browser-pool-register', resource, accountVerification:'recorded-observation-only' };
+    } else if (options.operation === 'unregister') {
+      const input=record(options.input,['resourceId']);
+      const id=text(input.resourceId,'resourceId');
+      const resource=state.resources.find(r=>r.id===id);
+      if (!resource || resource.enabled || state.leases.some(l=>l.resourceId===id)) throw new Error('Only an existing disabled, unreserved resource can be unregistered');
+      state.resources=state.resources.filter(r=>r.id!==id);
+      result={ operation:'browser-pool-unregister', resourceId:id, status:'unregistered', effects:'allocator-metadata-only' };
     } else if (options.operation === 'acquire') {
       const input=record(options.input,['ownerId','ownerPid','purpose','accounts','resourceId','ttlSeconds']);
       const ownerId=text(input.ownerId,'ownerId');

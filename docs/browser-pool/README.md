@@ -21,6 +21,7 @@ Use the active global CLI after complete candidate installation:
 development-system browser-pool inventory --json
 development-system browser-pool status --json
 development-system browser-pool register --input /absolute/private/browser.json --json
+development-system browser-pool unregister --input /absolute/private/disabled-resource.json --json
 development-system browser-pool acquire --input /absolute/private/request.json --json
 development-system browser-pool release --input /absolute/private/release.json --json
 development-system browser-pool quarantine --input /absolute/private/lease.json --json
@@ -112,3 +113,10 @@ neutral readiness receipt. Password-manager extensions can help sign in; they
 do not guarantee transferable sessions or unattended MFA renewal. Register
 only actual observed dedicated resources. The broker invents neither browsers
 nor account readiness when capacity is exhausted.
+
+Known browser channels are discovered directly. Other applications must declare
+both HTTP/HTTPS handling and an HTML viewer role; a deep-link handler alone is
+insufficient. This identifies a candidate, not native-control readiness. To
+remove an accidental or retired record, unregister with `resourceId`; only
+disabled resources without reservations can be removed. Application bundles,
+profiles and cookies remain untouched.

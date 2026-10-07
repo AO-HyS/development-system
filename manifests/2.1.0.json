@@ -836,7 +836,7 @@
       "sourcePath": "artifacts/2.1.0/runtime/native-browser/pool.mjs",
       "destination": ".codex/development-system/runtime/native-browser/pool.mjs",
       "harness": "codex",
-      "sha256": "afa80f555b0681a75de4dbdea303ea7e39ad14abf8829e9cd00daf0c3fa1ec6d",
+      "sha256": "3893149b0f8669bde79da03609578f2f29b15183b8249088b6fabfbf70de5080",
       "expectedMirrorOf": null
     },
     {
