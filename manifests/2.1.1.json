@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractVersion": "2.1.0",
+  "contractVersion": "2.1.1",
   "source": {
     "repository": "https://github.com/AO-HyS/development-system",
     "commit": "$INSTALL_COMMIT"
@@ -23,10 +23,10 @@
     {
       "id": "development-contract.codex",
       "logicalName": "development-contract",
-      "sourcePath": "artifacts/2.1.0/contract.md",
+      "sourcePath": "artifacts/2.1.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "29ced8ff2277c383f8f6ba34a8b99899702fe9b87d3c7c940573706a693e8a4a",
+      "sha256": "8c2b6121a3b98675fab1b6c1a91610d0b88e2242c91fc7855c30ca6297e7c2c5",
       "expectedMirrorOf": null
     },
     {
@@ -284,7 +284,7 @@
     {
       "id": "personal-codex-instructions.codex",
       "logicalName": "personal-codex-instructions",
-      "sourcePath": "artifacts/2.1.0/global-codex-instructions.md",
+      "sourcePath": "artifacts/2.1.1/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
       "sha256": "7fae7681f7c9dc0f531e24d3968be68c14704cfd8dccb7132b3e6e8974a12cf1",
@@ -617,7 +617,7 @@
     {
       "id": "claude-orchestration-roster-guard-mjs.claude",
       "logicalName": "claude-orchestration-roster-guard-mjs",
-      "sourcePath": "artifacts/2.1.0/runtime/claude-orchestration/roster-guard.mjs",
+      "sourcePath": "artifacts/2.1.1/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
       "sha256": "2770084ccf014874e23946baf94eb3c66cae885e290809c4f644a8c6784d5cca",
@@ -815,7 +815,7 @@
     {
       "id": "claude-orchestration-codex-review-mjs",
       "logicalName": "claude-orchestration-codex-review-mjs",
-      "sourcePath": "artifacts/2.1.0/runtime/claude-orchestration/codex-review.mjs",
+      "sourcePath": "artifacts/2.1.1/runtime/claude-orchestration/codex-review.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/codex-review.mjs",
       "harness": "claude",
       "sha256": "d6e98d1b95227ca5b1841a3e7347c21d160f4c6181941981e31bc189f52c3403",
@@ -833,16 +833,16 @@
     {
       "id": "native-browser-pool-mjs",
       "logicalName": "native-browser-pool-mjs",
-      "sourcePath": "artifacts/2.1.0/runtime/native-browser/pool.mjs",
+      "sourcePath": "artifacts/2.1.1/runtime/native-browser/pool.mjs",
       "destination": ".codex/development-system/runtime/native-browser/pool.mjs",
       "harness": "codex",
-      "sha256": "afa80f555b0681a75de4dbdea303ea7e39ad14abf8829e9cd00daf0c3fa1ec6d",
+      "sha256": "3893149b0f8669bde79da03609578f2f29b15183b8249088b6fabfbf70de5080",
       "expectedMirrorOf": null
     },
     {
       "id": "native-browser-cli-mjs",
       "logicalName": "native-browser-cli-mjs",
-      "sourcePath": "artifacts/2.1.0/runtime/native-browser/cli.mjs",
+      "sourcePath": "artifacts/2.1.1/runtime/native-browser/cli.mjs",
       "destination": ".codex/development-system/runtime/native-browser/cli.mjs",
       "harness": "codex",
       "sha256": "4bb39cadef43765bbf47091a22ae8da2f37f864c12c94e584599589a56fe54f0",

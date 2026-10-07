@@ -4,7 +4,7 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.1.0**. Public package and contract: **2.0.2**.
+Current source candidate: **2.1.1**. Public package and contract: **2.0.2**.
 Shared skill catalog: **0.60.0**. Browser resource preparation is described in
 [the browser pool guide](docs/browser-pool/README.md); native concurrency and
 the prepared T3 profile patch still require operational acceptance.

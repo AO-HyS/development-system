@@ -7,7 +7,7 @@ Task: user authorized local reversible browser coordination changes on
 read-only source mapping and fresh independent plan review completed.
 Existing untracked .impeccable/ and private/ remain untouched.
 
-Candidate 2.1.0 adds a private SQLite browser-resource allocator, explicit CLI
+Candidate 2.1.1 adds a private SQLite browser-resource allocator, explicit CLI
 and opt-in dedicated-browser Computer Use launcher integration. Rotation has
 no fixed browser-count cap; unavailable resources return capacity-needed.
 Expiry/owner death/uncertainty quarantine rather than steal. Native Computer
@@ -29,8 +29,15 @@ desktop reservation. These observations cover allocation only, not browser
 control or account authentication. The upstream patch passed git apply --check.
 Fresh final source review passed after two bounded parser corrections.
 
-Next: commit the reviewed local candidate, package it, perform isolated-HOME
-installation and adopt the complete tuple locally only if validation passes.
+2.1.0 was adopted locally at 2a7beaff4535. A discovery correction exposed the
+installer's immutable-version guard when readopting changed 2.1.0 bytes; that
+attempt failed before principal HOME adoption. Its original artifact/manifest
+bytes are preserved and the correction is versioned as 2.1.1. Unknown browser
+candidates require HTTP/HTTPS plus an HTML Viewer role. Disabled unreserved
+allocator records can be unregistered without touching application/profile data.
+
+Next: package the reviewed 2.1.1 candidate, verify isolated-HOME update and adopt
+the complete tuple locally only if validation passes.
 Evidence is recorded outside public source; report assets are sanitized. No
 automated tests/evals, worktrees or external publication.
 
