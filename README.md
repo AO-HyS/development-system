@@ -4,8 +4,8 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.1.1**. Public package and contract: **2.0.2**.
-Shared skill catalog: **0.60.0**. Browser resource preparation is described in
+Current source candidate: **2.1.2**. Public package and contract: **2.0.2**.
+Shared skill catalog: **0.61.0**. Browser resource preparation is described in
 [the browser pool guide](docs/browser-pool/README.md); native concurrency and
 the prepared T3 profile patch still require operational acceptance.
 
@@ -75,6 +75,16 @@ Receipts include package/source and renderer path/hash. Package 2.0.2 deliberate
 retains the approved renderer from artifact 1.40.0. Completion reports reject a
 package that differs from the active installation; explicit historical reports
 mark that exception. A report is editorial evidence, not product acceptance.
+
+## Haiku 5.5 role selection
+
+Haiku 5.5 Medium is the operator-selected preference for bounded research and
+exact/mechanical writing. Protected native Claude roles pin claude-haiku-5-5;
+Sonnet retains general implementation and Sol plans/reviews. T3 readers may use
+Haiku; T3 source writers remain unadmitted. Update the complete shared package
+once per computer; product deployments are not required. Existing Codex-only
+profiles are explicit alternatives, never automatic fallback. See
+[the decision](docs/adr/0070-haiku55-bounded-roles.md).
 
 ## Orchestration and maintenance
 

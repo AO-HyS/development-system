@@ -82,8 +82,32 @@ export function validateAgentRoster(input) {
         if (!Array.isArray(writerMarkers) || requiredWriterFields.some((field) => !writerMarkers.includes(field))) errors.push('Protected writers require the complete execution contract fields');
         if (!isRecord(policy.jev) || policy.jev.mode !== 'off') errors.push('Normal generated Claude dispatch must disable automatic Jev');
         if (!isRecord(policy.primaryVisualReview) || policy.primaryVisualReview.enabled !== true || policy.primaryVisualReview.role !== 'visual-reviewer' || policy.primaryVisualReview.fresh !== true || policy.primaryVisualReview.sourceWrites !== false) errors.push('Primary visual review must be enabled, fresh and read-only');
+        if (policy.haiku55 !== undefined) {
+          const selection = policy.haiku55;
+          const namedRoles = ['Explore', 'code-mapper', 'docs-researcher', 'mechanical-worker', 'exact-implementer'];
+          const writerRoles = ['mechanical-worker', 'exact-implementer'];
+          if (!isRecord(selection) || selection.model !== 'claude-haiku-5-5'
+            || selection.effort !== 'medium' || selection.requiresObservedRuntime !== true
+            || !Array.isArray(selection.roles) || selection.roles.length === 0
+            || selection.roles.some(name => !namedRoles.includes(String(name)))
+            || new Set(selection.roles).size !== selection.roles.length
+            || !Array.isArray(selection.sourceWriters)
+            || selection.sourceWriters.length !== writerRoles.length
+            || writerRoles.some(name => !/** @type {unknown[]} */ (selection.sourceWriters).includes(name))) {
+            errors.push('Haiku 5.5 requires pinned medium effort, observed runtime and approved named roles/writers');
+          }
+          if (Array.isArray(policy.otherAgentsRequireModel) && policy.otherAgentsRequireModel.some(model => /haiku/i.test(String(model)))) errors.push('Haiku plugin models are not admitted');
+          if (isRecord(selection) && Array.isArray(selection.roles)) {
+            for (const name of selection.roles) {
+              const role = /** @type {Record<string, unknown>} */ (policy.roster)[String(name)];
+              if (!isRecord(role) || role.model !== selection.model || Boolean(role.writer) !== writerRoles.includes(String(name))) errors.push(`Haiku role/model boundary mismatch: ${name}`);
+              if (!String(claude.agents[String(name)]).includes('effort: medium\n')) errors.push(`Haiku role effort mismatch: ${name}`);
+            }
+          }
+        }
         for (const [name, role] of Object.entries(/** @type {Record<string, unknown>} */ (policy.roster))) {
           if (!isRecord(role)) { errors.push(`Invalid Claude role: ${name}`); continue; }
+          if (/haiku/i.test(String(role.model)) && (!isRecord(policy.haiku55) || !Array.isArray(policy.haiku55.roles) || !policy.haiku55.roles.includes(name) || role.model !== 'claude-haiku-5-5')) errors.push(`Unapproved Haiku role: ${name}`);
           const template = claude.agents[name];
           if (!nonEmpty(template) || !String(template).includes(`model: ${role.model}\n`)) errors.push(`Claude agent template/model mismatch: ${name}`);
           if (role.writer === true) {

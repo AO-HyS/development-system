@@ -17,11 +17,13 @@ update `docs/current-work.md` so a resumed session does not restart the work.
 ## Codex host model profile
 
 Preserve the parent selected at session start. New sessions request
-`gpt-6.1-sol` High at normal speed. For nontrivial work, Luna 6 High priority
+`gpt-6.1-sol` High at normal speed. For nontrivial work, Haiku 5.5 Medium through an available Claude route
 collects bounded source facts; Sol 6.1 High plans; a distinct fresh Sol 6.1 High
 reviews the plan before writing; and an independent Sol 6.1 High reviews the
 integrated result. General writers request Sol 6.1 Medium; exact and mechanical
-packets request Luna 6 High priority. Planning and review remain independent.
+packets request Haiku 5.5 Medium through protected native Claude roles.
+Codex-only native profiles remain explicit choices, never automatic fallback;
+without an observed protected Haiku writer route the parent edits directly. Planning and review remain independent.
 Mappings are provisional until observed runtime evidence confirms identity,
 effort, tier and required browser or vision capabilities. Never silently change
 provider or reduce acceptance when a capability is unavailable.

@@ -1,3 +1,28 @@
+# Current work — Haiku 5.5 bounded roles
+
+Root: /Users/corrortiz/Documents/AO/development-system.
+Branch: feat/haiku-5-5; base efd70ef7931bee2d9e990669a03df35ef541d313.
+User authorized adoption on 2026-10-07, without benchmarks/evals. Scope:
+Haiku 5.5 Medium for bounded research/mapping and exact/mechanical writing;
+Sol plans/reviews and Sonnet general writing retained. Scope clarification may
+still narrow research; preserve the user's latest direction.
+
+Selected parent Sol 6.1 High edits sequentially. Fresh source mapping and
+independent plan review completed; native writer loading/admission must be
+observed or reported not reached. T3 source-writing remains unadmitted.
+Candidate 2.1.2 and catalog 0.61.0 version new snapshots; historical tuples
+remain immutable. Prepare focused gates, isolated-HOME install/hook observation,
+independent final review, committed package and complete local adoption. No
+public package release, main merge, product deploy, charges or customer effects.
+
+Branch-first: updated develop, created this branch, fast-forwarded the preserved
+committed browser-pool candidate to avoid downgrading local 2.1.1. Existing
+untracked .impeccable/ and private/ remain untouched. Prior browser task and
+acceptance gaps remain below. Private receipts:
+~/.development-system/private/haiku55-adoption-20261007.
+
+## Prior browser task (retained)
+
 # Current work — dedicated browser resource preparation
 
 Root: /Users/corrortiz/Documents/AO/development-system.
