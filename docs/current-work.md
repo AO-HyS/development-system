@@ -1,4 +1,31 @@
-# Current work — Haiku 5.5 bounded roles
+# Current work — cross-family planning instructions
+
+Root: /Users/corrortiz/Documents/AO/development-system.
+Branch: feat/haiku-5-5; resumed at bf27eb4c8ed6ef6df711de2365e9baf21bea763e.
+Operator authorized implementation and local adoption on 2026-10-08 of the
+approved small instruction change. Preserve the selected Astra parent, existing
+implementation profiles, Jev, guards and T3. No new writer bridge or dispatcher.
+
+Candidate package/contract 2.1.3 and catalog 0.62.0 make planning explicit:
+OpenAI parent -> Opus plan / fresh Sol 6.1 High review; Anthropic parent ->
+Sol 6.1 High plan / fresh Opus review. Existing calls retain their model; threads
+reread at the next safe turn before delegation, or on resume if inactive.
+Parent edits sequentially; bounded read-only Haiku source mapping completed.
+Only this parent thread was active in the AO project inventory. No product
+thread was woken or created. Untracked .impeccable/ and private/ are preserved.
+
+Focused typecheck, roster/role coherence, release preparation, no-tests guard
+and diff checks passed. Fresh independent Sol source review found no actionable
+or blocking findings and verified 92 artifact hashes and 245 skill variants.
+Pending: isolated package installation, complete authorized local adoption and
+real instruction-loading observations. Installed 2.1.2 remains active until
+these preparation steps pass.
+No automated tests/evals, merge, public release or product effects.
+Private evidence: ~/.development-system/private/model-policy-implementation-20261008.
+
+## Previous Haiku adoption (retained)
+
+# Haiku 5.5 bounded roles
 
 Root: /Users/corrortiz/Documents/AO/development-system.
 Branch: feat/haiku-5-5; base efd70ef7931bee2d9e990669a03df35ef541d313.

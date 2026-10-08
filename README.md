@@ -4,8 +4,8 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.1.2**. Public package and contract: **2.0.2**.
-Shared skill catalog: **0.61.0**. Browser resource preparation is described in
+Current source candidate: **2.1.3**. Public package and contract: **2.0.2**.
+Shared skill catalog: **0.62.0**. Browser resource preparation is described in
 [the browser pool guide](docs/browser-pool/README.md); native concurrency and
 the prepared T3 profile patch still require operational acceptance.
 
@@ -80,7 +80,11 @@ mark that exception. A report is editorial evidence, not product acceptance.
 
 Haiku 5.5 Medium is the operator-selected preference for bounded research and
 exact/mechanical writing. Protected native Claude roles pin claude-haiku-5-5;
-Sonnet retains general implementation and Sol plans/reviews. T3 readers may use
+Sonnet retains general implementation. Planning crosses families: an OpenAI
+parent uses an Opus 5.5 plan and fresh Sol 6.1 High review; an Anthropic parent
+uses a Sol 6.1 High plan and fresh Opus 5.5 review. Sol retains technical review
+and computer use. Existing threads reread at the next safe turn before delegation;
+see [model routing](docs/model-routing.md). T3 readers may use
 Haiku; T3 source writers remain unadmitted. Update the complete shared package
 once per computer; product deployments are not required. Existing Codex-only
 profiles are explicit alternatives, never automatic fallback. See

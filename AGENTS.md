@@ -18,12 +18,19 @@ update `docs/current-work.md` so a resumed session does not restart the work.
 
 Preserve the parent selected at session start. New sessions request
 `gpt-6.1-sol` High at normal speed. For nontrivial work, Haiku 5.5 Medium through an available Claude route
-collects bounded source facts; Sol 6.1 High plans; a distinct fresh Sol 6.1 High
+collects bounded source facts; Opus 5.5 plans; a distinct fresh Sol 6.1 High
 reviews the plan before writing; and an independent Sol 6.1 High reviews the
-integrated result. General writers request Sol 6.1 Medium; exact and mechanical
+integrated result. For explicitly selected Codex-only work, general writers
+request Sol 6.1 Medium; exact and mechanical
 packets request Haiku 5.5 Medium through protected native Claude roles.
 Codex-only native profiles remain explicit choices, never automatic fallback;
 without an observed protected Haiku writer route the parent edits directly. Planning and review remain independent.
+With an Anthropic parent, Sol 6.1 High plans and a fresh independent Opus 5.5
+reviews the plan. Use existing read-only native/T3 routes and preserve explicit
+provider restrictions. Resolve material objections; an unresolved blocker or
+missing cross-family contrast prevents plan acceptance without an explicit user
+decision. Reread updated installed instructions at the next safe turn before
+delegation; current calls keep their model, and inactive threads adopt on resume.
 Mappings are provisional until observed runtime evidence confirms identity,
 effort, tier and required browser or vision capabilities. Never silently change
 provider or reduce acceptance when a capability is unavailable.
