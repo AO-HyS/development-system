@@ -11,16 +11,36 @@ OpenAI parent -> Opus plan / fresh Sol 6.1 High review; Anthropic parent ->
 Sol 6.1 High plan / fresh Opus review. Existing calls retain their model; threads
 reread at the next safe turn before delegation, or on resume if inactive.
 Parent edits sequentially; bounded read-only Haiku source mapping completed.
-Only this parent thread was active in the AO project inventory. No product
-thread was woken or created. Untracked .impeccable/ and private/ are preserved.
+Initially only this parent was active. After installation, two product threads
+were running; both received a safe-point adoption steer without restart. The
+next natural delegation in either remains unobserved. No inactive thread was
+woken or new thread created. Untracked .impeccable/ and private/ are preserved.
 
 Focused typecheck, roster/role coherence, release preparation, no-tests guard
 and diff checks passed. Fresh independent Sol source review found no actionable
 or blocking findings and verified 92 artifact hashes and 245 skill variants.
-Pending: isolated package installation, complete authorized local adoption and
-real instruction-loading observations. Installed 2.1.2 remains active until
-these preparation steps pass.
-No automated tests/evals, merge, public release or product effects.
+Isolated setup/doctor and complete shared update/doctor passed. Active tuple:
+package/contract 2.1.3, catalog 0.62.0, source
+f010349957b5c2e604836abaa669aaaefc615f6c. Prior 2.1.2 is retained by the complete
+recovery snapshot. The first isolated setup failed before installation because
+its destination did not exist; creating the directory resolved it and both
+receipts are retained.
+
+The preserved OpenAI parent reloaded installed instructions, delegated the
+remaining closeout plan to Opus and sent it to a fresh Sol reviewer. Both fresh
+Claude and Codex invocations confirmed installed/context rule agreement. Sol
+observed T3 preview_status, preview_open and an empty about:blank snapshot;
+this proves browser availability, not product UI acceptance. Final review
+accepted closing with two report corrections: Codex loading was observed, and
+effects include shared local adoption plus task-branch push. Both are applied.
+
+Runtime receipts identify selected/configured models; served identity and
+provider effort/tier remain unknown. This change did not exercise implementation
+writers, certify cross-provider writing, or observe an Anthropic parent running
+the inverse planning pair. These are natural-work observations, not reasons to
+create test threads or change existing guards. No automated tests/evals, merge,
+public release or product effects. Next action: use the installed rules in real
+work and retain evidence of each thread's next delegation; no setup is pending.
 Private evidence: ~/.development-system/private/model-policy-implementation-20261008.
 
 ## Previous Haiku adoption (retained)
