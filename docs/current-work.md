@@ -4,15 +4,24 @@ Root: /Users/corrortiz/Documents/AO/development-system.
 Branch: feat/haiku-5-5; base efd70ef7931bee2d9e990669a03df35ef541d313.
 User authorized adoption on 2026-10-07, without benchmarks/evals. Scope:
 Haiku 5.5 Medium for bounded research/mapping and exact/mechanical writing;
-Sol plans/reviews and Sonnet general writing retained. Scope clarification may
-still narrow research; preserve the user's latest direction.
+Sol plans/reviews and Sonnet general writing retained. The user explicitly confirmed replacing Luna in research and reading too.
 
 Selected parent Sol 6.1 High edits sequentially. Fresh source mapping and
 independent plan review completed; native writer loading/admission must be
 observed or reported not reached. T3 source-writing remains unadmitted.
-Candidate 2.1.2 and catalog 0.61.0 version new snapshots; historical tuples
-remain immutable. Prepare focused gates, isolated-HOME install/hook observation,
-independent final review, committed package and complete local adoption. No
+Package/contract 2.1.2 and catalog 0.61.0 are installed globally from source
+d1519affad728b85e3edad85c2e6aff23817f9bd. Focused typecheck, release preparation,
+roster/role checks and no-tests guard passed. Isolated setup and doctor passed;
+direct installed hook observations allowed the named pinned role, denied overlap,
+legacy alias and Git staging, and released ownership. Independent final source
+review has no actionable findings. Global complete tuple update and doctor passed.
+A T3 read-only Haiku-requested task completed successfully; runtime model/effort
+metadata beyond requested selection is unknown. Native Claude writer template
+loading/interception remains not reached: isolated HOME has no authentication.
+Do not admit T3 writers or infer native writer readiness from the Node observations.
+Preserve parent direct writing until protected native operation is observed.
+No benchmarks/evals or product effects were performed. Previous 2.1.1 remains in
+the complete recovery snapshot; no automatic model rollback is enabled. No
 public package release, main merge, product deploy, charges or customer effects.
 
 Branch-first: updated develop, created this branch, fast-forwarded the preserved
