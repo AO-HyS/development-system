@@ -4,10 +4,17 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.1.3**. Public package and contract: **2.0.2**.
-Shared skill catalog: **0.62.0**. Browser resource preparation is described in
+Current source candidate: **2.1.4**. Public package and contract: **2.0.2**.
+Shared skill catalog: **0.64.0**. Browser resource preparation is described in
 [the browser pool guide](docs/browser-pool/README.md); native concurrency and
 the prepared T3 profile patch still require operational acceptance.
+
+The candidate adds Poteto's `correct`, `architect`, and `benchmark-checklist`
+skills, adapted to the existing orchestrator and verification policy. They are
+available by their skill names with focused descriptions and starter prompts.
+Each records its exact upstream snapshot for reviewed updates. This candidate
+extends active 2.1.3; the separate unadopted 2.2.0 branch must retain these added
+skills when reconciled before its adoption.
 
 ## New and existing repositories
 

@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "commit": "9d76bcab133aefcccb16121d7be874e6aa823729",
+  "path": "pstack/skills/correct",
+  "license": "MIT",
+  "capabilityTreeSha256": "86f88ec0adda98bcede119d3861312c362d17bc91829c73eb4caa5f1208a9791",
+  "files": {
+    "SKILL.md": "bf482bacc972b3f124a4af8bf9364b4b3e280cb5845e44c326ea4f4565e5c904"
+  }
+}
