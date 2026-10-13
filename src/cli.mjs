@@ -346,6 +346,29 @@ async function runCommand(argv) {
     result.ok = result.valid;
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
+  if (argv[0] === "allow-tests" || argv[0] === "test-grants") {
+    const json = argv.includes("--json");
+    /** @type {Record<string, string>} */
+    const values = {};
+    /** @type {string[]} */
+    const roots = [];
+    let revoke = false;
+    for (let index = 1; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      if (arg === "--revoke" && argv[0] === "allow-tests") { revoke = true; continue; }
+      if (["--home", "--hours", "--reason"].includes(arg) && (arg === "--home" || argv[0] === "allow-tests")) { values[arg.slice(2)] = argv[++index]; continue; }
+      if (arg.startsWith("--") || argv[0] === "test-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
+      roots.push(arg);
+    }
+    const { allowTests, listTestGrants, formatTestGrants } = await import("./test-grants.mjs");
+    const home = values.home ?? homedir();
+    if (argv[0] === "allow-tests" && roots.length !== 1) throw new Error("Usage: development-system allow-tests <directory> [--hours N] [--reason text] | --revoke <directory>");
+    const result = argv[0] === "allow-tests"
+      ? allowTests({ home, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke })
+      : listTestGrants({ home });
+    return { result, output: json ? JSON.stringify(result) : formatTestGrants(result), json };
+  }
   if (argv[0] === "mistake") {
     const { subcommand, home, json, repeated, ...fields } = parseMistakeArguments(argv);
     const result = subcommand === "add" ? addMistake({ home, ...fields }) : listMistakes({ home, repeated });
@@ -671,7 +694,7 @@ async function runCommand(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|check-agents-rules|check-lint-floor|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|allow-tests|test-grants|check-agents-rules|check-lint-floor|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 

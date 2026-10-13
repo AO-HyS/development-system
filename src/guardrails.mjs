@@ -9,10 +9,10 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Catalog 0.52.0 ships the quote-aware 2.0.0 policy from artifacts/1.34.1/skills/internal/global-agent-guardrails. */
-const guardCatalogVersion = "0.60.0";
+/** Catalog 0.67.0 ships policy 2.1.0 (operator test-write grants) from artifacts/2.1.7/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.67.0";
 /** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
-const guardSetupVersion = "2.0.2";
+const guardSetupVersion = "2.1.7";
 /** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**
