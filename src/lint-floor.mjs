@@ -9,7 +9,7 @@ import path from "node:path";
 
 const eslintConfigs = ["eslint.config.mjs", "eslint.config.js", "eslint.config.cjs", "eslint.config.ts"];
 const scopeAliases = /** @type {Record<string, string>} */ ({
-  "@typescript-eslint": "typescript", "typescript-eslint": "typescript", "react-hooks": "react", "react-compiler": "react",
+  "@typescript-eslint": "typescript", "typescript-eslint": "typescript", "react-hooks": "react", "react-compiler": "react", "react-refresh": "react",
   "@next/next": "nextjs", next: "nextjs", "jsx-a11y": "jsx_a11y", "jsx_a11y": "jsx_a11y", n: "node",
 });
 const defaultPlugins = ["eslint", "typescript", "unicorn", "oxc"];
@@ -123,8 +123,9 @@ export function checkLintFloor({ root, snapshot, write, allow = [] }) {
   if (!snapshot) throw new Error("check-lint-floor requires --write <file> on the base checkout or --snapshot <file> on the candidate");
   const base = JSON.parse(readFileSync(snapshot, "utf8"));
   const dropped = [], downgraded = [];
-  for (const [id, level] of Object.entries(/** @type {Record<string, string>} */ (base.rules))) {
-    if (allow.includes(id)) continue;
+  for (const [recorded, level] of Object.entries(/** @type {Record<string, string>} */ (base.rules))) {
+    const id = normalizeRule(recorded);
+    if (allow.includes(id) || allow.includes(recorded)) continue;
     // Oxlint implements typescript-eslint extension rules under the core name.
     const twin = id.startsWith("typescript/") ? `eslint/${id.slice(11)}` : id.startsWith("eslint/") ? `typescript/${id.slice(7)}` : id;
     const now = current.rules[id] ?? current.rules[twin];
