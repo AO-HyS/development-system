@@ -1,6 +1,6 @@
 ---
 name: write-swift
-description: How to write modern Swift well — modeling with value types, Swift 6 data-race safety and approachable concurrency (@concurrent, main-actor-by-default, actors, task groups), protocols and generics (some vs any), API design, performance and ARC, Swift Testing, macros, and the modern language features agents don't know about yet. Use when writing, reviewing, or migrating Swift, or when a concurrency error, a hang, a data race, a retain cycle, or a performance problem needs fixing.
+description: How to write modern Swift well — modeling with value types, Swift 6 data-race safety and approachable concurrency (@concurrent, main-actor-by-default, actors, task groups), protocols and generics (some vs any), API design, performance and ARC, macros, and the modern language features agents don't know about yet. Use when writing, reviewing, or migrating Swift, or when a concurrency error, a hang, a data race, a retain cycle, or a performance problem needs fixing.
 ---
 Adapted from Emil Kowalski's skills; provenance and local changes are in [UPSTREAM.md](UPSTREAM.md).
 
@@ -237,7 +237,7 @@ Low-level Swift performance is dominated by four costs. Know which one you're pa
 
 - **Know the complexity of what you call.** `Array.remove(at:)` is O(n); calling it in a loop is O(n²). `removeAll(where:)` is O(n) total. Building a `Data` by re-slicing per byte is O(n²); `popFirst()` is O(1). Both of these were 100×+ regressions hiding behind clean-looking code.
 - **Chained `map`/`flatMap`/`filter` allocate an array per stage.** Elegant ≠ fast. If a pipeline runs per-pixel or per-element in a hot loop, size the output once and write into it.
-- **Then profile.** Instruments' Time Profiler and Allocations, run against a _test_ (secondary-click the test's run button → Profile) so you're measuring exactly the code you care about. `platform_memmove` dominating a flame graph means accidental copying; a million transient allocations means intermediate arrays; `swift_beginAccess` means runtime exclusivity checks; `swift_retain`/`swift_release` means reference-counting traffic.
+- **Then profile.** Instruments' Time Profiler and Allocations, run against the real app on the path you care about (Product → Profile) so you're measuring exactly that code. `platform_memmove` dominating a flame graph means accidental copying; a million transient allocations means intermediate arrays; `swift_beginAccess` means runtime exclusivity checks; `swift_retain`/`swift_release` means reference-counting traffic.
 
 **Concrete levers, roughly in order of what they buy:**
 
@@ -269,21 +269,9 @@ Low-level Swift performance is dominated by four costs. Know which one you're pa
 
 ---
 
-## 11. Testing — Swift Testing by default
+## 11. Verification without automated tests
 
-Use **Swift Testing** for new tests. XCTest remains required for exactly three things: UI automation (`XCUIApplication`), performance metrics (`XCTMetric`), and tests that must be written in Objective-C or that catch Objective-C exceptions.
-
-- **`@Test` on any function** — global, static, or instance; `async`, `throws`, and global-actor-isolated all work.
-- **`#expect(...)` takes ordinary expressions.** No family of `XCTAssertEqual`-style functions to memorize — `#expect(a == b)`, `#expect(list.isEmpty)`, `#expect(!x.contains(y))` all capture and display subexpression values on failure.
-- **`try #require(...)`** to stop the test on failure, and to unwrap an optional safely. This replaces `continueAfterFailure = false` and lets you choose per-expectation.
-- **Suites are `struct`s.** A fresh instance is created per test function, so state can't leak between tests. Use `init` for setup; only use a `class`/`actor` when you need `deinit` for teardown. Nest suites to group.
-- **Parameterize instead of copy-pasting or looping.** `@Test(arguments: [...])` runs each case independently, in parallel, individually re-runnable, with the failing argument named in the results. Two argument collections produce the full cross product — use `zip()` when you want matched pairs instead.
-- **Traits carry intent:** `.enabled(if:)` / `.disabled("reason")` for conditions (never comment a test out — a disabled test still compiles), `.bug(url)` for tracking, `.tags(...)` to relate tests across files and targets, `.timeLimit`, `.serialized` when a test genuinely can't run in parallel. Use `@available` rather than a runtime `#available` check so the testing library knows.
-- **`withKnownIssue { }`** for a test failing on something outside your control — it keeps compiling and running and tells you when the issue is fixed, unlike `.disabled`.
-- **`confirmation`** for callbacks that fire N times; `withCheckedContinuation` for one-shot callbacks with no async overload.
-- **Tests run in parallel by default, in randomized order.** That's a feature: it surfaces hidden inter-test dependencies. Refactor rather than reaching for `.serialized`.
-- **Exit tests** — `#expect(processExitsWith: .failure) { ... }` — cover `precondition`/`fatalError` paths in an isolated child process. macOS, Linux, FreeBSD, Windows only.
-- Migrating: both frameworks coexist in one target, so migrate incrementally and write new tests in Swift Testing today. **Test framework interoperability** (swift-testing ST-0021; check your Xcode version for availability) lets helpers that wrap `XCTFail` be called from Swift Testing tests and vice versa; set the mode to **complete** or **strict** (not **limited**, and never **none**) so cross-framework issues stay errors and point you at the `Issue.record` replacement.
+This adaptation follows the Development System policy: no automated tests are created, run, migrated or restored, Swift Testing and XCTest included. Verify Swift changes with the compiler under Swift 6 strict concurrency, the repository's verification CLI, and real behavior on a simulator or device; report passed / failed / not reached. Tests found in the project are removed as the shared no-tests rule says.
 
 ---
 
@@ -293,7 +281,7 @@ Reach for a macro when you're writing code the compiler could derive — and onl
 
 - **Macros are type-checked before expansion.** Arguments are checked against the macro's declared signature, so misuse is a clean error at the call site, not a mess inside generated code.
 - **Freestanding (`#foo`)** produce an expression or declaration. **Attached (`@Foo`)** augment a declaration in one of five roles: member, peer, accessor, member-attribute, conformance. Roles compose — `@Observable` is member + member-attribute + conformance.
-- **Test macros as pure syntax-tree transforms** with `assertMacroExpansion`. It's the fastest loop, and it's how you avoid bugs in code nobody reads. Set a breakpoint in `expansion` and `po` the syntax node to learn its shape.
+- **Check macro expansions by expanding them** (Xcode → Expand Macro) on real call sites. Set a breakpoint in `expansion` and `po` the syntax node to learn its shape.
 - **Emit real diagnostics when the macro doesn't apply.** Throw an error, or use `context.addDiagnostic` for warnings and fix-its at a specific location. Never let a macro silently generate code that won't compile.
 - Expanded code is ordinary Swift: inspectable ("Expand Macro"), debuggable, steppable.
 
@@ -344,7 +332,6 @@ Agents routinely write the older, longer form of all of these.
 | Blanket "warnings as errors"                                          | **`@diagnose`** per declaration / warning group                                                          | 6.4 ⚠ |
 | `@unchecked Sendable` because of a `weak var`                         | `weak let`; or state non-sendability with **`~Sendable`**                                                | 6.4 ⚠ |
 | Manually parsing binary formats with pointers                         | **Swift Binary Parsing** (`ParserSpan`, overflow-checked parsing initializers)                           | 6.2   |
-| Awkward test function names                                           | **raw identifiers**: `` @Test func `fruits have a tropical climate`() ``                                 | 6.0   |
 
 Also worth knowing: **Swift Regex parsers compose with Foundation's real parsers** (`.date(...)`, `.currency(...)`) — never hand-roll date or number parsing inside a regex. Make the locale explicit rather than inheriting the system's. And use `NegativeLookahead` or `Local` (atomic groups) to stop a pattern backtracking across a whole input.
 
@@ -388,10 +375,6 @@ You can turn strict checking back off and ship; every fix you made is a genuine 
 | Removing matching elements         | `removeAll(where:)` — O(n)      | `remove(at:)` in a loop — O(n²)           |
 | Direct access to contiguous memory | `.span`                         | `withUnsafeBufferPointer`                 |
 | Fixed-size buffer in a hot path    | `InlineArray<N, T>`             | `Array`                                   |
-| A new test                         | `@Test` + `#expect`             | `XCTestCase` + `XCTAssertEqual`           |
-| The same test over many inputs     | `@Test(arguments:)`             | a `for` loop, or copy-paste               |
-| Halting a test on failure          | `try #require`                  | `continueAfterFailure = false`            |
-| A temporarily broken test          | `withKnownIssue`                | `.disabled`, or commenting it out         |
 | Diagnostics in shipping code       | `Logger` + a correlation ID     | `print`                                   |
-| Deciding to optimize               | Instruments on a profiled test  | intuition                                 |
+| Deciding to optimize               | Instruments on the profiled app | intuition                                 |
 

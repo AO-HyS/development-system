@@ -4733,7 +4733,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.1.5/skills/external/write-swift",
           "destination": ".agents/skills/write-swift",
-          "folderSha256": "f090f5c51958b49cbadb8eabad375c54541d56fa55b97cfdac69bef28d38ee03",
+          "folderSha256": "b575842d3d5bb9e450bc3d65fdb2c8fe907b01630026419e3de6af3c4bcb4add",
           "expectedMirrorOf": null
         },
         {
@@ -4741,7 +4741,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.1.5/skills/external/write-swift",
           "destination": ".claude/skills/write-swift",
-          "folderSha256": "f090f5c51958b49cbadb8eabad375c54541d56fa55b97cfdac69bef28d38ee03",
+          "folderSha256": "b575842d3d5bb9e450bc3d65fdb2c8fe907b01630026419e3de6af3c4bcb4add",
           "expectedMirrorOf": "write-swift.codex",
           "install": "symlink"
         }
@@ -4771,7 +4771,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.1.5/skills/external/good-css",
           "destination": ".agents/skills/good-css",
-          "folderSha256": "2cf99b06d18c3a36c35f3ede2474d17901a90da59bf6bc6949f6376c17047747",
+          "folderSha256": "f685ef9f761e90480bd95c3acaf4019ffb2aa3e3da74bb96858bda08f6a00aee",
           "expectedMirrorOf": null
         },
         {
@@ -4779,7 +4779,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.1.5/skills/external/good-css",
           "destination": ".claude/skills/good-css",
-          "folderSha256": "2cf99b06d18c3a36c35f3ede2474d17901a90da59bf6bc6949f6376c17047747",
+          "folderSha256": "f685ef9f761e90480bd95c3acaf4019ffb2aa3e3da74bb96858bda08f6a00aee",
           "expectedMirrorOf": "good-css.codex",
           "install": "symlink"
         }

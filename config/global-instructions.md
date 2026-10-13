@@ -92,7 +92,9 @@ change strategy.
 
 Nontrivial delivery gets a readable HTML report from `development-system
 document` (behavior passed/failed/not reached, elapsed time, evidence, material
-gaps); Markdown is supplementary. Serve sanitized assets through the authorized temporary tunnel
+gaps) in the approved AO HyS r5/p2 presentation it shares with questionnaires,
+contextual questions, browser drafts and revisioned batch submission; Markdown
+is supplementary. Serve sanitized assets through the authorized temporary tunnel
 and state its actual URL and availability/expiry; secrets and private
 transcripts stay outside the served directory. A report is not acceptance
 evidence.

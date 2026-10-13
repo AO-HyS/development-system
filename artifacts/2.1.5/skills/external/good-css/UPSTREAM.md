@@ -5,7 +5,7 @@ Author: Vojta Holik. License: MIT; retained in LICENSE.
 The exact fetched tree and file hashes are in upstream.json.
 
 Local changes:
-- References to the renamed `animate` and `prototype` skills point to `emil-animate` and `emil-prototype`.
+- References to the renamed (SKILL.md and references/motion.md) `animate` and `prototype` skills point to `emil-animate` and `emil-prototype`.
 - A one-line provenance pointer follows the frontmatter. Everything else is the upstream text.
 
 For the weekly skill refresh, compare upstream against this pinned snapshot,
