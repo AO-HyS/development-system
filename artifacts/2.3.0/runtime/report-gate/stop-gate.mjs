@@ -9,14 +9,14 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { closeSync, lstatSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, lstatSync, realpathSync, mkdirSync, openSync, readFileSync, readSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 const stateMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
 const reason = "Files changed this session and no report was produced. Write the concise report packet (flow-implement/references/completion-report.md), run `development-system document --input <packet> --json`, then deliver it durably: render it in this T3 thread or give its persistent htmlPath. A reader-live tunnel link is optional and never the only delivery; state its expiry if you add one. If a report is truly not useful, say why in one line. This reminder appears once.";
 
-const serverReason = (/** @type {string} */ list) => `Servers this session started are still listening: ${list}. Stop the ones you launched (kill those PIDs, never by name and never another thread's), or say in one line why one must keep running. This reminder appears once.`;
+const serverReason = (/** @type {string} */ list) => `A server matching one this session started may still be listening: ${list}. If you launched it, stop that PID (never by name); if you did not, leave it alone. Say in one line why one must keep running. This reminder appears once.`;
 /** A command that starts a long-lived dev or model server. */
 const serverStart = /(?:^|[\s;&|(])(?:(?:vite|next|astro|wrangler|convex|remix|nuxt)\s+dev\b|(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?(?:dev|start|serve|preview)\b|server\.py\b|http\.server\b|workerd\s+serve\b)/u;
 /** Ports named in a server command: --port N, -p N, PORT=N, :N in a localhost URL. */
@@ -40,7 +40,7 @@ const writePatterns = [
 ];
 
 /**
- * @typedef {{offset: number, sawEdit: boolean, sawReport: boolean, blocked: boolean, subagent: boolean, startedAt: number, serverPorts: number[], serversWarned: boolean}} GateState
+ * @typedef {{offset: number, sawEdit: boolean, sawReport: boolean, blocked: boolean, subagent: boolean, startedAt: number, serverPorts: number[], serverDirs: string[], serversWarned: boolean}} GateState
  */
 
 /** Quoted strings are arguments (awk programs, messages), never redirects. @param {string} command */
@@ -91,7 +91,7 @@ function codeModeCommands(source) {
 
 /**
  * @param {{name: string, input: unknown}} call
- * @param {{sawEdit: boolean, sawReport: boolean, serverPorts: number[]}} flags
+ * @param {{sawEdit: boolean, sawReport: boolean, serverPorts: number[], serverDirs: string[]}} flags
  */
 function classifyCall(call, flags) {
   const input = parseArguments(call.input);
@@ -127,13 +127,19 @@ function classifyCall(call, flags) {
         const port = Number(match[1]);
         if (port >= 1024 && !flags.serverPorts.includes(port)) flags.serverPorts.push(port);
       }
+      // The directory the server command ran in: an absolute `cd` in the same command, or the
+      // working directory recorded with the call. A listener must run there to count as ours.
+      const cd = /(?:^|[;&|(]\s*)cd\s+(\/[^\s;&|)]+)/u.exec(command)?.[1];
+      for (const dir of [cd, typeof input.workdir === "string" ? input.workdir : undefined, typeof input.cwd === "string" ? input.cwd : undefined]) {
+        if (dir && !flags.serverDirs.includes(dir)) flags.serverDirs.push(dir);
+      }
     }
   }
 }
 
 /**
  * @param {any} entry
- * @param {{sawEdit: boolean, sawReport: boolean, subagent: boolean, serverPorts: number[]}} flags
+ * @param {{sawEdit: boolean, sawReport: boolean, subagent: boolean, serverPorts: number[], serverDirs: string[]}} flags
  */
 function scanEntry(entry, flags) {
   if (!entry || typeof entry !== "object") return;
@@ -188,10 +194,11 @@ function readState(path) {
       subagent: value.subagent === true,
       startedAt: Number.isFinite(value.startedAt) ? value.startedAt : Date.now(),
       serverPorts: Array.isArray(value.serverPorts) ? value.serverPorts.filter(Number.isInteger) : [],
+      serverDirs: Array.isArray(value.serverDirs) ? value.serverDirs.filter((/** @type {unknown} */ dir) => typeof dir === "string") : [],
       serversWarned: value.serversWarned === true,
     };
   } catch {
-    return { offset: 0, sawEdit: false, sawReport: false, blocked: false, subagent: false, startedAt: Date.now(), serverPorts: [], serversWarned: false };
+    return { offset: 0, sawEdit: false, sawReport: false, blocked: false, subagent: false, startedAt: Date.now(), serverPorts: [], serverDirs: [], serversWarned: false };
   }
 }
 
@@ -263,14 +270,14 @@ function reviewPending(home) {
 }
 
 /**
- * Listening processes on the ports this session's server commands named, started after the
- * session's first stop check began tracking it. Another thread's server on the same port
- * would have to start inside this session's window too, so it is rarely misattributed; the
- * reminder only asks the agent to stop what it launched and never kills anything itself.
- * @param {number[]} ports @param {number} since @returns {string[]}
+ * Listening processes on a port this session's server commands named, started after the
+ * session began, running in a directory under one the session started a server in (or the
+ * session's cwd). Port and time alone do not prove ownership, so all three must match, and
+ * the reminder asks the agent to confirm it launched the process; the gate never kills.
+ * @param {number[]} ports @param {number} since @param {string[]} dirs @returns {string[]}
  */
-function liveServers(ports, since) {
-  if (ports.length === 0) return [];
+function liveServers(ports, since, dirs) {
+  if (ports.length === 0 || dirs.length === 0) return [];
   /** @type {string[]} */
   const found = [];
   for (const port of ports) {
@@ -283,7 +290,14 @@ function liveServers(ports, since) {
     let started = 0;
     try { started = Date.parse(execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8", timeout: 2000 }).trim()); }
     catch { continue; }
-    if (Number.isFinite(started) && started >= since - 60_000) found.push(`${name} pid ${pid} on :${port}`);
+    // ps reports whole seconds, so compare at that precision.
+    if (!Number.isFinite(started) || started < Math.floor(since / 1000) * 1000) continue;
+    let cwd = "";
+    try { cwd = /^n(.+)$/mu.exec(execFileSync("lsof", ["-a", "-p", String(pid), "-d", "cwd", "-Fn"], { encoding: "utf8", timeout: 2000 }))?.[1] ?? ""; }
+    catch { continue; }
+    const real = (/** @type {string} */ path) => { try { return realpathSync(path); } catch { return path; } };
+    if (!dirs.map(real).some((dir) => cwd === dir || cwd.startsWith(`${dir.replace(/\/$/u, "")}/`))) continue;
+    found.push(`${name} pid ${pid} on :${port} in ${cwd}`);
   }
   return found;
 }
@@ -312,7 +326,8 @@ async function main() {
   // The session began when its transcript did, so servers started before the first stop count.
   if (fresh) { try { state.startedAt = statSync(transcript).birthtimeMs || state.startedAt; } catch { /* keep now */ } }
   const { text, next } = readSince(transcript, state.offset);
-  const flags = { sawEdit: state.sawEdit, sawReport: state.sawReport, subagent: state.subagent, serverPorts: [...state.serverPorts] };
+  const flags = { sawEdit: state.sawEdit, sawReport: state.sawReport, subagent: state.subagent, serverPorts: [...state.serverPorts], serverDirs: [...state.serverDirs] };
+  if (typeof payload.cwd === "string" && payload.cwd && !flags.serverDirs.includes(payload.cwd)) flags.serverDirs.push(payload.cwd);
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;
     try { scanEntry(JSON.parse(line), flags); } catch { /* skip malformed lines */ }
@@ -324,12 +339,13 @@ async function main() {
   // The report reminder fires once per session; once it has, later stops only check servers.
   const block = !state.blocked && !flags.subagent && flags.sawEdit && !flags.sawReport;
   if (block) updated.blocked = true;
-  const servers = block || state.serversWarned ? [] : liveServers(flags.serverPorts, state.startedAt);
+  const servers = state.serversWarned ? [] : liveServers(flags.serverPorts, state.startedAt, flags.serverDirs);
   if (servers.length > 0) updated.serversWarned = true;
   writeState(statePath, updated);
   try { pruneState(directory, statePath); } catch { /* cleanup is best effort */ }
-  if (block) process.stdout.write(`${JSON.stringify({ decision: "block", reason })}\n`);
-  else if (servers.length > 0) process.stdout.write(`${JSON.stringify({ decision: "block", reason: serverReason(servers.join(", ")) })}\n`);
+  // Both reminders go out in the same block: the hook does not run again while stop_hook_active is set.
+  const reasons = [...(block ? [reason] : []), ...(servers.length > 0 ? [serverReason(servers.join(", "))] : [])];
+  if (reasons.length > 0) process.stdout.write(`${JSON.stringify({ decision: "block", reason: reasons.join(" ") })}\n`);
 }
 
 try {

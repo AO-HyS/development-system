@@ -2007,7 +2007,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".agents/skills/behavioral-evidence",
-          "folderSha256": "f116cc48ad70cc612551af26968b963b7fa7f5c873de9b326c490ffd1da73ed3",
+          "folderSha256": "0f42363ec434a7370dea685d9a3ec6608e6dcfc04c851098472c9feb1deeddbd",
           "expectedMirrorOf": null
         },
         {
@@ -2015,7 +2015,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
-          "folderSha256": "f116cc48ad70cc612551af26968b963b7fa7f5c873de9b326c490ffd1da73ed3",
+          "folderSha256": "0f42363ec434a7370dea685d9a3ec6608e6dcfc04c851098472c9feb1deeddbd",
           "expectedMirrorOf": "behavioral-evidence.codex",
           "install": "symlink"
         }
@@ -4864,7 +4864,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/cross-review",
           "destination": ".agents/skills/cross-review",
-          "folderSha256": "361eb81f42723d48985d4bbb576b4b2cf9401923afd583c45c64a4b8b7baeb71",
+          "folderSha256": "dfe821e4d9afb5d89fcb04948a390b3991ded9ca12d0507d38f40d5d81a6e4dd",
           "expectedMirrorOf": null
         },
         {
@@ -4872,7 +4872,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/cross-review",
           "destination": ".claude/skills/cross-review",
-          "folderSha256": "361eb81f42723d48985d4bbb576b4b2cf9401923afd583c45c64a4b8b7baeb71",
+          "folderSha256": "dfe821e4d9afb5d89fcb04948a390b3991ded9ca12d0507d38f40d5d81a6e4dd",
           "expectedMirrorOf": "cross-review.codex",
           "install": "symlink"
         }

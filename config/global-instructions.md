@@ -88,7 +88,10 @@ change strategy.
 
 Web flows are verified with QuickE2E on Jev (`behavioral-evidence`), logged in
 with the repository's test accounts, proving the allowed and the denied role
-and the side effects; no emitted spec is kept. The T3 browser covers visual
+and the side effects. A live QuickE2E run is real verification, not an
+automated test: its flow file lives in private evidence, never in a repository,
+and no emitted spec is kept (the operator decided this on 2026-10-13); keeping
+a replay spec needs a test grant. The T3 browser covers visual
 judgment. Jev through the operator's TypeSafe key is prepaid: bans on hosted
 inference or paid APIs do not cover it, data limits do. Try a tool with its
 documented model before any local substitute.
@@ -101,7 +104,7 @@ kill what you launched, never by name and never another thread's.
 - `Done when:` is executable: a command and its expected observation; the writer retries up to 3 times, the coordinator reruns it.
 - `Outcome:` is optional, only when it adds signal.
 - Develop merges are autonomous after real verification, an independent review with no blocking findings and `development-system pr-review-status <pr>` showing a clean Codex review of the exact head (request one with `--request` after every new push); main, releases and production wait for the user.
-- Plans, primitive lists and authorization contracts go through `cross-review`: a visible T3 thread with the other model family until both accept the same version.
+- Plans, primitive lists and authorization contracts go through `cross-review`: one visible T3 thread the operator can join, where the reviewer (Astra Extra High for a Claude author, Opus for a Codex author, by operator decision) and the author go back and forth until both accept the same version. This owner-requested conversation is the exception to fresh review rounds; the independent Sol 6.1 High review of a PR stays a fresh `delegate_task` per round.
 - Primitives: each product repo keeps `docs/architecture/primitives.json` true (`development-system check-primitives`); `primitives-gardener` fixes them and the Steward tends them. PRs carry a `system-recap`.
 - Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report; one-way (deleting data, destructive migrations, production, money, messages to customers): stop and ask.
 - Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.

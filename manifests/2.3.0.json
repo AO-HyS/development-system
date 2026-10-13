@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.68.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "286497f009fa082670860734e582ba11c4308d5c4dc4d3c020713643acb96e71",
+      "sha256": "c4ee426763a57e946cf12cbd4fd2e80150dafffb5353ee3200357433c5adb6b8",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.3.0/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "d592942bfb716d7121d2c6b4d4bf808347c66d65d873d7767dd955cd2bf1f6d8",
+      "sha256": "74bd41298d1318e70c8cef5757777db0cb3eb29798a33d43f7ffe63ff9a5ce07",
       "expectedMirrorOf": null
     },
     {
@@ -809,7 +809,7 @@
       "sourcePath": "artifacts/2.3.0/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "9b1f9d2595f35c06577d0f618c26b849ff78e6f5399103573fa4f208473cdcfd",
+      "sha256": "2170b950c21fef52242467378f0b8a8853e0831cfc52eb1ca00c1f8bb98186ef",
       "expectedMirrorOf": null
     },
     {

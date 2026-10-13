@@ -400,7 +400,7 @@ async function runCommand(argv) {
       throw new Error("Usage: development-system pr-review-status <owner/repo#number | PR URL> [--request] [--json]");
     }
     const { prReviewStatus, formatPrReviewStatus } = await import("./pr-review-status.mjs");
-    const result = prReviewStatus({ pr: positional[0], request, home: homedir() });
+    const result = prReviewStatus({ pr: positional[0], request });
     return { result, output: json ? JSON.stringify(result) : formatPrReviewStatus(result), json };
   }
   if (argv[0] === "mistake" || argv[0] === "friction") {

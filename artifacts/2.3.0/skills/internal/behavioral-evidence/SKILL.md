@@ -45,8 +45,11 @@ OPENROUTER_API_KEY=via-typesafe node --import "$HOME/.codex/development-system/r
 - Log in with the repository's test accounts (names from its env files, never
   printed) and pass a Playwright `storageState`. Wait for `networkidle` before
   the first click on dev servers that hydrate late.
-- Do not pass `--emit`: no replay spec is kept. A failed flow is re-run live, so
-  renamed labels need no maintenance.
+- Keep the flow file under `$HOME/.development-system/private/verification/<run-id>/`,
+  never in the repository. Do not pass `--emit`: no replay spec is kept, so this
+  is live verification, not an automated test (operator decision 2026-10-13);
+  keeping a replay spec needs an operator test grant. A failed flow is re-run
+  live, so renamed labels need no maintenance.
 - Prove permissions both ways: the allowed role reaches the end state and a
   role without the permission is observed refused.
 - Assert side effects (rows, emails, payments in test mode), not just text.

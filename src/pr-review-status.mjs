@@ -1,12 +1,23 @@
 // @ts-check
 // Whether a PR's current head has a clean Codex review (the chatgpt-codex-connector GitHub app).
 // Codex reviews only when a PR is opened, marked ready, or asked with "@codex review", so commits
-// pushed afterwards go unreviewed unless someone asks again. Integration requires `no-findings`
-// for the exact head SHA. `--request` asks once per (repository, PR, head SHA).
+// pushed afterwards go unreviewed unless someone asks again. Integration requires `no-findings`:
+// the exact head reviewed by the Codex app and no unresolved Codex thread. `--request` asks once
+// per (repository, PR, head SHA), under a local lock so concurrent runs cannot both ask.
 import { execFileSync } from "node:child_process";
+import { mkdirSync, openSync, closeSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const BOT = /^chatgpt-codex-connector/;
+// The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
+// reports the bare login with __typename "Bot". A user account can never have either shape.
+const APP_LOGIN = "chatgpt-codex-connector";
 const REQUEST_MARKER = "ds-codex-review-request";
+
+/** @param {any} user REST user object */
+const isCodexApp = (user) => user?.type === "Bot" && user?.login === `${APP_LOGIN}[bot]`;
+/** @param {any} author GraphQL actor */
+const isCodexActor = (author) => author?.__typename === "Bot" && author?.login === APP_LOGIN;
 
 /** @param {string} pr */
 function parsePr(pr) {
@@ -22,46 +33,90 @@ function gh(args) {
   return execFileSync("gh", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
 }
 
-/** @param {string} path @returns {any} */
-const ghJson = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
+/** @param {string} path @returns {any[]} */
+const ghList = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
+
+const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{author{__typename login}body}}}}}}}`;
+
+/** Every review thread whose first comment is from the Codex app; fails closed if a thread's comments are truncated. */
+function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /** @type {number} */ number) {
+  /** @type {any[]} */
+  const threads = [];
+  let after = null;
+  for (;;) {
+    const args = ["api", "graphql", "-f", `query=${THREADS_QUERY}`, "-F", `owner=${owner}`, "-F", `repo=${repo}`, "-F", `number=${number}`];
+    if (after) args.push("-f", `after=${after}`);
+    const page = JSON.parse(gh(args)).data.repository.pullRequest.reviewThreads;
+    for (const thread of page.nodes) {
+      if (thread.comments.pageInfo.hasNextPage) throw new Error(`A review thread on ${thread.path} has more than 100 comments; refusing to report a partial state`);
+      if (isCodexActor(thread.comments.nodes[0]?.author)) threads.push(thread);
+    }
+    if (!page.pageInfo.hasNextPage) return threads;
+    after = page.pageInfo.endCursor;
+  }
+}
+
+/** One local claim per (repository, PR, head) so two concurrent runs cannot both request. @param {string} key */
+function claim(key) {
+  const directory = join(homedir(), ".development-system", "private", "runs", "codex-review-requests");
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const path = join(directory, `${key.replace(/[^A-Za-z0-9._-]/g, "_")}.lock`);
+  try { closeSync(openSync(path, "wx", 0o600)); } catch { return null; }
+  return () => { try { unlinkSync(path); } catch { /* already gone */ } };
+}
 
 /**
- * @param {{pr: string, request?: boolean, home?: string}} options
+ * @param {{pr: string, request?: boolean}} options
  */
 export function prReviewStatus({ pr, request = false }) {
   const { owner, repo, number } = parsePr(pr);
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
   const head = String(pull.head.sha);
-  const reviews = ghJson(`${base}/pulls/${number}/reviews`).filter((/** @type {any} */ review) => BOT.test(review.user?.login ?? ""));
-  const issueComments = ghJson(`${base}/issues/${number}/comments`);
-  const reactions = ghJson(`${base}/issues/${number}/reactions`).filter((/** @type {any} */ reaction) => BOT.test(reaction.user?.login ?? ""));
-  const summary = issueComments.filter((/** @type {any} */ comment) => BOT.test(comment.user?.login ?? "") && String(comment.body).includes("codex-pull-request-review-summary")).pop();
+  const headDate = Date.parse(JSON.parse(gh(["api", `${base}/commits/${head}`])).commit.committer.date);
+  const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user));
+  const read = () => ghList(`${base}/issues/${number}/comments`);
+  const comments = read();
+  const appComments = comments.filter((comment) => isCodexApp(comment.user));
+  const summary = appComments.filter((comment) => String(comment.body).includes("codex-pull-request-review-summary")).pop();
   const summaryRow = summary ? /\|\s*📝[^|]*\|\s*([^|]+)\|\s*`([0-9a-f]{7,40})`/.exec(String(summary.body)) : null;
-  const summaryState = summaryRow ? summaryRow[1] : "";
-  const summarySha = summaryRow ? summaryRow[2] : null;
-  const threads = JSON.parse(gh(["api", "graphql", "-f", `query=query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100){nodes{isResolved isOutdated path comments(first:20){nodes{author{login} body}}}}}}}`, "-F", `owner=${owner}`, "-F", `repo=${repo}`, "-F", `number=${number}`]))
-    .data.repository.pullRequest.reviewThreads.nodes.filter((/** @type {any} */ thread) => BOT.test(thread.comments.nodes[0]?.author?.login ?? ""));
-  const open = threads.filter((/** @type {any} */ thread) => !thread.isResolved).map((/** @type {any} */ thread) => ({ path: thread.path, outdated: thread.isOutdated, finding: String(thread.comments.nodes[0].body).replace(/<[^>]+>|!\[[^\]]*\]\([^)]*\)|\*\*/g, "").trim().split("\n")[0].slice(0, 160) }));
-  const resolvedWithoutReply = threads.filter((/** @type {any} */ thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => !BOT.test(comment.author?.login ?? ""))).length;
-  const reviewedHead = reviews.some((/** @type {any} */ review) => review.commit_id === head) || (summarySha !== null && head.startsWith(summarySha) && /Completed/i.test(summaryState));
-  const running = /running|progress|queued/i.test(summaryState) || reactions.some((/** @type {any} */ reaction) => reaction.content === "eyes");
-  const usageProblem = issueComments.some((/** @type {any} */ comment) => BOT.test(comment.user?.login ?? "") && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
+  const summaryForHead = summaryRow !== null && head.startsWith(summaryRow[2]);
+  const threads = codexThreads(owner, repo, number);
+  const open = threads.filter((thread) => !thread.isResolved).map((thread) => ({
+    path: thread.path,
+    outdated: thread.isOutdated,
+    finding: String(thread.comments.nodes[0].body).replace(/<[^>]+>|!\[[^\]]*\]\([^)]*\)|\*\*/g, "").trim().split("\n")[0].slice(0, 160),
+  }));
+  // Clicking Resolve is not a fix: a resolved Codex thread with no human reply still counts as a finding.
+  const silentlyResolved = threads.filter((thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => !isCodexActor(comment.author)));
+  const resolvedWithoutReply = silentlyResolved.length;
+  const headReviewed = reviews.some((review) => review.commit_id === head) || (summaryForHead && /Completed/i.test(summaryRow?.[1] ?? ""));
+  const runningForHead = summaryForHead && /running|progress|queued/i.test(summaryRow?.[1] ?? "");
+  const unavailable = appComments.some((comment) => Date.parse(comment.created_at) >= headDate && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
+  const requestedForHead = (/** @type {any[]} */ list) => list.some((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`));
   /** @type {"no-findings" | "findings" | "running" | "pending" | "unavailable"} */
   let state;
-  if (open.length > 0) state = "findings";
-  else if (reviewedHead) state = "no-findings";
-  else if (running) state = "running";
-  else if (usageProblem) state = "unavailable";
+  if (headReviewed) state = open.length > 0 || resolvedWithoutReply > 0 ? "findings" : "no-findings";
+  else if (runningForHead) state = "running";
+  else if (unavailable) state = "unavailable";
   else state = "pending";
-  const requested = issueComments.some((/** @type {any} */ comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`));
   let requestStatus = "not-requested";
   if (request) {
     if (state !== "pending") requestStatus = `skipped-${state}`;
-    else if (requested) requestStatus = "already-requested-for-head";
+    else if (requestedForHead(comments)) requestStatus = "already-requested-for-head";
     else {
-      gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]);
-      requestStatus = "requested";
+      const release = claim(`${owner}/${repo}#${number}@${head}`);
+      if (!release) requestStatus = "request-in-progress";
+      else {
+        try {
+          // Re-read under the claim: another run may have asked between the first read and the claim.
+          if (requestedForHead(read())) requestStatus = "already-requested-for-head";
+          else {
+            gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]);
+            requestStatus = "requested";
+          }
+        } finally { release(); }
+      }
     }
   }
   return {
@@ -70,20 +125,21 @@ export function prReviewStatus({ pr, request = false }) {
     pr: `${owner}/${repo}#${number}`,
     head,
     state,
-    reviewedCommits: [...new Set(reviews.map((/** @type {any} */ review) => String(review.commit_id).slice(0, 12)))],
+    headReviewed,
+    reviewedCommits: [...new Set(reviews.map((review) => String(review.commit_id).slice(0, 12)))],
     openFindings: open,
     resolvedWithoutReply,
-    requestedForHead: requested || requestStatus === "requested",
+    requestedForHead: requestedForHead(comments) || requestStatus === "requested",
     request: requestStatus,
   };
 }
 
 /** @param {ReturnType<typeof prReviewStatus>} result */
 export function formatPrReviewStatus(result) {
-  const lines = [`${result.pr} head ${result.head.slice(0, 12)}: Codex ${result.state}.`];
+  const lines = [`${result.pr} head ${result.head.slice(0, 12)}: Codex ${result.state}${result.headReviewed ? "" : " (head not reviewed by Codex)"}.`];
   if (result.reviewedCommits.length) lines.push(`Reviewed commits: ${result.reviewedCommits.join(", ")}`);
   for (const finding of result.openFindings) lines.push(`- open${finding.outdated ? " (outdated)" : ""}: ${finding.path}: ${finding.finding}`);
-  if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply; resolving is not a fix.`);
+  if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply: answer each one (fixed in <sha>, or why it does not apply); resolving is not a fix.`);
   if (result.request !== "not-requested") lines.push(`Request: ${result.request}.`);
   if (result.state === "pending" && result.request === "not-requested") lines.push("Run again with --request to ask Codex to review this head.");
   return lines.join("\n");

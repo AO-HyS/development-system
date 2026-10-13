@@ -47,12 +47,23 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
     if (!statuses.includes(item.status)) problems.push(`${label}: status must be one of ${statuses.join(", ")}`);
     if (typeof item.summary !== "string" || !item.summary.trim()) problems.push(`${label}: summary is required`);
     counts[item.status] = (counts[item.status] ?? 0) + 1;
-    const paths = Array.isArray(item.paths) ? item.paths : [];
+    /** Optional array fields must be arrays of the right element type when present. */
+    const arrayOf = (/** @type {string} */ field, /** @type {(value: any) => boolean} */ valid, /** @type {string} */ shape) => {
+      const value = /** @type {Record<string, unknown>} */ (item)[field];
+      if (value === undefined) return [];
+      if (!Array.isArray(value) || !value.every(valid)) { problems.push(`${label}: ${field} must be an array of ${shape}`); return []; }
+      return value;
+    };
+    const nonEmpty = (/** @type {any} */ value) => typeof value === "string" && value.trim().length > 0;
+    arrayOf("goals", nonEmpty, "non-empty strings");
+    arrayOf("replaces", nonEmpty, "primitive ids");
+    const guarantees = arrayOf("guarantees", (value) => value && typeof value === "object" && nonEmpty(value.statement) && nonEmpty(value.verifiedBy), "{statement, verifiedBy} with non-empty text (unverified intent belongs in goals)");
+    const paths = arrayOf("paths", nonEmpty, "non-empty strings");
     if (item.status !== "proposed" && paths.length === 0) problems.push(`${label}: an ${item.status} primitive needs at least one path`);
     for (const path of paths) {
       if (item.status !== "proposed" && !exists(path)) problems.push(`${label}: path does not exist: ${path}`);
     }
-    for (const symbol of Array.isArray(item.symbols) ? item.symbols : []) {
+    for (const symbol of arrayOf("symbols", nonEmpty, '"path#Name" strings')) {
       const [path, name] = String(symbol).split("#");
       if (!path || !name) { problems.push(`${label}: symbol must be "path#Name": ${symbol}`); continue; }
       if (item.status === "proposed") continue;
@@ -61,17 +72,13 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
       try { text = read(path); } catch { problems.push(`${label}: cannot read symbol file: ${path}`); continue; }
       if (!new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text)) problems.push(`${label}: symbol ${name} not found in ${path}`);
     }
-    for (const guarantee of Array.isArray(item.guarantees) ? item.guarantees : []) {
-      if (typeof guarantee?.statement !== "string" || typeof guarantee?.verifiedBy !== "string" || !guarantee.verifiedBy.trim()) {
-        problems.push(`${label}: each guarantee needs a statement and verifiedBy (unverified intent belongs in goals)`);
-      }
-    }
-    for (const doc of Array.isArray(item.docs) ? item.docs : []) {
+    void guarantees;
+    for (const doc of arrayOf("docs", nonEmpty, "non-empty strings")) {
       if (!exists(doc)) problems.push(`${label}: doc does not exist: ${doc}`);
     }
   }
   for (const item of items) {
-    for (const replaced of Array.isArray(item?.replaces) ? item.replaces : []) {
+    for (const replaced of Array.isArray(item?.replaces) ? item.replaces.filter((/** @type {unknown} */ value) => typeof value === "string") : []) {
       if (!ids.has(replaced)) problems.push(`${item.id}: replaces unknown primitive ${replaced}`);
     }
   }
