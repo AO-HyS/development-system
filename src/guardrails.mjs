@@ -227,14 +227,14 @@ async function directoryHash(directory) {
   return hash.digest("hex");
 }
 
-/** @param {string} engine @param {string} command */
-function probe(engine, command) {
-  return spawnSync(process.execPath, [engine, "check", "--command", command], { encoding: "utf8" });
+/** Probes run against the audited HOME, whose protected paths and grants the engine reads. @param {string} engine @param {string} command @param {string} home @param {string[]} [extra] */
+function probe(engine, command, home, extra = []) {
+  return spawnSync(process.execPath, [engine, "check", "--command", command, ...extra], { encoding: "utf8", env: { ...process.env, HOME: home } });
 }
 
-/** @param {string} engine @param {unknown} payload */
-function probePayload(engine, payload) {
-  return spawnSync(process.execPath, [engine, "check", "--tool-json", JSON.stringify(payload)], { encoding: "utf8" });
+/** @param {string} engine @param {unknown} payload @param {string} home @param {string[]} [extra] */
+function probePayload(engine, payload, home, extra = []) {
+  return spawnSync(process.execPath, [engine, "check", "--tool-json", JSON.stringify(payload), ...extra], { encoding: "utf8", env: { ...process.env, HOME: home } });
 }
 
 /** @param {{home: string}} options */
@@ -283,13 +283,18 @@ export async function auditGlobalGuardrails({ home }) {
     }
     if (await readOptional(adapter.enginePath)) {
       const current = skillHash !== null && skillHash === currentByHarness.get(adapter.key);
-      const safe = probe(adapter.enginePath, current ? 'grep -n "x" f 2>/dev/null | head' : "git status --short");
-      const blocked = probe(adapter.enginePath, "git reset --hard");
+      const safe = probe(adapter.enginePath, current ? 'grep -n "x" f 2>/dev/null | head' : "git status --short", resolvedHome);
+      const blocked = probe(adapter.enginePath, "git reset --hard", resolvedHome);
       if (safe.status !== 0) problems.push(`${adapter.label} guard did not allow the safe probe`);
       if (blocked.status !== 2) problems.push(`${adapter.label} guard did not block the destructive probe`);
       if (current) {
-        const testWrite = probePayload(adapter.enginePath, { tool_name: "Write", cwd: resolve(resolvedHome, "guard-probe"), tool_input: { file_path: "src/a.test.ts", content: "" } });
+        // --no-grants: an operator's active test-write grant must not make a healthy guard look broken.
+        const testWrite = probePayload(adapter.enginePath, { tool_name: "Write", cwd: resolve(resolvedHome, "guard-probe"), tool_input: { file_path: "src/a.test.ts", content: "" } }, resolvedHome, ["--no-grants"]);
         if (testWrite.status !== 2) problems.push(`${adapter.label} guard did not block the test-file write probe`);
+        const grantWrite = probePayload(adapter.enginePath, { tool_name: "Write", cwd: resolve(resolvedHome, "guard-probe"), tool_input: { file_path: resolve(resolvedHome, ".development-system/test-grants.json"), content: "" } }, resolvedHome);
+        if (grantWrite.status !== 2) problems.push(`${adapter.label} guard did not block the test-grant file write probe`);
+        const selfGrant = probe(adapter.enginePath, "pnpm exec development-system allow-tests guard-probe", resolvedHome);
+        if (selfGrant.status !== 2) problems.push(`${adapter.label} guard did not block the agent self-grant probe`);
       }
     }
   }

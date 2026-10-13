@@ -1353,20 +1353,35 @@ function checkTarget(word, kind, ctx) {
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   if (kind !== "write") return;
   const rel = insideScope(ctx.scope, absolute);
-  if (rel !== null && testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(rel)) && !(word.value.indexOf(UNKNOWN) < 0 && grantedTestWrite(absolute))) {
+  if (rel !== null && testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(rel)) && !(grantable(word, text, ctx) && grantedTestWrite(absolute))) {
     throw new Block("test-file-write", `${structural["test-file-write"]} Target: ${rel}`);
   }
 }
 
 /** The operator's own `development-system allow-tests <dir>` grants; agents cannot write this file or run that command. */
 const TEST_GRANTS = join(HOME, ".development-system", "test-grants.json");
-/** Whether an unexpired operator grant holds this exact test-file target. @param {string} absolute */
+/** `check --no-grants` evaluates as if no grant existed, so the audit's denial probe holds under a real grant. */
+let grantsEnabled = true;
+/**
+ * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
+ * `..` moves the real destination), and a relative target needs a known working directory.
+ * @param {Word} word @param {string} text @param {Context} ctx
+ */
+function grantable(word, text, ctx) {
+  return grantsEnabled && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
+    && (ctx.cwd !== null || isAbsolute(text));
+}
+/** Whether an unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
 function grantedTestWrite(absolute) {
   let grants;
   try { grants = JSON.parse(readFileSync(TEST_GRANTS, "utf8")).grants; } catch { return false; }
   if (!Array.isArray(grants)) return false;
-  return grants.some((/** @type {any} */ grant) => typeof grant?.root === "string" && isAbsolute(grant.root)
-    && Date.parse(grant.expiresAt) > Date.now() && insideScope(grant.root, absolute) !== null);
+  const target = canonicalPath(absolute);
+  return grants.some((/** @type {any} */ grant) => {
+    if (typeof grant?.root !== "string" || !isAbsolute(grant.root) || !(Date.parse(grant.expiresAt) > Date.now())) return false;
+    const rel = relative(canonicalPath(grant.root), target);
+    return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+  });
 }
 
 /** @param {string} patch @param {Context} ctx */
@@ -3111,6 +3126,7 @@ function deny(reason) {
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "check") {
+    grantsEnabled = !args.includes("--no-grants");
     const toolIndex = args.indexOf("--tool-json");
     const commandIndex = args.indexOf("--command");
     const cwdIndex = args.indexOf("--cwd");
@@ -3118,7 +3134,7 @@ async function main() {
     let result;
     if (toolIndex >= 0 && args[toolIndex + 1]) result = evaluatePayload(JSON.parse(args[toolIndex + 1]));
     else if (commandIndex >= 0 && args[commandIndex + 1]) result = evaluateCommand(args[commandIndex + 1], { scope: cwd, cwd });
-    else throw new Error("check requires --command <shell-command> [--cwd <dir>] or --tool-json <hook-payload-json>");
+    else throw new Error("check requires --command <shell-command> [--cwd <dir>] or --tool-json <hook-payload-json> [--no-grants]");
     process.stdout.write(`${JSON.stringify({ policyVersion: policy.policyVersion, ...result })}\n`);
     process.exitCode = result.allowed ? 0 : 2;
     return;

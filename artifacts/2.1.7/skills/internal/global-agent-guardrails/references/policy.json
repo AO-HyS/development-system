@@ -68,7 +68,7 @@
     },
     {
       "id": "test-grant-self-authorization",
-      "pattern": "^(?:node (?:-\\S+ )*)?\\S*development-system(?:\\.mjs)? (?:.* )?allow-tests(?: |$)",
+      "pattern": "(?:^| )allow-tests(?: |$)",
       "flags": "u",
       "reason": "Only the operator grants test-file writes, by running `development-system allow-tests <dir>` in their own terminal. Ask them to run it; `development-system test-grants` lists active grants."
     }

@@ -2182,7 +2182,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.1.7/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "5fe3f21008191b838aef562230717059408e8ddb9e6d870ac0307811f76da9cb",
+          "folderSha256": "4985dd720a6550c1d45b30cdd82321f59aaecfb48a2ef64c76b05b240b3c7119",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -2193,7 +2193,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.1.7/skills/internal/global-agent-guardrails",
           "destination": ".claude/skills/global-agent-guardrails",
-          "folderSha256": "5fe3f21008191b838aef562230717059408e8ddb9e6d870ac0307811f76da9cb",
+          "folderSha256": "4985dd720a6550c1d45b30cdd82321f59aaecfb48a2ef64c76b05b240b3c7119",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],

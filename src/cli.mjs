@@ -357,7 +357,12 @@ async function runCommand(argv) {
       const arg = argv[index];
       if (arg === "--json") continue;
       if (arg === "--revoke" && argv[0] === "allow-tests") { revoke = true; continue; }
-      if (["--home", "--hours", "--reason"].includes(arg) && (arg === "--home" || argv[0] === "allow-tests")) { values[arg.slice(2)] = argv[++index]; continue; }
+      if (["--home", "--hours", "--reason"].includes(arg) && (arg === "--home" || argv[0] === "allow-tests")) {
+        const value = argv[++index];
+        if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
+        values[arg.slice(2)] = value;
+        continue;
+      }
       if (arg.startsWith("--") || argv[0] === "test-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
       roots.push(arg);
     }
