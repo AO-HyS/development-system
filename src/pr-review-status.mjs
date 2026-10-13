@@ -5,7 +5,7 @@
 // the exact head reviewed by the Codex app and no unresolved Codex thread. `--request` asks once
 // per (repository, PR, head SHA), under a local lock so concurrent runs cannot both ask.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, openSync, closeSync, unlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -56,13 +56,32 @@ function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /
   }
 }
 
-/** One local claim per (repository, PR, head) so two concurrent runs cannot both request. @param {string} key */
+/**
+ * One local claim per (repository, PR, head) so two concurrent runs cannot both request. The
+ * claim records its owner PID and time; a claim whose owner is gone or older than ten minutes
+ * is reclaimed, so a crashed run never blocks later requests.
+ * @param {string} key
+ */
 function claim(key) {
   const directory = join(homedir(), ".development-system", "private", "runs", "codex-review-requests");
   mkdirSync(directory, { recursive: true, mode: 0o700 });
   const path = join(directory, `${key.replace(/[^A-Za-z0-9._-]/g, "_")}.lock`);
-  try { closeSync(openSync(path, "wx", 0o600)); } catch { return null; }
-  return () => { try { unlinkSync(path); } catch { /* already gone */ } };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      writeFileSync(path, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx", mode: 0o600 });
+      return () => { try { unlinkSync(path); } catch { /* already gone */ } };
+    } catch {
+      let stale = true;
+      try {
+        const owner = JSON.parse(readFileSync(path, "utf8"));
+        const alive = (() => { try { process.kill(owner.pid, 0); return true; } catch (error) { return error instanceof Error && "code" in error && error.code === "EPERM"; } })();
+        stale = !alive || Date.now() - Number(owner.at) > 10 * 60_000;
+      } catch { /* unreadable claim: treat as stale */ }
+      if (!stale) return null;
+      try { unlinkSync(path); } catch { /* raced with its owner */ }
+    }
+  }
+  return null;
 }
 
 /**

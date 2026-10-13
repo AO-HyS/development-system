@@ -220,9 +220,15 @@ function classifyCall(call, flags, sessionCwd) {
       const base = callDir ?? sessionCwd;
       const dir = cd ? (cd.startsWith("/") ? cd : base ? join(base, cd) : "") : base;
       if (!dir) continue;
+      const ports = [];
       for (const pattern of portPatterns) for (const match of command.matchAll(pattern)) {
         const port = Number(match[1]);
-        if (port >= 1024 && !flags.launches.some((launch) => launch.port === port && launch.dir === dir)) flags.launches.push({ port, dir });
+        if (port >= 1024) ports.push(port);
+      }
+      // `pnpm dev` with no port listens on a default one: port 0 means "any port", matched by
+      // directory and start time alone.
+      for (const port of ports.length > 0 ? ports : [0]) {
+        if (!flags.launches.some((launch) => launch.port === port && launch.dir === dir)) flags.launches.push({ port, dir });
       }
     }
   }
@@ -372,13 +378,23 @@ function reviewPending(home) {
 function liveServers(launches, since) {
   /** @type {string[]} */
   const found = [];
-  for (const { port, dir } of launches) {
-    let out = "";
-    try { out = execFileSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"], { encoding: "utf8", timeout: 2000 }); }
-    catch { continue; }
-    const pid = Number(/^p(\d+)/mu.exec(out)?.[1]);
-    const name = /^c(.+)$/mu.exec(out)?.[1] ?? "process";
-    if (!Number.isInteger(pid)) continue;
+  /** @type {Map<number, {name: string, port: number}>} pid -> first listening port */
+  const listeners = new Map();
+  try {
+    const out = execFileSync("lsof", ["-nP", "-iTCP", "-sTCP:LISTEN", "-Fpcn"], { encoding: "utf8", timeout: 3000 });
+    let pid = 0, name = "process";
+    for (const line of out.split("\n")) {
+      if (line.startsWith("p")) pid = Number(line.slice(1));
+      else if (line.startsWith("c")) name = line.slice(1);
+      else if (line.startsWith("n") && pid && !listeners.has(pid)) {
+        const port = Number(/:(\d+)$/u.exec(line)?.[1]);
+        if (Number.isInteger(port)) listeners.set(pid, { name, port });
+      }
+    }
+  } catch { return []; }
+  const seen = new Set();
+  for (const { port: launchPort, dir } of launches) for (const [pid, { name, port }] of listeners) {
+    if (seen.has(pid) || (launchPort !== 0 && launchPort !== port)) continue;
     let started = 0;
     try { started = Date.parse(execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8", timeout: 2000 }).trim()); }
     catch { continue; }
@@ -390,6 +406,7 @@ function liveServers(launches, since) {
     let root = dir;
     try { root = realpathSync(dir); } catch { /* keep as given */ }
     if (cwd !== root && !cwd.startsWith(`${root.replace(/\/$/u, "")}/`)) continue;
+    seen.add(pid);
     found.push(`${name} pid ${pid} on :${port} in ${cwd}`);
   }
   return found;
