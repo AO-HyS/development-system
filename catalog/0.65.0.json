@@ -1407,23 +1407,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.1.5/skills/internal/flow-implement"
+        "path": "artifacts/2.1.3/skills/internal/flow-implement"
       },
       "variants": [
         {
           "id": "flow-implement.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/flow-implement",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/flow-implement",
           "destination": ".agents/skills/flow-implement",
-          "folderSha256": "908bad18b3308126607ca86fc041bfb7e577d3d6a3e7e5501f0d18cc16ef4db8",
+          "folderSha256": "34bc0a511b72e193b828e6e8c9e689ee4442c7ca4ac0dd7361332bc998968cc4",
           "expectedMirrorOf": null
         },
         {
           "id": "flow-implement.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/flow-implement",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/flow-implement",
           "destination": ".claude/skills/flow-implement",
-          "folderSha256": "908bad18b3308126607ca86fc041bfb7e577d3d6a3e7e5501f0d18cc16ef4db8",
+          "folderSha256": "34bc0a511b72e193b828e6e8c9e689ee4442c7ca4ac0dd7361332bc998968cc4",
           "expectedMirrorOf": "flow-implement.codex",
           "install": "symlink"
         }
@@ -1539,36 +1539,36 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.1.5/skills/internal/coding-orchestration"
+        "path": "artifacts/2.1.3/skills/internal/coding-orchestration"
       },
       "variants": [
         {
           "id": "coding-orchestration.codex-adapter",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/coding-orchestration",
           "destination": ".codex/skills/coding-orchestration",
           "expectedMirrorOf": null,
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "dd8c6880467dc8139db0ed951fbcf9dbe5bbf3571ffe3f961da54ac65e993d14"
+          "folderSha256": "f2cfd45e19eff694db7ca5202f72e7be99ac902a131ad11ef6863fd0de537a64"
         },
         {
           "id": "coding-orchestration.agents",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/coding-orchestration",
           "destination": ".agents/skills/coding-orchestration",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "dd8c6880467dc8139db0ed951fbcf9dbe5bbf3571ffe3f961da54ac65e993d14"
+          "folderSha256": "f2cfd45e19eff694db7ca5202f72e7be99ac902a131ad11ef6863fd0de537a64"
         },
         {
           "id": "coding-orchestration.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/coding-orchestration",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/coding-orchestration",
           "destination": ".claude/skills/coding-orchestration",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "install": "symlink",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "dd8c6880467dc8139db0ed951fbcf9dbe5bbf3571ffe3f961da54ac65e993d14"
+          "folderSha256": "f2cfd45e19eff694db7ca5202f72e7be99ac902a131ad11ef6863fd0de537a64"
         }
       ]
     },
@@ -3934,7 +3934,7 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.1.5/skills/internal/orchestrate-work"
+        "path": "artifacts/2.1.3/skills/internal/orchestrate-work"
       },
       "variants": [
         {
@@ -3942,15 +3942,15 @@
           "harness": "codex",
           "destination": ".agents/skills/orchestrate-work",
           "expectedMirrorOf": null,
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/orchestrate-work",
-          "folderSha256": "1a77e7eff7bfe7f7bd305afb9b9e4fdcc2f829b359212c611db8a1b5e5138ae7"
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/orchestrate-work",
+          "folderSha256": "2ea627e79b08c03c1ade660e4ef8c5538aab7fb61a2233de833dbf86380b6265"
         },
         {
           "id": "orchestrate-work.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.1.5/skills/internal/orchestrate-work",
+          "sourceDirectory": "artifacts/2.1.3/skills/internal/orchestrate-work",
           "destination": ".claude/skills/orchestrate-work",
-          "folderSha256": "1a77e7eff7bfe7f7bd305afb9b9e4fdcc2f829b359212c611db8a1b5e5138ae7",
+          "folderSha256": "2ea627e79b08c03c1ade660e4ef8c5538aab7fb61a2233de833dbf86380b6265",
           "expectedMirrorOf": "orchestrate-work.codex",
           "install": "symlink"
         }
