@@ -357,7 +357,7 @@ async function runCommand(argv) {
       const arg = argv[index];
       if (arg === "--json") continue;
       if (arg === "--revoke" && argv[0] === "allow-tests") { revoke = true; continue; }
-      if (["--home", "--hours", "--reason"].includes(arg) && (arg === "--home" || argv[0] === "allow-tests")) {
+      if (["--grants-file", "--hours", "--reason"].includes(arg) && (arg === "--grants-file" || argv[0] === "allow-tests")) {
         const value = argv[++index];
         if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
         values[arg.slice(2)] = value;
@@ -366,12 +366,19 @@ async function runCommand(argv) {
       if (arg.startsWith("--") || argv[0] === "test-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
       roots.push(arg);
     }
-    const { allowTests, listTestGrants, formatTestGrants } = await import("./test-grants.mjs");
-    const home = values.home ?? homedir();
+    const { allowTests, listTestGrants, formatTestGrants, testGrantsFile } = await import("./test-grants.mjs");
+    const file = values["grants-file"] ? resolve(values["grants-file"]) : testGrantsFile;
     if (argv[0] === "allow-tests" && roots.length !== 1) throw new Error("Usage: development-system allow-tests <directory> [--hours N] [--reason text] | --revoke <directory>");
+    if (argv[0] === "allow-tests" && file === testGrantsFile && process.getuid?.() !== 0) {
+      // The grant file is root-owned: sudo asks the operator for their password, which an agent does not have.
+      const { spawnSync } = await import("node:child_process");
+      const relaunch = [process.execPath, fileURLToPath(new URL("../bin/development-system.mjs", import.meta.url)), "allow-tests", resolve(roots[0]), ...argv.slice(1).filter(arg => arg !== roots[0])];
+      const status = spawnSync("sudo", relaunch, { stdio: "inherit" }).status;
+      return { result: { ok: status === 0, operation: "allow-tests-sudo" }, output: "", json, code: status ?? 1 };
+    }
     const result = argv[0] === "allow-tests"
-      ? allowTests({ home, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke })
-      : listTestGrants({ home });
+      ? allowTests({ file, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke })
+      : listTestGrants({ file });
     return { result, output: json ? JSON.stringify(result) : formatTestGrants(result), json };
   }
   if (argv[0] === "mistake") {

@@ -70,7 +70,7 @@ changes or a required gate. Implementation completion is not accepted behavior.
 No automated tests anywhere: do not create, run or restore them; delete them
 when found (`check-no-tests` and the guard enforce this). Only the operator
 lifts this, for one directory and a limited time, by running
-`development-system allow-tests <dir> [--hours N]` in their own terminal; inside
+`development-system allow-tests <dir> [--hours N]`, which asks for their password; inside
 an active grant (`development-system test-grants`) tests may be created and run
 for the ordered task, never outside it. Ask for a grant when a task needs one;
 never create one yourself. Every task includes

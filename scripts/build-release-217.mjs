@@ -60,7 +60,7 @@ const hostProfiles = () => ['shared', 'codex', 'claude'].map(host => renderHostI
 
 const releaseNote = `## ${version}: operator test-write grants
 
-Contract ${version} keeps the no-tests rule and lets the operator lift it for one directory and a limited time: \`development-system allow-tests <dir> [--hours N] [--reason text]\`, run in the operator's own terminal, records a grant (default 2 hours, at most 24) in ~/.development-system/test-grants.json; \`--revoke <dir>\` ends it and \`development-system test-grants\` lists active grants. Guard policy 2.1.0 in global-agent-guardrails (catalog ${catalogVersion}) allows test-file writes whose exact target an unexpired grant holds, and blocks agents from running \`allow-tests\` or writing the grant file. Agents ask for a grant when a task needs tests and never create one.
+Contract ${version} keeps the no-tests rule and lets the operator lift it for one directory and a limited time: \`development-system allow-tests <dir> [--hours N] [--reason text]\` asks for the operator's password through sudo and records a grant (default 2 hours, at most 24) in the root-owned /Library/Application Support/AO-HyS/development-system/test-grants.json; \`--revoke <dir>\` ends it and \`development-system test-grants\` lists active grants. Guard policy 2.1.0 in global-agent-guardrails (catalog ${catalogVersion}) trusts that file only while its whole directory chain is root-owned, and allows a test-file write when a valid grant holds its fully known target after symlinks resolve. An agent running as the operator cannot forge a grant without the password. Agents ask for a grant when a task needs tests and never create one.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);
