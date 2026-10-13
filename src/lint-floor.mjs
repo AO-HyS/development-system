@@ -8,7 +8,10 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const eslintConfigs = ["eslint.config.mjs", "eslint.config.js", "eslint.config.cjs", "eslint.config.ts"];
+const eslintConfigs = ["eslint.config.mjs", "eslint.config.js", "eslint.config.cjs", "eslint.config.ts", "eslint.config.mts", "eslint.config.cts"];
+// Legacy eslintrc configs are not inspected; finding one fails the check
+// instead of silently recording zero rules.
+const legacyEslintConfig = /^\.eslintrc(?:\.(?:js|cjs|yaml|yml|json))?$/;
 const lintable = /\.(?:[cm]?[jt]sx?|astro|vue|svelte)$/;
 const scopeAliases = /** @type {Record<string, string>} */ ({
   "@typescript-eslint": "typescript", "typescript-eslint": "typescript", "react-hooks": "react", "react-compiler": "react",
@@ -158,6 +161,9 @@ export function lintRuleSnapshot({ root }) {
     if (config.includes("node_modules/")) continue;
     if (name === ".oxlintrc.json") { merge(oxlintRules(root, dir, files)); sources.push(config); }
     if (eslintConfigs.includes(name)) { merge(eslintRules(root, dir, files)); sources.push(config); }
+    if (legacyEslintConfig.test(name) || (name === "package.json" && "eslintConfig" in JSON.parse(readFileSync(path.join(root, config), "utf8")))) {
+      throw new Error(`Legacy ESLint config ${config} is not supported by check-lint-floor; migrate it to eslint.config.* or compare rules by hand`);
+    }
   }
   const ruleIds = new Set(Object.values(perFile).flatMap(rules => Object.keys(rules)));
   return { schemaVersion: 2, revision: run(root, "git", ["rev-parse", "HEAD"]).trim(), sources, ruleCount: ruleIds.size, files: perFile };
