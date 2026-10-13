@@ -16,7 +16,7 @@ This skill is the operator guide for the executable destructive-command policy. 
 - The guard fails closed when a matched shell tool has malformed or missing command input.
 - Hard blocks do not imply sandboxing and do not replace repository permissions, review, backups, or explicit authorization.
 - The agent cannot bypass a block. A human may run the command outside the harness or deliberately remove the guard after reviewing the exact target and recovery plan.
-- Test-file writes are the one block the operator lifts without removing the guard: `development-system allow-tests <dir> [--hours N] [--reason text]` asks for the operator's password through sudo and grants that directory for up to 24 hours (default 2); `--revoke <dir>` ends it and `development-system test-grants` lists active grants. Grants live in the root-owned `/Library/Application Support/AO-HyS/development-system/test-grants.json`; the guard trusts that file only while it and every directory above it are root-owned and not group- or world-writable, so an agent running as the operator cannot forge a grant.
+- Test-file writes are the one block the operator lifts without removing the guard: `development-system allow-tests <dir> [--hours N] [--reason text]` in their own terminal grants that directory for up to 24 hours (default 2); `--revoke <dir>` ends it and `development-system test-grants` lists active grants. Grants live in `~/.development-system/test-grants.json`; the guard blocks agents from running `allow-tests` (except inside read-only Git commands such as `git grep` or `git log`) and from writing that file with inspected commands. Threat model: grants stop habitual or accidental self-granting. Like every other limit of this guard, they do not stop an agent that deliberately writes files through interpreter APIs or races a symlink into a granted path within one command.
 
 ## Operate
 
@@ -54,7 +54,7 @@ node scripts/command-guard.mjs check --command 'git status --short' --cwd <repo>
 node scripts/command-guard.mjs check --tool-json '{"tool_name":"Write","cwd":"<repo>","tool_input":{"file_path":"src/a.test.ts"}}'
 ```
 
-Exit 0 means allowed, 2 means blocked; the JSON output names the rule. `--no-grants` evaluates as if no test-write grant existed; the audit uses it so an active grant cannot make a healthy guard look broken. `--grants-file <path>` reads grants from another root-owned file and `--insecure-grants-file <path>` from any file, for isolated verification only; the hook always reads the root-owned file.
+Exit 0 means allowed, 2 means blocked; the JSON output names the rule. `--no-grants` evaluates as if no test-write grant existed; the audit uses it so an active grant cannot make a healthy guard look broken.
 
 ## Verify
 

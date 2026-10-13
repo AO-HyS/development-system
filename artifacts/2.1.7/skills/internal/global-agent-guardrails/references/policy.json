@@ -65,6 +65,12 @@
       "match": "raw",
       "pattern": ":\\(\\)\\s*\\{\\s*:\\|:\\s*&\\s*\\}\\s*;\\s*:",
       "reason": "Fork bombs are blocked."
+    },
+    {
+      "id": "test-grant-self-authorization",
+      "pattern": "^(?!git (?:grep|log|show|diff|blame|shortlog|reflog) )(?:.* )?allow-tests(?: |$)",
+      "flags": "u",
+      "reason": "Only the operator grants test-file writes, by running `development-system allow-tests <dir>` in their own terminal. Ask them to run it; `development-system test-grants` lists active grants."
     }
   ],
   "structuralRules": [
@@ -82,8 +88,8 @@
     { "id": "dynamic-command-name", "reason": "A variable or substitution used as the command name cannot be inspected and is blocked." },
     { "id": "read-command-execution", "reason": "This read command option executes other programs (rg --pre, sed e) and is blocked." },
     { "id": "sensitive-dynamic-argument", "reason": "A destructive-capable command (rm, dd, mkfs, diskutil, gh, terraform, tofu, pulumi, kubectl, wrangler, vercel, or non-read-only git) received a variable or substitution argument. Use literal arguments so the guard can inspect them." },
-    { "id": "test-file-write", "reason": "Creating or modifying automated test files or test runner configuration is blocked by the no-tests policy unless the operator granted that directory with `development-system allow-tests <dir>`, which asks for their password; ask them for a grant. Deleting them is allowed." },
-    { "id": "guard-config-write", "reason": "Writing the guard's hook configuration (Claude Code settings, Codex hooks or config, including the project's .claude and .codex settings), the project's .git/config (its aliases run commands) or the installed guard skill is blocked; use the Development System guardrails commands, `git config`, or ask the user to make the edit." },
+    { "id": "test-file-write", "reason": "Creating or modifying automated test files or test runner configuration is blocked by the no-tests policy unless the operator granted that directory with `development-system allow-tests <dir>` in their own terminal; ask them for a grant. Deleting them is allowed." },
+    { "id": "guard-config-write", "reason": "Writing the guard's hook configuration (Claude Code settings, Codex hooks or config, including the project's .claude and .codex settings), the project's .git/config (its aliases run commands) the installed guard skill or the operator's test-write grants is blocked; use the Development System guardrails commands, `git config`, or ask the user to make the edit." },
     { "id": "shell-arithmetic-injection", "reason": "Text shaped like `name[$(…)]` in an assignment, variable name, test or arithmetic runs the subscript as a command when evaluated and is blocked." },
     { "id": "git-config-destructive", "reason": "Git configuration that makes an ordinary command destructive (help.autocorrect, clean.requireForce=false, forced or deleting remote.*.push refspecs, remote.*.mirror) is blocked." }
   ],
@@ -111,7 +117,8 @@
     "~/.claude/settings.json",
     "~/.claude/settings.local.json",
     "~/.agents/skills/global-agent-guardrails/**",
-    "~/.claude/skills/global-agent-guardrails/**"
+    "~/.claude/skills/global-agent-guardrails/**",
+    "~/.development-system/test-grants.json"
   ],
   "protectedProjectWriteTargets": [
     ".claude/settings.json",

@@ -1359,14 +1359,14 @@ function checkTarget(word, kind, ctx) {
 }
 
 /**
- * Operator test-write grants from `development-system allow-tests`, which writes this file through
- * sudo. Only a root-owned file in a root-owned, non-group/world-writable chain is trusted, so an
- * agent running as the operator cannot forge a grant without the operator's password.
+ * Operator test-write grants from `development-system allow-tests`. Agents cannot run that command or
+ * write this file through inspected commands; like the guard's other limits, a deliberate write through
+ * interpreter file APIs is not inspected, so grants stop habitual self-granting, not a determined agent.
  */
-const TEST_GRANTS = "/Library/Application Support/AO-HyS/development-system/test-grants.json";
+const TEST_GRANTS = join(HOME, ".development-system", "test-grants.json");
 const MAX_GRANT_MS = 24 * 3_600_000;
-/** `check` options: --no-grants ignores grants (the audit's denial probe); --grants-file and --insecure-grants-file serve isolated verification. */
-let grantsEnabled = true, grantsFile = TEST_GRANTS, grantsMustBeRootOwned = true;
+/** `check --no-grants` ignores grants, so the audit's denial probe holds while the operator has one. */
+let grantsEnabled = true;
 /**
  * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
  * `..` moves the real destination), and a relative target only from the harness working directory,
@@ -1377,23 +1377,10 @@ function grantable(word, text, ctx) {
   return grantsEnabled && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
     && (isAbsolute(text) || ctx.cwd === ctx.scope);
 }
-/** The file and every directory above it are owned by root and not group- or world-writable. @param {string} path */
-function rootOwnedChain(path) {
-  try {
-    const file = lstatSync(path);
-    if (!file.isFile() || file.uid !== 0 || (file.mode & 0o022) !== 0) return false;
-    for (let directory = dirname(path); ; directory = dirname(directory)) {
-      const stat = lstatSync(directory);
-      if (!stat.isDirectory() || stat.uid !== 0 || (stat.mode & 0o022) !== 0) return false;
-      if (directory === dirname(directory)) return true;
-    }
-  } catch { return false; }
-}
 /** Whether a valid, unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
 function grantedTestWrite(absolute) {
-  if (grantsMustBeRootOwned && !rootOwnedChain(grantsFile)) return false;
   let grants;
-  try { grants = JSON.parse(readFileSync(grantsFile, "utf8")).grants; } catch { return false; }
+  try { grants = JSON.parse(readFileSync(TEST_GRANTS, "utf8")).grants; } catch { return false; }
   if (!Array.isArray(grants)) return false;
   const target = canonicalPath(absolute), now = Date.now();
   return grants.some((/** @type {any} */ grant) => {
@@ -3153,11 +3140,6 @@ async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "check") {
     grantsEnabled = !args.includes("--no-grants");
-    const grantsIndex = Math.max(args.indexOf("--grants-file"), args.indexOf("--insecure-grants-file"));
-    if (grantsIndex >= 0 && args[grantsIndex + 1]) {
-      grantsFile = resolve(args[grantsIndex + 1]);
-      grantsMustBeRootOwned = args[grantsIndex] === "--grants-file";
-    }
     const toolIndex = args.indexOf("--tool-json");
     const commandIndex = args.indexOf("--command");
     const cwdIndex = args.indexOf("--cwd");
