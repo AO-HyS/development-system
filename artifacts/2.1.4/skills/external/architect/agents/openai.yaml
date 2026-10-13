@@ -1,0 +1,6 @@
+interface:
+  display_name: "Architect: diseñar contratos"
+  short_description: "Define responsabilidades y contratos antes de implementar"
+  default_prompt: "Usa $architect para diseñar el cambio estructural solicitado, conservando el comportamiento y el orquestador actuales."
+policy:
+  allow_implicit_invocation: true

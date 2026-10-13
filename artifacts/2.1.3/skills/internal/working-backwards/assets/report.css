@@ -1,0 +1,61 @@
+/* A report is a continuous briefing, with evidence beside its conclusion. */
+.reader-report{font-size:1.0625rem;line-height:1.72}
+.reader-report ::selection{background:var(--accent);color:var(--accent-ink)}
+.reader-report *{scrollbar-color:var(--muted) var(--surface);scrollbar-width:thin}
+.reader-report a{text-underline-offset:.2em;text-decoration-thickness:1px}
+.reader-report .report-mark{width:1.5rem;height:1.5rem;flex:none;color:var(--ink)}
+.reader-report .reader-layout{grid-template-columns:minmax(0,57rem) 13rem;gap:3.5rem;max-width:79rem;padding:0 2.5rem}
+.reader-report .document-column{grid-column:1;padding:3.5rem 0 7rem}
+.reader-report .document-column::before{display:none}
+.reader-report .toc-rail{grid-column:2;padding-top:4rem}
+.reader-report .document-header{padding-bottom:2rem}
+.reader-report h1{max-width:23ch;margin:0 0 1.2rem;font-size:clamp(2.15rem,3.6vw,2.75rem);line-height:1.12}
+.reader-report .document-summary{font-size:1.1875rem;max-width:65ch;color:var(--ink);line-height:1.65}
+.reader-report .report-document-state{margin:1.25rem 0 0;font-size:.9375rem;color:var(--muted)}
+.reader-report .document-meta{margin:.65rem 0 0;gap:.5rem 1.5rem;font-variant-numeric:tabular-nums}
+.reader-report .document-meta dt,.reader-report .rail-label{color:var(--muted);font-size:.875rem}
+.reader-report .document-body{padding-top:.5rem}
+.reader-report .document-body h2{margin:3.5rem 0 1rem;font-size:1.65rem;line-height:1.25}
+.reader-report .document-body h3{font-size:1.2rem}
+.reader-report .document-body>p,.reader-report .document-body>ul,.reader-report .document-body>ol{max-width:70ch}
+.reader-report .table-scroll{border-inline:0;border-radius:0;background:transparent;margin:1.5rem 0 2.25rem}
+.reader-report .data-table{width:100%;table-layout:fixed;font-variant-numeric:tabular-nums}
+.reader-report .data-table th,.reader-report .data-table td{min-width:0;padding:.9rem .65rem;font-size:1rem}
+.reader-report .data-table th:first-child,.reader-report .data-table td:first-child{padding-inline-start:0}
+.reader-report .visual-block{margin:1.75rem 0 2rem;border-radius:.75rem}
+.reader-report .chart-data-table{font-variant-numeric:tabular-nums}
+.reader-report .toc-link{padding-block:.7rem;font-size:.9375rem}
+.reader-report .visual-title span{color:var(--muted)}
+.reader-report .diagram-viewport{height:clamp(16rem,28vw,22rem);min-height:16rem}
+.reader-report .diagram-canvas{min-height:12rem}
+.reader-report .mermaid-block.is-expanded .diagram-viewport,.reader-report .mermaid-block:fullscreen .diagram-viewport{height:auto;min-height:0}
+.reader-report .callout strong{font-size:.875rem}
+@media(min-width:82.001rem){.reader-report{padding-bottom:0}}
+@media(max-width:82rem){
+  .reader-report .reader-layout{display:block;max-width:61rem;padding:0 2rem}
+  .reader-report .document-column{padding:3rem 0 6rem}
+  .reader-report .mobile-reader-tools{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:42rem){
+  .reader-report .reader-layout{padding:0 1.25rem}
+  .reader-report .document-column{padding:2rem 0 5.75rem}
+  .reader-report h1{font-size:2.15rem}
+  .reader-report .document-summary{font-size:1.125rem}
+  .reader-report .document-body h2{font-size:1.5rem;margin-top:2.75rem}
+  .reader-report .document-meta{display:block}
+  .reader-report .document-meta div{margin-top:.35rem}
+  .reader-report .data-table{table-layout:auto}
+  .reader-report .data-table td{padding:.6rem 0}
+  .reader-report .data-table td::before{font-size:.875rem}
+  .reader-report .chart-viewport{overflow:auto}
+  .reader-report .chart-viewport svg{min-width:30rem}
+  .reader-report .reader-identity strong{max-width:calc(100vw - 8rem)}
+  .reader-report .visual-block figcaption>.visual-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.25rem}
+  .reader-report .visual-actions button{min-height:2.75rem;white-space:normal;line-height:1.3}
+}
+@media print{
+  .reader-report .reader-layout{display:block;padding:0}
+  .reader-report .document-column{padding:0}
+  .reader-report{font-size:11pt;padding:0}
+  .reader-report .document-header{break-after:avoid}
+}

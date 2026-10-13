@@ -13,12 +13,14 @@ const revision = (value) => typeof value === "string" && /^[a-f0-9]{40}$/i.test(
 const timestamp = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
 /** Evidence is a bounded pointer collection, never transcript text. @param {unknown} value @returns {value is string[]} */
 const evidence = (value) => Array.isArray(value) && value.length > 0 && value.length <= 20 && value.every((item) => typeof item === "string" && item.length <= 1000 && /^(?:https?:\/\/|\/|thread:|session:|artifact:|sha256:)/.test(item) && !/[\r\n]/.test(item) && !/(?:token|secret|password|api[_-]?key)=/i.test(item));
+/** A bounded single-paragraph recommendation note. @param {unknown} value @returns {value is string} */
+const note = (value) => typeof value === "string" && value.trim().length > 0 && value.length <= 2000 && !/[\r\n]/.test(value) && !/(?:token|secret|password|api[_-]?key)=/i.test(value);
 /** @param {string} value */
-const fingerprint = (value) => createHash("sha256").update(value).digest("hex");
+const fingerprint =(value) => createHash("sha256").update(value).digest("hex");
 /** @param {unknown} error */
 const missing = (error) => error instanceof Error && "code" in error && error.code === "ENOENT";
 /** @typedef {{repositoryId:string,sessionId:string,revision:string|null,updatedAt:string|null,evidence:string[]}} Session */
-/** @typedef {{repositoryId:string,changeId:string,revision:string,status:string,evidence:string[],prUrl?:string}} Recommendation */
+/** @typedef {{repositoryId:string,changeId:string,revision:string,status:string,evidence:string[],prUrl?:string,summary?:string,blocker?:string,doneWhen?:string}} Recommendation */
 /** @typedef {{schemaVersion:1,sessions:Record<string,Session>,recommendations:Record<string,Recommendation>}} Ledger */
 
 /** Reject symlinks and non-directory parents, including the requested HOME itself. @param {string} home */
@@ -94,6 +96,16 @@ export async function reconcileStewardRetro(input, review, { home, allowedIds })
       state.sessions[key] = session;
       processed.push(sourceId);
     }
+    // Blocked recommendations (dirty checkout, active owner) persist as pending so
+    // a later run can draft them; a recorded open-pr/resolved/no-change status wins.
+    for (const item of Array.isArray(input.recommendations) ? input.recommendations.slice(0, 50) : []) {
+      if (!record(item) || !allowedIds.has(String(item.repositoryId)) || !identifier(item.changeId) || !revision(item.revision) || !evidence(item.evidence) || !note(item.summary) || !note(item.blocker)) { skipped.push({ sourceId: record(item) && identifier(item.changeId) ? item.changeId : "recommendation", reason: "invalid-recommendation" }); continue; }
+      const repositoryId = String(item.repositoryId);
+      const key = fingerprint(`${repositoryId}:${item.changeId}`);
+      const existing = state.recommendations[key];
+      if (existing && existing.status !== "pending") continue;
+      state.recommendations[key] = { repositoryId, changeId: item.changeId, revision: item.revision, status: "pending", evidence: item.evidence, summary: item.summary, blocker: item.blocker, ...(note(item.doneWhen) ? { doneWhen: item.doneWhen } : {}) };
+    }
     for (const item of Array.isArray(input.recommendationReceipts) ? input.recommendationReceipts : []) {
       if (!record(item) || !allowedIds.has(String(item.repositoryId)) || !identifier(item.changeId) || !revision(item.revision) || item.verified !== true || !["open-pr", "resolved", "no-change"].includes(String(item.status)) || !evidence(item.evidence)) { skipped.push({ sourceId: "recommendation-receipt", reason: "unproven-receipt" }); continue; }
       const repositoryId = String(item.repositoryId);
@@ -110,7 +122,7 @@ export async function reconcileStewardRetro(input, review, { home, allowedIds })
       const key = fingerprint(`${draft.repositoryId}:${draft.changeId}`);
       const existing = state.recommendations[key];
       if (existing && existing.status !== "pending") return false;
-      state.recommendations[key] = { repositoryId: draft.repositoryId, changeId: draft.changeId, revision: draft.revision, status: "pending", evidence: existing?.evidence ?? [`artifact:revision:${draft.revision}`] };
+      state.recommendations[key] = { ...existing, repositoryId: draft.repositoryId, changeId: draft.changeId, revision: draft.revision, status: "pending", evidence: existing?.evidence ?? [`artifact:revision:${draft.revision}`] };
       if (selectedRepositories.has(draft.repositoryId)) return false;
       selectedRepositories.add(draft.repositoryId);
       return true;

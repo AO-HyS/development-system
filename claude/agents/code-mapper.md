@@ -1,8 +1,8 @@
 ---
 name: code-mapper
 description: "Read-only mapper for a bounded question about a repository: owners of a behavior, affected files, data flow, existing idioms to copy. Returns a cited map for the parent or a writer packet."
-model: sonnet
-effort: low
+model: claude-haiku-5-5
+effort: medium
 tools: Read, Grep, Glob, Bash
 hooks:
   PreToolUse:

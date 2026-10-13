@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/animate",
+  "license": "MIT",
+  "capabilityTreeSha256": "7e2be075000beecaf857ef67a99bccc26b5fe20ee43a52b53a8db7758f7ad895",
+  "files": {
+    "RECIPES.md": "21ff63d84391db8d96ecdf9170095f55a42c836ccc36fd3269c4772bab031ba2",
+    "SKILL.md": "b8ede161270458e6ae2e45e8a1985373515d4c63de5568ddb0f9012d7634356c"
+  }
+}

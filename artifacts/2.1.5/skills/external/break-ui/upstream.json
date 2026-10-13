@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/break-ui",
+  "license": "MIT",
+  "capabilityTreeSha256": "7cfa3cc21210099fa7ab9b2e7968b9f8674cac8f0f495240715f2561b0846883",
+  "files": {
+    "CATALOG.md": "7358efcc6bb48e35187be1c064cf60022dcb18c72c18fab58b606dfc5f421f15",
+    "SKILL.md": "e7eec1d70ac56a04255e9c0dbe98084ea3d544cc04aaad34f32c95d6fa9dff5e"
+  }
+}

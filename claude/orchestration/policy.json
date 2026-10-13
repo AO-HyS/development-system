@@ -1,43 +1,43 @@
 {
-  "version": "2026-10-03.1",
+  "version": "2026-10-07.1",
   "maxConcurrentSubagents": 4,
   "roster": {
     "Explore": {
-      "model": "sonnet",
+      "model": "claude-haiku-5-5",
       "route": "read_only_mapper",
       "family": "read",
-      "tier": "sonnet",
+      "tier": "haiku55",
       "jev": false
     },
     "code-mapper": {
-      "model": "sonnet",
+      "model": "claude-haiku-5-5",
       "route": "read_only_mapper",
       "family": "read",
-      "tier": "sonnet",
+      "tier": "haiku55",
       "jev": false
     },
     "docs-researcher": {
-      "model": "sonnet",
+      "model": "claude-haiku-5-5",
       "route": "read_only_mapper",
       "family": "read",
-      "tier": "sonnet",
+      "tier": "haiku55",
       "jev": false
     },
     "mechanical-worker": {
-      "model": "sonnet",
+      "model": "claude-haiku-5-5",
       "route": "exact_implementation",
       "writer": true,
       "jev": false,
       "family": "implement",
-      "tier": "sonnet"
+      "tier": "haiku55"
     },
     "exact-implementer": {
-      "model": "sonnet",
+      "model": "claude-haiku-5-5",
       "route": "exact_implementation",
       "writer": true,
       "jev": false,
       "family": "implement",
-      "tier": "sonnet"
+      "tier": "haiku55"
     },
     "implementer": {
       "model": "sonnet",
@@ -217,5 +217,21 @@
     "role": "visual-reviewer",
     "fresh": true,
     "sourceWrites": false
+  },
+  "haiku55": {
+    "model": "claude-haiku-5-5",
+    "roles": [
+      "Explore",
+      "code-mapper",
+      "docs-researcher",
+      "mechanical-worker",
+      "exact-implementer"
+    ],
+    "effort": "medium",
+    "sourceWriters": [
+      "mechanical-worker",
+      "exact-implementer"
+    ],
+    "requiresObservedRuntime": true
   }
 }

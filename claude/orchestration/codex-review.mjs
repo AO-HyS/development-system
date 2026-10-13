@@ -22,6 +22,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { browserPool } from '../../runtime/native-browser/pool.mjs';
 
 const home = (p) => (String(p).startsWith('~/') ? path.join(os.homedir(), p.slice(2)) : p);
 const POLICY = JSON.parse(fs.readFileSync(new URL('./policy.json', import.meta.url), 'utf8'));
@@ -51,13 +52,14 @@ function parseArgs(argv) {
     if (flag === '--accounts') { args.accounts = true; continue; }
     if (flag === '--computer-use') { args.computerUse = true; continue; }
     const value = argv[i + 1];
-    if (!['--packet', '--root', '--out', '--image'].includes(flag)) refuse(`unknown argument ${flag}. Usage: node codex-review.mjs --accounts | [--computer-use] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]...`);
+    if (!['--packet', '--root', '--out', '--image', '--browser-request'].includes(flag)) refuse(`unknown argument ${flag}. Usage: node codex-review.mjs --accounts | [--computer-use] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]... [--browser-request <file>]`);
     if (value === undefined || value.startsWith('--')) refuse(`${flag} needs a value`);
     if (flag === '--image') args.images.push(path.resolve(value));
     else args[flag.slice(2)] = value;
     i += 1;
   }
   if (!args.packet && !args.accounts) refuse('--packet <file> is required');
+  if (args['browser-request'] && (!args.computerUse || args.accounts)) refuse('--browser-request requires --computer-use with a task packet');
   return args;
 }
 
@@ -182,8 +184,8 @@ inventory.skipped.push(...inventory.accounts.slice(accountLimit).map((account) =
 inventory.accounts = inventory.accounts.slice(0, accountLimit);
 const packetFile = path.resolve(args.packet);
 if (!fs.existsSync(packetFile)) refuse(`packet ${packetFile} does not exist`);
-const packetBytes = fs.readFileSync(packetFile);
-const packet = packetBytes.toString('utf8');
+let packetBytes = fs.readFileSync(packetFile);
+let packet = packetBytes.toString('utf8');
 const objective = packet.match(/^\s*Objective:\s*(\S.*)$/m)?.[1];
 if (!objective) refuse('the packet needs an "Objective: ..." line');
 for (const image of args.images) if (!fs.existsSync(image)) refuse(`image ${image} does not exist`);
@@ -265,6 +267,21 @@ function reserve() {
 }
 const refusal = reserve();
 if (refusal) refuse(refusal);
+
+// Scoped pool launches remain desktop-exclusive: the native runtime still has
+// a global computer surface. App allocation alone cannot remove that guard.
+let browserAssignment = null;
+if (args['browser-request']) {
+  try {
+    const input = JSON.parse(fs.readFileSync(path.resolve(args['browser-request']), 'utf8'));
+    const allocated = browserPool({ operation:'acquire', input:{ ...input, ownerId:runId, ownerPid:process.pid, purpose:'computer-use' } });
+    if (allocated.status !== 'acquired') { removeMarker(); refuse(`browser capacity needed: ${allocated.reason}; no browser was opened or queued`); }
+    browserAssignment = allocated;
+    const resource = allocated.resource;
+    packet += `\nBrowser assignment: ${resource.bundleId}\nBrowser application: ${resource.appPath}\nBrowser recorded accounts: ${resource.accounts.join(', ') || 'none required'}\nBrowser scope: use only the assigned application. Verify the exact controllable account before effects; a registration receipt is not fresh account acceptance. Do not use the personal Chrome or another browser. End with 'Browser lease: quiescent' only after all browser actions, dialogs and downloads have stopped and all effects are reconciled; otherwise report reconciliation required.\n`;
+    packetBytes = Buffer.from(packet);
+  } catch (error) { removeMarker(); refuse(`browser reservation failed: ${error.message}`); }
+}
 
 const files = Object.fromEntries(['packet.md', 'findings.md', 'events.jsonl', 'stderr.log', 'receipt.json', 'previous-findings.md'].map((name) => [name, path.join(outDir, name)]));
 fs.writeFileSync(files['packet.md'], packetBytes);
@@ -360,6 +377,18 @@ try {
 }
 if (cancelling) { eligible = false; exitCode = cancelCode; reason = 'cancelled'; }
 const succeeded = attempts.at(-1)?.classification === 'succeeded' && !cancelling;
+let browserLeaseState = null;
+if (browserAssignment) {
+  // No receipt-bound native fallback transfer exists for assigned browsers.
+  // Preserve uncertain ownership rather than dispatching outside the broker.
+  const finalDeclaration = (fs.existsSync(files['findings.md']) ? fs.readFileSync(files['findings.md'], 'utf8') : '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean).at(-1);
+  const reconciled = succeeded && finalDeclaration === 'Browser lease: quiescent';
+  const lease = browserAssignment.lease;
+  try {
+    browserLeaseState = browserPool({ operation:reconciled?'release':'quarantine', input:{ leaseId:lease.leaseId, ownerId:lease.ownerId, generation:lease.generation, operatorStopped:true, effectsReconciled:reconciled } }).status;
+  } catch { browserLeaseState = 'reconciliation-required'; }
+  if (eligible) { eligible = false; reason = 'pooled_fallback_requires_ownership_transfer'; exitCode = 1; }
+}
 if (eligible) { exitCode = 75; reason = reason ?? 'No local authenticated Codex profiles discovered'; }
 else if (!succeeded && exitCode === 0) exitCode = 1;
 let outcome = mode === 'review' ? (succeeded && verdict ? 'review' : 'attempt') : null;
@@ -375,6 +404,7 @@ const receipt = {
   root, packetPath: files['packet.md'], packetSha256, mode, taskId, outcome, verdict, requested, observed,
   accounts: inventory.accounts, skippedAccounts: inventory.skipped, attempts, findings: files['findings.md'], round,
   ...(recordError ? { recordError } : {}), seconds: Math.round((Date.now() - started) / 1000), runId,
+  ...(browserAssignment ? { browserAssignment, browserLeaseState, browserEnforcement:'participating-launches-only; desktop-exclusive; no native confinement claim' } : {}),
   ...(eligible ? { fallback: { eligible: true, role: mode === 'computer-use' ? 'browser-qa' : args.images.length ? 'visual-reviewer' : 'reviewer',
     reason, receiptPath: files['receipt.json'], packetPath: files['packet.md'], packetSha256,
     prompt: `${packet}\nCodex fallback: ${reason}\nCodex fallback receipt: ${files['receipt.json']}\nCodex fallback packet: ${files['packet.md']}\n` } } : {}),

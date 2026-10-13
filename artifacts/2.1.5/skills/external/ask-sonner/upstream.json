@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/ask-sonner",
+  "license": "MIT",
+  "capabilityTreeSha256": "3b0a56217f25ec077cdd60e460fa0df0cd08d39d2d4abd6af24d104cdcb25967",
+  "files": {
+    "API.md": "4bb06f482c5757529e3d7a672a30fbeed42d24919a63e2571384a9ce1549aa7f",
+    "SKILL.md": "39f3ee185b3aa2cf70a689052ff078953ce7ba5915ed7a9391d232e9d4dcf57f"
+  }
+}

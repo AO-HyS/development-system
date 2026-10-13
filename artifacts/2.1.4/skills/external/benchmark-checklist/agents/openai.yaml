@@ -1,0 +1,6 @@
+interface:
+  display_name: "Benchmark: validar mediciones"
+  short_description: "Comprueba velocidad, resultados y condiciones comparables"
+  default_prompt: "Usa $benchmark-checklist para revisar las mediciones de esta tarea y determinar qué conclusión permiten."
+policy:
+  allow_implicit_invocation: true

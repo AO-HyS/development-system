@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: design engineering"
+  short_description: "Criterio de pulido, componentes y animación"
+  default_prompt: "Usa $emil-design-eng para pulir esta interfaz."
+policy:
+  allow_implicit_invocation: true

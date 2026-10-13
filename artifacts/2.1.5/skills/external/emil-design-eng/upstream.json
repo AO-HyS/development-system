@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/emil-design-eng",
+  "license": "MIT",
+  "capabilityTreeSha256": "a993a1e593a9ac53e0c72b319ff4ef273dcfe17569a2da510fab68deb070e273",
+  "files": {
+    "SKILL.md": "ffbe68e6007fb42cb8149f089b400a1ca007d59ba23e8948e2be4476f3175939"
+  }
+}

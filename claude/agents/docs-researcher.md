@@ -1,8 +1,8 @@
 ---
 name: docs-researcher
 description: "Read-only research in library docs, vendor docs and the web (Exa, Context7, WebFetch). Use for API syntax, version behavior and best-practice lookups; returns cited facts."
-model: sonnet
-effort: low
+model: claude-haiku-5-5
+effort: medium
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
 

@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "commit": "9d76bcab133aefcccb16121d7be874e6aa823729",
+  "path": "pstack/skills/architect",
+  "license": "MIT",
+  "capabilityTreeSha256": "96313ac5be6b00802f9bb5107c6c58241a914866367196bdcbd4bbe04af074c1",
+  "files": {
+    "SKILL.md": "31f8e97a52bfa5432edd61f68ade2a8632ef0bacbc2d2a6802d7a0e6821944ac",
+    "references/design-red-flags.md": "d0e639e4cc588ec865f930d3a4111faad60987ae36925917e319d7ceca7c69ce",
+    "references/rationale-template.md": "0cedfccdc7b47fc881febd5a8293eecbc542c20f8df825639904a8102d2eb5d3",
+    "references/runner-prompt.md": "21dd5314aab778c5007228027a4591d97693fbec6ab86524037772b63f40948e"
+  }
+}

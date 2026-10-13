@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: diseño estilo Apple"
+  short_description: "Movimiento físico y gestos fluidos llevados a la web"
+  default_prompt: "Usa $apple-design para revisar estos gestos y transiciones."
+policy:
+  allow_implicit_invocation: true

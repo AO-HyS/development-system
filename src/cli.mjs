@@ -311,10 +311,40 @@ export async function run(argv) {
 
 /** @param {string[]} argv */
 async function runCommand(argv) {
+  if (argv[0] === "browser-pool") {
+    const { runBrowserPool } = await import("../runtime/native-browser/cli.mjs");
+    return runBrowserPool(argv.slice(1));
+  }
   if (argv[0] === "thread-health") {
     const { json, ...options } = parseThreadHealthArguments(argv);
     const result = threadHealth(options);
     return { result, output: json ? JSON.stringify(result) : formatThreadHealth(result), json };
+  }
+  if (argv[0] === "check-agents-rules" || argv[0] === "check-lint-floor") {
+    const json = argv.includes("--json");
+    /** @type {string[]} */
+    const allow = [], files = [];
+    /** @type {Record<string, string>} */
+    const values = {};
+    for (let index = 1; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      if (["--base", "--head", "--root", "--snapshot", "--write", "--threshold"].includes(arg)) { values[arg.slice(2)] = argv[++index]; continue; }
+      if (arg === "--allow") { allow.push(argv[++index]); continue; }
+      if (arg.startsWith("--")) throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
+      files.push(arg);
+    }
+    const root = resolve(values.root ?? process.cwd());
+    if (argv[0] === "check-agents-rules") {
+      const { checkAgentsRules, formatAgentsRules } = await import("./agents-rules.mjs");
+      const result = { ok: true, ...checkAgentsRules({ root, base: values.base, head: values.head, files, allow, threshold: values.threshold ? Number(values.threshold) : undefined }) };
+      result.ok = result.valid;
+      return { result, output: json ? JSON.stringify(result) : formatAgentsRules(result), json };
+    }
+    const { checkLintFloor, formatLintFloor } = await import("./lint-floor.mjs");
+    const result = { ok: true, ...checkLintFloor({ root, snapshot: values.snapshot && resolve(values.snapshot), write: values.write && resolve(values.write), allow }) };
+    result.ok = result.valid;
+    return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
   if (argv[0] === "mistake") {
     const { subcommand, home, json, repeated, ...fields } = parseMistakeArguments(argv);
@@ -641,7 +671,7 @@ async function runCommand(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|check-agents-rules|check-lint-floor|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
