@@ -85,7 +85,7 @@ change strategy.
 - Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report; one-way (deleting data, destructive migrations, production, money, messages to customers): stop and ask.
 - Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.
 - Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref>`; an id with two distinct incidents becomes a proposed hard rule on that ladder.
-- An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule: `development-system check-agents-rules --base <ref> <file>` and `development-system check-lint-floor --base <ref>` pass before merge.
+- An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
 - No evals.
 
 ## Report and Headroom evidence

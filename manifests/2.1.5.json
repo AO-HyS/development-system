@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.1.5/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "321160c12608726ddf26e3e9b100a3e95e73213783cca97302386eaca2b358db",
+      "sha256": "4f6c5e10273f8342755f83d133f28b2c1eb980a1cfe6c520a11176e138feb374",
       "expectedMirrorOf": null
     },
     {
