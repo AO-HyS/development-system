@@ -145,7 +145,8 @@ function eslintRules(root, dir, files) {
 
 /** @param {{ root: string }} options */
 export function lintRuleSnapshot({ root }) {
-  const tracked = run(root, "git", ["ls-files"]).split("\n").filter(Boolean);
+  // -z keeps non-ASCII paths unquoted so config names still match.
+  const tracked = run(root, "git", ["ls-files", "-z"]).split("\0").filter(Boolean);
   const files = tracked.filter(file => lintable.test(file) && !file.includes("node_modules/") && !file.includes("/_generated/"));
   /** @type {Record<string, Record<string, "error"|"warn">>} */
   const perFile = Object.fromEntries(files.map(file => [file, {}]));
