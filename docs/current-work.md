@@ -215,3 +215,15 @@ ledger. Product follow-ups from the same retro: nutri-plan#617, casa-roca#157
 for check-agents-rules/check-lint-floor needs an authorized v2.1.5 release and
 product pin bumps; casa-roca-dashboard has no Vercel Git connection (owner
 decision).
+
+Operator test-write grants, 2026-10-13 (branch feat/user-granted-test-writes).
+The no-tests guard blocked the user-ordered E2E comparison (QuickE2E/TesterArmy
+specs) with no way for the operator to allow it short of removing the guard. The
+user asked for tests to be possible when they order them. 2.1.7 (catalog 0.67.0,
+guard policy 2.1.0): `development-system allow-tests <dir> [--hours N]` run by the
+operator records an expiring grant in ~/.development-system/test-grants.json; the
+guard allows test-file writes whose exact target a grant holds and blocks agents
+from running allow-tests or writing the grant file; `test-grants` lists them. The
+shared no-tests rule now names the exception. Isolated HOME: setup 2.1.7, doctor
+ok, guardrails-audit healthy, live hook deny -> grant -> allow observed. Real HOME
+adoption follows merge; the E2E comparison then needs one operator grant.
