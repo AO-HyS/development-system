@@ -202,3 +202,16 @@ checkout belonged to an active thread. Weekly steward schedule (Mon 09:00)
 carries A5 duties; first run under them not yet observed. Live skill selection by
 a host not observed. Open for the owner: home-expenses Electron login,
 escuela-360 Cloudflare token, test accounts for authenticated previews.
+
+Steward retro follow-ups, 2026-10-13 (branch fix/steward-retro-followups-20261013,
+PR #161). The weekly steward retro found report links delivered only as
+temporary tunnels that expired before the user read them (threads 9ee8c68c,
+3e130a9f, 14d5d364). 2.1.5 (still unpublished) now asks for durable delivery in
+the shared rule, the contracts, the report Stop hook and the report steps of
+flow-implement, coding-orchestration and orchestrate-work; a tunnel is optional.
+development-steward persists blocked recommendations as pending in the private
+ledger. Product follow-ups from the same retro: nutri-plan#617, casa-roca#157
+(merged), the-barber-central#495 (merged) and #496. Not done: a product CI step
+for check-agents-rules/check-lint-floor needs an authorized v2.1.5 release and
+product pin bumps; casa-roca-dashboard has no Vercel Git connection (owner
+decision).

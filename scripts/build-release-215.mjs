@@ -70,6 +70,16 @@ const releaseNote = `## ${version}: shared host rules, rule floors and design sk
 Contract ${version} renders the shared global instructions from config/global-instructions.md: the rules both hosts follow appear once under Shared host rules, and the Codex and Claude Code host sections keep only host-specific lines. ~/.claude/rules/orchestration.md becomes a pointer, so Claude Code no longer loads its host section twice. \`development-system check-agents-rules --base <ref> [--head <ref>] <file>\` lists every behavior-constraining sentence of a base AGENTS.md/CLAUDE.md that no tracked document still carries; \`development-system check-lint-floor --write <snapshot>\` on the base checkout and \`--snapshot <snapshot>\` on the candidate list lint rules a migration dropped or downgraded from error to warning. Both exit 1 until each finding is restored or explicitly allowed. Catalog ${catalogVersion} adds Emil Kowalski's design and motion skills (animate and prototype install as emil-animate and emil-prototype beside the existing skills of those names) and Vojta Holik's good-css, each with pinned upstream provenance, and moves implement-spec to a ${version} copy built on Matt Pocock's task-graph flow without tests or mandatory worktrees. Installed files do not prove that a harness selects these skills; that needs observed-session evidence.
 `;
 
+const tunnelRule = `supplementary. Serve sanitized report assets through the authorized temporary
+tunnel; state its actual URL and availability/expiry. Keep secrets and private
+transcripts outside its served directory.`;
+const durableReportRule = `supplementary. Deliver reports durably: render them in the owning T3 thread or
+give their persistent path. A temporary tunnel is optional; when used, state its
+actual URL and expiry and never make it the only delivery. Keep secrets and
+private transcripts outside any served directory.`;
+
+const tunnelGateStep = 'serve it with working-backwards `reader-live.mjs --tunnel` from a per-report copy directory, and put the URL in your final answer.';
+const durableGateStep = 'then deliver it durably: render it in this T3 thread or give its persistent htmlPath. A reader-live tunnel link is optional and never the only delivery; state its expiry if you add one.';
 const roleCheck = checkRolePolicyOutputs(root);
 if (!roleCheck.valid) throw new Error(roleCheck.errors.join('; '));
 const manifest = JSON.parse((await bytes(`manifests/${previous}.json`)).toString());
@@ -99,11 +109,15 @@ for (const name of external) {
     ],
   });
 }
-const implementSpec = catalog.skills.find((/** @type {{logicalName:string}} */ row) => row.logicalName === 'implement-spec');
-if (!implementSpec) throw new Error('implement-spec missing from catalog');
-const specDirectory = `${prefix}/skills/internal/implement-spec`;
-implementSpec.source.path = specDirectory;
-for (const variant of implementSpec.variants) { variant.sourceDirectory = specDirectory; variant.folderSha256 = await folderHash(specDirectory); }
+// Internal skills with a 2.1.5 copy: implement-spec, plus the three whose report
+// step asked for a tunnel instead of a durable delivery.
+for (const name of ['implement-spec', 'flow-implement', 'coding-orchestration', 'orchestrate-work']) {
+  const skill = catalog.skills.find((/** @type {{logicalName:string}} */ row) => row.logicalName === name);
+  if (!skill) throw new Error(`${name} missing from catalog`);
+  const directory = `${prefix}/skills/internal/${name}`;
+  skill.source.path = directory;
+  for (const variant of skill.variants) { variant.sourceDirectory = directory; variant.folderSha256 = await folderHash(directory); }
+}
 const errors = await validateSkillCatalog(catalog, root);
 if (errors.length) throw new Error(errors.join('; '));
 await output(`catalog/${catalogVersion}.json`, JSON.stringify(catalog, null, 2) + '\n');
@@ -120,6 +134,12 @@ for (const artifact of manifest.artifacts) {
     artifact.sourcePath = `${prefix}/claude/rules/orchestration.md`;
     await output(artifact.sourcePath, await bytes('claude/rules/orchestration.md'));
   }
+  if (artifact.sourcePath === 'artifacts/1.34.0/runtime/report-gate/stop-gate.mjs') {
+    const gate = (await bytes(artifact.sourcePath)).toString();
+    if (!gate.includes(tunnelGateStep)) throw new Error('Report gate wording changed; update the durable delivery substitution');
+    artifact.sourcePath = `${prefix}/runtime/report-gate/stop-gate.mjs`;
+    await output(artifact.sourcePath, gate.replace(tunnelGateStep, durableGateStep));
+  }
   if (name === 'personal-codex-instructions') {
     artifact.sourcePath = `${prefix}/global-codex-instructions.md`;
     await output(artifact.sourcePath, await globalInstructions());
@@ -130,7 +150,10 @@ for (const artifact of manifest.artifacts) {
     const browserStart = original.indexOf('\n## Browser resource preparation');
     if (hostStart < 0) throw new Error(`Missing generated host guidance: ${name}`);
     const suffix = browserStart > hostStart ? original.slice(browserStart) : '';
-    let current = original.slice(0, hostStart).replaceAll(previous, version).replaceAll(previousCatalog, catalogVersion);
+    let current = original.slice(0, hostStart).replaceAll(previous, version).replaceAll(previousCatalog, catalogVersion)
+      // Temporary tunnel links expired before readers opened them (three incidents, 2026-10-10..13).
+      .replace(tunnelRule, durableReportRule);
+    if (current.includes('authorized temporary\ntunnel')) throw new Error(`Tunnel-only report rule survived in ${name}`);
     if (name === 'development-contract') current = current.trimEnd() + '\n\n' + releaseNote;
     const filename = name === 'development-contract' ? 'contract' : name;
     artifact.sourcePath = `${prefix}/${filename}.md`;
