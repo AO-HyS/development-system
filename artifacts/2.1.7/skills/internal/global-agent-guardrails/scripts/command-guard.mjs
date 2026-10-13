@@ -45,7 +45,7 @@ function checkDeadline() {
 }
 /** @template T @param {() => T} fn @returns {T} */
 function withClock(fn) {
-  if (clockDepth++ === 0) { deadline = Date.now() + DEADLINE_MS; cwdMoved = false; }
+  if (clockDepth++ === 0) { deadline = Date.now() + DEADLINE_MS; cwdMoved = false; argumentsSubstituted = false; }
   try { return fn(); }
   finally { if (--clockDepth === 0) deadline = Infinity; }
 }
@@ -1369,6 +1369,8 @@ const MAX_GRANT_MS = 24 * 3_600_000;
 let grantsEnabled = true;
 /** Set by any directory change in the evaluated command: `cd -P link; cd ..` returns lexically to the harness cwd but not physically. */
 let cwdMoved = false;
+/** Set when the evaluated command runs xargs, find or parallel, whose substituted arguments are unknown at inspection. */
+let argumentsSubstituted = false;
 /**
  * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
  * `..` moves the real destination), and a relative target only from the harness working directory,
@@ -1376,7 +1378,7 @@ let cwdMoved = false;
  * @param {Word} word @param {string} text @param {Context} ctx
  */
 function grantable(word, text, ctx) {
-  return grantsEnabled && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
+  return grantsEnabled && !argumentsSubstituted && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
     && (isAbsolute(text) || (!cwdMoved && ctx.cwd === ctx.scope));
 }
 /** Whether a valid, unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
@@ -2851,6 +2853,8 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     const aliased = ctx.aliases?.get(commandName(head.value));
     if (aliased === null) throw new Block("dynamic-command-name");
     if (aliased) { args = [...aliased, ...args.slice(1)]; continue; }
+    // xargs, find -exec and parallel fill in arguments at run time, so no target they write is fully known.
+    if (["xargs", "find", "parallel"].includes(commandName(head.value))) argumentsSubstituted = true;
     const next = unwrapWrapper(commandName(head.value), args, ctx);
     if (!next) break;
     args = next.args;
