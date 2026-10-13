@@ -1,0 +1,85 @@
+// @ts-check
+// A repository's primitives map (docs/architecture/primitives.json): the smallest units of meaning
+// its system exposes, so agents compose them instead of re-implementing them (Kent C. Dodds,
+// "Your Coding Agent Needs Better Primitives"). `check-primitives` keeps the map honest: every
+// active or deprecated primitive points at files that exist, symbols that appear in them, and
+// guarantees that name how they are verified. Goals are what a primitive should hold but does not yet.
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+export const primitivesPath = "docs/architecture/primitives.json";
+const categories = ["ui", "api", "data", "infra", "agent-tools", "workflow", "auth"];
+const statuses = ["active", "proposed", "deprecated"];
+const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
+
+/**
+ * @typedef {{statement: string, verifiedBy: string}} Guarantee
+ * @typedef {{id: string, category: string, status: string, summary: string, paths?: string[], symbols?: string[], guarantees?: Guarantee[], goals?: string[], replaces?: string[], docs?: string[]}} Primitive
+ */
+
+/**
+ * @param {{root: string, ref?: string, file?: string}} options
+ */
+export function checkPrimitives({ root, ref, file = primitivesPath }) {
+  const git = (/** @type {string[]} */ ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  const read = (/** @type {string} */ path) => ref ? git("show", `${ref}:${path}`) : readFileSync(resolve(root, path), "utf8");
+  const tracked = ref ? new Set(git("ls-tree", "-r", "--name-only", ref).split("\n").filter(Boolean)) : null;
+  const exists = (/** @type {string} */ path) => tracked ? tracked.has(path) || [...tracked].some((entry) => entry.startsWith(`${path.replace(/\/$/, "")}/`)) : existsSync(resolve(root, path));
+  /** @type {string[]} */
+  const problems = [];
+  let map;
+  try { map = JSON.parse(read(file)); }
+  catch (error) { return { ok: false, operation: "check-primitives", root, ref: ref ?? "worktree", file, valid: false, problems: [`Cannot read ${file}: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`], counts: {} }; }
+  if (map?.schemaVersion !== 1) problems.push("schemaVersion must be 1");
+  const items = /** @type {Primitive[]} */ (Array.isArray(map?.primitives) ? map.primitives : []);
+  if (items.length === 0) problems.push("primitives must be a non-empty array");
+  const ids = new Set();
+  /** @type {Record<string, number>} */
+  const counts = {};
+  for (const [index, item] of items.entries()) {
+    const label = `primitives[${index}]${item?.id ? ` (${item.id})` : ""}`;
+    if (!item || typeof item !== "object") { problems.push(`${label} is not an object`); continue; }
+    if (typeof item.id !== "string" || !ID.test(item.id)) problems.push(`${label}: id must be kebab-case`);
+    else if (ids.has(item.id)) problems.push(`${label}: duplicate id`);
+    else ids.add(item.id);
+    if (!categories.includes(item.category)) problems.push(`${label}: category must be one of ${categories.join(", ")}`);
+    if (!statuses.includes(item.status)) problems.push(`${label}: status must be one of ${statuses.join(", ")}`);
+    if (typeof item.summary !== "string" || !item.summary.trim()) problems.push(`${label}: summary is required`);
+    counts[item.status] = (counts[item.status] ?? 0) + 1;
+    const paths = Array.isArray(item.paths) ? item.paths : [];
+    if (item.status !== "proposed" && paths.length === 0) problems.push(`${label}: an ${item.status} primitive needs at least one path`);
+    for (const path of paths) {
+      if (item.status !== "proposed" && !exists(path)) problems.push(`${label}: path does not exist: ${path}`);
+    }
+    for (const symbol of Array.isArray(item.symbols) ? item.symbols : []) {
+      const [path, name] = String(symbol).split("#");
+      if (!path || !name) { problems.push(`${label}: symbol must be "path#Name": ${symbol}`); continue; }
+      if (item.status === "proposed") continue;
+      if (!exists(path)) { problems.push(`${label}: symbol file does not exist: ${path}`); continue; }
+      let text = "";
+      try { text = read(path); } catch { problems.push(`${label}: cannot read symbol file: ${path}`); continue; }
+      if (!new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text)) problems.push(`${label}: symbol ${name} not found in ${path}`);
+    }
+    for (const guarantee of Array.isArray(item.guarantees) ? item.guarantees : []) {
+      if (typeof guarantee?.statement !== "string" || typeof guarantee?.verifiedBy !== "string" || !guarantee.verifiedBy.trim()) {
+        problems.push(`${label}: each guarantee needs a statement and verifiedBy (unverified intent belongs in goals)`);
+      }
+    }
+    for (const doc of Array.isArray(item.docs) ? item.docs : []) {
+      if (!exists(doc)) problems.push(`${label}: doc does not exist: ${doc}`);
+    }
+  }
+  for (const item of items) {
+    for (const replaced of Array.isArray(item?.replaces) ? item.replaces : []) {
+      if (!ids.has(replaced)) problems.push(`${item.id}: replaces unknown primitive ${replaced}`);
+    }
+  }
+  return { ok: problems.length === 0, operation: "check-primitives", root, ref: ref ?? "worktree", file, valid: problems.length === 0, problems, counts };
+}
+
+/** @param {ReturnType<typeof checkPrimitives>} result */
+export function formatPrimitives(result) {
+  if (result.valid) return `Primitives map OK (${Object.entries(result.counts).map(([status, count]) => `${count} ${status}`).join(", ")}).`;
+  return [`Primitives map invalid (${result.file} at ${result.ref}):`, ...result.problems.map((problem) => `- ${problem}`)].join("\n");
+}
