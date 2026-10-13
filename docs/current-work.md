@@ -187,3 +187,18 @@ Monday 09:00 steward schedule updated with performance, upstream-skill and
 lint-health duties (last run status failed; next 2026-10-19). Isolated HOME:
 setup, doctor, collision snapshot and 2.1.4->2.1.5->rollback observed. Real
 HOME not updated; publication/adoption awaits merge.
+
+Line A closed 2026-10-13 (America/Mexico_City). development-system#158 merged to
+develop (d07a479) after 3 Sol 6.1 High rounds and installed in the real HOME:
+doctor ok, package 2.1.5, catalog 0.65.0, 122 skills, guards healthy. Round
+findings fixed: write-swift test guidance removed; check-agents-rules matches
+sentence-to-sentence with polarity and fails on unknown refs (it found the
+dropped "selected parent owns decomposition" paragraph, restored);
+check-lint-floor records effective rules per file and fails closed. Replays
+produced and merged escuela-360#11/#12, todo#37/#38, house-organization#15,
+nutri-plan#615; casa-roca#156 role-read guard merged. casa-roca pre-migration
+ESLint config can no longer be loaded (fails closed). Barber not replayed: its
+checkout belonged to an active thread. Weekly steward schedule (Mon 09:00)
+carries A5 duties; first run under them not yet observed. Live skill selection by
+a host not observed. Open for the owner: home-expenses Electron login,
+escuela-360 Cloudflare token, test accounts for authenticated previews.
