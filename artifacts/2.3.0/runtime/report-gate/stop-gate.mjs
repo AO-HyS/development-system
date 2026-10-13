@@ -132,21 +132,30 @@ function codeModeCommands(source) {
       else if (masked[k] === "}" && --depth === 0) { end = k; break; }
     }
     if (end === -1) continue;
-    // Read only the top level of the argument: nested objects are blanked out.
-    let body = source.slice(start, end + 1);
+    // Find keys on the masked top level (comments, strings and nested objects blanked), then
+    // read each value from the original text at the same offset.
     const maskedBody = masked.slice(start, end + 1);
     let level = 0;
-    body = body.split("").map((char, k) => {
-      const m = maskedBody[k];
-      if (m === "{") level += 1;
+    const topLevel = maskedBody.split("").map((char) => {
+      if (char === "{") level += 1;
       const keep = level <= 1;
-      if (m === "}") level -= 1;
+      if (char === "}") level -= 1;
       return keep ? char : " ";
     }).join("");
-    const cmd = new RegExp(String.raw`\bcmd\s*:\s*` + jsString, "u").exec(body);
-    if (!cmd) continue;
-    const dir = new RegExp(String.raw`\b(?:workdir|cwd)\s*:\s*` + jsString, "u").exec(body);
-    commands.push({ command: unquote(cmd[1]), ...(dir ? { dir: unquote(dir[1]) } : {}) });
+    /** @param {string} key */
+    const value = (key) => {
+      const at = new RegExp("(?:^|[{,\\s])(?:" + key + ")\\s*:\\s*([\"'`])", "u").exec(topLevel);
+      if (!at) return undefined;
+      const open = start + /** @type {number} */ (at.index) + at[0].length - 1;
+      const literal = new RegExp(jsString, "uy");
+      literal.lastIndex = open;
+      const match = literal.exec(source);
+      return match ? unquote(match[1]) : undefined;
+    };
+    const command = value("cmd");
+    if (command === undefined) continue;
+    const dir = value("workdir|cwd");
+    commands.push({ command, ...(dir !== undefined ? { dir } : {}) });
   }
   return commands;
 }

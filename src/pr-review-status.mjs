@@ -65,15 +65,6 @@ function claim(key) {
   return () => { try { unlinkSync(path); } catch { /* already gone */ } };
 }
 
-/** When the PR's head last moved to `head` (push or force-push event), or 0 if unknown. @param {string} base @param {number} number @param {string} head */
-function headUpdatedAt(base, number, head) {
-  try {
-    const events = ghList(`${base}/issues/${number}/timeline`);
-    const moved = events.filter((event) => (event.event === "committed" && event.sha === head) || (event.event === "head_ref_force_pushed" && event.commit_id === head));
-    return Math.max(0, ...moved.map((event) => Date.parse(event.created_at ?? event.committer?.date ?? "") || 0));
-  } catch { return 0; }
-}
-
 /**
  * @param {{pr: string, request?: boolean}} options
  */
@@ -82,7 +73,6 @@ export function prReviewStatus({ pr, request = false }) {
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
   const head = String(pull.head.sha);
-  const headDate = Date.parse(JSON.parse(gh(["api", `${base}/commits/${head}`])).commit.committer.date);
   const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user));
   const read = () => ghList(`${base}/issues/${number}/comments`);
   const comments = read();
@@ -103,10 +93,10 @@ export function prReviewStatus({ pr, request = false }) {
   const resolvedWithoutReply = silentlyResolved.length;
   const headReviewed = reviews.some((review) => review.commit_id === head) || (summaryForHead && /Completed/i.test(summaryRow?.[1] ?? ""));
   const runningForHead = summaryForHead && /running|progress|queued/i.test(summaryRow?.[1] ?? "");
-  // A usage or access error counts for this head only if posted after this SHA became the head:
-  // after our own request for it, else after the PR's last head update (a commit date can predate it).
-  const headSince = Math.max(headDate, ...comments.filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).map((comment) => Date.parse(comment.created_at)), headUpdatedAt(base, number, head));
-  const unavailable = appComments.some((comment) => Date.parse(comment.created_at) >= headSince && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
+  // A usage or access error counts only as an answer to our own request for this exact head;
+  // anything else stays pending so a new head can always be asked.
+  const ourRequest = Math.max(0, ...comments.filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).map((comment) => Date.parse(comment.created_at)));
+  const unavailable = ourRequest > 0 && appComments.some((comment) => Date.parse(comment.created_at) > ourRequest && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
   const requestedForHead = (/** @type {any[]} */ list) => list.some((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`));
   /** @type {"no-findings" | "findings" | "running" | "pending" | "unavailable"} */
   let state;

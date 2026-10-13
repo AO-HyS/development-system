@@ -5,8 +5,8 @@
 // active or deprecated primitive points at files that exist, symbols that appear in them, and
 // guarantees that name how they are verified. Goals are what a primitive should hold but does not yet.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { basename, dirname, isAbsolute, posix, relative, resolve } from "node:path";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 
 export const primitivesPath = "docs/architecture/primitives.json";
 const categories = ["ui", "api", "data", "infra", "agent-tools", "workflow", "auth"];
@@ -24,43 +24,30 @@ const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
 export function checkPrimitives({ root, ref, file = primitivesPath }) {
   const realRoot = realpathSync(resolve(root));
   const git = (/** @type {string[]} */ ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
-  /** Symlinks in the selected tree: path -> target. @type {Map<string, string>} */
-  const treeLinks = new Map();
+  /** Symlinks in the selected tree. @type {Set<string>} */
+  const treeLinks = new Set();
   if (ref) {
     for (const line of git("ls-tree", "-r", "-z", ref).split("\0").filter(Boolean)) {
       const [meta, path] = line.split("\t");
-      if (meta.startsWith("120000 ")) treeLinks.set(path, git("show", `${ref}:${path}`));
+      if (meta.startsWith("120000 ")) treeLinks.add(path);
     }
   }
   /**
-   * A map may only name repository-relative paths that stay inside the repository. Every
-   * symlink on the way (in the worktree, or in the tree at --ref) is followed and must stay
-   * inside too, including the existing parents of a path that does not exist yet.
+   * A map may only name plain repository-relative paths: no absolute path, no `..`, and no
+   * symlink anywhere along the path (in the worktree, or in the tree at --ref). A primitive
+   * points at real files; refusing every link keeps containment simple and exact.
    * @param {string} path
    */
   const inside = (path) => {
     if (typeof path !== "string" || !path || isAbsolute(path) || path.split(/[\\/]/).includes("..")) return false;
-    if (ref) {
-      let current = "";
-      for (const part of path.split("/").filter(Boolean)) {
-        current = current ? `${current}/${part}` : part;
-        const target = treeLinks.get(current);
-        if (target === undefined) continue;
-        if (posix.isAbsolute(target)) return false;
-        const resolved = posix.normalize(posix.join(posix.dirname(current), target));
-        if (resolved === ".." || resolved.startsWith("../")) return false;
-      }
-      return true;
+    let current = "";
+    for (const part of path.split("/").filter(Boolean)) {
+      current = current ? `${current}/${part}` : part;
+      if (ref) { if (treeLinks.has(current)) return false; continue; }
+      try { if (lstatSync(resolve(realRoot, current)).isSymbolicLink()) return false; }
+      catch { break; }
     }
-    // Resolve the deepest existing ancestor, then append the parts that do not exist yet.
-    let existing = resolve(realRoot, path);
-    const rest = [];
-    for (;;) {
-      try { existing = realpathSync(existing); break; }
-      catch { rest.unshift(basename(existing)); const parent = dirname(existing); if (parent === existing) return false; existing = parent; }
-    }
-    const rel = relative(realRoot, resolve(existing, ...rest));
-    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+    return true;
   };
   const read = (/** @type {string} */ path) => ref ? git("show", `${ref}:${path}`) : readFileSync(resolve(root, path), "utf8");
   const tracked = ref ? new Set(git("ls-tree", "-r", "--name-only", ref).split("\n").filter(Boolean)) : null;
@@ -99,7 +86,7 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
     arrayOf("goals", nonEmpty, "non-empty strings");
     arrayOf("replaces", nonEmpty, "primitive ids");
     const guarantees = arrayOf("guarantees", (value) => value && typeof value === "object" && nonEmpty(value.statement) && nonEmpty(value.verifiedBy), "{statement, verifiedBy} with non-empty text (unverified intent belongs in goals)");
-    const paths = arrayOf("paths", repoPath, "repository-relative paths inside the repository");
+    const paths = arrayOf("paths", repoPath, "plain repository-relative paths (no absolute path, `..` or symlink)");
     if (item.status !== "proposed" && paths.length === 0) problems.push(`${label}: an ${item.status} primitive needs at least one path`);
     for (const path of paths) {
       if (item.status !== "proposed" && !exists(path)) problems.push(`${label}: path does not exist: ${path}`);
@@ -114,7 +101,7 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
       if (!new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text)) problems.push(`${label}: symbol ${name} not found in ${path}`);
     }
     void guarantees;
-    for (const doc of arrayOf("docs", repoPath, "repository-relative paths inside the repository")) {
+    for (const doc of arrayOf("docs", repoPath, "plain repository-relative paths (no absolute path, `..` or symlink)")) {
       if (!exists(doc)) problems.push(`${label}: doc does not exist: ${doc}`);
     }
   }
