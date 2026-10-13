@@ -89,11 +89,32 @@ const jsString = "(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\
  * `tools.exec_command({cmd:"...", workdir:"..."})`; keep each call's working directory.
  * @param {string} source @returns {{command: string, dir?: string}[]}
  */
+/** Every `{...}` span in JavaScript source, skipping braces inside string literals. @param {string} source @returns {string[]} */
+function objectSpans(source) {
+  /** @type {string[]} */
+  const spans = [];
+  /** @type {number[]} */
+  const stack = [];
+  /** @type {string | null} */
+  let quote = null;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (char === "\\") index += 1;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === "\"" || char === "'" || char === "`") quote = char;
+    else if (char === "{") stack.push(index);
+    else if (char === "}" && stack.length > 0) spans.push(source.slice(/** @type {number} */ (stack.pop()), index + 1));
+  }
+  return spans;
+}
+
 function codeModeCommands(source) {
   /** @type {{command: string, dir?: string}[]} */
   const commands = [];
-  for (const call of source.matchAll(/\{[^{}]*\}/gu)) {
-    const body = call[0];
+  for (const body of objectSpans(source)) {
     const cmd = new RegExp(String.raw`\bcmd\s*:\s*` + jsString, "u").exec(body);
     if (!cmd) continue;
     const dir = new RegExp(String.raw`\b(?:workdir|cwd)\s*:\s*` + jsString, "u").exec(body);
@@ -140,7 +161,9 @@ function classifyCall(call, flags, sessionCwd) {
     if (serverStart.test(bare) || /\bnohup\b/u.test(bare)) {
       // Where this launch ran: an absolute `cd` in the command, else the call's own working
       // directory, else the session cwd. Each port is tied to that one directory.
-      const cd = /(?:^|[;&|(]\s*)cd\s+([^\s;&|)]+)/u.exec(command)?.[1];
+      const token = /(?:^|[;&|(]\s*)cd\s+('[^']*'|"(?:[^"\\]|\\.)*"|[^\s;&|)]+)/u.exec(command)?.[1];
+      // Shell quoting is not part of the path: `cd '/a b'` means /a b.
+      const cd = token === undefined ? undefined : token.startsWith("'") ? token.slice(1, -1) : token.startsWith("\"") ? token.slice(1, -1).replace(/\\(.)/gu, "$1") : token.replace(/\\(.)/gu, "$1");
       const base = callDir ?? sessionCwd;
       const dir = cd ? (cd.startsWith("/") ? cd : base ? join(base, cd) : "") : base;
       if (!dir) continue;
