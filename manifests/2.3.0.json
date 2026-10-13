@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.3.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "464126cc6d22fb0dd33eebbda2780a21452a885b8d1fdf885c558673a2f5b381",
+      "sha256": "ae2992246223aec8eb04ce756e87e80e8e0e069b84ea6e868c189bd9ca85e8a9",
       "expectedMirrorOf": null
     },
     {
@@ -806,10 +806,10 @@
     {
       "id": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
       "logicalName": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
-      "sourcePath": "artifacts/2.3.0/runtime/report-gate/stop-gate.mjs",
+      "sourcePath": "artifacts/2.1.6/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "2043ad682ee8fb8c7824e808917562f9e2577961fbff39af5d13b49eca97c9a9",
+      "sha256": "a39379aa17ad9ffd561fffb91226661e37ef05b914d85db12c7b696396e12836",
       "expectedMirrorOf": null
     },
     {

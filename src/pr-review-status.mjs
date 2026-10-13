@@ -3,11 +3,8 @@
 // Codex reviews only when a PR is opened, marked ready, or asked with "@codex review", so commits
 // pushed afterwards go unreviewed unless someone asks again. Integration requires `no-findings`:
 // the exact head reviewed by the Codex app and no unresolved Codex thread. `--request` asks once
-// per (repository, PR, head SHA), under a local lock so concurrent runs cannot both ask.
+// per (repository, PR, head SHA); concurrent duplicates are deleted on GitHub, earliest kept.
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -57,34 +54,6 @@ function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /
 }
 
 /**
- * One local claim per (repository, PR, head) so two concurrent runs cannot both request. The
- * claim records its owner PID and time; a claim whose owner is gone or older than ten minutes
- * is reclaimed, so a crashed run never blocks later requests.
- * @param {string} key
- */
-function claim(key) {
-  const directory = join(homedir(), ".development-system", "private", "runs", "codex-review-requests");
-  mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const path = join(directory, `${key.replace(/[^A-Za-z0-9._-]/g, "_")}.lock`);
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      writeFileSync(path, JSON.stringify({ pid: process.pid, at: Date.now() }), { flag: "wx", mode: 0o600 });
-      return () => { try { unlinkSync(path); } catch { /* already gone */ } };
-    } catch {
-      let stale = true;
-      try {
-        const owner = JSON.parse(readFileSync(path, "utf8"));
-        const alive = (() => { try { process.kill(owner.pid, 0); return true; } catch (error) { return error instanceof Error && "code" in error && error.code === "EPERM"; } })();
-        stale = !alive || Date.now() - Number(owner.at) > 10 * 60_000;
-      } catch { /* unreadable claim: treat as stale */ }
-      if (!stale) return null;
-      try { unlinkSync(path); } catch { /* raced with its owner */ }
-    }
-  }
-  return null;
-}
-
-/**
  * @param {{pr: string, request?: boolean}} options
  */
 export function prReviewStatus({ pr, request = false }) {
@@ -128,18 +97,14 @@ export function prReviewStatus({ pr, request = false }) {
     if (state !== "pending") requestStatus = `skipped-${state}`;
     else if (requestedForHead(comments)) requestStatus = "already-requested-for-head";
     else {
-      const release = claim(`${owner}/${repo}#${number}@${head}`);
-      if (!release) requestStatus = "request-in-progress";
-      else {
-        try {
-          // Re-read under the claim: another run may have asked between the first read and the claim.
-          if (requestedForHead(read())) requestStatus = "already-requested-for-head";
-          else {
-            gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]);
-            requestStatus = "requested";
-          }
-        } finally { release(); }
-      }
+      // Post, then settle duplicates on GitHub itself: if concurrent runs both asked for this head,
+      // every request but the earliest is deleted, so exactly one remains. No local lock to strand.
+      const posted = JSON.parse(gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]));
+      const forHead = read().filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).sort((a, b) => a.id - b.id);
+      if (forHead.length > 0 && forHead[0].id !== posted.id) {
+        gh(["api", "-X", "DELETE", `${base}/issues/comments/${posted.id}`]);
+        requestStatus = "already-requested-for-head";
+      } else requestStatus = "requested";
     }
   }
   return {

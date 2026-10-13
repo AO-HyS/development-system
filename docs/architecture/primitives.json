@@ -40,8 +40,8 @@
       "id": "report-gate",
       "category": "workflow",
       "status": "active",
-      "summary": "Stop hook that asks once for a completion report after edits and once for servers the session left listening.",
-      "paths": ["src/report-gate.mjs", "artifacts/2.3.0/runtime/report-gate/stop-gate.mjs"],
+      "summary": "Stop hook that asks once for a completion report after edits.",
+      "paths": ["src/report-gate.mjs", "artifacts/2.1.6/runtime/report-gate/stop-gate.mjs"],
       "symbols": ["src/report-gate.mjs#auditReportGate"]
     },
     {

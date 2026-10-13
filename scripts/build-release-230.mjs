@@ -79,7 +79,7 @@ const skillRow = async (name, directory, source) => {
 
 const releaseNote = `## ${version}: verify with QuickE2E and Jev, primitives, cross review
 
-Contract ${version} makes QuickE2E on Jev the habitual web verification (no emitted spec kept; allowed and denied roles and side effects observed) with a runtime preload that sends QuickE2E's Jev request to the operator's prepaid TypeSafe key, and states that Jev is outside hosted-inference cost bans. Agents restate the goal before planning (\`in-your-own-words\`, pstack), stop the servers they start (the report Stop hook reminds once about a listening server the session named), and record paper cuts with \`development-system friction add\`. Integration to develop requires a clean Codex review of the exact head: \`development-system pr-review-status <pr> [--request]\`. Primitives become a first-class map: \`docs/architecture/primitives.json\` schema 1 validated by \`development-system check-primitives\`, the \`primitives-gardener\` skill (fix, tend), and a \`system-recap\` block on each PR. \`cross-review\` runs a visible T3 thread with the other model family until both accept the same version. The verification skills follow pstack's current create/maintain shape. Catalog ${catalogVersion}. The earlier unadopted 2.2.0 candidate stays separate.
+Contract ${version} makes QuickE2E on Jev the habitual web verification (no emitted spec kept; allowed and denied roles and side effects observed) with a runtime preload that sends QuickE2E's Jev request to the operator's prepaid TypeSafe key, and states that Jev is outside hosted-inference cost bans. Agents restate the goal before planning (\`in-your-own-words\`, pstack), stop the servers they start, and record paper cuts with \`development-system friction add\`. Integration to develop requires a clean Codex review of the exact head: \`development-system pr-review-status <pr> [--request]\`. Primitives become a first-class map: \`docs/architecture/primitives.json\` schema 1 validated by \`development-system check-primitives\`, the \`primitives-gardener\` skill (fix, tend), and a \`system-recap\` block on each PR. \`cross-review\` runs a visible T3 thread with the other model family until both accept the same version. The verification skills follow pstack's current create/maintain shape. Catalog ${catalogVersion}. The earlier unadopted 2.2.0 candidate stays separate.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);
@@ -129,9 +129,6 @@ for (const artifact of manifest.artifacts) {
   if (name === 'personal-codex-instructions') {
     artifact.sourcePath = `${prefix}/global-codex-instructions.md`;
     await output(artifact.sourcePath, await globalInstructions());
-  }
-  if (artifact.destination === '.codex/development-system/runtime/report-gate/stop-gate.mjs') {
-    artifact.sourcePath = `${prefix}/runtime/report-gate/stop-gate.mjs`;
   }
   if (['development-contract', 'orchestration-contract', 'model-routing'].includes(name)) {
     const original = (await bytes(artifact.sourcePath)).toString();
