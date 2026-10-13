@@ -142,19 +142,35 @@ function codeModeCommands(source) {
       if (char === "}") level -= 1;
       return keep ? char : " ";
     }).join("");
-    /** @param {string} key */
-    const value = (key) => {
-      const at = new RegExp("(?:^|[{,\\s])(?:" + key + ")\\s*:\\s*([\"'`])", "u").exec(topLevel);
-      if (!at) return undefined;
-      const open = start + /** @type {number} */ (at.index) + at[0].length - 1;
-      const literal = new RegExp(jsString, "uy");
-      literal.lastIndex = open;
-      const match = literal.exec(source);
-      return match ? unquote(match[1]) : undefined;
+    /**
+     * The value literal of a top-level property whose name is one of `names`. Keys may be bare
+     * (`cmd:`) or quoted (`"cmd":`); a quoted key is blanked in the mask, so its name is read
+     * from the original text at the same offset.
+     * @param {string[]} names
+     */
+    const value = (names) => {
+      const property = /(?:^|[{,\s])(?:([A-Za-z_$][\w$]*)|(["'])[^"'\n]*\2)\s*:\s*(["'`])/gu;
+      for (const at of topLevel.matchAll(property)) {
+        const keyStart = start + /** @type {number} */ (at.index) + at[0].search(/[A-Za-z_$"']/u);
+        let name = at[1];
+        if (name === undefined) {
+          const quoted = new RegExp(jsString, "uy");
+          quoted.lastIndex = keyStart;
+          const literal = quoted.exec(source);
+          if (!literal) continue;
+          name = unquote(literal[1]);
+        }
+        if (!names.includes(name)) continue;
+        const literal = new RegExp(jsString, "uy");
+        literal.lastIndex = start + /** @type {number} */ (at.index) + at[0].length - 1;
+        const match = literal.exec(source);
+        if (match) return unquote(match[1]);
+      }
+      return undefined;
     };
-    const command = value("cmd");
+    const command = value(["cmd"]);
     if (command === undefined) continue;
-    const dir = value("workdir|cwd");
+    const dir = value(["workdir", "cwd"]);
     commands.push({ command, ...(dir !== undefined ? { dir } : {}) });
   }
   return commands;
