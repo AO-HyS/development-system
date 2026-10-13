@@ -35,11 +35,25 @@ Drive web flows with QuickE2E on its documented Jev engine. Jev is prepaid
 (TypeSafe key at `~/.config/jevgrep/credentials.json`), so cost bans on hosted
 inference do not apply to it; data limits still do. QuickE2E calls Jev through
 OpenRouter, so load the Development System preload that sends the same request
-to TypeSafe:
+to TypeSafe.
+
+QuickE2E is an external tool, not shipped in this release. Install it once,
+pinned, outside any repository; skip this when
+`node ~/.development-system/tools/quicke2e/bin/quicke2e.mjs --help` already
+works and `git -C ~/.development-system/tools/quicke2e rev-parse HEAD` shows
+that commit:
+
+```bash
+git clone https://github.com/dmoka/quicke2e ~/.development-system/tools/quicke2e
+git -C ~/.development-system/tools/quicke2e checkout 98f74b6ceb44e8eb68c0bc176e522983639b9521   # 0.5.0
+(cd ~/.development-system/tools/quicke2e && npm ci && npx playwright install chromium)
+```
+
+Then run a flow:
 
 ```bash
 OPENROUTER_API_KEY=via-typesafe node --import "$HOME/.codex/development-system/runtime/quicke2e/typesafe-jev.mjs" \
-  <quicke2e>/bin/quicke2e.mjs run <flow.mjs> --base <url> --engine jev --trace <private-dir> --video <private-dir>
+  "$HOME/.development-system/tools/quicke2e/bin/quicke2e.mjs" run <flow.mjs> --base <url> --engine jev --trace <private-dir> --video <private-dir>
 ```
 
 - Log in with the repository's test accounts (names from its env files, never

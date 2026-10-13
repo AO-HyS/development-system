@@ -2007,7 +2007,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".agents/skills/behavioral-evidence",
-          "folderSha256": "0f42363ec434a7370dea685d9a3ec6608e6dcfc04c851098472c9feb1deeddbd",
+          "folderSha256": "c9dfe14f727cfd84849ca9a0e63a45777eca768695a328a60e8b9411ed64586d",
           "expectedMirrorOf": null
         },
         {
@@ -2015,7 +2015,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
-          "folderSha256": "0f42363ec434a7370dea685d9a3ec6608e6dcfc04c851098472c9feb1deeddbd",
+          "folderSha256": "c9dfe14f727cfd84849ca9a0e63a45777eca768695a328a60e8b9411ed64586d",
           "expectedMirrorOf": "behavioral-evidence.codex",
           "install": "symlink"
         }
