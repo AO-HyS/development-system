@@ -24,10 +24,9 @@ For nontrivial delivery, provide a readable HTML report using the installed
 working-backwards report helper, including behavior passed/failed/not reached,
 elapsed time, evidence and material gaps. Use the approved AO HyS r5/p2 presentation,
 margin questions, browser drafts and revisioned batch submission. Markdown is
-supplementary. Deliver reports durably: render them in the owning T3 thread or
-give their persistent path. A temporary tunnel is optional; when used, state its
-actual URL and expiry and never make it the only delivery. Keep secrets and
-private transcripts outside any served directory. A report is not acceptance evidence.
+supplementary. Serve sanitized report assets through the authorized temporary
+tunnel; state its actual URL and availability/expiry. Keep secrets and private
+transcripts outside its served directory. A report is not acceptance evidence.
 
 ## Automated tests and evidence
 

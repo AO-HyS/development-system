@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.1.5/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "c9af120604c0358b118591cabaada807e8fc683c11fe3cad59583c97a66cbfa5",
+      "sha256": "ef281b7b8f9a05e95429b44fd2c71f1678ffde300a46f260461a735fe434efb8",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.65.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "5837332269a2d4199cbc68d504c2e9f47e33c5b4583683a5e0892afcc1acb0ef",
+      "sha256": "2033fe89b92b7a01b90d3ff618a0b941c4cc3b7e34c324cd6b8f30585c13f3b7",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.1.5/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "86860328415f86113cdfefc30420487a03d208e5687816d78192303ba4b83be8",
+      "sha256": "2813ed0711eedcbe4bd362d821b38833cb044795a690a2e464deec0eec22fa4b",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.1.5/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "daa8d31b4f9a08ab67877c707a232737b4f88fddded0f8ad928ac6cacaeafbd5",
+      "sha256": "370cf8f867569303f84af31a46afe0d59d6f5d90effe6923845f5089547a5487",
       "expectedMirrorOf": null
     },
     {
@@ -806,10 +806,10 @@
     {
       "id": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
       "logicalName": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
-      "sourcePath": "artifacts/2.1.5/runtime/report-gate/stop-gate.mjs",
+      "sourcePath": "artifacts/1.34.0/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "a39379aa17ad9ffd561fffb91226661e37ef05b914d85db12c7b696396e12836",
+      "sha256": "f620a56a1253ba75770ef9a202bdc0eec336108670406fc2bd3ef373b8123ffa",
       "expectedMirrorOf": null
     },
     {
