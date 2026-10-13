@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.1.5/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "8a9f8b2d64409831dfa9690de0279340fd402b26257206171c433f1f44b3223d",
+      "sha256": "ef281b7b8f9a05e95429b44fd2c71f1678ffde300a46f260461a735fe434efb8",
       "expectedMirrorOf": null
     },
     {
@@ -53,7 +53,7 @@
       "sourcePath": "config/2.1.5/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "0c6532e627e04312a0d942865d898afb7d7c24ea4fed7bbff3d7891a6fe30fbe",
+      "sha256": "8a4e9f6a4a8ce5f039383e5bfc58d90e4c1cebff78454560104443a06023797a",
       "expectedMirrorOf": null
     },
     {
@@ -251,7 +251,7 @@
       "sourcePath": "artifacts/2.1.5/model-routing.md",
       "destination": ".codex/development-system/model-routing.md",
       "harness": "codex",
-      "sha256": "9f43b3aeaa77b905559bc9a84914ccc2c4b7887d889327e2db19f049c11c8ea7",
+      "sha256": "35d2fb5328c6a3bb4e52fcfa61d20194f4046fc7368ce6324f6c5e3f5f6599d0",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.1.5/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "804beab28e6c670f84b519d33931e85830f871cc56634efe59da7f1a4cdc5e97",
+      "sha256": "2813ed0711eedcbe4bd362d821b38833cb044795a690a2e464deec0eec22fa4b",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.1.5/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "d596f22967409c3ebbe9761a223128d2c0ce35017f48e9ed6f5e72b4d5d04ca9",
+      "sha256": "370cf8f867569303f84af31a46afe0d59d6f5d90effe6923845f5089547a5487",
       "expectedMirrorOf": null
     },
     {

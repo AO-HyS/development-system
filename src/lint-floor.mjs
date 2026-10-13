@@ -94,37 +94,48 @@ function oxlintRules(root, dir, files) {
   return result;
 }
 
-/** Effective ESLint rules, sampled once per directory and extension. @param {string} root @param {string} dir @param {string[]} files */
+// Runs inside the repository's own ESLint so every file gets its real config.
+const eslintProbe = `
+const { createRequire } = require("node:module");
+const { pathToFileURL } = require("node:url");
+const path = require("node:path");
+const files = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+const entry = createRequire(path.join(process.cwd(), "package.json")).resolve("eslint");
+import(pathToFileURL(entry).href).then(async (module) => {
+  const ESLint = module.ESLint ?? module.default?.ESLint;
+  const eslint = new ESLint({ cwd: process.cwd() });
+  const out = {};
+  for (const file of files) {
+    if (await eslint.isPathIgnored(file)) continue;
+    const config = await eslint.calculateConfigForFile(file);
+    if (config) out[file] = config.rules ?? {};
+  }
+  process.stdout.write(JSON.stringify(out));
+}).catch((error) => { console.error(error && error.stack || String(error)); process.exit(1); });
+`;
+
+/** Effective ESLint rules for each file under one config directory. @param {string} root @param {string} dir @param {string[]} files */
 function eslintRules(root, dir, files) {
-  const local = path.join(root, dir, "node_modules/.bin/eslint");
-  const command = existsSync(local) ? local : path.join(root, "node_modules/.bin/eslint");
-  if (!existsSync(command)) throw new Error(`ESLint config at ${dir || "."} but no eslint binary is installed`);
   const prefix = dir ? `${dir}/` : "";
   const cwd = path.join(root, dir);
-  /** @type {Map<string, string[]>} */
-  const groups = new Map();
-  for (const file of files) {
-    if (!file.startsWith(prefix)) continue;
-    const key = `${path.posix.dirname(file)}|${path.posix.extname(file)}`;
-    groups.set(key, [...(groups.get(key) ?? []), file]);
+  const members = files.filter(file => file.startsWith(prefix)).map(file => file.slice(prefix.length));
+  let raw;
+  try {
+    raw = execFileSync(process.execPath, ["-e", eslintProbe], { cwd, input: JSON.stringify(members), encoding: "utf8", stdio: ["pipe", "pipe", "pipe"], maxBuffer: 256 * 1024 * 1024 });
+  } catch (error) {
+    const detail = error instanceof Error && "stderr" in error ? String(/** @type {{stderr: unknown}} */ (error).stderr).split("\n")[0] : String(error);
+    throw new Error(`ESLint config at ${dir || "."} could not be inspected: ${detail}`);
   }
   /** @type {Record<string, Record<string, "error"|"warn">>} */
   const result = {};
-  for (const members of groups.values()) {
-    const sample = members[0];
-    let output;
-    try { output = run(cwd, command, ["--print-config", sample.slice(prefix.length)]).trim(); }
-    catch (error) { throw new Error(`eslint --print-config failed for ${sample}: ${error instanceof Error ? error.message.split("\n")[0] : error}`); }
-    // ESLint prints "undefined" for a file its config ignores.
-    if (output === "" || output === "undefined") continue;
-    const config = JSON.parse(output);
+  for (const [file, rules] of Object.entries(/** @type {Record<string, Record<string, unknown>>} */ (JSON.parse(raw)))) {
     /** @type {Record<string, "error"|"warn">} */
     const enabled = {};
-    for (const [id, value] of Object.entries(config.rules ?? {})) {
+    for (const [id, value] of Object.entries(rules)) {
       const level = severity(value);
       if (level !== "off") enabled[normalizeRule(id)] = level;
     }
-    for (const file of members) result[file] = enabled;
+    result[`${prefix}${file}`] = enabled;
   }
   return result;
 }
@@ -134,7 +145,7 @@ export function lintRuleSnapshot({ root }) {
   const tracked = run(root, "git", ["ls-files"]).split("\n").filter(Boolean);
   const files = tracked.filter(file => lintable.test(file) && !file.includes("node_modules/") && !file.includes("/_generated/"));
   /** @type {Record<string, Record<string, "error"|"warn">>} */
-  const perFile = {};
+  const perFile = Object.fromEntries(files.map(file => [file, {}]));
   const sources = [];
   const merge = (/** @type {Record<string, Record<string, "error"|"warn">>} */ part) => {
     for (const [file, rules] of Object.entries(part)) {
@@ -173,7 +184,7 @@ export function checkLintFloor({ root, snapshot, write, allow = [] }) {
   let compared = 0;
   for (const [file, rules] of Object.entries(/** @type {Record<string, Record<string, string>>} */ (base.files))) {
     const now = current.files[file];
-    if (!now) continue; // the file was deleted or is no longer lintable
+    if (!now) continue; // the file was deleted; an ignored file stays with no rules
     compared += 1;
     for (const [recorded, level] of Object.entries(rules)) {
       const id = normalizeRule(recorded);

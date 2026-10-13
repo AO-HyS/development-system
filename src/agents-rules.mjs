@@ -40,10 +40,17 @@ function coverage(rule, candidate) {
   return hit / rule.size;
 }
 
-/** Corpus blocks are sentences, so polarity is judged on the matching sentence. @param {string} text @param {string} file */
+/** Every sentence of a document, so polarity is judged on the matching sentence alone. @param {string} text @param {string} file */
 export function corpusBlocks(text, file) {
-  return ruleSentences(text).concat(text.replace(/```[\s\S]*?```/g, " ").split(/\n\s*\n/))
-    .map(sentence => ({ file, words: tokens(sentence), negated: negation.test(sentence) }));
+  const prose = text.replace(/```[\s\S]*?```/g, " ").replace(/<!--[\s\S]*?-->/g, " ");
+  const blocks = [];
+  for (const block of prose.split(/\n\s*\n/)) {
+    const flat = block.replace(/^\s*(?:[-*]|\d+\.)\s+/gm, "").replace(/^#+\s.*$/gm, "").replace(/\s+/g, " ").trim();
+    for (const sentence of flat.split(/(?<=[.;:!?])\s+(?=[A-Z0-9`*"'¿¡])/)) {
+      if (sentence.trim()) blocks.push({ file, words: tokens(sentence), negated: negation.test(sentence) });
+    }
+  }
+  return blocks;
 }
 
 /**
