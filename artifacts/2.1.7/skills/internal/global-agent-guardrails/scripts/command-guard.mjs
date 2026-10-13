@@ -45,7 +45,7 @@ function checkDeadline() {
 }
 /** @template T @param {() => T} fn @returns {T} */
 function withClock(fn) {
-  if (clockDepth++ === 0) deadline = Date.now() + DEADLINE_MS;
+  if (clockDepth++ === 0) { deadline = Date.now() + DEADLINE_MS; cwdMoved = false; }
   try { return fn(); }
   finally { if (--clockDepth === 0) deadline = Infinity; }
 }
@@ -1367,6 +1367,8 @@ const TEST_GRANTS = join(HOME, ".development-system", "test-grants.json");
 const MAX_GRANT_MS = 24 * 3_600_000;
 /** `check --no-grants` ignores grants, so the audit's denial probe holds while the operator has one. */
 let grantsEnabled = true;
+/** Set by any directory change in the evaluated command: `cd -P link; cd ..` returns lexically to the harness cwd but not physically. */
+let cwdMoved = false;
 /**
  * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
  * `..` moves the real destination), and a relative target only from the harness working directory,
@@ -1375,7 +1377,7 @@ let grantsEnabled = true;
  */
 function grantable(word, text, ctx) {
   return grantsEnabled && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
-    && (isAbsolute(text) || ctx.cwd === ctx.scope);
+    && (isAbsolute(text) || (!cwdMoved && ctx.cwd === ctx.scope));
 }
 /** Whether a valid, unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
 function grantedTestWrite(absolute) {
@@ -2854,7 +2856,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     args = next.args;
     if (next.appended) { appended = true; viaXargs = true; replace = next.replace ?? null; }
     // `env -C dir` and `sudo -D dir` run the command in that directory.
-    if (next.chdir) ctx = { ...ctx, cwd: chdirTarget(next.chdir, ctx) };
+    if (next.chdir) { cwdMoved = true; ctx = { ...ctx, cwd: chdirTarget(next.chdir, ctx) }; }
   }
   // git-core executables (`.../git-core/git-reset`) are git subcommands.
   const gitCore = /^git-([a-z][a-z0-9-]*)$/u.exec(commandName(args[0].value));
@@ -2980,6 +2982,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
 
   if (name === "cd" || name === "pushd" || name === "popd") {
+    cwdMoved = true;
     const operands = rest.filter((word) => !(word.literal && /^-[LPe@]+$/u.test(word.value)));
     const target = operands[0];
     // popd, a bare pushd and pushd +N/-N return to a directory from the stack, which is not tracked; zsh `cd old new` substitutes.

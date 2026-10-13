@@ -366,11 +366,11 @@ async function runCommand(argv) {
       if (arg.startsWith("--") || argv[0] === "test-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
       roots.push(arg);
     }
-    const { allowTests, listTestGrants, formatTestGrants } = await import("./test-grants.mjs");
+    const { allowTests, confirmOperatorGrant, listTestGrants, formatTestGrants } = await import("./test-grants.mjs");
     const home = values.home ?? homedir();
     if (argv[0] === "allow-tests" && roots.length !== 1) throw new Error("Usage: development-system allow-tests <directory> [--hours N] [--reason text] | --revoke <directory>");
     const result = argv[0] === "allow-tests"
-      ? allowTests({ home, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke })
+      ? await allowTests({ home, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke, confirm: confirmOperatorGrant })
       : listTestGrants({ home });
     return { result, output: json ? JSON.stringify(result) : formatTestGrants(result), json };
   }
