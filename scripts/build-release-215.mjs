@@ -70,6 +70,14 @@ const releaseNote = `## ${version}: shared host rules, rule floors and design sk
 Contract ${version} renders the shared global instructions from config/global-instructions.md: the rules both hosts follow appear once under Shared host rules, and the Codex and Claude Code host sections keep only host-specific lines. ~/.claude/rules/orchestration.md becomes a pointer, so Claude Code no longer loads its host section twice. \`development-system check-agents-rules --base <ref> [--head <ref>] <file>\` lists every behavior-constraining sentence of a base AGENTS.md/CLAUDE.md that no tracked document still carries; \`development-system check-lint-floor --write <snapshot>\` on the base checkout and \`--snapshot <snapshot>\` on the candidate list lint rules a migration dropped or downgraded from error to warning. Both exit 1 until each finding is restored or explicitly allowed. Catalog ${catalogVersion} adds Emil Kowalski's design and motion skills (animate and prototype install as emil-animate and emil-prototype beside the existing skills of those names) and Vojta Holik's good-css, each with pinned upstream provenance, and moves implement-spec to a ${version} copy built on Matt Pocock's task-graph flow without tests or mandatory worktrees. Installed files do not prove that a harness selects these skills; that needs observed-session evidence.
 `;
 
+const tunnelRule = `supplementary. Serve sanitized report assets through the authorized temporary
+tunnel; state its actual URL and availability/expiry. Keep secrets and private
+transcripts outside its served directory.`;
+const durableReportRule = `supplementary. Deliver reports durably: render them in the owning T3 thread or
+give their persistent path. A temporary tunnel is optional; when used, state its
+actual URL and expiry and never make it the only delivery. Keep secrets and
+private transcripts outside any served directory.`;
+
 const roleCheck = checkRolePolicyOutputs(root);
 if (!roleCheck.valid) throw new Error(roleCheck.errors.join('; '));
 const manifest = JSON.parse((await bytes(`manifests/${previous}.json`)).toString());
@@ -130,7 +138,9 @@ for (const artifact of manifest.artifacts) {
     const browserStart = original.indexOf('\n## Browser resource preparation');
     if (hostStart < 0) throw new Error(`Missing generated host guidance: ${name}`);
     const suffix = browserStart > hostStart ? original.slice(browserStart) : '';
-    let current = original.slice(0, hostStart).replaceAll(previous, version).replaceAll(previousCatalog, catalogVersion);
+    let current = original.slice(0, hostStart).replaceAll(previous, version).replaceAll(previousCatalog, catalogVersion)
+      // Temporary tunnel links expired before readers opened them (three incidents, 2026-10-10..13).
+      .replace(tunnelRule, durableReportRule);
     if (name === 'development-contract') current = current.trimEnd() + '\n\n' + releaseNote;
     const filename = name === 'development-contract' ? 'contract' : name;
     artifact.sourcePath = `${prefix}/${filename}.md`;

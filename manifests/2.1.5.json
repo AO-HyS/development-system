@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.1.5/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "ef281b7b8f9a05e95429b44fd2c71f1678ffde300a46f260461a735fe434efb8",
+      "sha256": "c9af120604c0358b118591cabaada807e8fc683c11fe3cad59583c97a66cbfa5",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.1.5/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "2813ed0711eedcbe4bd362d821b38833cb044795a690a2e464deec0eec22fa4b",
+      "sha256": "86860328415f86113cdfefc30420487a03d208e5687816d78192303ba4b83be8",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.1.5/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "370cf8f867569303f84af31a46afe0d59d6f5d90effe6923845f5089547a5487",
+      "sha256": "daa8d31b4f9a08ab67877c707a232737b4f88fddded0f8ad928ac6cacaeafbd5",
       "expectedMirrorOf": null
     },
     {
