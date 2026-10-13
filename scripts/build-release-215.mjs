@@ -78,6 +78,8 @@ give their persistent path. A temporary tunnel is optional; when used, state its
 actual URL and expiry and never make it the only delivery. Keep secrets and
 private transcripts outside any served directory.`;
 
+const tunnelGateStep = 'serve it with working-backwards `reader-live.mjs --tunnel` from a per-report copy directory, and put the URL in your final answer.';
+const durableGateStep = 'then deliver it durably: render it in this T3 thread or give its persistent htmlPath. A reader-live tunnel link is optional and never the only delivery; state its expiry if you add one.';
 const roleCheck = checkRolePolicyOutputs(root);
 if (!roleCheck.valid) throw new Error(roleCheck.errors.join('; '));
 const manifest = JSON.parse((await bytes(`manifests/${previous}.json`)).toString());
@@ -107,11 +109,15 @@ for (const name of external) {
     ],
   });
 }
-const implementSpec = catalog.skills.find((/** @type {{logicalName:string}} */ row) => row.logicalName === 'implement-spec');
-if (!implementSpec) throw new Error('implement-spec missing from catalog');
-const specDirectory = `${prefix}/skills/internal/implement-spec`;
-implementSpec.source.path = specDirectory;
-for (const variant of implementSpec.variants) { variant.sourceDirectory = specDirectory; variant.folderSha256 = await folderHash(specDirectory); }
+// Internal skills with a 2.1.5 copy: implement-spec, plus the three whose report
+// step asked for a tunnel instead of a durable delivery.
+for (const name of ['implement-spec', 'flow-implement', 'coding-orchestration', 'orchestrate-work']) {
+  const skill = catalog.skills.find((/** @type {{logicalName:string}} */ row) => row.logicalName === name);
+  if (!skill) throw new Error(`${name} missing from catalog`);
+  const directory = `${prefix}/skills/internal/${name}`;
+  skill.source.path = directory;
+  for (const variant of skill.variants) { variant.sourceDirectory = directory; variant.folderSha256 = await folderHash(directory); }
+}
 const errors = await validateSkillCatalog(catalog, root);
 if (errors.length) throw new Error(errors.join('; '));
 await output(`catalog/${catalogVersion}.json`, JSON.stringify(catalog, null, 2) + '\n');
@@ -128,6 +134,12 @@ for (const artifact of manifest.artifacts) {
     artifact.sourcePath = `${prefix}/claude/rules/orchestration.md`;
     await output(artifact.sourcePath, await bytes('claude/rules/orchestration.md'));
   }
+  if (artifact.sourcePath === 'artifacts/1.34.0/runtime/report-gate/stop-gate.mjs') {
+    const gate = (await bytes(artifact.sourcePath)).toString();
+    if (!gate.includes(tunnelGateStep)) throw new Error('Report gate wording changed; update the durable delivery substitution');
+    artifact.sourcePath = `${prefix}/runtime/report-gate/stop-gate.mjs`;
+    await output(artifact.sourcePath, gate.replace(tunnelGateStep, durableGateStep));
+  }
   if (name === 'personal-codex-instructions') {
     artifact.sourcePath = `${prefix}/global-codex-instructions.md`;
     await output(artifact.sourcePath, await globalInstructions());
@@ -141,6 +153,7 @@ for (const artifact of manifest.artifacts) {
     let current = original.slice(0, hostStart).replaceAll(previous, version).replaceAll(previousCatalog, catalogVersion)
       // Temporary tunnel links expired before readers opened them (three incidents, 2026-10-10..13).
       .replace(tunnelRule, durableReportRule);
+    if (current.includes('authorized temporary\ntunnel')) throw new Error(`Tunnel-only report rule survived in ${name}`);
     if (name === 'development-contract') current = current.trimEnd() + '\n\n' + releaseNote;
     const filename = name === 'development-contract' ? 'contract' : name;
     artifact.sourcePath = `${prefix}/${filename}.md`;

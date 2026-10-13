@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.65.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "2033fe89b92b7a01b90d3ff618a0b941c4cc3b7e34c324cd6b8f30585c13f3b7",
+      "sha256": "5837332269a2d4199cbc68d504c2e9f47e33c5b4583683a5e0892afcc1acb0ef",
       "expectedMirrorOf": null
     },
     {
@@ -806,10 +806,10 @@
     {
       "id": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
       "logicalName": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
-      "sourcePath": "artifacts/1.34.0/runtime/report-gate/stop-gate.mjs",
+      "sourcePath": "artifacts/2.1.5/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "f620a56a1253ba75770ef9a202bdc0eec336108670406fc2bd3ef373b8123ffa",
+      "sha256": "a39379aa17ad9ffd561fffb91226661e37ef05b914d85db12c7b696396e12836",
       "expectedMirrorOf": null
     },
     {
