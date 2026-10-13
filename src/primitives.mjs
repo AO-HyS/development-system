@@ -6,7 +6,7 @@
 // guarantees that name how they are verified. Goals are what a primitive should hold but does not yet.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { isAbsolute, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, posix, relative, resolve } from "node:path";
 
 export const primitivesPath = "docs/architecture/primitives.json";
 const categories = ["ui", "api", "data", "infra", "agent-tools", "workflow", "auth"];
@@ -23,16 +23,45 @@ const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
  */
 export function checkPrimitives({ root, ref, file = primitivesPath }) {
   const realRoot = realpathSync(resolve(root));
-  /** A map may only name repository-relative paths that stay inside the repository, symlinks resolved. @param {string} path */
+  const git = (/** @type {string[]} */ ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  /** Symlinks in the selected tree: path -> target. @type {Map<string, string>} */
+  const treeLinks = new Map();
+  if (ref) {
+    for (const line of git("ls-tree", "-r", "-z", ref).split("\0").filter(Boolean)) {
+      const [meta, path] = line.split("\t");
+      if (meta.startsWith("120000 ")) treeLinks.set(path, git("show", `${ref}:${path}`));
+    }
+  }
+  /**
+   * A map may only name repository-relative paths that stay inside the repository. Every
+   * symlink on the way (in the worktree, or in the tree at --ref) is followed and must stay
+   * inside too, including the existing parents of a path that does not exist yet.
+   * @param {string} path
+   */
   const inside = (path) => {
     if (typeof path !== "string" || !path || isAbsolute(path) || path.split(/[\\/]/).includes("..")) return false;
-    if (ref) return true;
-    let target = resolve(realRoot, path);
-    try { target = realpathSync(target); } catch { /* missing paths are reported separately */ }
-    const rel = relative(realRoot, target);
+    if (ref) {
+      let current = "";
+      for (const part of path.split("/").filter(Boolean)) {
+        current = current ? `${current}/${part}` : part;
+        const target = treeLinks.get(current);
+        if (target === undefined) continue;
+        if (posix.isAbsolute(target)) return false;
+        const resolved = posix.normalize(posix.join(posix.dirname(current), target));
+        if (resolved === ".." || resolved.startsWith("../")) return false;
+      }
+      return true;
+    }
+    // Resolve the deepest existing ancestor, then append the parts that do not exist yet.
+    let existing = resolve(realRoot, path);
+    const rest = [];
+    for (;;) {
+      try { existing = realpathSync(existing); break; }
+      catch { rest.unshift(basename(existing)); const parent = dirname(existing); if (parent === existing) return false; existing = parent; }
+    }
+    const rel = relative(realRoot, resolve(existing, ...rest));
     return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
   };
-  const git = (/** @type {string[]} */ ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
   const read = (/** @type {string} */ path) => ref ? git("show", `${ref}:${path}`) : readFileSync(resolve(root, path), "utf8");
   const tracked = ref ? new Set(git("ls-tree", "-r", "--name-only", ref).split("\n").filter(Boolean)) : null;
   const exists = (/** @type {string} */ path) => tracked ? tracked.has(path) || [...tracked].some((entry) => entry.startsWith(`${path.replace(/\/$/, "")}/`)) : existsSync(resolve(root, path));

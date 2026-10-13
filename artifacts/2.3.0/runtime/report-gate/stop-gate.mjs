@@ -85,36 +85,64 @@ function unquote(literal) {
 const jsString = "(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*`)";
 
 /**
- * Codex code mode runs JavaScript whose tool calls look like
- * `tools.exec_command({cmd:"...", workdir:"..."})`; keep each call's working directory.
- * @param {string} source @returns {{command: string, dir?: string}[]}
+ * The source with every comment and the inside of every string or template literal replaced by
+ * spaces (same length, quotes kept), so code structure can be read without text getting in the way.
+ * @param {string} source
  */
-/** Every `{...}` span in JavaScript source, skipping braces inside string literals. @param {string} source @returns {string[]} */
-function objectSpans(source) {
-  /** @type {string[]} */
-  const spans = [];
-  /** @type {number[]} */
-  const stack = [];
-  /** @type {string | null} */
-  let quote = null;
+function maskJs(source) {
+  const out = source.split("");
   for (let index = 0; index < source.length; index += 1) {
     const char = source[index];
-    if (quote) {
-      if (char === "\\") index += 1;
-      else if (char === quote) quote = null;
+    const next = source[index + 1];
+    if (char === "/" && (next === "/" || next === "*")) {
+      const end = next === "/" ? source.indexOf("\n", index) : source.indexOf("*/", index + 2) + 1;
+      const stop = end <= 0 ? source.length - 1 : end;
+      for (let k = index; k <= stop; k += 1) if (out[k] !== "\n") out[k] = " ";
+      index = stop;
       continue;
     }
-    if (char === "\"" || char === "'" || char === "`") quote = char;
-    else if (char === "{") stack.push(index);
-    else if (char === "}" && stack.length > 0) spans.push(source.slice(/** @type {number} */ (stack.pop()), index + 1));
+    if (char === "\"" || char === "'" || char === "`") {
+      let k = index + 1;
+      for (; k < source.length && source[k] !== char; k += 1) {
+        if (source[k] === "\\") { out[k] = " "; k += 1; }
+        out[k] = " ";
+      }
+      index = k;
+    }
   }
-  return spans;
+  return out.join("");
 }
 
+/**
+ * Codex code mode runs JavaScript whose tool calls look like
+ * `tools.exec_command({cmd:"...", workdir:"..."})`. Only the argument object of each real
+ * exec_command call (not one inside a comment or string) is read, so a cmd and a workdir from
+ * different calls never pair up.
+ * @param {string} source @returns {{command: string, dir?: string}[]}
+ */
 function codeModeCommands(source) {
   /** @type {{command: string, dir?: string}[]} */
   const commands = [];
-  for (const body of objectSpans(source)) {
+  const masked = maskJs(source);
+  for (const call of masked.matchAll(/\bexec_command\s*\(\s*\{/gu)) {
+    const start = /** @type {number} */ (call.index) + call[0].length - 1;
+    let depth = 0, end = -1;
+    for (let k = start; k < masked.length; k += 1) {
+      if (masked[k] === "{") depth += 1;
+      else if (masked[k] === "}" && --depth === 0) { end = k; break; }
+    }
+    if (end === -1) continue;
+    // Read only the top level of the argument: nested objects are blanked out.
+    let body = source.slice(start, end + 1);
+    const maskedBody = masked.slice(start, end + 1);
+    let level = 0;
+    body = body.split("").map((char, k) => {
+      const m = maskedBody[k];
+      if (m === "{") level += 1;
+      const keep = level <= 1;
+      if (m === "}") level -= 1;
+      return keep ? char : " ";
+    }).join("");
     const cmd = new RegExp(String.raw`\bcmd\s*:\s*` + jsString, "u").exec(body);
     if (!cmd) continue;
     const dir = new RegExp(String.raw`\b(?:workdir|cwd)\s*:\s*` + jsString, "u").exec(body);
