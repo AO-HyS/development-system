@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/write-swift",
+  "license": "MIT",
+  "capabilityTreeSha256": "0a46a8bf742e630f5b1ca2ac6ecb9e50dadf944072a70adbef6640621afd3ce1",
+  "files": {
+    "SKILL.md": "16a4b6adb74e338e55e704ce5753ad54d825438b8a63930eeaede9f3c04c9447"
+  }
+}

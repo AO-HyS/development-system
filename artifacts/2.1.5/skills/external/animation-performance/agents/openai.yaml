@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: rendimiento de animaciones"
+  short_description: "Mantén las animaciones dentro del presupuesto de cuadro"
+  default_prompt: "Usa $animation-performance para revisar por qué esta animación pierde cuadros."
+policy:
+  allow_implicit_invocation: true

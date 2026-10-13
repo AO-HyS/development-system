@@ -7,7 +7,7 @@ import { agentRoster } from './agent-roster.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const profiles = agentRoster.hostProfiles;
 
-/** @param {'codex'|'claude'} host */
+/** @param {'shared'|'codex'|'claude'} host */
 export function renderHostInstructions(host) {
   const instructions = profiles.instructions[host];
   if (!instructions) throw new Error(`Unknown host: ${host}`);
@@ -27,7 +27,7 @@ export function renderRolePolicyOutputs() {
   /** @type {Record<string, string>} */
   const outputs = {
     'claude/orchestration/policy.json': `${JSON.stringify(profiles.claude.policy, null, 2)}\n`,
-    'claude/rules/orchestration.md': `# Claude Code orchestration (generated from config/agent-roster.json)\n\n${renderHostInstructions('claude')}`,
+    'claude/rules/orchestration.md': '# Claude Code orchestration (generated from config/agent-roster.json)\n\nThe shared host rules and the Claude Code host section live in ~/.claude/CLAUDE.md; this file adds nothing to them.\n',
   };
   for (const [name, template] of Object.entries(profiles.claude.agents)) {
     if (!/^[A-Za-z][A-Za-z-]*$/.test(name)) throw new Error(`Invalid Claude role name: ${name}`);

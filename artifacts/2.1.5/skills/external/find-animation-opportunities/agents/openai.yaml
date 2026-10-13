@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: dónde animar"
+  short_description: "Encuentra dónde conviene animar y dónde no"
+  default_prompt: "Usa $find-animation-opportunities en esta pantalla."
+policy:
+  allow_implicit_invocation: true

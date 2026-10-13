@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: Sonner"
+  short_description: "Usa Sonner para toasts en React"
+  default_prompt: "Usa $ask-sonner para configurar estos toasts."
+policy:
+  allow_implicit_invocation: true

@@ -67,7 +67,7 @@ export function validateAgentRoster(input) {
     if (!isRecord(profiles) || profiles.schemaVersion !== 1) errors.push('hostProfiles.schemaVersion must be 1');
     else {
       const instructions = profiles.instructions;
-      if (!isRecord(instructions) || !nonEmpty(instructions.codex) || !nonEmpty(instructions.claude)) errors.push('hostProfiles.instructions requires both host sections');
+      if (!isRecord(instructions) || !nonEmpty(instructions.shared) || !nonEmpty(instructions.codex) || !nonEmpty(instructions.claude)) errors.push('hostProfiles.instructions requires shared, codex and claude sections');
       const codex = profiles.codex;
       if (!isRecord(codex) || !isRecord(codex.roles) || Object.keys(codex.roles).length === 0) errors.push('hostProfiles.codex.roles must be non-empty');
       else for (const [name, role] of Object.entries(codex.roles)) {

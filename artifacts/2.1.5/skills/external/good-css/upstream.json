@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/vojtaholik/good-css",
+  "commit": "92d436ba1937d1b1407c47e35abb3e199eaace2e",
+  "path": "skills/good-css",
+  "license": "MIT",
+  "capabilityTreeSha256": "2eb2124227837e44bcb4d5902fda1a99f7c946d5149bb5b60b040a89b0e5a943",
+  "files": {
+    "SKILL.md": "30b8858e7b407fa00196d6b242d943b202860f1d9f4dd9348fa79f0b1d950375",
+    "references/foundations.md": "51d699363c7e16a33dc9f2e2ed22dd034a1757d5660b6213dd9609928265501a",
+    "references/interaction.md": "bfd150792a1a635aafae833ff3b3dded37c2a81c273f8410ba5d1a7f2abd035c",
+    "references/layout.md": "3fd1f4ba93a4949b29f6cdec7b7875599e8178022b90dbdb32646edde36e5f71",
+    "references/motion.md": "c42194d11999974d621527524cd4b1d774f77e0d760fa33eb1413f4c86ccc0d4",
+    "references/scroll-and-viewport.md": "5b6a97c5190839be0213c4f310c3a6a94a4a9cf6b6183f637790077b1e01eabf",
+    "references/show-and-hide.md": "43c7fc63eab80bc46d207c4882df1b17e8763f9acc36d42fdebbb900df20e2a0",
+    "references/spacing-and-shape.md": "5c5e2ffd15895bc05885a112265689088b53255b67c3de1ba6cd2d3557e2b05e",
+    "references/text-and-media.md": "6cf2833208b965b42a5a19be8299f5a0696c4e3ea4d5e9882825c637618ff4e2"
+  }
+}

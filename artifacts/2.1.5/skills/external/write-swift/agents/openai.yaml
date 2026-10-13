@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: escribir Swift"
+  short_description: "Swift moderno, concurrencia y diseño de API"
+  default_prompt: "Usa $write-swift para escribir este código Swift."
+policy:
+  allow_implicit_invocation: true

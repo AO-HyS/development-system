@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/prototype",
+  "license": "MIT",
+  "capabilityTreeSha256": "3787e7b2e94c91fe0f80fa362d636c48c1b1fc93a817f71f347edd332a657c71",
+  "files": {
+    "PICKER.md": "31a55eec94715cc79942e91e172e539e3031dcd5e2e5ee7c1446cf2caee960a6",
+    "SKILL.md": "bba39c955eb1871c5a02733976ceec5d0324198e0812e667604756489c89f7b9"
+  }
+}

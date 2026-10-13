@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: prototipos visuales"
+  short_description: "Varias versiones de una pieza de UI con selector"
+  default_prompt: "Usa $emil-prototype para explorar versiones de este componente."
+policy:
+  allow_implicit_invocation: false
