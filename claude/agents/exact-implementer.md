@@ -1,7 +1,7 @@
 ---
 name: exact-implementer
 description: "Implements an exact packet: settled design, named files and a concrete finish line, with small local judgment. Use for bounded bug fixes and follow-up corrections."
-model: sonnet
+model: claude-haiku-5-5
 effort: medium
 disallowedTools: Agent
 hooks:

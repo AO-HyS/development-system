@@ -1,8 +1,8 @@
 ---
 name: Explore
 description: "Read-only codebase search: find files, symbols, call sites and conventions and return a compact map. Use for any \"where is / how does X work\" question before planning or editing."
-model: sonnet
-effort: low
+model: claude-haiku-5-5
+effort: medium
 tools: Read, Grep, Glob, Bash
 ---
 

@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/animation-performance",
+  "license": "MIT",
+  "capabilityTreeSha256": "d10b128326f65042582cae87149897331957bdb1efe95d34de2044fce127768d",
+  "files": {
+    "SKILL.md": "ceb9dd3fe912615830f725a0120ccf8d012d15a6218001a5cd6c15d38e39a957"
+  }
+}

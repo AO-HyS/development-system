@@ -1,45 +1,189 @@
-# Current work — shared tooling cleanup closeout
+# Current work — Poteto skills 2.1.4
 
-Canonical root: /Users/corrortiz/Documents/AO/development-system.
-Task started 2026-10-06; selected parent Sol 6.1 High. Sequential parent edits,
-fresh read-only facts and independent reviews; no admitted writing children.
-No worktree, automated tests/evals, product data or customer operations.
+Root: /Users/corrortiz/Documents/AO/development-system (canonical).
+Branch: feat/poteto-skills-2.1.4; base c02d669 from preserved feat/haiku-5-5.
+Path: short; Trigger: none. Catalog additions only; existing security, hooks,
+model policy and managed skills retain their bytes. Parent Astra edits directly.
 
-Development System 2.0.1 and 2.0.2 are reviewed, merged to develop/main, publicly
-released and installed globally. Active package/contract2.0.2, catalog0.60.0,
-public source a2990946228a491803c87d6d9d109fd5b0458bcd. Doctor passes. Isolated
-update/rollback/readoption and actual fresh instruction consumption passed.
-Published contracts/catalogs remain immutable; rollback tuples remain available.
+User approved correct, architect and benchmark-checklist plus first useful use
+in NutriPlan, The Barber Central and Casa Roca on 2026-10-10. No spending,
+production effects, tests/evals, whole-repo redesign or unrelated changes.
+Retain Writing for Agents -> Oxlint -> retro before product fixes.
 
-README and distribution instructions use one global installation per computer,
-ordinary AGENTS/README/task docs, CI-only product pins and T3-owned orchestration.
-Current doc release checks, correct Steward scheduler/Casa identity and bounded
-no-tests scanner fixes are published. Scanner covers declared Markdown paths,
-literal web/native commands and actual files; it is not exhaustive language or
-native hook evidence. Global tool adoption requires no product release.
+The prior 2.2.0 simplification candidate remains intact on
+feat/simplify-delivery-2.2.0 at 9ea3315. This candidate extends active 2.1.3
+without activating that separate change. Reconcile the three added skills into
+2.2.0 or its successor before later adoption so they are not retired accidentally.
+Untracked .impeccable/ and private/ remain untouched.
 
-Known consumer cleanup candidates preserve runtime sources/release boundaries:
-AOHYS PR209 and ETERIA PR295 source-reviewed with CI/certification passing.
-Home, Todo and House final candidates retire exact adapters/foreign guidance and
-automated-test scaffolding, run actual CI-only2.0.2 and have focused web/native
-build receipts. Independent final review and feature PR publication are closing.
-Existing unpublished develop refs and native generated outputs are preserved.
+Branch-first: fetched origin. Local develop, origin/develop, FETCH_HEAD and the
+remote head independently matched 88324e8. git pull --ff-only returned an empty
+candidate error; the explicit remote comparison established no update was needed.
+Created this branch and fast-forwarded the already-adopted 2.1.3 source lineage.
 
-Casa/Nutri/Barber already use global tooling; no product changes here. NutriPlan
-remains develop only; do not reopen the unrelated clinical production release.
-Barber dirty product spec remains another owner's work. Opportunity's redesign
-branch and dirty .gitignore remain untouched pending ownership reconciliation;
-a concrete private patch is retained, not applied or published.
+Owned changes: new artifacts/2.1.4, catalog/0.64.0, manifests/2.1.4, release
+builder, package metadata, README and this record. No product repository writes.
+Upstream: cursor/plugins 9d76bcab133aefcccb16121d7be874e6aa823729, MIT.
+Preserve source hashes, author license and local adaptation notes in each skill.
 
-Remaining operation-specific decisions: product merges subject to their actual
-repository/release authority, Todo's remote D1 boundary, Opportunity ownership,
-live Devin loading and all generated native writer-role admission. No file-copy,
-source build or report is treated as full product acceptance.
+Done when: shared doctor and skill audit -> coherent 2.1.4/0.64.0 installation;
+three first-pass receipts -> evidence-backed incidents and explicitly unverified
+proposals; independent source review -> no blocking findings. Installation and
+manual skill consumption remain separate from automatic activation evidence.
 
-Private ledger and report destination:
-~/.development-system/private/reports/shared-tooling-cleanup-20261006.
-The ledger retains exact revisions, checks, reviews and PR states. Report/tunnel
-receipts are added only after generation and readback. Keep private transcripts
-and secrets outside served assets. Preserve
-untracked .impeccable/ and private/ in this root. Earlier continuity remains
-available in Git history; report current facts from the ledger, not old notes.
+Completed: original skills fetched; adaptations, Codex starter prompts and
+provenance committed as f6fb47fc80817ce8255a7d428516e81cce79588f. Typecheck,
+release preparation, roster, no-tests, skill frontmatter and diff checks passed.
+Independent Sol source review: APPROVE, all 92 manifest hashes, 104 retained
+skills and exactly three additions verified. Isolated 2.1.3 -> 2.1.4 setup and
+doctor passed; authorized complete shared adoption and doctor passed. Active
+package/contract 2.1.4, catalog 0.64.0, source f6fb47f. Prior complete tuple is
+retained by the installation transaction. Existing 2.2.0 is not activated.
+
+Skill audit has structurally healthy files and mirrors, but exits invalid for
+missing/stale operational evidence on the new catalog. Do not report it as a
+fully passing audit or infer automatic host selection. Parent directly read the
+installed correct entrypoint; future natural work must observe automatic load.
+No probe suite, automated tests or evals were run.
+
+First diagnostic passes completed in all three product repos, with parent
+qualification of speculative lint proposals in poteto-adoption/first-pass.md.
+No product code changes or defect-prevention benefit is claimed. Concrete fixes
+remain after Writing for Agents -> Oxlint -> retro. No benchmark was invented.
+
+Scope incident: the Barber read-only child followed a report Stop hook on the
+shared cwd and published an unrequested diagnostic report. Parent cancelled its
+residual delivery, stopped its exact reader/tunnel PIDs 3347/3353, observed both
+absent, local port closed and public HTTP 530, and recorded the mistake. Its
+report's no-effects claim is rejected. Source review and installation are valid
+independent evidence; this incident is not a passing read-only boundary result.
+
+Next: continue the user's post-by-post decisions. Automatic selection/influence
+and concrete product corrections remain distinct future evidence, not blockers
+to explicit invocation of the installed skills. No task processes remain.
+
+Private evidence: ~/.development-system/private/research/agents-20261009/poteto-adoption.
+T3 child tasks own read-only source inspection only; no writing children admitted.
+Previous task continuity remains in c02d669:docs/current-work.md and the private
+backup; no publication, main merge, product deployment or data mutation.
+
+2026-10-11 conversation continuation: user requested research into actual local
+multi-agent browser/computer-use options, correcting the earlier overbroad
+desktop-lock and product-record-reservation proposal. Research saved privately
+under agents-20261009/multi-computer-use-local-20261011.md with task receipts;
+decision D21 updated. Current T3 source, BrowserOS, agent-browser, chrome-use,
+Cua Driver and local Spaces/Lume reviewed. No browser trials, installations,
+logins, product changes or new infrastructure. Recommendations await the user's
+next decision; do not interpret research completion as migration approval.
+
+Follow-up diagnostic authorized: inspect why T3 appears not to reuse cookies.
+Live T3 Chrome profile opened NutriPlan localhost:3001 / Diana Prueba in two
+owned tabs without entering credentials; built-in Default showed sign-in.
+The prior pilot records T3 authenticated, while native browser control timed
+out and independent QuickE2E login returned 401. Desktop import writes Electron
+cookies; installed server code also has separate persistent profile storage.
+No desktop/server transition or universal missing-sync cause was proved.
+Private receipt: agents-20261009/t3-cookies-20261011.md and evidence JSON.
+Three owned diagnostic tabs closed; no product edits, login attempts,
+credential transfers, installations or reactivation of comparison pilots.
+
+Further scope correction 2026-10-11: user needs actual personal Chrome and
+dashboard access plus credentials/environment variables across computers,
+cloud and mobile. Exa and available T3/Codex/Claude history researched; T3
+screening covers 2,545 user-flagged messages in 325 threads, with selected
+contextual review, not exhaustive manual audit. Private findings and receipts:
+agents-20261009/unified-access-20261011.md and corresponding receipts JSON;
+decision D22 is a recommendation awaiting selection, not adoption. Candidates:
+existing Chrome connector/Playwriter/chrome-use; Kody for shared tools; a single
+environment-secrets manager; OpenClaw as a broader optional assistant platform.
+No installs, product/browser trials, credentials reads or transfers, new paid
+services, tests/evals or publication. Preserve prior pilot decisions.
+
+User correction later 2026-10-11: pause tool selection. First understand two
+months of actual Computer Use requests and account access together. Environment
+variable sharing is deferred. Current CU adapter remains one-application-at-a-time.
+Private cu-usage-20261011.md and evidence JSON inventory selected operational
+requests: 64 messages in 33 T3 threads, not exhaustive action-frequency counts.
+Decision D23 preserves this scope; D22 alternatives remain unselected research.
+Original 17 posts were discussed; full author/video sweeps were not completed,
+and PremiumGoblin's reference still has no final recorded decision. No account,
+browser, installation, credentials or paid-service effects in this investigation.
+The bounded T3 inventory received independent APPROVE; Claude/Codex native
+supplements are complete but outside that verdict. Parent corrected the native
+inventory: codex_extra session/archive paths resolve to the same Codex history,
+not an empty separate corpus. No exhaustive two-month manual audit claimed.
+Latest user correction: prioritize Google-authenticated persistent browsing and
+independent per-thread page control over provider-by-provider inventory. D24
+records a proposal, not adoption: existing Chrome access plus enforced page
+ownership, retaining T3; Playwriter is an access candidate but shares tabs.
+T3 native ownership does not automatically protect an external MCP. Google/Meta
+access and concurrent behavior have not been verified for this proposal.
+Only public-source research and private continuity notes; no browser or install.
+User now requests two parallel outcomes: broaden Google/account/browser research
+to persistent automation browsers, local/cloud GUI boxes and custom extensions;
+and save a detailed implementation plan for prior posts without narrating it in
+chat or executing its phases. D25 records the correction. Private plan:
+agents-20261009/plan-implementacion-posts-20261011.md (Opus-authored, coordinator
+integrated; independent Sol review APPROVE, documentary scope). Research:
+agents-20261009/entornos-agentes-20261011.md. Browserbase is confirmed on Theo's
+official sponsor page; Cursor/Devin do document Computer Use. No candidate is
+selected; no live browser/account use, installs, paid infrastructure or tests.
+Review covered the plan and research, with two nonblocking freshness corrections
+applied to published Playwriter/Cua metadata. All three T3 children and the
+native reviewer have returned; no research processes or new schedules remain.
+
+
+Plan V2 review delivery, 2026-10-11 (America/Mexico_City): user requested the
+actual revised proposal after comparing threads, not execution. V1 retained
+byte-for-byte. New private plan: agents-20261009/plan-implementacion-posts-20261011-v2.md.
+Keeps Writing for Agents -> Oxlint in all three repos -> retro -> skills; adds
+parallel browser/account deliveries with no preselected architecture. Measures
+during work. A2 retains explicit LSP-to-agent acceptance, with incremental lint
+only provisional. Comparisons remain paused and no tests/evals ran. D15 retained.
+Opus T3 authored; Astra integrated. Fresh Sol review R1 found one LSP-scope issue;
+corrected and fresh R2 APPROVE for that delta, no other R1 findings. Actual
+reviewer identity/effort/tier unknown. Receipt: agents-20261009/plan-v2-evidence.json.
+Shared document helper 2.1.4 rendered the plan; T3 observed the exact reader on
+desktop and 390px mobile without horizontal overflow. This is document evidence,
+not acceptance of LSP, accounts, concurrency, migration or maintenance.
+Only this continuity append and private proposal/reader/receipt writes. Existing
+dirty work, .impeccable/ and private/ preserved; no branch switch or commit.
+Reader is temporarily served from the isolated plan-v2-reader directory; only
+plan-v2.html and plan-v2.md are exposed. Process exec session 52223 expires
+2026-10-12T05:41:14.783Z (23:41 Mexico City Oct 11), or earlier if stopped.
+Remote URL and own incognito tabId are in the private receipt. User review is next;
+do not start phases, transfer sessions or reactivate pilots from this proposal.
+
+Plan V2 Line A execution, 2026-10-12 (America/Mexico_City): A1 AGENTS cleanup
+and A2 Oxlint + PostToolUse lint hook (Codex and Claude) merged to develop in
+11 repos with independent Sol 6.1 High approval (casa-roca#154, barber#484,
+nutri-plan#611, eteria#295/#296, aohys#209/#210, house-organization#14,
+todo#35/#36, t3-review#1, escuela-360#10, find-home#10, home-expenses#44/#45).
+Codex hook observed live after user approval. Recipe:
+agents-20261009/oxlint-agents-recipe.md. Owner then authorized production for
+casa-roca and barber: casa-roca#155 and barber#488 merged to main; casa-roca
+deployed by Vercel CLI (Git integration creates no deployments) and smoke
+checked; barber push release failed on a GitHub network reset before deploying,
+then was dispatched for 806fabc. Authenticated preview screens not reached (no
+test account). Open: home-expenses Electron renderer imports removed client
+auth (pre-existing since f0c967b, needs a server-login decision); escuela-360
+Cloudflare Preview fails "Not logged in" since August (needs a new token); A3
+retro on remaining warnings; two proposed hard rules (AGENTS rule diff, lint
+rule-count floor); A4/A5; shared Development System A1. nutri-plan production
+waits for its redesign. opportunity-os keeps 35 uncommitted LinkedIn-workflow
+changes from 2026-10-06 untouched.
+
+Line A closeout, 2026-10-12 night, branch feat/line-a-2.1.5 from
+feat/poteto-skills-2.1.4: candidate 2.1.5 / catalog 0.65.0. A1 shared
+instructions render from config/global-instructions.md with shared host rules
+written once (3,095 -> 2,363 words; rule check: 123/123 base rules kept) and
+~/.claude/rules/orchestration.md reduced to a pointer. Hard rules shipped as
+`check-agents-rules` and `check-lint-floor`; replay flagged dropped core rules in
+escuela-360, todo and house-organization (fix PRs escuela-360#11, todo#37,
+house-organization#15). A3: casa-roca#156 role-read guard (replays the
+245c1f3/bd6bcb5 incident). A4: Emil's 14 skills (animate/prototype as
+emil-animate/emil-prototype), good-css, implement-spec 2.1.5. A5: existing
+Monday 09:00 steward schedule updated with performance, upstream-skill and
+lint-health duties (last run status failed; next 2026-10-19). Isolated HOME:
+setup, doctor, collision snapshot and 2.1.4->2.1.5->rollback observed. Real
+HOME not updated; publication/adoption awaits merge.

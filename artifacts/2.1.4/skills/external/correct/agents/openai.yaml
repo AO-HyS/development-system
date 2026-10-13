@@ -1,0 +1,6 @@
+interface:
+  display_name: "Correct: prevenir errores"
+  short_description: "Convierte errores confirmados en protecciones reales"
+  default_prompt: "Usa $correct para revisar los incidentes recientes de este repo y prevenir una causa confirmada dentro del alcance autorizado."
+policy:
+  allow_implicit_invocation: true

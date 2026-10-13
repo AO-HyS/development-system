@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/find-animation-opportunities",
+  "license": "MIT",
+  "capabilityTreeSha256": "423427212a66d9d1ea2648399c9bd9d7fc7003c196e8c250f9578a8409abd184",
+  "files": {
+    "SKILL.md": "d52a377819b84a71930f0c822cfe2849f40301605a2d5c7eccbfa3b257700df2"
+  }
+}

@@ -267,7 +267,7 @@ async function classify(type, input, active) {
 // Memory: every allowed tiered dispatch is appended to tier-memory.jsonl. One that is
 // dispatched again later in the session at a higher tier (a similar objective, same
 // family) counts as escalated, and Jev sees those outcomes for similar packets.
-const TIERS = ['sonnet', 'opus_low', 'opus_medium', 'opus_high', 'fable'];
+const TIERS = ['haiku55', 'sonnet', 'opus_low', 'opus_medium', 'opus_high', 'fable'];
 // Memory rows written before 1.33.0 name the cheapest step haiku.
 const LEGACY_TIER = { haiku: 'sonnet' };
 const rank = (tier) => TIERS.indexOf(tier);
@@ -377,8 +377,20 @@ async function agentCall() {
   const type = ti.subagent_type ?? 'general-purpose';
   const entry = { tool: 'Agent', type, requestedModel: ti.model ?? null, description: ti.description ?? null };
   if (input.agent_id) deny('Subagents do not start agents. Return a concrete blocker or proposal to the parent instead.', entry);
-  if (ti.model === 'haiku') deny(`Haiku is not used. Use a roster role (${rosterList}); a plugin agent takes model: "opus", or "sonnet" for read-only work.`, entry);
   const role = POLICY.roster[type];
+  // Permit only the operator-selected pinned model on declared named roles.
+  // Aliases/other Haiku versions and plugin/builtin overrides stay denied.
+  if (/haiku/i.test(String(ti.model ?? '')) || /haiku/i.test(String(role?.model ?? ''))) {
+    const selection = POLICY.haiku55;
+    const namedRoles = ['Explore', 'code-mapper', 'docs-researcher', 'mechanical-worker', 'exact-implementer'];
+    const writerRoles = ['mechanical-worker', 'exact-implementer'];
+    if (!role || type.includes(':') || selection?.model !== 'claude-haiku-5-5'
+      || role.model !== selection.model || (ti.model && ti.model !== selection.model)
+      || !namedRoles.includes(type) || !selection.roles?.includes(type)
+      || Boolean(role.writer) !== writerRoles.includes(type)) {
+      deny('Haiku requires the pinned claude-haiku-5-5 model on an approved named role; aliases, other versions and plugin/builtin overrides are denied.', { ...entry, blockedBy: 'haiku55-role' });
+    }
+  }
   if (!role) {
     const unregisteredWriter = /^\s*(Owned paths|Writer|Source writes):/mi.test(String(ti.prompt ?? '')) || ti.writer === true;
     if (unregisteredWriter) deny(`Unregistered writer ${type}: use a named protected roster writer with exclusive ownership and writer Git hooks.`, { ...entry, blockedBy: 'unregistered-writer' });
@@ -416,6 +428,7 @@ async function agentCall() {
       try {
         if (ti.resume !== undefined) throw new Error('fallback requires a fresh Agent; resume is forbidden');
         receipt = fallbackReceipt(prompt, type);
+        if (receipt.mode === 'computer-use' && receipt.browserAssignment) throw new Error('Pooled computer-use fallback has no validated ownership transfer; reconcile the assigned browser before any new operator');
         if (receipt.mode === 'computer-use') {
           const consumeDir = path.join(POLICY.stateDir, 'native-fallback');
           fs.mkdirSync(consumeDir, { recursive: true });

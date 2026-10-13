@@ -1,8 +1,8 @@
 ---
 name: mechanical-worker
 description: "Fully specified mechanical work: codemods, renames, import swaps, moving files, running listed commands and reporting their output. Use only when every edit and command is spelled out in the packet."
-model: sonnet
-effort: low
+model: claude-haiku-5-5
+effort: medium
 disallowedTools: Agent
 hooks:
   PreToolUse:

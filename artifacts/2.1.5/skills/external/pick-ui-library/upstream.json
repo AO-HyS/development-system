@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/pick-ui-library",
+  "license": "MIT",
+  "capabilityTreeSha256": "2fadb0aa9dc8d11763a161b4360993c70976c1092339e0f50f069481e9cda9f5",
+  "files": {
+    "SKILL.md": "675fdce308683256ed617351a9b74d23457a5fbd0a562d9831b9c764b8c5e682"
+  }
+}

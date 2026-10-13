@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+  "path": "skills/mobile-native",
+  "license": "MIT",
+  "capabilityTreeSha256": "952dad47a2f9683f93f3afc47bf24b2d4fd11bbca60432667b18d76383fa07b2",
+  "files": {
+    "SKILL.md": "888b7651d66d66dbac4e72b7c554638eb19bd971d686d6cbdf030a5ef3788f55"
+  }
+}
