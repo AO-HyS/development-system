@@ -3,7 +3,7 @@
 Perform one read-only weekly Development Steward review for exactly these repositories:
 
 - AO-HyS/aohys.com
-- corrortiz/casa-roca
+- AO-HyS/casa-roca
 - AO-HyS/the-barber-central
 - AO-HyS/nutri-plan
 - AO-HyS/eteria
@@ -21,6 +21,12 @@ In every run, explicitly inspect these four independent toolchain rows even if n
 Do not combine these into one generic `skills` claim. A floating branch, `latest` alias, version inferred from source `main`, or version label without the required behavioral check is `unproven`.
 
 Read repeated mistakes with the read-only command `development-system mistake list --repeated --json`. For each repeated id, add one evaluation with `area` `repeated-mistake` under the repository its incidents point to. Its `summary` names the id and either proposes the hard control at the highest level of the Gardener ladder (code > lint/CI/guard > rule/skill) or states the existing recorded control. A style note alone is not a control. If the command is unavailable, mark the repeated-mistake review `unproven`; never invent an id or incident.
+
+Run these read-only 2.3.0 checks too, and add one evaluation per finding under the repository it concerns (area in parentheses); mark the check `unproven` when its command is unavailable:
+
+- Primitives (`primitive-drift`): for each repository whose develop has `docs/architecture/primitives.json`, run `development-system check-primitives --root <repo> --ref origin/develop --json` and report every problem; also report new twins or bypasses of a listed primitive since the last run, `proposed` primitives with no progress and `deprecated` ones still imported.
+- Frictions (`friction`): `development-system friction list --json`; one evaluation per id with its repositories, incidents and a recommendation, saying when it needs an owner product decision. Frictions never count as repeated mistakes.
+- Codex review of merged PRs (`codex-review`): for each PR merged to develop since the last run, `development-system pr-review-status <owner/repo#number> --json` (never `--request`); a merged head with open or silently resolved Codex findings is an evaluation.
 
 Return only one raw JSON object, without Markdown fences or commentary. It must have `observedAt` as an ISO timestamp and `repositories` as an array containing only the six explicitly allowlisted repository IDs: `aohys`, `casa-roca`, `the-barber-central`, `nutri-plan`, `eteria`, and `development-system`. For each repository include its exact 40-hex `revision`, or an `error` when collection failed; `upstream` entries with `id`, exact `current`, exact `candidate`, `diff`, and `changelog`; and `evaluations` with `id`, `area`, `state`, `summary`, `deterministic`, `safeUpdate`, `focusedChecks`, and `device`. Use `unproven` whenever evidence is unavailable or ambiguous. Never manufacture a revision, version, diff, changelog, or successful check.
 

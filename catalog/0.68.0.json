@@ -1883,7 +1883,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/development-steward",
           "destination": ".agents/skills/development-steward",
-          "folderSha256": "297eddc4db2f80c29e4d71a60b93d1550d3354180c220ec9aef7ca28fc65499e",
+          "folderSha256": "1c17243b684820aecff2d37d39fdb952d0a0ddfa471c91975a14aabe46152c54",
           "expectedMirrorOf": null
         },
         {
@@ -1891,7 +1891,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/development-steward",
           "destination": ".claude/skills/development-steward",
-          "folderSha256": "297eddc4db2f80c29e4d71a60b93d1550d3354180c220ec9aef7ca28fc65499e",
+          "folderSha256": "1c17243b684820aecff2d37d39fdb952d0a0ddfa471c91975a14aabe46152c54",
           "expectedMirrorOf": "development-steward.codex",
           "install": "symlink"
         }

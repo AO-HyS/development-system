@@ -5,8 +5,8 @@
 // active or deprecated primitive points at files that exist, symbols that appear in them, and
 // guarantees that name how they are verified. Goals are what a primitive should hold but does not yet.
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 
 export const primitivesPath = "docs/architecture/primitives.json";
 const categories = ["ui", "api", "data", "infra", "agent-tools", "workflow", "auth"];
@@ -22,6 +22,16 @@ const ID = /^[a-z0-9][a-z0-9-]{1,63}$/;
  * @param {{root: string, ref?: string, file?: string}} options
  */
 export function checkPrimitives({ root, ref, file = primitivesPath }) {
+  const realRoot = realpathSync(resolve(root));
+  /** A map may only name repository-relative paths that stay inside the repository, symlinks resolved. @param {string} path */
+  const inside = (path) => {
+    if (typeof path !== "string" || !path || isAbsolute(path) || path.split(/[\\/]/).includes("..")) return false;
+    if (ref) return true;
+    let target = resolve(realRoot, path);
+    try { target = realpathSync(target); } catch { /* missing paths are reported separately */ }
+    const rel = relative(realRoot, target);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  };
   const git = (/** @type {string[]} */ ...args) => execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
   const read = (/** @type {string} */ path) => ref ? git("show", `${ref}:${path}`) : readFileSync(resolve(root, path), "utf8");
   const tracked = ref ? new Set(git("ls-tree", "-r", "--name-only", ref).split("\n").filter(Boolean)) : null;
@@ -29,6 +39,7 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
   /** @type {string[]} */
   const problems = [];
   let map;
+  if (!inside(file)) return { ok: false, operation: "check-primitives", root, ref: ref ?? "worktree", file, valid: false, problems: [`--file must be a repository-relative path inside the repository: ${file}`], counts: {} };
   try { map = JSON.parse(read(file)); }
   catch (error) { return { ok: false, operation: "check-primitives", root, ref: ref ?? "worktree", file, valid: false, problems: [`Cannot read ${file}: ${error instanceof Error ? error.message.split("\n")[0] : String(error)}`], counts: {} }; }
   if (map?.schemaVersion !== 1) problems.push("schemaVersion must be 1");
@@ -55,15 +66,16 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
       return value;
     };
     const nonEmpty = (/** @type {any} */ value) => typeof value === "string" && value.trim().length > 0;
+    const repoPath = (/** @type {any} */ value) => nonEmpty(value) && inside(value);
     arrayOf("goals", nonEmpty, "non-empty strings");
     arrayOf("replaces", nonEmpty, "primitive ids");
     const guarantees = arrayOf("guarantees", (value) => value && typeof value === "object" && nonEmpty(value.statement) && nonEmpty(value.verifiedBy), "{statement, verifiedBy} with non-empty text (unverified intent belongs in goals)");
-    const paths = arrayOf("paths", nonEmpty, "non-empty strings");
+    const paths = arrayOf("paths", repoPath, "repository-relative paths inside the repository");
     if (item.status !== "proposed" && paths.length === 0) problems.push(`${label}: an ${item.status} primitive needs at least one path`);
     for (const path of paths) {
       if (item.status !== "proposed" && !exists(path)) problems.push(`${label}: path does not exist: ${path}`);
     }
-    for (const symbol of arrayOf("symbols", nonEmpty, '"path#Name" strings')) {
+    for (const symbol of arrayOf("symbols", (value) => nonEmpty(value) && inside(String(value).split("#")[0]), '"path#Name" strings with a repository-relative path')) {
       const [path, name] = String(symbol).split("#");
       if (!path || !name) { problems.push(`${label}: symbol must be "path#Name": ${symbol}`); continue; }
       if (item.status === "proposed") continue;
@@ -73,7 +85,7 @@ export function checkPrimitives({ root, ref, file = primitivesPath }) {
       if (!new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(text)) problems.push(`${label}: symbol ${name} not found in ${path}`);
     }
     void guarantees;
-    for (const doc of arrayOf("docs", nonEmpty, "non-empty strings")) {
+    for (const doc of arrayOf("docs", repoPath, "repository-relative paths inside the repository")) {
       if (!exists(doc)) problems.push(`${label}: doc does not exist: ${doc}`);
     }
   }
