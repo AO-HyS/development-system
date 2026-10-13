@@ -227,3 +227,11 @@ from running allow-tests or writing the grant file; `test-grants` lists them. Th
 shared no-tests rule now names the exception. Isolated HOME: setup 2.1.7, doctor
 ok, guardrails-audit healthy, live hook deny -> grant -> allow observed. Real HOME
 adoption follows merge; the E2E comparison then needs one operator grant.
+
+2026-10-13 update: #164 merged (8957664) after 7 Sol 6.1 High rounds; final
+design is user-owned grants with an explicit threat model (sudo was dropped:
+it would run operator-writable code as root). allow-tests refuses agent shells
+and non-TTY and needs a typed confirmation; any cd, xargs/find/parallel or
+unknown target makes a write ungrantable. Real HOME: 2.1.7/0.67.0 installed,
+doctor ok, guardrails-audit healthy, live self-grant denied. Known pre-existing
+gap: `parallel cmd ::: a` test writes are not inspected, with or without grants.
