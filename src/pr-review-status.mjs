@@ -65,6 +65,15 @@ function claim(key) {
   return () => { try { unlinkSync(path); } catch { /* already gone */ } };
 }
 
+/** When the PR's head last moved to `head` (push or force-push event), or 0 if unknown. @param {string} base @param {number} number @param {string} head */
+function headUpdatedAt(base, number, head) {
+  try {
+    const events = ghList(`${base}/issues/${number}/timeline`);
+    const moved = events.filter((event) => (event.event === "committed" && event.sha === head) || (event.event === "head_ref_force_pushed" && event.commit_id === head));
+    return Math.max(0, ...moved.map((event) => Date.parse(event.created_at ?? event.committer?.date ?? "") || 0));
+  } catch { return 0; }
+}
+
 /**
  * @param {{pr: string, request?: boolean}} options
  */
@@ -94,7 +103,10 @@ export function prReviewStatus({ pr, request = false }) {
   const resolvedWithoutReply = silentlyResolved.length;
   const headReviewed = reviews.some((review) => review.commit_id === head) || (summaryForHead && /Completed/i.test(summaryRow?.[1] ?? ""));
   const runningForHead = summaryForHead && /running|progress|queued/i.test(summaryRow?.[1] ?? "");
-  const unavailable = appComments.some((comment) => Date.parse(comment.created_at) >= headDate && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
+  // A usage or access error counts for this head only if posted after this SHA became the head:
+  // after our own request for it, else after the PR's last head update (a commit date can predate it).
+  const headSince = Math.max(headDate, ...comments.filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).map((comment) => Date.parse(comment.created_at)), headUpdatedAt(base, number, head));
+  const unavailable = appComments.some((comment) => Date.parse(comment.created_at) >= headSince && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
   const requestedForHead = (/** @type {any[]} */ list) => list.some((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`));
   /** @type {"no-findings" | "findings" | "running" | "pending" | "unavailable"} */
   let state;

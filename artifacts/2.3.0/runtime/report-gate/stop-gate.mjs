@@ -271,7 +271,9 @@ function readState(path) {
 /** @param {string} path @param {GateState} state */
 function writeState(path, state) {
   const temporary = `${path}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify({ ...state, updatedAt: new Date().toISOString() })}\n`, { mode: 0o600 });
+  // O_EXCL never follows a symlink: a planted link at the temporary name makes the write fail (fail open).
+  try { unlinkSync(temporary); } catch { /* usually absent */ }
+  writeFileSync(temporary, `${JSON.stringify({ ...state, updatedAt: new Date().toISOString() })}\n`, { mode: 0o600, flag: "wx" });
   renameSync(temporary, path);
 }
 
