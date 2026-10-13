@@ -88,7 +88,9 @@ export function prReviewStatus({ pr, request = false }) {
     finding: String(thread.comments.nodes[0].body).replace(/<[^>]+>|!\[[^\]]*\]\([^)]*\)|\*\*/g, "").trim().split("\n")[0].slice(0, 160),
   }));
   // Clicking Resolve is not a fix: a resolved Codex thread with no human reply still counts as a finding.
-  const silentlyResolved = threads.filter((thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => !isCodexActor(comment.author)));
+  // Only a reply from a human account (GraphQL __typename "User") answers a finding; bots and
+  // deleted or unknown authors do not.
+  const silentlyResolved = threads.filter((thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => comment.author?.__typename === "User"));
   const resolvedWithoutReply = silentlyResolved.length;
   const headReviewed = reviews.some((review) => review.commit_id === head) || (summaryForHead && /Completed/i.test(summaryRow?.[1] ?? ""));
   const runningForHead = summaryForHead && /running|progress|queued/i.test(summaryRow?.[1] ?? "");

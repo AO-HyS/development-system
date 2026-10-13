@@ -19,8 +19,8 @@ const reason = "Files changed this session and no report was produced. Write the
 const serverReason = (/** @type {string} */ list) => `A server matching one this session started may still be listening: ${list}. If you launched it, stop that PID (never by name); if you did not, leave it alone. Say in one line why one must keep running. This reminder appears once.`;
 /** A command that starts a long-lived dev or model server. */
 const serverStart = /(?:^|[\s;&|(])(?:(?:vite|next|astro|wrangler|convex|remix|nuxt)\s+dev\b|(?:pnpm|npm|yarn|bun)\s+(?:run\s+)?(?:dev|start|serve|preview)\b|server\.py\b|http\.server\b|workerd\s+serve\b)/u;
-/** Ports named in a server command: --port N, -p N, PORT=N, :N in a localhost URL. */
-const portPatterns = [/--port[=\s]+(\d{2,5})/gu, /(?:^|\s)-p\s+(\d{2,5})\b/gu, /\bPORT=(\d{2,5})/gu, /(?:localhost|127\.0\.0\.1):(\d{2,5})/gu];
+/** Ports named in a server command: `http.server N`, --port N, -p N, PORT=N, :N in a localhost URL. */
+const portPatterns = [/\bhttp\.server\s+(\d{2,5})\b/gu, /--port[=\s]+(\d{2,5})/gu, /(?:^|\s)-p\s+(\d{2,5})\b/gu, /\bPORT=(\d{2,5})/gu, /(?:localhost|127\.0\.0\.1):(\d{2,5})/gu];
 const editTools = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch"]);
 const shellTools = new Set(["Bash", "exec", "exec_command", "shell", "local_shell", "container.exec"]);
 const delegationTools = new Set(["Agent", "Task", "spawn_agent"]);
@@ -40,7 +40,8 @@ const writePatterns = [
 ];
 
 /**
- * @typedef {{offset: number, sawEdit: boolean, sawReport: boolean, blocked: boolean, subagent: boolean, startedAt: number, serverPorts: number[], serverDirs: string[], serversWarned: boolean}} GateState
+ * @typedef {{port: number, dir: string}} Launch
+ * @typedef {{offset: number, sawEdit: boolean, sawReport: boolean, blocked: boolean, subagent: boolean, startedAt: number, launches: Launch[], serversWarned: boolean}} GateState
  */
 
 /** Quoted strings are arguments (awk programs, messages), never redirects. @param {string} command */
@@ -72,28 +73,41 @@ function parseArguments(raw) {
   }
 }
 
+/** @param {string} literal a JS string literal @returns {string} */
+function unquote(literal) {
+  if (literal.startsWith("\"")) {
+    try { return String(JSON.parse(literal)); } catch { /* fall through */ }
+  }
+  return literal.slice(1, -1).replace(/\\(.)/gu, "$1");
+}
+
+// A double, single or backtick JS string literal (backticks are not escaped: the regex is in unicode mode).
+const jsString = "(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\.)*'|`(?:[^`\\\\]|\\\\.)*`)";
+
 /**
- * Codex code mode runs JavaScript whose tool calls look like `tools.exec_command({cmd:"..."})`.
- * @param {string} source @returns {string[]}
+ * Codex code mode runs JavaScript whose tool calls look like
+ * `tools.exec_command({cmd:"...", workdir:"..."})`; keep each call's working directory.
+ * @param {string} source @returns {{command: string, dir?: string}[]}
  */
 function codeModeCommands(source) {
-  /** @type {string[]} */
+  /** @type {{command: string, dir?: string}[]} */
   const commands = [];
-  for (const match of source.matchAll(/\bcmd\s*:\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/gu)) {
-    const literal = match[1];
-    if (literal.startsWith("\"")) {
-      try { commands.push(String(JSON.parse(literal))); continue; } catch { /* fall through */ }
-    }
-    commands.push(literal.slice(1, -1).replace(/\\(.)/gu, "$1"));
+  for (const call of source.matchAll(/\{[^{}]*\}/gu)) {
+    const body = call[0];
+    const cmd = new RegExp(String.raw`\bcmd\s*:\s*` + jsString, "u").exec(body);
+    if (!cmd) continue;
+    const dir = new RegExp(String.raw`\b(?:workdir|cwd)\s*:\s*` + jsString, "u").exec(body);
+    commands.push({ command: unquote(cmd[1]), ...(dir ? { dir: unquote(dir[1]) } : {}) });
   }
   return commands;
 }
 
 /**
  * @param {{name: string, input: unknown}} call
- * @param {{sawEdit: boolean, sawReport: boolean, serverPorts: number[], serverDirs: string[]}} flags
+ * @param {{sawEdit: boolean, sawReport: boolean, launches: Launch[]}} flags
+ * @param {string} sessionCwd
  */
-function classifyCall(call, flags) {
+function classifyCall(call, flags, sessionCwd) {
   const input = parseArguments(call.input);
   if (editTools.has(call.name)) {
     flags.sawEdit = true;
@@ -105,7 +119,7 @@ function classifyCall(call, flags) {
     if (typeof packet === "string" && packet.includes(writerMarker)) flags.sawEdit = true;
     return;
   }
-  /** @type {string[]} */
+  /** @type {{command: string, dir?: string}[]} */
   let commands = [];
   if (call.name === "exec" && typeof call.input === "string" && !call.input.trimStart().startsWith("{")) {
     // Codex code mode: JavaScript source.
@@ -113,25 +127,26 @@ function classifyCall(call, flags) {
     if (/\bspawn_agent\b/u.test(call.input) && call.input.includes(writerMarker)) flags.sawEdit = true;
     commands = codeModeCommands(call.input);
   } else if (shellTools.has(call.name)) {
-    commands = [commandText(input.command ?? input.cmd)];
+    const dir = typeof input.workdir === "string" ? input.workdir : typeof input.cwd === "string" ? input.cwd : undefined;
+    commands = [{ command: commandText(input.command ?? input.cmd), ...(dir ? { dir } : {}) }];
   } else {
     return;
   }
-  for (const command of commands) {
+  for (const { command, dir: callDir } of commands) {
     if (!command) continue;
     const bare = stripQuoted(command);
     if (reportPattern.test(bare)) flags.sawReport = true;
     if (writesFiles(bare)) flags.sawEdit = true;
     if (serverStart.test(bare) || /\bnohup\b/u.test(bare)) {
+      // Where this launch ran: an absolute `cd` in the command, else the call's own working
+      // directory, else the session cwd. Each port is tied to that one directory.
+      const cd = /(?:^|[;&|(]\s*)cd\s+([^\s;&|)]+)/u.exec(command)?.[1];
+      const base = callDir ?? sessionCwd;
+      const dir = cd ? (cd.startsWith("/") ? cd : base ? join(base, cd) : "") : base;
+      if (!dir) continue;
       for (const pattern of portPatterns) for (const match of command.matchAll(pattern)) {
         const port = Number(match[1]);
-        if (port >= 1024 && !flags.serverPorts.includes(port)) flags.serverPorts.push(port);
-      }
-      // The directory the server command ran in: an absolute `cd` in the same command, or the
-      // working directory recorded with the call. A listener must run there to count as ours.
-      const cd = /(?:^|[;&|(]\s*)cd\s+(\/[^\s;&|)]+)/u.exec(command)?.[1];
-      for (const dir of [cd, typeof input.workdir === "string" ? input.workdir : undefined, typeof input.cwd === "string" ? input.cwd : undefined]) {
-        if (dir && !flags.serverDirs.includes(dir)) flags.serverDirs.push(dir);
+        if (port >= 1024 && !flags.launches.some((launch) => launch.port === port && launch.dir === dir)) flags.launches.push({ port, dir });
       }
     }
   }
@@ -139,14 +154,15 @@ function classifyCall(call, flags) {
 
 /**
  * @param {any} entry
- * @param {{sawEdit: boolean, sawReport: boolean, subagent: boolean, serverPorts: number[], serverDirs: string[]}} flags
+ * @param {{sawEdit: boolean, sawReport: boolean, subagent: boolean, launches: Launch[]}} flags
+ * @param {string} sessionCwd
  */
-function scanEntry(entry, flags) {
+function scanEntry(entry, flags, sessionCwd) {
   if (!entry || typeof entry !== "object") return;
   // Claude Code transcript.
   if (entry.type === "assistant" && !entry.isSidechain && Array.isArray(entry.message?.content)) {
     for (const block of entry.message.content) {
-      if (block?.type === "tool_use" && typeof block.name === "string") classifyCall({ name: block.name, input: block.input }, flags);
+      if (block?.type === "tool_use" && typeof block.name === "string") classifyCall({ name: block.name, input: block.input }, flags, sessionCwd);
     }
     return;
   }
@@ -160,11 +176,11 @@ function scanEntry(entry, flags) {
   }
   if (entry.type !== "response_item") return;
   if (payload.type === "function_call" && typeof payload.name === "string") {
-    classifyCall({ name: payload.name, input: payload.arguments }, flags);
+    classifyCall({ name: payload.name, input: payload.arguments }, flags, sessionCwd);
   } else if (payload.type === "custom_tool_call" && typeof payload.name === "string") {
-    classifyCall({ name: payload.name, input: payload.input }, flags);
+    classifyCall({ name: payload.name, input: payload.input }, flags, sessionCwd);
   } else if (payload.type === "local_shell_call") {
-    classifyCall({ name: "local_shell", input: { command: payload.action?.command } }, flags);
+    classifyCall({ name: "local_shell", input: { command: payload.action?.command, workdir: payload.action?.working_directory } }, flags, sessionCwd);
   }
 }
 
@@ -193,12 +209,11 @@ function readState(path) {
       blocked: value.blocked === true,
       subagent: value.subagent === true,
       startedAt: Number.isFinite(value.startedAt) ? value.startedAt : Date.now(),
-      serverPorts: Array.isArray(value.serverPorts) ? value.serverPorts.filter(Number.isInteger) : [],
-      serverDirs: Array.isArray(value.serverDirs) ? value.serverDirs.filter((/** @type {unknown} */ dir) => typeof dir === "string") : [],
+      launches: Array.isArray(value.launches) ? value.launches.filter((/** @type {any} */ launch) => Number.isInteger(launch?.port) && typeof launch?.dir === "string") : [],
       serversWarned: value.serversWarned === true,
     };
   } catch {
-    return { offset: 0, sawEdit: false, sawReport: false, blocked: false, subagent: false, startedAt: Date.now(), serverPorts: [], serverDirs: [], serversWarned: false };
+    return { offset: 0, sawEdit: false, sawReport: false, blocked: false, subagent: false, startedAt: Date.now(), launches: [], serversWarned: false };
   }
 }
 
@@ -270,17 +285,16 @@ function reviewPending(home) {
 }
 
 /**
- * Listening processes on a port this session's server commands named, started after the
- * session began, running in a directory under one the session started a server in (or the
- * session's cwd). Port and time alone do not prove ownership, so all three must match, and
- * the reminder asks the agent to confirm it launched the process; the gate never kills.
- * @param {number[]} ports @param {number} since @param {string[]} dirs @returns {string[]}
+ * Listening processes matching one of this session's server launches: the launch's port,
+ * started after the session began, and running under that launch's directory. Port and time
+ * alone do not prove ownership, so all three must match, and the reminder asks the agent to
+ * confirm it launched the process; the gate never kills.
+ * @param {Launch[]} launches @param {number} since @returns {string[]}
  */
-function liveServers(ports, since, dirs) {
-  if (ports.length === 0 || dirs.length === 0) return [];
+function liveServers(launches, since) {
   /** @type {string[]} */
   const found = [];
-  for (const port of ports) {
+  for (const { port, dir } of launches) {
     let out = "";
     try { out = execFileSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"], { encoding: "utf8", timeout: 2000 }); }
     catch { continue; }
@@ -295,8 +309,9 @@ function liveServers(ports, since, dirs) {
     let cwd = "";
     try { cwd = /^n(.+)$/mu.exec(execFileSync("lsof", ["-a", "-p", String(pid), "-d", "cwd", "-Fn"], { encoding: "utf8", timeout: 2000 }))?.[1] ?? ""; }
     catch { continue; }
-    const real = (/** @type {string} */ path) => { try { return realpathSync(path); } catch { return path; } };
-    if (!dirs.map(real).some((dir) => cwd === dir || cwd.startsWith(`${dir.replace(/\/$/u, "")}/`))) continue;
+    let root = dir;
+    try { root = realpathSync(dir); } catch { /* keep as given */ }
+    if (cwd !== root && !cwd.startsWith(`${root.replace(/\/$/u, "")}/`)) continue;
     found.push(`${name} pid ${pid} on :${port} in ${cwd}`);
   }
   return found;
@@ -326,11 +341,11 @@ async function main() {
   // The session began when its transcript did, so servers started before the first stop count.
   if (fresh) { try { state.startedAt = statSync(transcript).birthtimeMs || state.startedAt; } catch { /* keep now */ } }
   const { text, next } = readSince(transcript, state.offset);
-  const flags = { sawEdit: state.sawEdit, sawReport: state.sawReport, subagent: state.subagent, serverPorts: [...state.serverPorts], serverDirs: [...state.serverDirs] };
-  if (typeof payload.cwd === "string" && payload.cwd && !flags.serverDirs.includes(payload.cwd)) flags.serverDirs.push(payload.cwd);
+  const flags = { sawEdit: state.sawEdit, sawReport: state.sawReport, subagent: state.subagent, launches: [...state.launches] };
+  const sessionCwd = typeof payload.cwd === "string" ? payload.cwd : "";
   for (const line of text.split("\n")) {
     if (!line.trim()) continue;
-    try { scanEntry(JSON.parse(line), flags); } catch { /* skip malformed lines */ }
+    try { scanEntry(JSON.parse(line), flags, sessionCwd); } catch { /* skip malformed lines */ }
   }
   // A running codex-review defers the gate without advancing state, so the one reminder can still come later.
   if (reviewPending(homedir())) return;
@@ -339,7 +354,7 @@ async function main() {
   // The report reminder fires once per session; once it has, later stops only check servers.
   const block = !state.blocked && !flags.subagent && flags.sawEdit && !flags.sawReport;
   if (block) updated.blocked = true;
-  const servers = state.serversWarned ? [] : liveServers(flags.serverPorts, state.startedAt, flags.serverDirs);
+  const servers = state.serversWarned ? [] : liveServers(flags.launches, state.startedAt);
   if (servers.length > 0) updated.serversWarned = true;
   writeState(statePath, updated);
   try { pruneState(directory, statePath); } catch { /* cleanup is best effort */ }
