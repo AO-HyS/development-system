@@ -1883,7 +1883,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/development-steward",
           "destination": ".agents/skills/development-steward",
-          "folderSha256": "1c17243b684820aecff2d37d39fdb952d0a0ddfa471c91975a14aabe46152c54",
+          "folderSha256": "c3cc760353c8aab3d8361aa0e819a6fcd6f6cd10865f401ddebfa58b0f2f81fc",
           "expectedMirrorOf": null
         },
         {
@@ -1891,7 +1891,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/development-steward",
           "destination": ".claude/skills/development-steward",
-          "folderSha256": "1c17243b684820aecff2d37d39fdb952d0a0ddfa471c91975a14aabe46152c54",
+          "folderSha256": "c3cc760353c8aab3d8361aa0e819a6fcd6f6cd10865f401ddebfa58b0f2f81fc",
           "expectedMirrorOf": "development-steward.codex",
           "install": "symlink"
         }
@@ -2007,7 +2007,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".agents/skills/behavioral-evidence",
-          "folderSha256": "c9dfe14f727cfd84849ca9a0e63a45777eca768695a328a60e8b9411ed64586d",
+          "folderSha256": "597f507529252a1290a04bc9e091d932200bac9e6e91ba00b219ab50c47006b1",
           "expectedMirrorOf": null
         },
         {
@@ -2015,7 +2015,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
-          "folderSha256": "c9dfe14f727cfd84849ca9a0e63a45777eca768695a328a60e8b9411ed64586d",
+          "folderSha256": "597f507529252a1290a04bc9e091d932200bac9e6e91ba00b219ab50c47006b1",
           "expectedMirrorOf": "behavioral-evidence.codex",
           "install": "symlink"
         }

@@ -41,10 +41,11 @@ QuickE2E is an external tool, not shipped in this release. Install it once,
 pinned, outside any repository; skip this when
 `node ~/.development-system/tools/quicke2e/bin/quicke2e.mjs --help` already
 works and `git -C ~/.development-system/tools/quicke2e rev-parse HEAD` shows
-that commit:
+that commit. The same commands move an existing clone to the pin:
 
 ```bash
-git clone https://github.com/dmoka/quicke2e ~/.development-system/tools/quicke2e
+[ -d ~/.development-system/tools/quicke2e/.git ] || git clone https://github.com/dmoka/quicke2e ~/.development-system/tools/quicke2e
+git -C ~/.development-system/tools/quicke2e fetch origin
 git -C ~/.development-system/tools/quicke2e checkout 98f74b6ceb44e8eb68c0bc176e522983639b9521   # 0.5.0
 (cd ~/.development-system/tools/quicke2e && npm ci && npx playwright install chromium)
 ```

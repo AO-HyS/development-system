@@ -63,6 +63,10 @@ export function prReviewStatus({ pr, request = false }) {
   const head = String(pull.head.sha);
   const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user));
   const read = () => ghList(`${base}/issues/${number}/comments`);
+  // Request markers count only on comments the authenticated account posted as a real request;
+  // anyone else can paste the marker text.
+  const viewer = String(JSON.parse(gh(["api", "user"])).login);
+  const ownRequest = (/** @type {any} */ comment) => comment.user?.login === viewer && String(comment.body).startsWith("@codex review") && String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`);
   const comments = read();
   const appComments = comments.filter((comment) => isCodexApp(comment.user));
   const summary = appComments.filter((comment) => String(comment.body).includes("codex-pull-request-review-summary")).pop();
@@ -83,9 +87,9 @@ export function prReviewStatus({ pr, request = false }) {
   const runningForHead = summaryForHead && /running|progress|queued/i.test(summaryRow?.[1] ?? "");
   // A usage or access error counts only as an answer to our own request for this exact head;
   // anything else stays pending so a new head can always be asked.
-  const ourRequest = Math.max(0, ...comments.filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).map((comment) => Date.parse(comment.created_at)));
+  const ourRequest = Math.max(0, ...comments.filter(ownRequest).map((comment) => Date.parse(comment.created_at)));
   const unavailable = ourRequest > 0 && appComments.some((comment) => Date.parse(comment.created_at) > ourRequest && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
-  const requestedForHead = (/** @type {any[]} */ list) => list.some((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`));
+  const requestedForHead = (/** @type {any[]} */ list) => list.some(ownRequest);
   /** @type {"no-findings" | "findings" | "running" | "pending" | "unavailable"} */
   let state;
   if (headReviewed) state = open.length > 0 || resolvedWithoutReply > 0 ? "findings" : "no-findings";
@@ -100,7 +104,7 @@ export function prReviewStatus({ pr, request = false }) {
       // Post, then settle duplicates on GitHub itself: if concurrent runs both asked for this head,
       // every request but the earliest is deleted, so exactly one remains. No local lock to strand.
       const posted = JSON.parse(gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]));
-      const forHead = read().filter((comment) => String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`)).sort((a, b) => a.id - b.id);
+      const forHead = read().filter(ownRequest).sort((a, b) => a.id - b.id);
       if (forHead.length > 0 && forHead[0].id !== posted.id) {
         gh(["api", "-X", "DELETE", `${base}/issues/comments/${posted.id}`]);
         requestStatus = "already-requested-for-head";

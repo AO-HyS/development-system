@@ -104,6 +104,11 @@ export async function runDevelopmentSteward(options) {
       steward.report.summary,
       "",
       ...steward.report.items.flatMap((item) => [`- **${item.title}** — ${item.detail}`, ""]),
+      // The report lists only action-needed items; a check that could not run must still show up.
+      ...(Array.isArray(collected.repositories) ? collected.repositories : []).flatMap((repository) =>
+        (Array.isArray(repository?.evaluations) ? repository.evaluations : [])
+          .filter((evaluation) => evaluation?.state === "unproven")
+          .flatMap((evaluation) => [`- **Unproven ${repository.id} ${evaluation.area ?? "check"}** — ${evaluation.summary ?? "no evidence collected"}`, ""])),
       ...(steward.report.repeatedMistakes ?? []).flatMap((mistake) => [
         `- **Repeated mistake ${mistake.id}** — ${mistake.incidents.length} incidents; control: ${mistake.proposedControl ?? "none proposed yet"}`, ""]),
       `Check-in: ${checkIn.summary}`,
