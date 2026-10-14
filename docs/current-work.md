@@ -21,9 +21,13 @@ Untracked .impeccable/, output/ and private/ remain untouched.
 - The Stop-hook server reminder was dropped; tracked as friction
   `server-ownership-needs-launch-receipt`.
 
-Reviews: Sol 6.1 High rounds 1–9, round 9 APPROVE on 16d3b43; Codex app
-no-findings on 16d3b43. Installed in the operator HOME: package/contract 2.3.0,
-catalog 0.68.0, source 386ae74, doctor ok, guardrails and report gate healthy.
+Reviews: Sol 6.1 High rounds 1–9, round 9 APPROVE on 16d3b43. The merge
+relied on `pr-review-status` reporting no-findings on 16d3b43, but that came
+from an empty Codex review created by a thread reply; the real review, posted
+after the merge, had one P2 (shared `/tmp/body.md` in `system-recap`). Both are
+fixed on this branch (mistake `codex-gate-counted-empty-review`). Installed in
+the operator HOME: package/contract 2.3.0, catalog 0.68.0, source 386ae74,
+doctor ok, guardrails and report gate healthy; reinstalled after this branch.
 
 The weekly Steward task (Mon 09:00) runs the 2.3.0 checks: primitives tend,
 friction list and pr-review-status of merged PRs.
@@ -33,6 +37,9 @@ friction list and pr-review-status of merged PRs.
 - `doctor` and shared `update` human output print version, catalog, commit and
   health instead of `Installation undefined.` (friction
   `doctor-human-summary-undefined`).
+- `pr-review-status` counts only real Codex reviews (body with the Codex
+  Review header), never the empty review a thread reply creates.
+- `system-recap` edits the PR body through a per-invocation `mktemp` file.
 - This record.
 
 ## Follow-up work in other threads

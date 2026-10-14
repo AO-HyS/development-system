@@ -134,7 +134,10 @@ function formatHuman(result) {
   if (result.operation === "shared-installation-audit" || result.operation === "update") {
     const active = /** @type {{packageVersion?: string, catalogVersion?: string, sourceCommit?: string} | undefined} */ (result.active);
     const problems = Array.isArray(result.problems) ? result.problems : [];
-    const label = result.operation === "update" ? `Development System ${result.version} installed` : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
+    const shared = /** @type {{sourceCommit?: string} | undefined} */ (result.shared);
+    const label = result.operation === "update"
+      ? `Development System ${result.version} (catalog ${result.catalogVersion ?? "unknown"}, ${String(shared?.sourceCommit ?? "unknown").slice(0, 12)}) installed`
+      : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
     return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
   }
   if (result.operation === "install") {

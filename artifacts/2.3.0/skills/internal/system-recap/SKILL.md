@@ -60,8 +60,9 @@ Replace only the text between the markers (append the block on first run),
 leaving the rest of the description untouched:
 
 ```bash
-gh pr view <n> --json body -q .body > /tmp/body.md   # edit only the marked block
-gh pr edit <n> --body-file /tmp/body.md
+body=$(mktemp)                                          # one file per invocation
+gh pr view <n> --json body -q .body > "$body"           # edit only the marked block
+gh pr edit <n> --body-file "$body"; rm -f "$body"
 ```
 
 Re-run after pushing significant commits. In plan mode, put the block in the
