@@ -73,6 +73,9 @@ for (const artifact of manifest.artifacts) {
   if (hash(await bytes(artifact.sourcePath)) !== artifact.sha256) throw new Error(`Previous artifact drift: ${artifact.sourcePath}`);
 }
 const catalog = JSON.parse((await bytes(`catalog/${previousCatalog}.json`)).toString());
+// The previous catalog's skill folders are published too: validate them before any entry is replaced.
+const previousErrors = await validateSkillCatalog(structuredClone(catalog), root);
+if (previousErrors.length) throw new Error(`Previous catalog ${previousCatalog} drift: ${previousErrors.join('; ')}`);
 catalog.catalogVersion = catalogVersion;
 for (const name of updatedSkills) {
   const skill = catalog.skills.find((/** @type {{logicalName:string}} */ row) => row.logicalName === name);
