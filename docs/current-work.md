@@ -62,6 +62,9 @@ Carried forward, still unresolved:
   (needs a server-login decision); escuela-360 Cloudflare Preview fails "Not
   logged in" (needs a new token); casa-roca-dashboard has no Vercel Git
   connection.
+- Test accounts for authenticated previews: NutriPlan has them (Diana Prueba
+  `TEST_*` in `apps/dashboard/.env.local`); the other repositories still need
+  them confirmed (the primitives threads use each repo's env accounts).
 - A product CI step for check-agents-rules/check-lint-floor needs an
   authorized release and product pin bumps.
 - First weekly Steward run under the A5 and 2.3.0 duties not yet observed;
