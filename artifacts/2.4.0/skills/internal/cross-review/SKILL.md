@@ -9,7 +9,8 @@ The author keeps writing; the reviewer only proposes. The conversation lives in
 one ordinary T3 thread the owner can open, read and write in: the owner asked
 for one continuous visible thread, so this is the explicit exception to fresh
 review rounds. It does not replace the Sol and Codex reviews the global review
-budget requires for a PR. The reviewer
+budget requires for a PR: one Sol review of the finished PR (none for docs-only
+or small low-risk PRs) and Codex asked at most twice. The reviewer
 model is the owner's choice: Astra Extra High for a Claude author, Opus for a
 Codex author; the owner may name another.
 

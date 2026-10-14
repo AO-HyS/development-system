@@ -1415,7 +1415,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.4.0/skills/internal/flow-implement",
           "destination": ".agents/skills/flow-implement",
-          "folderSha256": "3a6248480d4a6987f767e3fdb718d751185615f86ed8bd16870e5e14c357416b",
+          "folderSha256": "954e914c1aa757ff9edbb435c6f5a28d20b4c3eecfeb332ecf0a0771f528bc3c",
           "expectedMirrorOf": null
         },
         {
@@ -1423,7 +1423,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.4.0/skills/internal/flow-implement",
           "destination": ".claude/skills/flow-implement",
-          "folderSha256": "3a6248480d4a6987f767e3fdb718d751185615f86ed8bd16870e5e14c357416b",
+          "folderSha256": "954e914c1aa757ff9edbb435c6f5a28d20b4c3eecfeb332ecf0a0771f528bc3c",
           "expectedMirrorOf": "flow-implement.codex",
           "install": "symlink"
         }
@@ -4864,7 +4864,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.4.0/skills/internal/cross-review",
           "destination": ".agents/skills/cross-review",
-          "folderSha256": "a0ae4e2e5e1a6634cb618ff9ce7f8438c6a07fe5ecd1f99afced29ccb035b6c7",
+          "folderSha256": "2761ab00d0cc5bcdec87e3c70f03256c685b7ec33c48b908b16a06148d677a5e",
           "expectedMirrorOf": null
         },
         {
@@ -4872,7 +4872,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.4.0/skills/internal/cross-review",
           "destination": ".claude/skills/cross-review",
-          "folderSha256": "a0ae4e2e5e1a6634cb618ff9ce7f8438c6a07fe5ecd1f99afced29ccb035b6c7",
+          "folderSha256": "2761ab00d0cc5bcdec87e3c70f03256c685b7ec33c48b908b16a06148d677a5e",
           "expectedMirrorOf": "cross-review.codex",
           "install": "symlink"
         }

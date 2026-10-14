@@ -1,8 +1,9 @@
 // @ts-check
 // Whether a PR's current head has a clean Codex review (the chatgpt-codex-connector GitHub app).
 // Codex reviews only when a PR is opened, marked ready, or asked with "@codex review", so commits
-// pushed afterwards go unreviewed unless someone asks again. Integration requires `no-findings`:
-// the exact head reviewed by the Codex app and no unresolved Codex thread. `--request` asks once
+// pushed afterwards go unreviewed unless someone asks again. Integration requires `no-findings`
+// (the exact head reviewed by the Codex app and no unresolved Codex thread) or `budget-spent`
+// (both allowed requests used and every finding of the last reviewed head answered). `--request` asks once
 // per (repository, PR, head SHA); concurrent duplicates are deleted on GitHub, earliest kept.
 import { execFileSync } from "node:child_process";
 
@@ -92,9 +93,14 @@ export function prReviewStatus({ pr, request = false }) {
   const ourRequest = Math.max(0, ...comments.filter(ownRequest).map((comment) => Date.parse(comment.created_at)));
   const unavailable = ourRequest > 0 && appComments.some((comment) => Date.parse(comment.created_at) > ourRequest && /usage limit|quota|not enabled|no access/i.test(String(comment.body)));
   const requestedForHead = (/** @type {any[]} */ list) => list.some(ownRequest);
-  /** @type {"no-findings" | "findings" | "running" | "pending" | "unavailable"} */
+  // Review budget: Codex is asked at most twice per PR. Once both requests are spent and an
+  // earlier head was reviewed with every finding answered, later fix commits need no third request.
+  const requestsMade = new Set(comments.filter((comment) => comment.user?.login === viewer && String(comment.body).startsWith("@codex review") && String(comment.body).includes(REQUEST_MARKER)).map((comment) => /sha=([0-9a-f]{40})/.exec(String(comment.body))?.[1])).size;
+  const budgetSpent = !headReviewed && reviews.length > 0 && requestsMade >= 2 && open.length === 0 && resolvedWithoutReply === 0;
+  /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
   let state;
   if (headReviewed) state = open.length > 0 || resolvedWithoutReply > 0 ? "findings" : "no-findings";
+  else if (budgetSpent) state = "budget-spent";
   else if (runningForHead) state = "running";
   else if (unavailable) state = "unavailable";
   else state = "pending";
@@ -114,7 +120,7 @@ export function prReviewStatus({ pr, request = false }) {
     }
   }
   return {
-    ok: state === "no-findings",
+    ok: state === "no-findings" || state === "budget-spent",
     operation: "pr-review-status",
     pr: `${owner}/${repo}#${number}`,
     head,
@@ -134,6 +140,7 @@ export function formatPrReviewStatus(result) {
   if (result.reviewedCommits.length) lines.push(`Reviewed commits: ${result.reviewedCommits.join(", ")}`);
   for (const finding of result.openFindings) lines.push(`- open${finding.outdated ? " (outdated)" : ""}: ${finding.path}: ${finding.finding}`);
   if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply: answer each one (fixed in <sha>, or why it does not apply); resolving is not a fix.`);
+  if (result.state === "budget-spent") lines.push(`Both Codex requests are spent and the last reviewed head (${result.reviewedCommits.at(-1)}) has every finding answered; the commits after it must only fix those findings. Name them in the report.`);
   if (result.request !== "not-requested") lines.push(`Request: ${result.request}.`);
   if (result.state === "pending" && result.request === "not-requested") lines.push("Run again with --request to ask Codex to review this head.");
   return lines.join("\n");
