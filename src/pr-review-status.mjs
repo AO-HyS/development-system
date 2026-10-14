@@ -95,8 +95,12 @@ export function prReviewStatus({ pr, request = false }) {
   const requestedForHead = (/** @type {any[]} */ list) => list.some(ownRequest);
   // Review budget: Codex is asked at most twice per PR. Once both requests are spent and an
   // earlier head was reviewed with every finding answered, later fix commits need no third request.
-  const requestsMade = new Set(comments.filter((comment) => comment.user?.login === viewer && String(comment.body).startsWith("@codex review") && String(comment.body).includes(REQUEST_MARKER)).map((comment) => /sha=([0-9a-f]{40})/.exec(String(comment.body))?.[1])).size;
-  const budgetSpent = !headReviewed && reviews.length > 0 && requestsMade >= 2 && open.length === 0 && resolvedWithoutReply === 0;
+  const requestedShas = comments.filter((comment) => comment.user?.login === viewer && String(comment.body).startsWith("@codex review") && String(comment.body).includes(REQUEST_MARKER))
+    .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at))
+    .map((comment) => /sha=([0-9a-f]{40})/.exec(String(comment.body))?.[1]).filter(Boolean);
+  // The last request must already be answered by a real review, so a pending second review never counts.
+  const lastRequested = requestedShas.at(-1);
+  const budgetSpent = !headReviewed && new Set(requestedShas).size >= 2 && reviews.some((review) => review.commit_id === lastRequested) && open.length === 0 && resolvedWithoutReply === 0;
   /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
   let state;
   if (headReviewed) state = open.length > 0 || resolvedWithoutReply > 0 ? "findings" : "no-findings";
