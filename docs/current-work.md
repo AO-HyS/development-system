@@ -1,8 +1,30 @@
-# Current work — Development System 2.3.0 closeout
+# Current work — Development System 2.4.0 review budget
 
 Root: /Users/corrortiz/Documents/AO/development-system (canonical).
-Branch: chore/ds-230-closeout from develop 386ae74 (merge of PR #166).
+Branch: chore/ds-240-review-budget from develop 15093d0 (merge of PR #167), PR #168.
 Untracked .impeccable/, output/ and private/ remain untouched.
+
+## This branch: 2.4.0 (catalog 0.69.0)
+
+Why: on 2026-10-14 reviews per push across three gardener threads took one
+Codex account from 1% to 100% of its weekly limit in ~28 hours and drew on paid
+credits; Claude threads reread up to ~950K tokens per call. Audit scripts:
+`/private/tmp/usage-audit/`. The operator paused all product threads.
+
+- Review budget (global rules, `flow-implement`, `primitives-gardener`,
+  `cross-review`): one Sol 6.1 High review of the finished PR, a second only
+  for a blocking finding over the fix diff, none for docs-only or small
+  low-risk PRs; Codex asked at most twice. `pr-review-status` reports
+  `budget-spent` (ok) once both requests are used and every finding of the
+  last reviewed head is answered.
+- `cross-review` only on the operator's request; browser and computer use on
+  Sol 6.1 High.
+- Managed Claude settings add `CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000`.
+
+Operator authorized 2026-10-14: merge, promote to main and install, then
+start new primitives threads (Casa Roca, NutriPlan, AOHyS) under 2.4.0.
+
+# Earlier: Development System 2.3.0 closeout (PR #167, merged 15093d0)
 
 ## Delivered: 2.3.0 (PR #166, merged to develop 2026-10-13)
 
