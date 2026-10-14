@@ -1,0 +1,6 @@
+interface:
+  display_name: "En tus propias palabras"
+  short_description: "Reformula el objetivo y el problema del usuario antes de planear"
+  default_prompt: "Usa $in-your-own-words para reformular en tus palabras qué quiero lograr y qué problema resuelvo."
+policy:
+  allow_implicit_invocation: false

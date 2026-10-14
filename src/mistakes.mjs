@@ -7,8 +7,11 @@ const ID = /^[a-z0-9][a-z0-9-]{2,63}$/;
 export const repeatedMistakeHint = "Propose a hard rule at the highest level that can hold it: code > lint/CI/guard > rule/skill.";
 
 /**
- * @typedef {{id: string, incident: string, evidence: string, summary?: string, fix?: string, control?: string, repository?: string, recordedAt: string}} MistakeEntry
- * @typedef {{id: string, incidents: string[], occurrences: number, lastRecordedAt: string, summary: string | null, fix: string | null, control: string | null, proposedControl?: string | null, hint?: string}} MistakeGroup
+ * Frictions (paper cuts an agent hit while working) share the log with mistakes, typed by `kind`.
+ * Entries recorded before `kind` existed are mistakes. Only mistakes count toward the repeated-incident rule.
+ * @typedef {"mistake" | "friction"} EntryKind
+ * @typedef {{kind?: EntryKind, id: string, incident: string, evidence: string, summary?: string, fix?: string, control?: string, repository?: string, recordedAt: string}} MistakeEntry
+ * @typedef {{kind: EntryKind, id: string, incidents: string[], occurrences: number, lastRecordedAt: string, summary: string | null, fix: string | null, control: string | null, repositories: string[], proposedControl?: string | null, hint?: string}} MistakeGroup
  */
 
 /** @param {string} home */
@@ -29,6 +32,9 @@ function required(name, value) {
   return trimmed;
 }
 
+/** @param {MistakeEntry} entry @returns {EntryKind} */
+const kindOf = (entry) => entry.kind === "friction" ? "friction" : "mistake";
+
 /** @param {string} home @returns {MistakeEntry[]} */
 function readEntries(home) {
   const file = mistakeLogPath(home);
@@ -42,37 +48,41 @@ function readEntries(home) {
 /**
  * Appends one mistake occurrence to the private, append-only mistake log.
  * An occurrence with the same (id, incident) is not appended again.
- * @param {{home: string, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} options
+ * @param {{home: string, kind?: EntryKind, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} options
  */
-export function addMistake({ home, id, incident, evidence, summary, fix, control, repository }) {
-  if (typeof id !== "string" || !ID.test(id)) throw new Error("mistake id must match ^[a-z0-9][a-z0-9-]{2,63}$");
-  const entry = /** @type {MistakeEntry} */ ({ id, incident: required("incident", incident), evidence: required("evidence", evidence) });
+export function addMistake({ home, kind = "mistake", id, incident, evidence, summary, fix, control, repository }) {
+  if (typeof id !== "string" || !ID.test(id)) throw new Error(`${kind} id must match ^[a-z0-9][a-z0-9-]{2,63}$`);
+  const entry = /** @type {MistakeEntry} */ ({ kind, id, incident: required("incident", incident), evidence: required("evidence", evidence) });
   for (const [key, value] of Object.entries({ summary, fix, control, repository })) {
     const trimmed = optional(value);
     if (trimmed) /** @type {Record<string, string>} */ (entry)[key] = trimmed;
   }
   const entries = readEntries(home);
   const file = mistakeLogPath(home);
-  const incidents = new Set(entries.filter((item) => item.id === id).map((item) => item.incident));
+  const operation = `${kind}-add`;
+  const incidents = new Set(entries.filter((item) => item.id === id && kindOf(item) === kind).map((item) => item.incident));
   if (incidents.has(entry.incident)) {
-    return { ok: true, operation: "mistake-add", status: "duplicate", id, incident: entry.incident, incidents: incidents.size, path: file };
+    return { ok: true, operation, status: "duplicate", id, incident: entry.incident, incidents: incidents.size, path: file };
   }
   entry.recordedAt = new Date().toISOString();
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   appendFileSync(file, `${JSON.stringify(entry)}\n`, { encoding: "utf8", mode: 0o600 });
   chmodSync(file, 0o600);
-  return { ok: true, operation: "mistake-add", status: "recorded", id, incident: entry.incident, incidents: incidents.size + 1, path: file, entry };
+  return { ok: true, operation, status: "recorded", id, incident: entry.incident, incidents: incidents.size + 1, path: file, entry };
 }
 
 /**
- * Groups the private mistake log by id. With `repeated`, keeps ids seen in two or more distinct incidents.
- * @param {{home: string, repeated?: boolean}} options
+ * Groups one kind of the private log by id. With `repeated` (mistakes only), keeps ids seen in two or more distinct incidents.
+ * @param {{home: string, kind?: EntryKind, repeated?: boolean}} options
  */
-export function listMistakes({ home, repeated = false }) {
+export function listMistakes({ home, kind = "mistake", repeated = false }) {
+  if (repeated && kind !== "mistake") throw new Error("--repeated applies to mistakes only; frictions never become hard rules by count");
   /** @type {Map<string, MistakeGroup>} */
   const groups = new Map();
   for (const entry of readEntries(home)) {
-    const group = groups.get(entry.id) ?? { id: entry.id, incidents: [], occurrences: 0, lastRecordedAt: entry.recordedAt, summary: null, fix: null, control: null };
+    if (kindOf(entry) !== kind) continue;
+    const group = groups.get(entry.id) ?? { kind, id: entry.id, incidents: [], occurrences: 0, lastRecordedAt: entry.recordedAt, summary: null, fix: null, control: null, repositories: [] };
+    if (entry.repository && !group.repositories.includes(entry.repository)) group.repositories.push(entry.repository);
     if (!group.incidents.includes(entry.incident)) group.incidents.push(entry.incident);
     group.occurrences += 1;
     if (entry.recordedAt >= group.lastRecordedAt) group.lastRecordedAt = entry.recordedAt;
@@ -84,5 +94,5 @@ export function listMistakes({ home, repeated = false }) {
   const mistakes = [...groups.values()]
     .filter((group) => !repeated || group.incidents.length >= 2)
     .map((group) => repeated ? { ...group, proposedControl: group.control ?? null, hint: repeatedMistakeHint } : group);
-  return { ok: true, operation: "mistake-list", repeated, path: mistakeLogPath(home), mistakes };
+  return { ok: true, operation: `${kind}-list`, kind, repeated, path: mistakeLogPath(home), mistakes };
 }

@@ -12,6 +12,10 @@ first loading discovery, planning or every document. For non-trivial
 repository execution use `coding-orchestration` or an already selected
 `orchestrate-work` method, reading only relevant task references.
 
+Before planning non-trivial work, restate in your own words the user's goal, the
+problem it solves and your approach (`in-your-own-words`), then continue; stop
+only for a real ambiguity.
+
 ## Orchestration
 
 The model selected at the start stays the parent orchestrator, choosing native
@@ -82,14 +86,29 @@ and the real effects (charges, emails, writes) or none. Typecheck, HTTP 200 or a
 clean console is not acceptance. After 3 failed attempts at one problem,
 change strategy.
 
+Web flows are verified with QuickE2E on Jev (`behavioral-evidence`), logged in
+with the repository's test accounts, proving the allowed and the denied role
+and the side effects. A live QuickE2E run is real verification, not an
+automated test: its flow file lives in private evidence, never in a repository,
+and no emitted spec is kept (the operator decided this on 2026-10-13); keeping
+a replay spec needs a test grant. The T3 browser covers visual
+judgment. Jev through the operator's TypeSafe key is prepaid: bans on hosted
+inference or paid APIs do not cover it, data limits do. Try a tool with its
+documented model before any local substitute.
+
+Stop every dev server, model server or watcher you started before reporting:
+kill what you launched, never by name and never another thread's.
+
 ## Decisions
 
 - `Done when:` is executable: a command and its expected observation; the writer retries up to 3 times, the coordinator reruns it.
 - `Outcome:` is optional, only when it adds signal.
-- Develop merges are autonomous after real verification plus an independent review with no blocking findings; main, releases and production wait for the user.
+- Develop merges are autonomous after real verification, an independent review with no blocking findings and `development-system pr-review-status <pr>` showing a clean Codex review of the exact head (request one with `--request` after every new push); main, releases and production wait for the user.
+- Plans, primitive lists and authorization contracts go through `cross-review`: one visible T3 thread the operator can join, where the reviewer (Astra Extra High for a Claude author, Opus for a Codex author, by operator decision) and the author go back and forth until both accept the same version. This owner-requested conversation is the exception to fresh review rounds; the independent Sol 6.1 High review of a PR stays a fresh `delegate_task` per round.
+- Primitives: each product repo keeps `docs/architecture/primitives.json` true (`development-system check-primitives`); `primitives-gardener` fixes them and the Steward tends them. PRs carry a `system-recap`.
 - Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report; one-way (deleting data, destructive migrations, production, money, messages to customers): stop and ask.
 - Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.
-- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref>`; an id with two distinct incidents becomes a proposed hard rule on that ladder.
+- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref>`; an id with two distinct incidents becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the final report; frictions feed the Steward and never count as mistakes.
 - An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
 - No evals.
 
