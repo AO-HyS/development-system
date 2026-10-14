@@ -27,19 +27,20 @@ from an empty Codex review created by a thread reply; the real review, posted
 after the merge, had one P2 (shared `/tmp/body.md` in `system-recap`). Both are
 fixed on this branch (mistake `codex-gate-counted-empty-review`). Installed in
 the operator HOME: package/contract 2.3.0, catalog 0.68.0, source 386ae74,
-doctor ok, guardrails and report gate healthy; reinstalled after this branch.
+doctor ok, guardrails and report gate healthy. 2.3.0 bytes stay immutable.
 
 The weekly Steward task (Mon 09:00) runs the 2.3.0 checks: primitives tend,
 friction list and pr-review-status of merged PRs.
 
-## This branch
+## This branch: 2.3.1 (catalog 0.68.1)
 
 - `doctor` and shared `update` human output print version, catalog, commit and
   health instead of `Installation undefined.` (friction
   `doctor-human-summary-undefined`).
 - `pr-review-status` counts only real Codex reviews (body with the Codex
   Review header), never the empty review a thread reply creates.
-- `system-recap` edits the PR body through a per-invocation `mktemp` file.
+- `system-recap` edits the PR body through a per-invocation `mktemp` file,
+  shipped as artifacts/2.3.1 so the installed 2.3.0 keeps its bytes.
 - This record.
 
 ## Follow-up work in other threads
@@ -47,7 +48,7 @@ friction list and pr-review-status of merged PRs.
 - Primitives gardener, mode fix, launched 2026-10-13 on canonical checkouts:
   Casa Roca, NutriPlan and AOHyS. The Barber Central prompt is for the
   operator to launch (`~/.development-system/private/research/primitives-20261013/prompts/the-barber-central.md`).
-- NutriPlan dev Convex `elated-shark-671` is paused; resuming waits for the
-  operator.
+- NutriPlan dev Convex `elated-shark-671` answered function calls again on
+  2026-10-13 (no longer paused); the NutriPlan thread was told.
 
 Plan and inventories: `~/.development-system/private/research/primitives-20261013/`.
