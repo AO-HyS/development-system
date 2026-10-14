@@ -17,6 +17,8 @@ const ledgerRelative = ".development-system/private/runs/claude-orchestration";
 const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS: "4",
   CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: "1",
+  // Compact near 300K tokens instead of the 1M window: every call rereads the whole context.
+  CLAUDE_CODE_AUTO_COMPACT_WINDOW: "300000",
 });
 const managedEvents = /** @type {const} */ ([
   { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*", timeout: 20, statusMessage: "Checking roster and image budget", target: "guard" },

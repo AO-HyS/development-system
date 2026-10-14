@@ -131,6 +131,15 @@ function formatHuman(result) {
   if (result.operation === "validate-atom-plan") return `Atom plan: ${result.status}.`;
   if (result.operation === "record-provider-failure") return `Provider failure cached for ${result.candidateId} until ${result.expiresAt}.`;
   if (result.operation === "setup") return `Development System ${result.version} and skill catalog ${result.catalogVersion} installed. Run audit and audit-skills to inspect installation state.`;
+  if (result.operation === "shared-installation-audit" || result.operation === "update") {
+    const active = /** @type {{packageVersion?: string, catalogVersion?: string, sourceCommit?: string} | undefined} */ (result.active);
+    const problems = Array.isArray(result.problems) ? result.problems : [];
+    const shared = /** @type {{sourceCommit?: string} | undefined} */ (result.shared);
+    const label = result.operation === "update"
+      ? `Development System ${result.version} (catalog ${result.catalogVersion ?? "unknown"}, ${String(shared?.sourceCommit ?? "unknown").slice(0, 12)}) installed`
+      : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
+  }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
   }
@@ -244,19 +253,20 @@ function formatHuman(result) {
 
 /** @param {string[]} argv */
 function parseMistakeArguments(argv) {
-  const [, subcommand, ...tokens] = argv;
-  if (subcommand !== "add" && subcommand !== "list") throw new Error("Usage: development-system mistake <add|list> [options]");
-  /** @type {{subcommand: "add" | "list", home: string, json: boolean, repeated: boolean, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} */
-  const options = { subcommand, home: homedir(), json: false, repeated: false };
+  const [command, subcommand, ...tokens] = argv;
+  const kind = command === "friction" ? "friction" : "mistake";
+  if (subcommand !== "add" && subcommand !== "list") throw new Error(`Usage: development-system ${kind} <add|list> [options]`);
+  /** @type {{kind: "mistake" | "friction", subcommand: "add" | "list", home: string, json: boolean, repeated: boolean, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} */
+  const options = { kind, subcommand, home: homedir(), json: false, repeated: false };
   const valueFlags = subcommand === "add"
     ? { "--home": "home", "--id": "id", "--incident": "incident", "--evidence": "evidence", "--summary": "summary", "--fix": "fix", "--control": "control", "--repository": "repository" }
     : { "--home": "home" };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--json") { options.json = true; continue; }
-    if (token === "--repeated" && subcommand === "list") { options.repeated = true; continue; }
+    if (token === "--repeated" && subcommand === "list" && kind === "mistake") { options.repeated = true; continue; }
     const key = /** @type {Record<string, string>} */ (valueFlags)[token];
-    if (!key) throw new Error(`Unknown option for mistake ${subcommand}: ${token}`);
+    if (!key) throw new Error(`Unknown option for ${kind} ${subcommand}: ${token}`);
     const value = tokens[index + 1];
     if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
     /** @type {Record<string, unknown>} */ (options)[key] = value;
@@ -267,13 +277,14 @@ function parseMistakeArguments(argv) {
 
 /** @param {Record<string, unknown>} result */
 function formatMistake(result) {
-  if (result.operation === "mistake-add") {
+  const kind = String(result.operation).startsWith("friction") ? "friction" : "mistake";
+  if (String(result.operation).endsWith("-add")) {
     return result.status === "duplicate"
-      ? `Mistake ${result.id} incident ${result.incident} already recorded.`
-      : `Recorded mistake ${result.id} (${result.incidents} distinct incidents).`;
+      ? `${kind === "friction" ? "Friction" : "Mistake"} ${result.id} incident ${result.incident} already recorded.`
+      : `Recorded ${kind} ${result.id} (${result.incidents} distinct incidents).`;
   }
   const mistakes = /** @type {{id: string, incidents: string[], summary: string | null, hint?: string}[]} */ (Array.isArray(result.mistakes) ? result.mistakes : []);
-  if (mistakes.length === 0) return result.repeated ? "No repeated mistakes recorded." : "No mistakes recorded.";
+  if (mistakes.length === 0) return result.repeated ? "No repeated mistakes recorded." : `No ${kind === "friction" ? "frictions" : "mistakes"} recorded.`;
   return mistakes.flatMap((mistake) => [
     `${mistake.id}: ${mistake.incidents.length} incidents — ${mistake.summary ?? "no summary"}`,
     ...(mistake.hint ? [`  ${mistake.hint}`] : []),
@@ -346,9 +357,64 @@ async function runCommand(argv) {
     result.ok = result.valid;
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
-  if (argv[0] === "mistake") {
-    const { subcommand, home, json, repeated, ...fields } = parseMistakeArguments(argv);
-    const result = subcommand === "add" ? addMistake({ home, ...fields }) : listMistakes({ home, repeated });
+  if (argv[0] === "allow-tests" || argv[0] === "test-grants") {
+    const json = argv.includes("--json");
+    /** @type {Record<string, string>} */
+    const values = {};
+    /** @type {string[]} */
+    const roots = [];
+    let revoke = false;
+    for (let index = 1; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      if (arg === "--revoke" && argv[0] === "allow-tests") { revoke = true; continue; }
+      if (["--home", "--hours", "--reason"].includes(arg) && (arg === "--home" || argv[0] === "allow-tests")) {
+        const value = argv[++index];
+        if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
+        values[arg.slice(2)] = value;
+        continue;
+      }
+      if (arg.startsWith("--") || argv[0] === "test-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
+      roots.push(arg);
+    }
+    const { allowTests, confirmOperatorGrant, listTestGrants, formatTestGrants } = await import("./test-grants.mjs");
+    const home = values.home ?? homedir();
+    if (argv[0] === "allow-tests" && roots.length !== 1) throw new Error("Usage: development-system allow-tests <directory> [--hours N] [--reason text] | --revoke <directory>");
+    const result = argv[0] === "allow-tests"
+      ? await allowTests({ home, root: roots[0], hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke, confirm: confirmOperatorGrant })
+      : listTestGrants({ home });
+    return { result, output: json ? JSON.stringify(result) : formatTestGrants(result), json };
+  }
+  if (argv[0] === "check-primitives") {
+    const json = argv.includes("--json");
+    /** @type {Record<string, string>} */
+    const values = {};
+    for (let index = 1; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      if (!["--root", "--ref", "--file"].includes(arg)) throw new Error(`Unknown option for check-primitives: ${arg}`);
+      const value = argv[++index];
+      if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
+      values[arg.slice(2)] = value;
+    }
+    const { checkPrimitives, formatPrimitives } = await import("./primitives.mjs");
+    const result = checkPrimitives({ root: resolve(values.root ?? process.cwd()), ref: values.ref, file: values.file });
+    return { result, output: json ? JSON.stringify(result) : formatPrimitives(result), json };
+  }
+  if (argv[0] === "pr-review-status") {
+    const json = argv.includes("--json");
+    const request = argv.includes("--request");
+    const positional = argv.slice(1).filter((arg) => !arg.startsWith("--"));
+    if (positional.length !== 1 || argv.slice(1).some((arg) => arg.startsWith("--") && !["--json", "--request"].includes(arg))) {
+      throw new Error("Usage: development-system pr-review-status <owner/repo#number | PR URL> [--request] [--json]");
+    }
+    const { prReviewStatus, formatPrReviewStatus } = await import("./pr-review-status.mjs");
+    const result = prReviewStatus({ pr: positional[0], request });
+    return { result, output: json ? JSON.stringify(result) : formatPrReviewStatus(result), json };
+  }
+  if (argv[0] === "mistake" || argv[0] === "friction") {
+    const { subcommand, home, json, repeated, kind, ...fields } = parseMistakeArguments(argv);
+    const result = subcommand === "add" ? addMistake({ home, kind, ...fields }) : listMistakes({ home, kind, repeated });
     return { result, output: json ? JSON.stringify(result) : formatMistake(result), json };
   }
   if (argv[0] === "governance") {
@@ -671,7 +737,7 @@ async function runCommand(argv) {
     }
   } else {
     throw new Error(
-      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|check-agents-rules|check-lint-floor|mistake|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
+      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|allow-tests|test-grants|check-agents-rules|check-lint-floor|mistake|friction|check-primitives|pr-review-status|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
     );
   }
 
