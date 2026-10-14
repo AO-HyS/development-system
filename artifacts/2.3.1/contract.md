@@ -106,7 +106,7 @@ Historical release narratives are superseded; consult immutable contract 1.41.0 
 
 ## 2.3.1: per-invocation PR recap file
 
-Contract 2.3.1 keeps 2.3.0 and corrects `system-recap` (catalog 0.68.1): the PR body is edited through a `mktemp` file removed afterwards, so concurrent recaps cannot write one PR's description into another. `development-system pr-review-status` counts only real Codex reviews, never the empty review a reply inside a review thread creates, and `doctor` prints version, catalog, commit and health.
+Contract 2.3.1 keeps 2.3.0 and corrects `system-recap` (catalog 0.68.1): the edited PR body goes through standard input (`gh pr edit <n> --body-file -`), so no shared temporary file can mix two PRs and the edit's own exit status is the result. `development-system pr-review-status` counts only real Codex reviews, never the empty review a reply inside a review thread creates, and `doctor` prints version, catalog, commit and health.
 
 ## Generated host role profiles
 

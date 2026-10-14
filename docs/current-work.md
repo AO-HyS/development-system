@@ -39,7 +39,7 @@ friction list and pr-review-status of merged PRs.
   `doctor-human-summary-undefined`).
 - `pr-review-status` counts only real Codex reviews (body with the Codex
   Review header), never the empty review a thread reply creates.
-- `system-recap` edits the PR body through a per-invocation `mktemp` file,
+- `system-recap` sends the edited PR body through standard input,
   shipped as artifacts/2.3.1 so the installed 2.3.0 keeps its bytes.
 - This record.
 

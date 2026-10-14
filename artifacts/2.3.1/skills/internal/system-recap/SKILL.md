@@ -59,10 +59,14 @@ Keep it under about 120 lines.
 Replace only the text between the markers (append the block on first run),
 leaving the rest of the description untouched:
 
+Read the current body with `gh pr view <n> --json body -q .body`, then send
+the whole edited body through standard input, so no shared temporary file can
+mix two PRs and the edit's own exit status is the result:
+
 ```bash
-body=$(mktemp)                                          # one file per invocation
-gh pr view <n> --json body -q .body > "$body"           # edit only the marked block
-gh pr edit <n> --body-file "$body"; rm -f "$body"
+gh pr edit <n> --body-file - <<'BODY'
+<the full description with the refreshed recap block>
+BODY
 ```
 
 Re-run after pushing significant commits. In plan mode, put the block in the

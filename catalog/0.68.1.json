@@ -4802,7 +4802,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.3.1/skills/internal/system-recap",
           "destination": ".agents/skills/system-recap",
-          "folderSha256": "22e40f8cd61aefc28ee5ed12c7cd874eba66c4abe4f165eca8c0f80dd1d0b22c",
+          "folderSha256": "0ab9474557f8ba4135d86bfd6a2453fea595364a86732c3afd5e95856fa6cb59",
           "expectedMirrorOf": null
         },
         {
@@ -4810,7 +4810,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.3.1/skills/internal/system-recap",
           "destination": ".claude/skills/system-recap",
-          "folderSha256": "22e40f8cd61aefc28ee5ed12c7cd874eba66c4abe4f165eca8c0f80dd1d0b22c",
+          "folderSha256": "0ab9474557f8ba4135d86bfd6a2453fea595364a86732c3afd5e95856fa6cb59",
           "expectedMirrorOf": "system-recap.codex",
           "install": "symlink"
         }

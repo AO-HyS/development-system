@@ -63,7 +63,7 @@ const hostProfiles = () => ['shared', 'codex', 'claude'].map(host => renderHostI
 
 const releaseNote = `## ${version}: per-invocation PR recap file
 
-Contract ${version} keeps 2.3.0 and corrects \`system-recap\` (catalog ${catalogVersion}): the PR body is edited through a \`mktemp\` file removed afterwards, so concurrent recaps cannot write one PR's description into another. \`development-system pr-review-status\` counts only real Codex reviews, never the empty review a reply inside a review thread creates, and \`doctor\` prints version, catalog, commit and health.
+Contract ${version} keeps 2.3.0 and corrects \`system-recap\` (catalog ${catalogVersion}): the edited PR body goes through standard input (\`gh pr edit <n> --body-file -\`), so no shared temporary file can mix two PRs and the edit's own exit status is the result. \`development-system pr-review-status\` counts only real Codex reviews, never the empty review a reply inside a review thread creates, and \`doctor\` prints version, catalog, commit and health.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);
