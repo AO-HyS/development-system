@@ -73,6 +73,18 @@ for (const artifact of manifest.artifacts) {
   if (hash(await bytes(artifact.sourcePath)) !== artifact.sha256) throw new Error(`Previous artifact drift: ${artifact.sourcePath}`);
 }
 const catalog = JSON.parse((await bytes(`catalog/${previousCatalog}.json`)).toString());
+// The local previous manifest and catalog are not their own authority: every published copy
+// (develop, main, the previous tag) must match them and every source they declare.
+const previousPaths = [...new Set([
+  `manifests/${previous}.json`, `catalog/${previousCatalog}.json`,
+  ...manifest.artifacts.map((/** @type {{sourcePath:string}} */ artifact) => artifact.sourcePath),
+  ...catalog.skills.flatMap((/** @type {{variants:{sourceDirectory:string}[]}} */ skill) => skill.variants.map(variant => variant.sourceDirectory)),
+])];
+for (const ref of ['refs/remotes/origin/develop', 'refs/remotes/origin/main', `refs/tags/v${previous}`]) {
+  try { execFileSync('git', ['cat-file', '-e', `${ref}:manifests/${previous}.json`], { cwd: root, stdio: 'ignore' }); } catch { continue; }
+  try { execFileSync('git', ['diff', '--quiet', ref, '--', ...previousPaths], { cwd: root, stdio: 'ignore' }); }
+  catch { throw new Error(`Published ${previous} sources differ from ${ref}; create a new version instead`); }
+}
 // The previous catalog's skill folders are published too: validate them before any entry is replaced.
 const previousErrors = await validateSkillCatalog(structuredClone(catalog), root);
 if (previousErrors.length) throw new Error(`Previous catalog ${previousCatalog} drift: ${previousErrors.join('; ')}`);
