@@ -1,8 +1,21 @@
-# Current work — Development System 2.4.0 review budget
+# Current work — Development System 2.4.1 browser budget
 
 Root: /Users/corrortiz/Documents/AO/development-system (canonical).
-Branch: chore/ds-240-review-budget from develop 15093d0 (merge of PR #167), PR #168.
+Branch: chore/ds-241-browser-budget from develop b7c7937 (merge of PR #168).
 Untracked .impeccable/, output/ and private/ remain untouched.
+
+## This branch: 2.4.1 (catalog 0.69.1)
+
+2.4.0 shipped (main ba0cd4f, release v2.4.0) and is installed. A check of the
+new primitives threads on 2026-10-14 found them within the review budget and
+under ~270K context, but AOHyS ran six Sol browser sessions across three PRs in
+an hour. 2.4.1 adds the browser budget (global rules, `flow-implement`,
+`primitives-gardener`, `behavioral-evidence`): one browser session per PR on
+its ready head, a second only to check the fix of a real defect, one visual
+critique for UI changes, no third without the operator. Operator authorized
+2026-10-14: change and install.
+
+# Earlier: Development System 2.4.0 review budget (PR #168, merged b7c7937)
 
 ## This branch: 2.4.0 (catalog 0.69.0)
 
