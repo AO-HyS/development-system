@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.69.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "7d3026165ae943ceb0921902441b36d4e715ca287b07b4c13fd79b1b7380e4b3",
+      "sha256": "0bdd4b3e89573fddb8f26f2fd78c8f9871f72db457599639216642f30d12e6b5",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.4.0/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "e1737b32da8c6e8d08c1433734bd8521d53758833f10123599e384cc899965f4",
+      "sha256": "3a308411404bd9f515b4397b79c071635a326fb0bafe87ded0da9fab150da138",
       "expectedMirrorOf": null
     },
     {

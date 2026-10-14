@@ -67,7 +67,8 @@ For a requested standalone completion report or a durable media package, read
    it with `--request` once and wait (T3 `watch_pull_request` when available);
    `findings` → fix or answer each one in its thread. Ask again at most once
    after the fixes; after that second review, answer its findings and
-   integrate, naming any later fix commits in the report. `unavailable` is
+   integrate even though `pr-review-status` reports the newer head as
+   `pending`, naming the later fix commits in the report. `unavailable` is
    not approval.
 
 ## Leave nothing running

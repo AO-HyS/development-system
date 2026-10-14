@@ -8,8 +8,8 @@ description: Open a visible T3 review thread where a second model (Astra Extra H
 The author keeps writing; the reviewer only proposes. The conversation lives in
 one ordinary T3 thread the owner can open, read and write in: the owner asked
 for one continuous visible thread, so this is the explicit exception to fresh
-review rounds. It is not a substitute for the independent Sol review (a fresh
-`delegate_task` per round) and the Codex review a PR still needs. The reviewer
+review rounds. It does not replace the Sol and Codex reviews the global review
+budget requires for a PR. The reviewer
 model is the owner's choice: Astra Extra High for a Claude author, Opus for a
 Codex author; the owner may name another.
 
