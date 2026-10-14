@@ -52,3 +52,22 @@ friction list and pr-review-status of merged PRs.
   2026-10-13 (no longer paused); the NutriPlan thread was told.
 
 Plan and inventories: `~/.development-system/private/research/primitives-20261013/`.
+
+## Still open from earlier records
+
+The full history before 2.3.0 is `git show 386ae74:docs/current-work.md`.
+Carried forward, still unresolved:
+
+- Owner decisions: home-expenses Electron renderer imports removed client auth
+  (needs a server-login decision); escuela-360 Cloudflare Preview fails "Not
+  logged in" (needs a new token); casa-roca-dashboard has no Vercel Git
+  connection.
+- A product CI step for check-agents-rules/check-lint-floor needs an
+  authorized release and product pin bumps.
+- First weekly Steward run under the A5 and 2.3.0 duties not yet observed;
+  live skill selection by a host not observed.
+- Barber was not replayed for Line A (its checkout belonged to an active
+  thread); casa-roca pre-migration ESLint config no longer loads (fails closed).
+- Known guard gap: `parallel cmd ::: a` test writes are not inspected.
+- nutri-plan production waits for its redesign; opportunity-os keeps 35
+  uncommitted LinkedIn-workflow changes from 2026-10-06 untouched.
