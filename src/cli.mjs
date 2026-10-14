@@ -131,6 +131,12 @@ function formatHuman(result) {
   if (result.operation === "validate-atom-plan") return `Atom plan: ${result.status}.`;
   if (result.operation === "record-provider-failure") return `Provider failure cached for ${result.candidateId} until ${result.expiresAt}.`;
   if (result.operation === "setup") return `Development System ${result.version} and skill catalog ${result.catalogVersion} installed. Run audit and audit-skills to inspect installation state.`;
+  if (result.operation === "shared-installation-audit" || result.operation === "update") {
+    const active = /** @type {{packageVersion?: string, catalogVersion?: string, sourceCommit?: string} | undefined} */ (result.active);
+    const problems = Array.isArray(result.problems) ? result.problems : [];
+    const label = result.operation === "update" ? `Development System ${result.version} installed` : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
+  }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
   }
