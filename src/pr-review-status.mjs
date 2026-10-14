@@ -61,7 +61,9 @@ export function prReviewStatus({ pr, request = false }) {
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
   const head = String(pull.head.sha);
-  const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user));
+  // Only a real Codex review counts: a reply inside a review thread also creates an empty
+  // review on the head, which must not mark the head as reviewed.
+  const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user) && /Codex Review|Reviewed commit/.test(String(review.body)));
   const read = () => ghList(`${base}/issues/${number}/comments`);
   // Request markers count only on comments the authenticated account posted as a real request;
   // anyone else can paste the marker text.
