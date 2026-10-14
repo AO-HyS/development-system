@@ -112,6 +112,8 @@ export function prReviewStatus({ pr, request = false }) {
   if (request) {
     if (state !== "pending") requestStatus = `skipped-${state}`;
     else if (requestedForHead(comments)) requestStatus = "already-requested-for-head";
+    // Review budget: never post a third request; the operator decides past two.
+    else if (new Set(requestedShas).size >= 2) requestStatus = "budget-exhausted";
     else {
       // Post, then settle duplicates on GitHub itself: if concurrent runs both asked for this head,
       // every request but the earliest is deleted, so exactly one remains. No local lock to strand.
@@ -146,6 +148,7 @@ export function formatPrReviewStatus(result) {
   if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply: answer each one (fixed in <sha>, or why it does not apply); resolving is not a fix.`);
   if (result.state === "budget-spent") lines.push(`Both Codex requests are spent and the last reviewed head (${result.reviewedCommits.at(-1)}) has every finding answered; the commits after it must only fix those findings. Name them in the report.`);
   if (result.request !== "not-requested") lines.push(`Request: ${result.request}.`);
+  if (result.request === "budget-exhausted") lines.push("Codex was already asked twice on this PR; a third request needs the operator.");
   if (result.state === "pending" && result.request === "not-requested") lines.push("Run again with --request to ask Codex to review this head.");
   return lines.join("\n");
 }
