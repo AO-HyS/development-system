@@ -18,20 +18,39 @@
       if (narrow.matches) parent.append(notes);
       else connections.after(notes);
     }
-    if (narrow.matches) return;
+    if (narrow.matches) {
+      items.slice(0, -1).forEach((item, i) => {
+        const origin = item.getBoundingClientRect();
+        const dot = buttons[i].querySelector('.point').getBoundingClientRect();
+        const nextDot = buttons[i + 1].querySelector('.point').getBoundingClientRect();
+        const start = dot.top + dot.height / 2;
+        const end = nextDot.top + nextDot.height / 2;
+        item.style.setProperty('--line-top', `${start - origin.top}px`);
+        item.style.setProperty('--line-height', `${end - start}px`);
+        const gate = items[i + 1].querySelector('.gate svg');
+        if (gate) {
+          const box = gate.getBoundingClientRect();
+          const offset = box.top + box.height / 2 - start;
+          item.style.setProperty('--line-mask', `linear-gradient(to bottom,#000 ${offset - 7}px,transparent ${offset - 7}px,transparent ${offset + 7}px,#000 ${offset + 7}px)`);
+        } else item.style.setProperty('--line-mask', 'none');
+      });
+      return;
+    }
     const bounds = drawing.getBoundingClientRect();
     const box = buttons[selected].getBoundingClientRect();
     const center = box.left - bounds.left + box.width / 2;
-    const width = Math.min(112, box.width - 8);
+    const width = Math.min(104, box.width - 28);
+    const height = box.height + 6;
     windowBox.style.left = '0';
     windowBox.style.width = `${width}px`;
-    windowBox.style.height = `${bounds.height - 29}px`;
+    windowBox.style.height = `${height}px`;
     windowBox.style.transform = `translateX(${center - width / 2}px)`;
     connections.setAttribute('viewBox', `0 0 ${bounds.width} 40`);
-    const ends = [(bounds.width - 48) / 4, bounds.width - (bounds.width - 48) / 4];
+    const ends = [...notes.querySelectorAll('h2')].map(heading => heading.getBoundingClientRect().left - bounds.left + 2);
+    const startY = 29 + height - bounds.height;
     [...connections.children].forEach((path, i) => {
       const start = center + (i === 0 ? -1 : 1) * width / 2;
-      path.setAttribute('d', `M${start} 0 C${start} 20 ${ends[i]} 20 ${ends[i]} 40`);
+      path.setAttribute('d', `M${start} ${startY} C${start} ${startY + 20} ${ends[i]} 20 ${ends[i]} 40`);
     });
   }
   function choose(index, focus = false) {
@@ -82,6 +101,8 @@
   windowBox.addEventListener('lostpointercapture', finish);
   narrow.addEventListener('change', position);
   new ResizeObserver(position).observe(drawing);
-  document.documentElement.classList.add('js');
   choose(selected);
+  // Settle the first position before enabling transitions for later choices.
+  windowBox.getBoundingClientRect();
+  document.documentElement.classList.add('js');
 })();

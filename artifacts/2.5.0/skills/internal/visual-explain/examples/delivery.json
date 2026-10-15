@@ -9,43 +9,43 @@
       "id": "scope",
       "label": "Alcance",
       "state": "done",
-      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
-      "exclude": "La existencia del archivo no demuestra adopción por el host."
+      "include": "El alcance acordado incluye planes y entregas.",
+      "exclude": "No se evaluó una presentación nueva para mensajes breves."
     },
     {
       "id": "direction",
       "label": "Dirección",
       "state": "done",
-      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
-      "exclude": "La existencia del archivo no demuestra adopción por el host."
+      "include": "El dueño eligió una línea de trabajo con un foco móvil.",
+      "exclude": "La aceptación del diseño en otros tamaños de pantalla."
     },
     {
       "id": "skill",
       "label": "Habilidad",
       "state": "done",
-      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
-      "exclude": "La existencia del archivo no demuestra adopción por el host."
+      "include": "El renderer generó un HTML autocontenido sin recursos externos.",
+      "exclude": "La carga automática de la habilidad por el host."
     },
     {
       "id": "integration",
       "label": "Integración",
       "state": "done",
-      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
-      "exclude": "La existencia del archivo no demuestra adopción por el host."
+      "include": "El catálogo contiene una copia y un espejo de la habilidad.",
+      "exclude": "La instalación en el entorno habitual del dueño."
     },
     {
       "id": "verification",
       "label": "Verificación",
       "state": "active",
-      "include": "Ejemplo de comprobaciones aún en curso.",
-      "exclude": "Los casos que faltan por observar deben permanecer explícitos."
+      "include": "El plan se leyó a 728 px en tema claro.",
+      "exclude": "La navegación con teclado a 390 px."
     },
     {
       "id": "installation",
       "label": "Instalación global",
       "state": "pending",
-      "include": "Ninguna instalación realizada en este ejemplo.",
-      "exclude": "No hay autorización para una instalación real."
+      "include": "Hay un paquete preparado para instalar.",
+      "exclude": "No se ha instalado en el entorno habitual del dueño."
     }
   ],
   "gates": [
