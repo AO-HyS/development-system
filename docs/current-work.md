@@ -1,4 +1,4 @@
-# Current work — in-your-own-words review pause (2.4.2 candidate)
+# Current work — in-your-own-words review pause (2.4.2 installed)
 
 Root: /Users/corrortiz/Documents/AO/development-system (canonical).
 Branch: fix/in-your-own-words-review-pause, from develop
@@ -24,9 +24,18 @@ source review: no actionable findings on candidate snapshot
 Generic skill quick_validate rejected the preserved Claude frontmatter flag;
 recorded friction skill-validator-claude-frontmatter. Catalog validation passed.
 Evidence: ~/.development-system/private/research/in-your-own-words-20261015/.
-Pending: operator decision on activating the shared global installation, then
-fresh-session adoption and actual stop/wait behavior. Real-HOME installation,
-release, merge and publication have not been performed. No processes started.
+Operator explicitly authorized global installation (Instalar globalmente).
+Installed package/contract 2.4.2, catalog 0.69.2 from reviewed source
+596df102187e2746a47db792f7819c95ca803e7d using the same verified package that
+passed full shared setup in an isolated HOME. Global doctor ok, zero problems;
+guardrails, Claude orchestration and report gate healthy. Installed skill bytes,
+both host instructions and the Claude symlink match the reviewed candidate.
+One logical catalog entry remains. Product repositories were not written.
+Receipt: ~/.development-system/private/research/in-your-own-words-20261015/global-installation.json.
+Pending: fresh-session skill discovery and actual stop/wait behavior on the
+next real invocation. This session received the updated global instructions;
+that alone does not demonstrate skill behavior. No release, merge or remote
+publication performed. No processes started.
 
 ---
 
