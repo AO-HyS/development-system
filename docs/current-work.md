@@ -1,4 +1,36 @@
-# Current work — Development System 2.4.1 browser budget
+# Current work — in-your-own-words review pause (2.4.2 candidate)
+
+Root: /Users/corrortiz/Documents/AO/development-system (canonical).
+Branch: fix/in-your-own-words-review-pause, from develop
+3e1e8a9981c51dd101c6f1e1d9c6008bb21a3060.
+Untracked .impeccable/, output/ and private/ remain untouched.
+
+User request 2026-10-15: explain goal/problem AND the concrete proposed approach
+in more detail, then end the turn for review; unify the English/Spanish naming.
+One logical skill was found: the Spanish picker label differed from the English
+identifier, and Claude uses a symlink mirror. No duplicate skill was deleted.
+
+2.4.2/catalog 0.69.2 candidate adapts the external skill, aligns its picker name,
+and decouples routine autonomous restatement from the explicit review pause in
+the global instructions and flow-implement. Published 2.4.1 bytes stay immutable.
+Opus 5.5 authored the read-only plan; fresh Sol 6.1 High approved it. The parent
+is the sole writer; no protected native Haiku writer route was observed.
+
+Passed: typecheck, release:prepare, roster:check, check-no-tests, rules check
+(69 kept / 0 missing), diff check, isolated install/sync-skills/validate healthy
+and installed byte/symlink inspection. Fresh independent Sol 6.1 High final
+source review: no actionable findings on candidate snapshot
+25b269b8d9a7523967ae90de7ab8187130911404.
+Generic skill quick_validate rejected the preserved Claude frontmatter flag;
+recorded friction skill-validator-claude-frontmatter. Catalog validation passed.
+Evidence: ~/.development-system/private/research/in-your-own-words-20261015/.
+Pending: operator decision on activating the shared global installation, then
+fresh-session adoption and actual stop/wait behavior. Real-HOME installation,
+release, merge and publication have not been performed. No processes started.
+
+---
+
+# Earlier — Development System 2.4.1 browser budget
 
 Root: /Users/corrortiz/Documents/AO/development-system (canonical).
 Branch: chore/ds-241-browser-budget from develop b7c7937 (merge of PR #168).

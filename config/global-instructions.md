@@ -13,8 +13,9 @@ repository execution use `coding-orchestration` or an already selected
 `orchestrate-work` method, reading only relevant task references.
 
 Before planning non-trivial work, restate in your own words the user's goal, the
-problem it solves and your approach (`in-your-own-words`), then continue; stop
-only for a real ambiguity.
+problem it solves and your approach, then continue; stop only for a real
+ambiguity. An explicit `in-your-own-words` invocation ends the turn with the
+proposal and waits for the user's approval before execution.
 
 ## Orchestration
 
