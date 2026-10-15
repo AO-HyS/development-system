@@ -12,12 +12,22 @@ the skill, packet renderer, responsive interaction assets and examples.
 config/visual-delivery.md supplies the shared trigger, embedded in Codex global
 instructions and a declared Claude rule. Catalog 0.70.0 declares one Codex copy
 and a Claude symlink mirror. New manifest/builder/package 2.5.0 preserve published
-artifacts. Validation, isolated installation and independent review are underway.
+artifacts. Candidate source commit: 0c909aa52f2ce1aba0fe978511812b523322d892.
+Passed: typecheck, release:prepare, roster/roles, no-tests, rule preservation,
+skill validation, primitives and isolated setup/doctor. Installed Codex/Claude
+renderers produced byte-identical HTML. Independent source review found no
+actionable findings (requested Sol 6.1 High; observed metadata unavailable).
+audit-skills is incomplete (exit 1): structural health is clean, but a fresh
+HOME lacks authenticated live host receipts. Do not claim discovery or adoption.
 No global installation, PR, publication, merge or release is authorized.
 
 Three earlier browser passes are consumed. The extra pass approved for R2 was
 limited to those rejected proposals; R3 rendering still needs a new bounded
-browser authorization. Direction approval is not rendered acceptance.
+browser authorization. That permission has been requested and is pending.
+Direction approval is not rendered acceptance. No new browser or server started.
+Exact plan and delivery HTML, setup/doctor/audit results and source review are
+in private r3/implementation/. Report: ~/.development-system/private/documents/
+visual-explain-candidato-integrado-y-ver-76c8d182acb05e2c.html.
 Canonical root and branch remain /Users/corrortiz/Documents/AO/development-system,
 feat/visual-explain-t3, based on ad2da69b5f814c42d4893670e70532bc5ec56ae2.
 Private continuation: ~/.development-system/private/visual-explain-20261015/.
