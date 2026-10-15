@@ -1,0 +1,62 @@
+{
+  "mode": "plan",
+  "language": "es",
+  "title": "Plan · Ejemplo ilustrativo",
+  "intro": "Contenido de ejemplo: este recorrido muestra una propuesta, no el estado de un proyecto real.",
+  "selected": "direction",
+  "steps": [
+    {
+      "id": "scope",
+      "label": "Alcance",
+      "state": "done",
+      "include": "Definir qué problema resolver y conservar los flujos que ya sirven.",
+      "exclude": "Cambios a los cuestionarios existentes."
+    },
+    {
+      "id": "direction",
+      "label": "Dirección",
+      "state": "active",
+      "include": "Una explicación gráfica con un foco que permite explorar cada etapa.",
+      "exclude": "Tablas, pestañas y tarjetas repetidas."
+    },
+    {
+      "id": "skill",
+      "label": "Habilidad",
+      "state": "pending",
+      "include": "Crear las instrucciones y ejemplos reutilizables.",
+      "exclude": "Instalar globalmente sin autorización."
+    },
+    {
+      "id": "integration",
+      "label": "Integración",
+      "state": "pending",
+      "include": "Declarar la habilidad en ambos hosts del paquete.",
+      "exclude": "Cambiar las respuestas ordinarias o los cuestionarios."
+    },
+    {
+      "id": "verification",
+      "label": "Verificación",
+      "state": "pending",
+      "include": "Observar el candidato y sus límites con la autoridad disponible.",
+      "exclude": "Confundir archivos instalados con adopción real."
+    },
+    {
+      "id": "installation",
+      "label": "Instalación global",
+      "state": "pending",
+      "include": "Una posible acción posterior, solo con autorización expresa.",
+      "exclude": "Forma parte de este ejemplo, no de una autorización real."
+    }
+  ],
+  "gates": [
+    {
+      "before": "skill",
+      "label": "Decisión del dueño"
+    },
+    {
+      "before": "installation",
+      "label": "Autorización aparte"
+    }
+  ],
+  "closing": "Ejemplo de estructura. Sustituye los textos, estados y límites por hechos de tu tarea; elimina los hitos que no existan."
+}

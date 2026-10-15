@@ -1,4 +1,116 @@
-# Current work — in-your-own-words review pause (2.4.2 installed)
+# Current work — visual plans and completion delivery (2.5.0 candidate)
+
+2026-10-15: the owner approved Opus 5.5's R3 direction, “La línea y la
+ventana”: “Eso está perfecto. Lo que Opus propone está muy bien.” Continue the
+already authorized implementation; no new direction decision is pending.
+Substantive plans and nontrivial deliveries get this visual; ordinary replies
+stay text. No tabs or tables. Grill HTML questionnaires and the durable report
+renderer remain unchanged.
+
+Parent-owned candidate: artifacts/2.5.0/skills/internal/visual-explain contains
+the skill, packet renderer, responsive interaction assets and examples.
+config/visual-delivery.md supplies the shared trigger, embedded in Codex global
+instructions and a declared Claude rule. Catalog 0.70.0 declares one Codex copy
+and a Claude symlink mirror. New manifest/builder/package 2.5.0 preserve published
+artifacts. Validation, isolated installation and independent review are underway.
+No global installation, PR, publication, merge or release is authorized.
+
+Three earlier browser passes are consumed. The extra pass approved for R2 was
+limited to those rejected proposals; R3 rendering still needs a new bounded
+browser authorization. Direction approval is not rendered acceptance.
+Canonical root and branch remain /Users/corrortiz/Documents/AO/development-system,
+feat/visual-explain-t3, based on ad2da69b5f814c42d4893670e70532bc5ec56ae2.
+Private continuation: ~/.development-system/private/visual-explain-20261015/.
+Preserve existing untracked .impeccable/, output/ and private/.
+
+## Historical design rounds — superseded by the approval above
+
+Latest owner correction, 2026-10-15: rejects all three R2 proposals entirely
+and explicitly hates tables. Both prior rounds are discarded, including tabs;
+do not polish or preserve their composition. Owner requests Exa reference
+research and/or Opus 5.5 to design a new direction. Exa research and a fresh
+read-only Opus design delegation are complete; no new browser session started.
+R3 references: Appleton drawinginvisibles1, Ciechanowski Moon, Case Explorable
+Explanations. Opus authored "La línea y la ventana" with exact composition,
+interaction and plan/partial-close copy; private r3/opus-direction.md. It is
+textual design, not a rendered or approved candidate. All prior layouts remain
+rejected. No tables, including tables disguised as cards; grill stays intact.
+Wants the new presentation for plans and end-of-work deliveries, while
+preserving the HTML questionnaire workflow used in grill sessions. Owner
+explicitly clarified this; it is not a requirement to copy report block geometry.
+The broad conversational trigger and previous composition are superseded, not
+approved. Scope clarification is complete; replacement composition remains open.
+Current decision is recorded at the top of the existing private
+visual-explain-20261015/brief.md; earlier plan/evidence remain historical.
+
+Root: /Users/corrortiz/Documents/AO/development-system (canonical).
+Branch: feat/visual-explain-t3. Updated develop at 3e1e8a9, then preserved
+the two 2.4.2 dependency commits by fast-forward cherry-pick; current base
+ad2da69b5f814c42d4893670e70532bc5ec56ae2. Previous task branch and untracked
+.impeccable/, output/ and private/ remain intact.
+
+User approved implementation on 2026-10-15 after cross-review of the plan.
+The previous sequence required owner approval of private examples before
+fixing their direction in the new visual-explain skill. Provisional integration:
+new immutable 2.5.0/catalog 0.70.0; both hosts; existing report renderer preserved.
+No skill, catalog, release or global installation changed yet.
+
+Prototype: flow, comparison and staged plan in one self-contained T3 HTML.
+First Sol browser pass observed all three views at 390/728, light/dark and
+keyboard controls. It found unreadable selected tabs; parent corrected CSS
+specificity. Opus critique also found misleading highlights, now neutralized.
+Its image-budget hook limited critique to two captures; remaining views were
+not independently critiqued. No guard bypass or silent model replacement.
+
+Private plan, captures, review receipts and live process status:
+~/.development-system/private/visual-explain-20261015/continuation.json.
+Accepted plan: ~/.development-system/private/cross-review/
+visuals-t3-20261015-df68c7eb/plan-r1.md.
+Second and final correction pass passed: selected tabs 13.86:1 light / 12.33:1
+dark, no horizontal overflow at both widths, corrected semantic highlights.
+Exact HTML 8534801e3a98f27f8619c1b546ccd4031226aa9b0212bfd686b2a811f177d7ae
+was previewed and rendered in the owning thread. Twelve corrected captures
+and one real walkthrough are private; native touch, actual JS-off and reduced
+motion emulation remain not reached. Owned server PID 71308 was stopped.
+R2 preparation: Opus authored scope-plan-opus-r0.md; parent corrected authority,
+historical status and preview requirements in scope-plan-r2.md. Fresh independent
+Sol text review approved preparation (not UI). Questionnaire preservation is
+explicit; no shared renderer/skill modifications. Three composition candidates
+and decision-r2-payload.json were prepared privately before the authorized pass.
+No composition is approved. Two prior browser passes remain consumed; another
+requires the operator under the existing budget, not a reset for a new artifact.
+Owner explicitly authorized the additional bounded browser pass: "Sí, verifica
+y muestra las propuestas". Session 3 is complete on the private r2 decision
+surface. It presents three native HTML compositions with plan and partial-close
+examples, no tabs; preference marking is local and confirmed in chat. The same
+three prepared option IDs are preserved. Parent adapted the decision surface
+for durable T3 delivery with no POST/server dependency; no generated raster comps.
+Early observation found CSS overriding hidden on the reset control; parent
+corrected it and the same pending batch confirmed the initial/marked/reset
+states. Current HTML hash afcd81b86a23a093be80e58c6dafcb5390fdf17b02010711d5af04b631b3e8e8.
+Passed: A/B/C at 390/728 light/dark, disclosures and nested evidence, keyboard,
+focus, local marking/reset, no horizontal overflow or POST/external requests.
+Exact preview height 2538; shown inline at capped 2000 with vertical scrolling.
+Independent Opus critique of two natural light captures requests corrections:
+connectors, mobile arrow wrapping, C alignment and clearer local-mark wording.
+Parent retained these for the selected direction and rejected outer margins
+because T3 requires chat alignment. Expanded closes explicitly show pending
+integration; they were browser-checked but not independently critiqued.
+These are shown as open proposals, not final visual acceptance. Disposition,
+receipt, 17 current captures and a 46-second recording remain private in r2/.
+Durable report: ~/.development-system/private/documents/
+tres-propuestas-para-planes-y-entregas-f2685ec962e915b4.html.
+R2 is now rejected by the owner; no choice remains pending among A/B/C.
+Next: reference-grounded design by Opus, then a new visual candidate before
+integration and isolated validation. Parent-owned server PID85965 and
+Impeccable PID78789 are stopped.
+The third browser pass is consumed; no budget reset or new session was started.
+Global install,
+merge, release and publication remain separate authorization boundaries.
+
+---
+
+# Earlier — in-your-own-words review pause (2.4.2 installed)
 
 Root: /Users/corrortiz/Documents/AO/development-system (canonical).
 Branch: fix/in-your-own-words-review-pause, from develop

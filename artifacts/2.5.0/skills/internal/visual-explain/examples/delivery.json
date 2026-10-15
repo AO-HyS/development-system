@@ -1,0 +1,62 @@
+{
+  "mode": "delivery",
+  "language": "es",
+  "title": "Entrega parcial · Ejemplo ilustrativo",
+  "intro": "Contenido ilustrativo: una entrega distingue lo terminado de lo que aún no tiene evidencia.",
+  "selected": "verification",
+  "steps": [
+    {
+      "id": "scope",
+      "label": "Alcance",
+      "state": "done",
+      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
+      "exclude": "La existencia del archivo no demuestra adopción por el host."
+    },
+    {
+      "id": "direction",
+      "label": "Dirección",
+      "state": "done",
+      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
+      "exclude": "La existencia del archivo no demuestra adopción por el host."
+    },
+    {
+      "id": "skill",
+      "label": "Habilidad",
+      "state": "done",
+      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
+      "exclude": "La existencia del archivo no demuestra adopción por el host."
+    },
+    {
+      "id": "integration",
+      "label": "Integración",
+      "state": "done",
+      "include": "Ejemplo de un hecho que tendría evidencia concreta en el reporte.",
+      "exclude": "La existencia del archivo no demuestra adopción por el host."
+    },
+    {
+      "id": "verification",
+      "label": "Verificación",
+      "state": "active",
+      "include": "Ejemplo de comprobaciones aún en curso.",
+      "exclude": "Los casos que faltan por observar deben permanecer explícitos."
+    },
+    {
+      "id": "installation",
+      "label": "Instalación global",
+      "state": "pending",
+      "include": "Ninguna instalación realizada en este ejemplo.",
+      "exclude": "No hay autorización para una instalación real."
+    }
+  ],
+  "gates": [
+    {
+      "before": "skill",
+      "label": "Decisión del dueño"
+    },
+    {
+      "before": "installation",
+      "label": "Autorización aparte"
+    }
+  ],
+  "closing": "Ejemplo de estructura. Sustituye los textos, estados y límites por hechos de tu tarea; elimina los hitos que no existan."
+}

@@ -116,6 +116,8 @@ kill what you launched, never by name and never another thread's.
 - An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
 - No evals.
 
+{{visual-delivery}}
+
 ## Report and Headroom evidence
 
 Nontrivial delivery gets a readable HTML report from `development-system
