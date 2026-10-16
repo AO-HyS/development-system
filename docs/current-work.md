@@ -7,6 +7,14 @@ Substantive plans and nontrivial deliveries get this visual; ordinary replies
 stay text. No tabs or tables. Grill HTML questionnaires and the durable report
 renderer remain unchanged.
 
+Owner follow-up: every plan and delivery must explicitly say what is needed
+from the user and what happens next. Canonical host guidance, skill instructions,
+packet reference and examples now require both statements in the existing
+always-visible closing. Say when nothing is needed or the authorized work is
+complete; never reopen retained authorization or invent a dependency. This is
+a content/instruction refinement; renderer, CSS, interactions and grill are
+unchanged. Global installation remains outside the authorized endpoint.
+
 Parent-owned candidate: artifacts/2.5.0/skills/internal/visual-explain contains
 the skill, packet renderer, responsive interaction assets and examples.
 config/visual-delivery.md supplies the shared trigger, embedded in Codex global

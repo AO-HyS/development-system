@@ -20,6 +20,12 @@ The parent previews exact HTML before publishing in T3. Unavailable capability
 or exhausted browser authority produces an honest text/durable-path fallback,
 not an extra session or an unverified inline render.
 
+The owner additionally requires an explicit handoff: every plan and delivery
+says what is needed from them (or that nothing is needed) and what happens
+next, with its owner and genuine dependency. This uses the existing visible
+closing, never a selected annotation alone or a new approval flow. Retained
+authorization remains valid; optional work must not become a fabricated blocker.
+
 `config/visual-delivery.md` is canonical for both the global instruction block
 and a declared Claude rule artifact. The latter makes the trigger available in
 isolated fresh installations without assuming the operator's existing manual

@@ -9,7 +9,11 @@ The JSON object has:
 - `mode`: `plan` or `delivery`; chooses Includes/Leaves out or Verified/Not
   verified headings. `language` is `es` (default) or `en`.
 - `title`, `intro`, `closing`: plain text. The title identifies the real work;
-  the closing contains the next action and material boundary.
+  the required closing explicitly answers "What I need from you" and "What
+  happens next", in the user's language. State the exact request and what it
+  unlocks, or that nothing is needed. State the next action, owner and real
+  dependency, or that the authorized work is complete. This always-visible
+  text must not depend on the selected stage; gate labels are not a substitute.
 - `steps`: 2–8 objects with unique `id`, short `label`, `state` (`done`, `active`,
   `pending` or `blocked`), `include` and `exclude` plain text. For delivery,
   those last two fields hold verified facts and limitations respectively.
@@ -24,3 +28,9 @@ Strings are rendered as text. The packet has bounded text lengths; shorten
 excess copy instead of shrinking type. Keep detailed evidence and its durable
 links in the normal completion report. The examples are explicitly illustrative
 and make no claim about a real project's progress.
+
+For example, a real Spanish delivery with no pending user action can close:
+"Qué necesito de ti: nada por ahora. Qué sigue: continuaré con la verificación
+ya autorizada." If a genuine decision is required, name it specifically and
+explain what follows after it; never use an ambiguous "¿qué opinas?" as the
+handoff. Do not copy illustrative requests into a real task unchanged.

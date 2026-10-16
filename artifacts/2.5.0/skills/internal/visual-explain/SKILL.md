@@ -29,6 +29,17 @@ authority; an approval marker records a real boundary, never creates one.
   reduce a comparison to a decorative timeline. A different visual explicitly
   requested by the user takes precedence.
 
+Every plan and delivery closes with two explicit statements in the user's
+language, visible without selecting a stage: **What I need from you** and
+**What happens next**. Name the exact decision, input or action needed and what
+it unlocks; when none is needed, say "I don't need anything from you right now."
+Then name the next action, its owner and any genuine dependency. When the
+authorized work is complete, say that instead of inventing follow-up work.
+Use the existing `closing` text; do not add panels, tables or another approval
+flow. A gate label or linked report is not a substitute. Keep a pending user
+action explicit in the accompanying message too. Never request approval already
+given, block independent authorized work or imply optional work is required.
+
 Read [the approved direction](references/direction.md) for composition and
 responsive behavior. Use [the packet reference](references/packet.md) and adapt
 the plan or delivery example in `examples/`. The renderer supplies the approved
