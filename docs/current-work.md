@@ -1,8 +1,8 @@
-# Current work — visual plans and completion delivery (2.5.0 candidate)
+# Current work — visual plans and completion delivery (2.5.0 installed)
 
 2026-10-15: the owner approved Opus 5.5's R3 direction, “La línea y la
-ventana”: “Eso está perfecto. Lo que Opus propone está muy bien.” Continue the
-already authorized implementation; no new direction decision is pending.
+ventana”: “Eso está perfecto. Lo que Opus propone está muy bien.” Implementation
+and the subsequently authorized global installation are complete.
 Substantive plans and nontrivial deliveries get this visual; ordinary replies
 stay text. No tabs or tables. Grill HTML questionnaires and the durable report
 renderer remain unchanged.
@@ -16,7 +16,17 @@ a content/instruction refinement; renderer, CSS, interactions and grill are
 unchanged. Source: b5c7abd. Focused checks, isolated setup/doctor and installed
 example rendering passed. Report: ~/.development-system/private/documents/
 cierres-expl-citos-qu-necesito-de-ti-y-q-c95a1f154e8c3521.html.
-Global installation remains outside the authorized endpoint.
+The owner subsequently authorized global installation: "Adelante, haz la
+instalación global." Installed 2.5.0 / catalog 0.70.0 from
+8fc7d824e3b4986547af5053cf0631610483842a. Active doctor: ok, no problems.
+Guardrails and report gate remain healthy; recovery snapshot exists.
+Actual installed renderer generated the delivery summary. A fresh Claude child
+reported the new handoff rule in its supplied context; exhaustive automatic
+skill activation is not proved. Full audit-skills remains partial: old Factory
+mirrors plus stale or unauthenticated receipts for other existing skills.
+Those unrelated paths were preserved and the friction recorded. Final report:
+~/.development-system/private/documents/visual-explain-instalado-globalmente-2fb48a5cf58025b0.html
+No additional browser session or publication was performed.
 
 Parent-owned candidate: artifacts/2.5.0/skills/internal/visual-explain contains
 the skill, packet renderer, responsive interaction assets and examples.
@@ -32,7 +42,8 @@ unavailable). Subsequent visual corrections passed focused checks and the
 authorized browser pass; the final isolated installation matches both HTML files.
 audit-skills is incomplete (exit 1): structural health is clean, but a fresh
 HOME lacks authenticated live host receipts. Do not claim discovery or adoption.
-No global installation, PR, publication, merge or release is authorized.
+Global installation is now complete. PR, publication, merge and release remain
+outside this task's authorization.
 
 The additional R3 browser pass explicitly authorized by "Sí, verifica y muestra
 el candidato" is complete. Click, keyboard, drag, mobile reflow and light/dark
@@ -42,7 +53,9 @@ Native touch, JS-off and reduced-motion emulation remain not reached because
 the T3 controls were unavailable. No additional browser session is authorized.
 Final plan and delivery HTML were previewed and rendered in the owning thread;
 a 32.3-second walkthrough and captures are retained privately. The owned server
-PID 51922 was stopped. No global installation or product effects occurred.
+PID 51922 was stopped. At that browser-pass checkpoint no global installation
+had occurred; the later authorized installation is recorded above. No product
+effects occurred.
 Exact HTML, setup/doctor/audit results and review receipts are in private
 r3/implementation/. Final report: ~/.development-system/private/documents/
 visual-explain-implementaci-n-y-verifica-0a0f0cebd03d3844.html.
