@@ -13,14 +13,17 @@ packet reference and examples now require both statements in the existing
 always-visible closing. Say when nothing is needed or the authorized work is
 complete; never reopen retained authorization or invent a dependency. This is
 a content/instruction refinement; renderer, CSS, interactions and grill are
-unchanged. Global installation remains outside the authorized endpoint.
+unchanged. Source: b5c7abd. Focused checks, isolated setup/doctor and installed
+example rendering passed. Report: ~/.development-system/private/documents/
+cierres-expl-citos-qu-necesito-de-ti-y-q-c95a1f154e8c3521.html.
+Global installation remains outside the authorized endpoint.
 
 Parent-owned candidate: artifacts/2.5.0/skills/internal/visual-explain contains
 the skill, packet renderer, responsive interaction assets and examples.
 config/visual-delivery.md supplies the shared trigger, embedded in Codex global
 instructions and a declared Claude rule. Catalog 0.70.0 declares one Codex copy
 and a Claude symlink mirror. New manifest/builder/package 2.5.0 preserve published
-artifacts. Final source commit: 5bcfdead54fe0e3dfb1537e7d84b768ad399be31.
+artifacts. Browser-verified source baseline: 5bcfdead54fe0e3dfb1537e7d84b768ad399be31.
 Passed: typecheck, release:prepare, roster/roles, no-tests, rule preservation,
 skill validation, primitives and isolated setup/doctor. Installed Codex/Claude
 renderers produced byte-identical HTML. Independent source review found no
