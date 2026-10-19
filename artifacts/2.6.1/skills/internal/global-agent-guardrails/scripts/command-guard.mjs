@@ -1393,7 +1393,8 @@ function temporaryTarget(word, text, ctx) {
   const literal = first >= 0 ? word.value.slice(0, first) : text;
   if (ctx.cwd === null && !isAbsolute(literal)) return false;
   const base = ctx.cwd ?? ctx.scope;
-  if (first >= 0 && literal && insideTemporary(resolve(base, literal.endsWith("/") ? literal : dirname(literal)))) return true;
+  // An empty literal prefix (`"$name"`) is the working directory itself, as after `cd /tmp`.
+  if (first >= 0 && insideTemporary(resolve(base, !literal || literal.endsWith("/") ? literal : dirname(literal)))) return true;
   if (word.glob && protectedGlob(resolve(base, text), text, "write", temporaryTargets)) return true;
   const loose = looseGlob(word, text);
   if (loose !== null && protectedGlob(resolve(base, loose), loose, "write", temporaryTargets)) return true;
