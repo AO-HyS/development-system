@@ -15,7 +15,7 @@ const GATE_HOURS = 2;
 
 /**
  * @typedef {"pass" | "fail"} FlowResult
- * @typedef {"ok" | "failed" | "incomplete" | "missing" | "stale" | "waived" | "nonvisual"} EvidenceState
+ * @typedef {"ok" | "failed" | "incomplete" | "missing" | "stale" | "waived" | "nonvisual" | "nonfunctional"} EvidenceState
  * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  */
@@ -135,10 +135,14 @@ export function isNonFunctionalChange(file) {
  * `behavioralEvidence` for one PR head from its latest receipt. Pure: the caller supplies the PR body and, when the head
  * moved after the receipt, the files changed between the verified SHA and the head (null when GitHub could not list
  * them completely).
- * @param {{receipts: {path: string, receipt: Receipt}[], head: string, prBody?: string, changedFiles?: ChangedFile[] | null}} input
+ * @param {{receipts: {path: string, receipt: Receipt}[], head: string, prBody?: string, changedFiles?: ChangedFile[] | null, prFiles?: ChangedFile[] | null}} input
  */
-export function evaluateEvidence({ receipts, head, prBody = "", changedFiles }) {
+export function evaluateEvidence({ receipts, head, prBody = "", changedFiles, prFiles }) {
   const latest = receipts.at(-1);
+  // A PR whose every file is prose documentation has no behavior to run; an incomplete file list never qualifies.
+  if (!latest && prFiles?.length && prFiles.every(isNonFunctionalChange)) {
+    return { state: /** @type {EvidenceState} */ ("nonfunctional"), reason: `only prose docs changed: ${prFiles.map((file) => file.filename).slice(0, 5).join(", ")}` };
+  }
   if (!latest) return { state: /** @type {EvidenceState} */ ("missing"), reason: "no evidence receipt for this PR" };
   const { receipt, path } = latest;
   const base = { receipt: path, verifiedSha: receipt.verifiedSha, recordedAt: receipt.recordedAt };
@@ -159,7 +163,7 @@ export function evaluateEvidence({ receipts, head, prBody = "", changedFiles }) 
 }
 
 /** States that let a develop merge proceed (review and authorization remain separate gates). */
-export const ACCEPTED_EVIDENCE = new Set(["ok", "waived", "nonvisual"]);
+export const ACCEPTED_EVIDENCE = new Set(["ok", "waived", "nonvisual", "nonfunctional"]);
 
 /**
  * Records the merge pass the command guard reads for `gh pr merge --match-head-commit <head>`.
@@ -169,7 +173,8 @@ export function writeMergeGate({ home, pr, head, base, mergeReady, codex, behavi
   const reference = parsePrReference(pr);
   const createdAt = new Date();
   const gate = { pr: reference.key, number: reference.number, head, base, mergeReady, codex, behavioralEvidence, createdAt: createdAt.toISOString(), expiresAt: new Date(createdAt.getTime() + GATE_HOURS * 3_600_000).toISOString() };
-  const file = resolve(mergeGateRoot(home), `${head}.json`);
+  // Keyed by repository, PR and head: the guard matches the exact PR it is asked to merge.
+  const file = resolve(mergeGateRoot(home), `${reference.owner}-${reference.repo}-${reference.number}-${head}.json`);
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
   writeFileSync(file, `${JSON.stringify(gate, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   chmodSync(file, 0o600);

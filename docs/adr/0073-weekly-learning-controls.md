@@ -38,3 +38,22 @@ plan (cross-reviewed, plan-r3) and asked for controls in code before rules.
 
 Installation, merge-gate probes and isolated-HOME runs are verification;
 live adoption by product threads needs its own observation.
+
+## 2.6.1: review fixes
+
+The independent Sol 6.1 High review of 2.6.0 (after merge, before global
+installation) found merge-gate bypasses and gaps. Contract 2.6.1 / catalog
+0.71.1, guard policy 2.2.1:
+
+- `gh` options are read wherever they sit (`gh --repo o/r pr merge`).
+- A merge names its PR explicitly (URL, or number with `-R`); passes are stored
+  and matched per repository, PR and head.
+- The REST merge route is blocked in any host, query, encoding or slash
+  spelling, as are GraphQL `mergePullRequest` and `enablePullRequestAutoMerge`
+  and a GraphQL body from `--input`. `--disable-auto` cancels freely.
+- Merge passes and evidence receipts are protected write targets.
+- `tmp-write` covers dynamic names under a temporary directory, glob and brace
+  spellings, and archive extraction.
+- A PR whose every file is prose documentation counts as `nonfunctional`
+  evidence without a receipt.
+- Checkout `setup` forwards `--during-active-runs` to the packaged setup.
