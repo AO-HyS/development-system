@@ -5,7 +5,7 @@ and #172). `development-system doctor --json` reports verified-package, sourceCo
 27b28e8408f0af4f981aced9d55e2edf86b1ddb9, no problems. 2.6.0 itself never reached
 HOME; the installer went from 2.5.0 to 2.6.1. Threads already open keep their older
 instructions until resumed. Main and a release wait for the owner.
-Next: the Steward review on 2026-10-25 prunes what did not help (plan-r3).
+Next: the Monday 09:00 Steward run on 2026-10-26 prunes what did not help (plan-r3).
 
 2026-10-19 Steward weekly retro (thread ead4698f), handoff. Done: 22 threads read,
 95 merged PRs checked with pr-review-status, ledger has 16 sessions and 13 pending
