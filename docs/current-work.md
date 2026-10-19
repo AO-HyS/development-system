@@ -7,6 +7,17 @@ HOME; the installer went from 2.5.0 to 2.6.1. Threads already open keep their ol
 instructions until resumed. Main and a release wait for the owner.
 Next: the Steward review on 2026-10-25 prunes what did not help (plan-r3).
 
+2026-10-19 Steward weekly retro (thread ead4698f), handoff. Done: 22 threads read,
+95 merged PRs checked with pr-review-status, ledger has 16 sessions and 13 pending
+recommendations (~/.development-system/steward/retro-state.json). Mistakes and
+frictions are recorded. Report:
+~/.development-system/private/documents/retro-semanal-del-steward-2026-10-19-a6cf1693c0c821cd.html.
+Open: this PR (#173, docs). Codex was requested once; no merge yet.
+Pending owner: Barber #536 Facebook email P1 (owner decision), Barber #487 Stripe key
+rotation confirmation, merge of #173. Retained authorization for a continuation:
+read-only Steward checks and answering Codex on #173 only. No merge, release or
+product PR.
+
 2026-10-19: owner asked for the review, all fixes, then the global install. Sol 6.1 High
 review of 2.6.0 (round 1, observed gpt-6.1-sol high): 9 findings, 4 blocking, all in the
 merge gate; Codex on PR #171: no findings. All 9 fixed in 2.6.1 / catalog 0.71.1 on
