@@ -3055,12 +3055,19 @@ function ghRepository(value) {
   return match ? `${match[1]}/${match[2]}`.toLowerCase() : null;
 }
 
-/** Whether an endpoint names the REST merge route, ignoring host, query, fragment, encoding and repeated slashes. @param {string} text */
-function mergeEndpoint(text) {
+/** `gh` long aliases read as their short flag, so a repeated option keeps gh's last-occurrence value. */
+const GH_ALIASES = new Map([["--repo", "-R"]]);
+
+/** An endpoint as a bare API path: no host, query, fragment, encoding or repeated slashes. @param {string} text */
+function endpointPath(text) {
   let path = text.replace(/^https?:\/\/[^/]+/u, "").split(/[?#]/u)[0];
   try { path = decodeURIComponent(path); } catch { /* keep the raw text */ }
-  path = path.replace(/\/{2,}/gu, "/").replace(/^\//u, "").replace(/\/$/u, "");
-  return /^(?:api\/v3\/)?repos\/[^/]+\/[^/]+\/pulls\/[^/]+\/merge$/u.test(path);
+  return path.replace(/\/{2,}/gu, "/").replace(/^\//u, "").replace(/\/$/u, "").replace(/^api\/(?:v3\/)?/u, "");
+}
+
+/** Whether an endpoint names the REST merge route, ignoring host, query, fragment, encoding and repeated slashes. @param {string} text */
+function mergeEndpoint(text) {
+  return /^repos\/[^/]+\/[^/]+\/pulls\/[^/]+\/merge$/u.test(endpointPath(text));
 }
 
 /**
@@ -3078,6 +3085,8 @@ function checkMergeGate(rest) {
   const options = new Map();
   /** @type {string[]} */
   const values = [];
+  /** @type {string[]} */
+  const fields = [];
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
     if (word === "--") { positionals.push(...words.slice(i + 1)); break; }
@@ -3088,12 +3097,19 @@ function checkMergeGate(rest) {
     let value = equals > 0 ? word.slice(equals + 1) : null;
     if (!word.startsWith("--") && word.length > 2 && GH_VALUE_OPTIONS.has(word.slice(0, 2))) { flag = word.slice(0, 2); value = word.slice(2); }
     else if (value === null && GH_VALUE_OPTIONS.has(flag)) value = words[++i] ?? null;
+    flag = GH_ALIASES.get(flag) ?? flag;
+    options.delete(flag);
     options.set(flag, value);
     if (value !== null) values.push(value);
+    if (/^(?:-f|-F|--field|--raw-field)$/u.test(flag) && value !== null) fields.push(value);
   }
   const how = "Run `development-system pr-review-status <owner/repo#n> --gate`, then merge with `gh pr merge <PR URL> --match-head-commit <head>`.";
   if (positionals[0] === "api") {
-    if (positionals[1] === "graphql" && options.has("--input")) throw new Block("merge-gate", `A GraphQL body read from --input is not inspected and could merge a PR. ${how}`);
+    if (positionals[1] !== undefined && endpointPath(positionals[1]) === "graphql") {
+      // A body or field read from a file or stdin is not inspected and could hold a merge mutation.
+      if (options.has("--input")) throw new Block("merge-gate", `A GraphQL body read from --input is not inspected and could merge a PR. ${how}`);
+      if (fields.some((field) => field.slice(field.indexOf("=") + 1).startsWith("@"))) throw new Block("merge-gate", `A GraphQL field read from a file (\`key=@file\`) is not inspected and could merge a PR. ${how}`);
+    }
     for (const text of [...positionals.slice(1), ...values]) {
       if (/\b(?:mergePullRequest|enablePullRequestAutoMerge)\b/u.test(text)) throw new Block("merge-gate", `Merging through the GraphQL API skips the merge pass. ${how}`);
       if (mergeEndpoint(text)) throw new Block("merge-gate", `Merging through \`gh api …/pulls/<n>/merge\` skips the merge pass. ${how}`);
@@ -3102,13 +3118,14 @@ function checkMergeGate(rest) {
   }
   if (positionals[0] !== "pr" || positionals[1] !== "merge") return;
   // Cancelling a queued auto-merge merges nothing; it must work even when the pass has expired.
-  if (options.has("--disable-auto")) return;
+  // Only an effective true cancels: `--disable-auto=false` merges normally (gh reads the value like Go's ParseBool).
+  if (options.has("--disable-auto") && /^(?:1|t|T|true|TRUE|True)?$/u.test(options.get("--disable-auto") ?? "")) return;
   const head = options.get("--match-head-commit") ?? null;
   if (!head || !/^[0-9a-f]{40}$/u.test(head)) throw new Block("merge-gate", `gh pr merge needs --match-head-commit <40-hex head> backed by a merge pass. ${how}`);
   const operand = positionals[2];
   const url = operand ? /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#]|$)/u.exec(operand) : null;
   const number = url ? Number(url[3]) : operand && /^#?\d+$/u.test(operand) ? Number(operand.replace("#", "")) : NaN;
-  const named = ghRepository(options.get("-R") ?? options.get("--repo"));
+  const named = ghRepository(options.get("-R"));
   const repository = url ? `${url[1]}/${url[2]}`.toLowerCase() : named;
   if (!Number.isSafeInteger(number) || !repository || (url && named && named !== repository)) {
     throw new Block("merge-gate", `Name the PR explicitly so its pass can be matched: \`gh pr merge <PR URL>\` or \`gh pr merge <n> -R owner/repo\`, with --match-head-commit <head>. ${how}`);
