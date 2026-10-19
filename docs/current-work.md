@@ -1,10 +1,17 @@
-# Current work — weekly learning controls (2.6.1 review fixes, then global install)
+# Current work — weekly learning controls (2.6.1 installed globally)
+
+2026-10-19: 2.6.1 / catalog 0.71.1 is installed globally from develop 27b28e8 (PR #171
+and #172). `development-system doctor --json` reports verified-package, sourceCommit
+27b28e8408f0af4f981aced9d55e2edf86b1ddb9, no problems. 2.6.0 itself never reached
+HOME; the installer went from 2.5.0 to 2.6.1. Threads already open keep their older
+instructions until resumed. Main and a release wait for the owner.
+Next: the Steward review on 2026-10-25 prunes what did not help (plan-r3).
 
 2026-10-19: owner asked for the review, all fixes, then the global install. Sol 6.1 High
 review of 2.6.0 (round 1, observed gpt-6.1-sol high): 9 findings, 4 blocking, all in the
 merge gate; Codex on PR #171: no findings. All 9 fixed in 2.6.1 / catalog 0.71.1 on
 branch fix/ds-261-review-findings; guard probe 30/30, tmp probe 13/13. A second Sol
-round reviews only the fix diff (blocking findings were security). Install follows.
+round reviewed only the fix diff (blocking findings were security).
 
 
 2026-10-18, branch `feat/weekly-learning-controls`. Owner: «No hay nada que
