@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { canonicalRepository } from "./mistakes.mjs";
 
 // Read-only health check for one long-running agent thread: is it stuck, which
 // instructions did the guard stop, and how many tokens did it use. It never measures
@@ -249,6 +250,8 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   const byModel = {};
   const scopes = { main: emptyTokens(), subagents: emptyTokens() };
   const runIds = new Set();
+  /** @type {string | null} */
+  let cwd = null;
 
   for (const file of [mainFile, ...subFiles]) {
     const isMain = file === mainFile;
@@ -265,6 +268,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
         if (at < firstActivityMs) firstActivityMs = at;
       }
       if (isMain && isConversation(entry)) lastMainEntry = entry;
+      if (isMain && !cwd && typeof entry.cwd === "string") cwd = entry.cwd;
       if (!isConversation(entry) || !inWindow(entry)) continue;
       const message = entry.message;
       const content = Array.isArray(message.content) ? message.content : [];
@@ -425,13 +429,14 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   // Candidate mistake records; never run.
   /** @type {Map<string, string>} */
   const suggestions = new Map();
+  const repositoryFlag = `--repository ${cwd ? canonicalRepository(cwd) : "<repo>"}`;
   for (const loop of loops) {
     const slug = mistakeSlug(loop.tool, `${loop.classification} ${loop.errorClass}`);
-    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${loop.evidence}`);
+    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${loop.evidence} ${repositoryFlag}`);
   }
   for (const denial of denials.filter((group) => group.repeated)) {
     const slug = mistakeSlug("guard", `${denial.blockedBy} ${denial.where}`);
-    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${denial.evidence}`);
+    suggestions.set(slug, `development-system mistake add --id ${slug} --incident ${incident} --evidence ${denial.evidence} ${repositoryFlag}`);
   }
 
   return {
