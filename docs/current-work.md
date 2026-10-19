@@ -1,4 +1,29 @@
-# Current work — visual plans and completion delivery (2.5.0 installed)
+# Current work — weekly learning controls (2.6.0 candidate, not installed)
+
+2026-10-18, branch `feat/weekly-learning-controls`, local commits only (no push,
+PR, merge or install). Plan: weekly review action plan, cross-reviewed with
+Astra and accepted at plan-r3 (~/.development-system/private/cross-review/
+dsplan-20261018/plan-r3.md). Owner rule: mandatory evidence unless he says
+«pásatela» (quoted verbatim in the PR). The owner wants to be told when 2.6.0 is
+ready, before any PR, merge or install, to say what else was worked on.
+
+Done (see ADR 0073): B1 mistake causes (fdee264), B5 evidence receipts and merge
+gate (8cb40b1), B2 handoff prompt (5a342ce), B3 install stop during active T3
+runs (e823a8c), B4 guard on temporary directories (715d9a8), B6 Codex weekly
+quota in doctor (97d71e3), release scaffolding 2.6.0 / catalog 0.71.0 (37476ef),
+guard pin 0.71.0 (7f29fe1), B7 closing uses granted access first (b1de0b1).
+B8 broad reading goes to Explore (see below). Pending: owner notification; PR to develop after
+his go-ahead. Global install waits while product threads run (B3).
+
+Evidence so far: typecheck, release:prepare, roster:check, check-no-tests,
+check-agents-rules (0 missing), additions-only artifacts/manifests/catalog diff
+against 8f995a2, isolated install + sync-skills + guardrails healthy
+(scratch/ds260-install-c); live skill influence not reached. Probes in
+~/.development-system/private/scratch/ds260-edits/.
+
+---
+
+# Previous: visual plans and completion delivery (2.5.0 installed)
 
 2026-10-15: the owner approved Opus 5.5's R3 direction, “La línea y la
 ventana”: “Eso está perfecto. Lo que Opus propone está muy bien.” Implementation
