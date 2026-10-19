@@ -3061,9 +3061,26 @@ const GH_ALIASES = new Map([["--repo", "-R"]]);
 
 /** An endpoint as a bare API path: no host, query, fragment, encoding or repeated slashes. @param {string} text */
 function endpointPath(text) {
-  let path = text.replace(/^https?:\/\/[^/]+/u, "").split(/[?#]/u)[0];
+  let path = text.replace(/^https?:\/\/[^/]+/iu, "").split(/[?#]/u)[0];
   try { path = decodeURIComponent(path); } catch { /* keep the raw text */ }
   return path.replace(/\/{2,}/gu, "/").replace(/^\//u, "").replace(/\/$/u, "").replace(/^api\/(?:v3\/)?/u, "");
+}
+
+/** gh aliases from its config (`GH_CONFIG_DIR` or ~/.config/gh), name to expansion; empty when unreadable. */
+function ghAliases() {
+  /** @type {Map<string, string>} */
+  const aliases = new Map();
+  const directory = process.env.GH_CONFIG_DIR || (process.env.XDG_CONFIG_HOME ? join(process.env.XDG_CONFIG_HOME, "gh") : join(HOME, ".config/gh"));
+  let text = "";
+  try { text = readFileSync(join(directory, "config.yml"), "utf8"); } catch { return aliases; }
+  let inside = false;
+  for (const line of text.split("\n")) {
+    if (/^aliases:\s*$/u.test(line)) { inside = true; continue; }
+    if (inside && /^\S/u.test(line)) break;
+    const match = inside ? /^\s+([^:\s]+):\s*(.*)$/u.exec(line) : null;
+    if (match) aliases.set(match[1].replace(/^["']|["']$/gu, ""), match[2].replace(/^["']|["']$/gu, ""));
+  }
+  return aliases;
 }
 
 /** Whether an endpoint names the REST merge route, ignoring host, query, fragment, encoding and repeated slashes. @param {string} text */
@@ -3105,6 +3122,14 @@ function checkMergeGate(rest) {
     if (/^(?:-f|-F|--field|--raw-field)$/u.test(flag) && value !== null) fields.push(value);
   }
   const how = "Run `development-system pr-review-status <owner/repo#n> --gate`, then merge with `gh pr merge <PR URL> --match-head-commit <head>`.";
+  // An alias can expand to a merge (`gh alias set m 'api -X PUT …/merge'`); one that names merging is refused, and an
+  // existing alias is read from gh's config before its name is taken as a command.
+  if (positionals[0] === "alias" && positionals[1] === "import") throw new Block("merge-gate", `Imported gh aliases are not inspected and could merge a PR; define each alias with \`gh alias set\`. ${how}`);
+  if (positionals[0] === "alias" && positionals[1] === "set" && /merge/iu.test(positionals.slice(3).join(" "))) {
+    throw new Block("merge-gate", `A gh alias that can merge skips the merge pass; run the merge command itself. ${how}`);
+  }
+  const alias = positionals[0] === undefined ? undefined : ghAliases().get(positionals[0]);
+  if (alias !== undefined && /merge/iu.test(alias)) throw new Block("merge-gate", `The gh alias \`${positionals[0]}\` expands to \`${alias}\`, which can merge without the merge pass. ${how}`);
   if (positionals[0] === "api") {
     if (positionals[1] !== undefined && endpointPath(positionals[1]) === "graphql") {
       // A body or field read from a file or stdin is not inspected and could hold a merge mutation.
