@@ -1,7 +1,8 @@
 # Current work — weekly learning controls (2.6.0 candidate, not installed)
 
-2026-10-18, branch `feat/weekly-learning-controls`, local commits only (no push,
-PR, merge or install). Plan: weekly review action plan, cross-reviewed with
+2026-10-18, branch `feat/weekly-learning-controls`. Owner: «No hay nada que
+comprobar. Ya llévalo. No hace falta ninguna revisión. Ya ultra llévalo.» -> PR to
+develop merged without Sol/Codex review by owner waiver. Plan: weekly review action plan, cross-reviewed with
 Astra and accepted at plan-r3 (~/.development-system/private/cross-review/
 dsplan-20261018/plan-r3.md). Owner rule: mandatory evidence unless he says
 «pásatela» (quoted verbatim in the PR). The owner wants to be told when 2.6.0 is
