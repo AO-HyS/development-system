@@ -158,6 +158,98 @@ function findTranscript(home, session) {
   throw new Error(`Claude session ${session} has no transcript under ${projects}/*/${session}.jsonl`);
 }
 
+/** @param {string} home @param {string} session @returns {string | null} */
+function findCodexRollout(home, session) {
+  const root = resolve(home, ".codex/sessions");
+  if (!existsSync(root)) return null;
+  /** @type {string[]} */
+  const pending = [root];
+  while (pending.length) {
+    const directory = /** @type {string} */ (pending.pop());
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(path);
+      else if (entry.isFile() && entry.name.startsWith("rollout-") && entry.name.endsWith(`-${session}.jsonl`)) return path;
+    }
+  }
+  return null;
+}
+
+// Thread size that calls for a handoff; the Stop gate (runtime/report-gate/stop-gate.mjs) applies the same thresholds.
+const HANDOFF = { runs: 40, items: 1500, contextShare: 0.75 };
+
+/**
+ * Prompts (runs), transcript items and current context of one Claude Code or Codex transcript.
+ * Claude Code does not record its context window; the observed autocompaction point stands in for it.
+ * @param {string} file
+ */
+function threadSize(file) {
+  const size = { runs: 0, items: 0, contextTokens: /** @type {number | null} */ (null), contextWindow: /** @type {number | null} */ (null), compactCeiling: /** @type {number | null} */ (null), compactions: 0 };
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    let entry;
+    try { entry = JSON.parse(line); } catch { continue; }
+    if ((entry.type === "user" || entry.type === "assistant") && !entry.isSidechain && entry.message) {
+      size.items += 1;
+      const content = entry.message.content;
+      if (entry.type === "user" && !entry.isMeta && (typeof content === "string" || (Array.isArray(content) && content.some((/** @type {any} */ block) => block?.type === "text")))) size.runs += 1;
+      const usage = entry.type === "assistant" ? entry.message.usage : null;
+      if (usage) size.contextTokens = (usage.input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0);
+    } else if (entry.type === "system" && entry.subtype === "compact_boundary") {
+      size.compactions += 1;
+      const before = Number(entry.compactMetadata?.preTokens);
+      if (before > 0) size.compactCeiling = Math.max(size.compactCeiling ?? 0, before);
+      size.contextTokens = Number(entry.compactMetadata?.postTokens) || null;
+    } else if (entry.payload && typeof entry.payload === "object") {
+      if (entry.type === "response_item") size.items += 1;
+      if (entry.type === "event_msg" && entry.payload.type === "task_started") size.runs += 1;
+      if (entry.type === "event_msg" && entry.payload.type === "context_compacted") size.compactions += 1;
+      if (entry.type === "event_msg" && entry.payload.type === "token_count" && entry.payload.info) {
+        const last = Number(entry.payload.info.last_token_usage?.input_tokens);
+        if (last > 0) size.contextTokens = last;
+        const window = Number(entry.payload.info.model_context_window);
+        if (window > 0) size.contextWindow = window;
+      }
+    }
+  }
+  const window = size.contextWindow ?? size.compactCeiling;
+  const contextShare = window && size.contextTokens ? size.contextTokens / window : null;
+  /** @type {string[]} */
+  const metrics = [];
+  if (size.runs >= HANDOFF.runs) metrics.push(`${size.runs} runs`);
+  if (size.items >= HANDOFF.items) metrics.push(`${size.items} items`);
+  if (contextShare !== null && contextShare >= HANDOFF.contextShare) metrics.push(`context ${Math.round(contextShare * 100)}%`);
+  return {
+    ...size,
+    contextPercent: contextShare === null ? "no alcanzado" : Math.round(contextShare * 100),
+    contextBasis: size.contextWindow ? "model window" : size.compactCeiling ? "observed compaction point" : "no alcanzado",
+    thresholds: { runs: HANDOFF.runs, items: HANDOFF.items, contextPercent: HANDOFF.contextShare * 100 },
+    handoffRequired: metrics.length > 0,
+    handoffMetrics: metrics,
+  };
+}
+
+/**
+ * Codex sessions report size only; loops, denials and per-model cost read Claude Code transcripts.
+ * @param {{session: string, file: string, thread?: string}} input
+ */
+function codexHealth({ session, file, thread }) {
+  const size = threadSize(file);
+  return {
+    ok: true,
+    operation: "thread-health",
+    provider: "codex",
+    session,
+    ...(thread ? { thread } : {}),
+    transcripts: { main: file, subagents: 0 },
+    verdict: size.handoffRequired ? "watch" : "moving",
+    reasons: size.handoffRequired ? [`handoff: ${size.handoffMetrics.join(", ")}`] : [],
+    size,
+    notReached: ["loops", "denials", "review rounds", "per-model cost"],
+    suggestions: [],
+  };
+}
+
 /** @param {Tokens} tokens @param {Record<string, any>} usage */
 function addUsage(tokens, usage) {
   tokens.input += usage.input_tokens ?? 0;
@@ -191,7 +283,7 @@ function isFinalAssistantText(entry) {
  * @param {{home: string, session?: string, thread?: string, since?: string, idleMinutes?: number, now?: number}} options
  */
 export function threadHealth({ home, session, thread, since, idleMinutes = 20, now = Date.now() }) {
-  if ((session ? 1 : 0) + (thread ? 1 : 0) !== 1) throw new Error("thread-health needs exactly one of --session <claude-session-id> or --thread <t3-thread-id>");
+  if ((session ? 1 : 0) + (thread ? 1 : 0) !== 1) throw new Error("thread-health needs exactly one of --session <claude or codex session id> or --thread <t3-thread-id>");
   const requested = /** @type {string} */ (session ?? thread);
   if (!ID.test(requested)) throw new Error(`thread-health id must match ${ID.source}`);
   if (!Number.isFinite(idleMinutes) || idleMinutes <= 0) throw new Error("--idle-minutes must be a positive number");
@@ -204,6 +296,10 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   if (thread) {
     const resolved = resolveT3Thread(home, thread);
     t3 = { id: thread, provider: resolved.provider };
+    if (/codex/i.test(resolved.provider) && resolved.providerThreadId) {
+      const file = findCodexRollout(home, resolved.providerThreadId);
+      if (file) return codexHealth({ session: resolved.providerThreadId, file, thread });
+    }
     if (resolved.provider !== "claudeAgent") {
       const label = /codex/i.test(resolved.provider) ? "Codex" : resolved.provider;
       return {
@@ -212,13 +308,21 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
         thread,
         provider: resolved.provider,
         providerThreadId: resolved.providerThreadId,
-        error: `thread-health reads Claude Code transcripts; ${label} threads are not supported yet`,
+        error: label === "Codex"
+          ? "this T3 thread's provider log does not name its Codex session; pass --session <codex session id> (the rollout-…-<id>.jsonl under ~/.codex/sessions)"
+          : `thread-health reads Claude Code and Codex transcripts; ${label} threads are not supported`,
       };
     }
     sessionId = resolved.providerThreadId ?? "";
     if (!ID.test(sessionId)) throw new Error(`T3 thread ${thread} resolved to an invalid session id`);
   }
 
+  if (!thread) {
+    const rollout = findCodexRollout(home, sessionId);
+    const projects = resolve(home, ".claude/projects");
+    const claude = existsSync(projects) && readdirSync(projects).some((project) => existsSync(join(projects, project, `${sessionId}.jsonl`)));
+    if (rollout && !claude) return codexHealth({ session: sessionId, file: rollout });
+  }
   const mainFile = findTranscript(home, sessionId);
   const subDir = join(dirname(mainFile), sessionId, "subagents");
   const subFiles = existsSync(subDir) ? readdirSync(subDir).filter((name) => name.endsWith(".jsonl")).sort().map((name) => join(subDir, name)) : [];
@@ -424,6 +528,8 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
   }
   for (const task of reviewRounds) if (task.rounds > 3) stuckReasons.push(`${task.taskId} lleva ${task.rounds} rondas de revisión completas`);
   if (trailingErrors >= 5) watchReasons.push(`${consecutiveErrors} errores seguidos en el hilo principal`);
+  const size = threadSize(mainFile);
+  if (size.handoffRequired) watchReasons.push(`handoff: ${size.handoffMetrics.join(", ")}`);
   const verdict = stuckReasons.length ? "stuck" : watchReasons.length ? "watch" : "moving";
 
   // Candidate mistake records; never run.
@@ -461,6 +567,7 @@ export function threadHealth({ home, session, thread, since, idleMinutes = 20, n
     },
     instructions: { denials, gitIndexRefusals, writerHoldsExpired, reviewsWithoutTaskId },
     cost,
+    size,
     suggestions: [...suggestions.values()],
   };
 }
@@ -476,9 +583,16 @@ function formatTokens(value) {
  */
 export function formatThreadHealth(result) {
   if (result.ok === false) return `No disponible: ${result.error}`;
-  const { stuck, instructions, cost } = result;
   const reasons = result.reasons.join("; ");
   const lines = [result.verdict === "stuck" ? `Trabado: ${reasons}` : result.verdict === "watch" ? `Vigilar: ${reasons}` : "Moviéndose"];
+  const { size } = result;
+  const sizeLine = `  Tamaño: ${size.runs} corridas, ${size.items} items, contexto ${size.contextPercent === "no alcanzado" ? "no alcanzado" : `${size.contextPercent}% (${size.contextBasis})`}, ${size.compactions} compactaciones; relevo ${size.handoffRequired ? "requerido" : "no requerido"}.`;
+  if (!("stuck" in result)) {
+    lines.push(`Sesión Codex ${result.session}${result.thread ? ` (hilo T3 ${result.thread})` : ""}.`, sizeLine, `  No alcanzado en Codex: ${result.notReached.join(", ")}.`);
+    return lines.join("\n");
+  }
+  const { stuck, instructions, cost } = result;
+  lines.push(sizeLine);
   lines.push(`Sesión ${result.session}${result.thread ? ` (hilo T3 ${result.thread})` : ""}; última actividad ${stuck.lastActivityAt ?? "n/d"}${stuck.idleMinutes === null ? "" : ` (hace ${stuck.idleMinutes} min)`}; ${result.transcripts.subagents} subagentes.`);
   for (const loop of stuck.loops) {
     lines.push(`  Bucle${loop.resolved ? " (resuelto)" : ""}: ${loop.tool} (${loop.classification}) ×${loop.repeats} → ${loop.errorClass}; evidencia ${loop.evidence}`);
