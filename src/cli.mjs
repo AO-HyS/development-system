@@ -63,6 +63,7 @@ import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
+import { codexQuota } from "./codex-quota.mjs";
 import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation, withLegacyInstallationMutation } from "./shared-installation.mjs";
 import { updateSharedInstallation } from "./shared-update.mjs";
 import { loadPackageSource } from "./package-source.mjs";
@@ -139,7 +140,11 @@ function formatHuman(result) {
     const label = result.operation === "update"
       ? `Development System ${result.version} (catalog ${result.catalogVersion ?? "unknown"}, ${String(shared?.sourceCommit ?? "unknown").slice(0, 12)}) installed`
       : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
-    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
+    const quota = /** @type {ReturnType<typeof codexQuota> | undefined} */ (result.codexQuota);
+    const quotaLines = !quota ? "" : quota.state === "desconocido"
+      ? "\nCodex weekly quota: desconocido (no rate limits in recent sessions)."
+      : `\nCodex weekly quota:${quota.accounts.map((item) => `\n- ${item.account}${item.plan ? ` (${item.plan})` : ""}: ${item.usedPercent}% used, observed ${item.observedAt} [${item.freshness}]${item.resetsAt ? `, resets ${item.resetsAt}` : ""}${item.warn ? " WARNING >= 80%" : ""}`).join("")}`;
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}`;
   }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
@@ -504,6 +509,8 @@ async function runCommand(argv) {
 
   if (command === "shared-audit" || command === "doctor") {
     result = await auditSharedInstallation({ home: options.home, root: repositoryRoot });
+    // Descriptive, separate from `ok`: a nearly spent Codex week is a warning, never an installation problem.
+    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }) };
   } else if (command === "recover-shared") {
     result = await rollbackSharedInstallation({ home: options.home, recover: true });
   } else if (command === "update") {
