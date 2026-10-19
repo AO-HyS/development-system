@@ -12,11 +12,11 @@ Next: the Steward review on 2026-10-25 prunes what did not help (plan-r3).
 recommendations (~/.development-system/steward/retro-state.json). Mistakes and
 frictions are recorded. Report:
 ~/.development-system/private/documents/retro-semanal-del-steward-2026-10-19-a6cf1693c0c821cd.html.
-Open: this PR (#173, docs). Codex was requested once; no merge yet.
-Pending owner: Barber #536 Facebook email P1 (owner decision), Barber #487 Stripe key
-rotation confirmation, merge of #173. Retained authorization for a continuation:
-read-only Steward checks and answering Codex on #173 only. No merge, release or
-product PR.
+PR #173 (docs) merged to develop with the owner's go-ahead («Sí, puedes meriar»).
+The owner dropped the Barber #487 Stripe key item («no te preocupes por ella»).
+Pending owner: Barber #536 Facebook email P1 (product decision). Retained
+authorization for a continuation: read-only Steward checks only. No merge,
+release or product PR.
 
 2026-10-19: owner asked for the review, all fixes, then the global install. Sol 6.1 High
 review of 2.6.0 (round 1, observed gpt-6.1-sol high): 9 findings, 4 blocking, all in the
@@ -38,8 +38,8 @@ gate (8cb40b1), B2 handoff prompt (5a342ce), B3 install stop during active T3
 runs (e823a8c), B4 guard on temporary directories (715d9a8), B6 Codex weekly
 quota in doctor (97d71e3), release scaffolding 2.6.0 / catalog 0.71.0 (37476ef),
 guard pin 0.71.0 (7f29fe1), B7 closing uses granted access first (b1de0b1).
-B8 broad reading goes to Explore (see below). Pending: owner notification; PR to develop after
-his go-ahead. Global install waits while product threads run (B3).
+B8 broad reading goes to Explore (see below). Owner notification, the develop PR
+and the global install are done (see the 2.6.1 entry above).
 
 Evidence so far: typecheck, release:prepare, roster:check, check-no-tests,
 check-agents-rules (0 missing), additions-only artifacts/manifests/catalog diff
