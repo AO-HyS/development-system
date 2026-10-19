@@ -71,6 +71,17 @@ function changedSince(base, from, to) {
 }
 
 /**
+ * Every file the PR changes, or null when GitHub cannot list them all (the files endpoint stops at 3000).
+ * @param {string} base @param {number} number @param {number} expected
+ */
+function pullFiles(base, number, expected) {
+  try {
+    const files = ghList(`${base}/pulls/${number}/files`);
+    return files.length === expected ? files.map((/** @type {any} */ file) => ({ filename: String(file.filename), status: String(file.status), ...(file.previous_filename ? { previous_filename: String(file.previous_filename) } : {}) })) : null;
+  } catch { return null; }
+}
+
+/**
  * @param {{pr: string, request?: boolean, gate?: boolean, home?: string}} options
  */
 export function prReviewStatus({ pr, request = false, gate = false, home = homedir() }) {
@@ -148,6 +159,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const behavioralEvidence = evaluateEvidence({
     receipts, head, prBody: String(pull.body ?? ""),
     changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(base, latest.verifiedSha, head) : undefined,
+    prFiles: latest ? undefined : pullFiles(base, number, Number(pull.changed_files)),
   });
   // Evidence is a develop-merge gate; main, releases and production wait for the owner regardless.
   const evidenceRequired = baseRef === "develop";
@@ -186,6 +198,6 @@ export function formatPrReviewStatus(result) {
   const evidence = result.behavioralEvidence;
   lines.push(`Behavioral evidence: ${evidence.state}${result.evidenceRequired ? "" : " (not required for this base)"} — ${evidence.reason}.`);
   if (result.evidenceRequired && !ACCEPTED_EVIDENCE.has(evidence.state)) lines.push("Run QuickE2E on this head and record it with `development-system evidence record`, or quote the owner's explicit waiver.");
-  lines.push(`Merge ready: ${result.mergeReady ? "yes" : "no"}.${result.mergeGate && result.mergeReady ? ` Merge pass: ${result.mergeGate}; merge with \`gh pr merge ${result.pr.split("#")[1]} --match-head-commit ${result.head}\`.` : ""}`);
+  lines.push(`Merge ready: ${result.mergeReady ? "yes" : "no"}.${result.mergeGate && result.mergeReady ? ` Merge pass: ${result.mergeGate}; merge with \`gh pr merge ${result.pr.split("#")[1]} -R ${result.pr.split("#")[0]} --match-head-commit ${result.head}\`.` : ""}`);
   return lines.join("\n");
 }

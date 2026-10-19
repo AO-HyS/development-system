@@ -519,7 +519,7 @@ async function runCommand(argv) {
   } else if (command === "setup") {
     await guardActiveRuns({ home: options.home, operation: "setup", version: options.version, acceptedBy: options.duringActiveRuns });
     if (!loadPackageSource(repositoryRoot)) {
-      result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot });
+      result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot, duringActiveRuns: options.duringActiveRuns });
       return { result, output: options.json ? JSON.stringify(result) : formatHuman(result), json: options.json };
     }
     const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));

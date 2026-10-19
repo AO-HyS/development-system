@@ -4,7 +4,7 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.6.0**, shared skill catalog **0.71.0**. This
+Current source candidate: **2.6.1**, shared skill catalog **0.71.1**. This
 candidate adds weekly learning controls: grouped mistake causes, behavioral
 evidence receipts with a merge gate, a handoff prompt for oversized threads,
 an install stop while T3 runs are active, a guard on shared temporary

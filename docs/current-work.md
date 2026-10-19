@@ -1,4 +1,11 @@
-# Current work — weekly learning controls (2.6.0 candidate, not installed)
+# Current work — weekly learning controls (2.6.1 review fixes, then global install)
+
+2026-10-19: owner asked for the review, all fixes, then the global install. Sol 6.1 High
+review of 2.6.0 (round 1, observed gpt-6.1-sol high): 9 findings, 4 blocking, all in the
+merge gate; Codex on PR #171: no findings. All 9 fixed in 2.6.1 / catalog 0.71.1 on
+branch fix/ds-261-review-findings; guard probe 30/30, tmp probe 13/13. A second Sol
+round reviews only the fix diff (blocking findings were security). Install follows.
+
 
 2026-10-18, branch `feat/weekly-learning-controls`. Owner: «No hay nada que
 comprobar. Ya llévalo. No hace falta ninguna revisión. Ya ultra llévalo.» -> PR to
