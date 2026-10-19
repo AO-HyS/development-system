@@ -5,7 +5,11 @@
 // (the exact head reviewed by the Codex app and no unresolved Codex thread) or `budget-spent`
 // (both allowed requests used and every finding of the last reviewed head answered). `--request` asks once
 // per (repository, PR, head SHA); concurrent duplicates are deleted on GitHub, earliest kept.
+// A PR into develop also needs behavioral evidence for its head (`src/evidence.mjs`); `mergeReady` combines both and
+// `--gate` records the merge pass the command guard requires for `gh pr merge --match-head-commit <head>`.
 import { execFileSync } from "node:child_process";
+import { homedir } from "node:os";
+import { ACCEPTED_EVIDENCE, evaluateEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -55,9 +59,21 @@ function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /
 }
 
 /**
- * @param {{pr: string, request?: boolean}} options
+ * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely.
+ * @param {string} base @param {string} from @param {string} to
  */
-export function prReviewStatus({ pr, request = false }) {
+function changedSince(base, from, to) {
+  try {
+    const compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`]));
+    const files = Array.isArray(compare.files) ? compare.files : [];
+    return files.length >= 300 ? null : files.map((/** @type {any} */ file) => ({ filename: String(file.filename), status: String(file.status), ...(file.previous_filename ? { previous_filename: String(file.previous_filename) } : {}) }));
+  } catch { return null; }
+}
+
+/**
+ * @param {{pr: string, request?: boolean, gate?: boolean, home?: string}} options
+ */
+export function prReviewStatus({ pr, request = false, gate = false, home = homedir() }) {
   const { owner, repo, number } = parsePr(pr);
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
@@ -125,12 +141,29 @@ export function prReviewStatus({ pr, request = false }) {
       } else requestStatus = "requested";
     }
   }
+  const ok = state === "no-findings" || state === "budget-spent";
+  const baseRef = String(pull.base?.ref ?? "");
+  const receipts = readReceipts(home, `${owner}/${repo}#${number}`);
+  const latest = receipts.at(-1)?.receipt;
+  const behavioralEvidence = evaluateEvidence({
+    receipts, head, prBody: String(pull.body ?? ""),
+    changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(base, latest.verifiedSha, head) : undefined,
+  });
+  // Evidence is a develop-merge gate; main, releases and production wait for the owner regardless.
+  const evidenceRequired = baseRef === "develop";
+  const mergeReady = ok && (!evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state));
+  const mergeGate = gate ? writeMergeGate({ home, pr: `${owner}/${repo}#${number}`, head, base: baseRef, mergeReady, codex: state, behavioralEvidence: behavioralEvidence.state }) : null;
   return {
-    ok: state === "no-findings" || state === "budget-spent",
+    ok,
     operation: "pr-review-status",
     pr: `${owner}/${repo}#${number}`,
     head,
+    base: baseRef,
     state,
+    behavioralEvidence,
+    evidenceRequired,
+    mergeReady,
+    ...(mergeGate ? { mergeGate: mergeGate.path } : {}),
     headReviewed,
     reviewedCommits: [...new Set(reviews.map((review) => String(review.commit_id).slice(0, 12)))],
     openFindings: open,
@@ -150,5 +183,9 @@ export function formatPrReviewStatus(result) {
   if (result.request !== "not-requested") lines.push(`Request: ${result.request}.`);
   if (result.request === "budget-exhausted") lines.push("Codex was already asked twice on this PR; a third request needs the operator.");
   if (result.state === "pending" && result.request === "not-requested") lines.push("Run again with --request to ask Codex to review this head.");
+  const evidence = result.behavioralEvidence;
+  lines.push(`Behavioral evidence: ${evidence.state}${result.evidenceRequired ? "" : " (not required for this base)"} — ${evidence.reason}.`);
+  if (result.evidenceRequired && !ACCEPTED_EVIDENCE.has(evidence.state)) lines.push("Run QuickE2E on this head and record it with `development-system evidence record`, or quote the owner's explicit waiver.");
+  lines.push(`Merge ready: ${result.mergeReady ? "yes" : "no"}.${result.mergeGate && result.mergeReady ? ` Merge pass: ${result.mergeGate}; merge with \`gh pr merge ${result.pr.split("#")[1]} --match-head-commit ${result.head}\`.` : ""}`);
   return lines.join("\n");
 }

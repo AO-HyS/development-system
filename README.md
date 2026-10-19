@@ -4,17 +4,15 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.1.4**. Public package and contract: **2.0.2**.
-Shared skill catalog: **0.64.0**. Browser resource preparation is described in
-[the browser pool guide](docs/browser-pool/README.md); native concurrency and
-the prepared T3 profile patch still require operational acceptance.
+Current source candidate: **2.6.0**, shared skill catalog **0.71.0**. This
+candidate adds weekly learning controls: grouped mistake causes, behavioral
+evidence receipts with a merge gate, a handoff prompt for oversized threads,
+an install stop while T3 runs are active, a guard on shared temporary
+directories and the Codex weekly quota in doctor. See
+[ADR 0073](docs/adr/0073-weekly-learning-controls.md).
 
-The candidate adds Poteto's `correct`, `architect`, and `benchmark-checklist`
-skills, adapted to the existing orchestrator and verification policy. They are
-available by their skill names with focused descriptions and starter prompts.
-Each records its exact upstream snapshot for reviewed updates. This candidate
-extends active 2.1.3; the separate unadopted 2.2.0 branch must retain these added
-skills when reconciled before its adoption.
+The candidate is not a claim of publication or global installation. Browser
+resource preparation remains described in [the browser pool guide](docs/browser-pool/README.md).
 
 ## New and existing repositories
 

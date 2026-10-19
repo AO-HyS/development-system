@@ -1,0 +1,4 @@
+interface:
+  display_name: "visual-explain"
+  short_description: "Visual plans and deliveries in the T3 thread"
+  default_prompt: "Use $visual-explain to present this plan or delivery with its scope, evidence and remaining limits."
