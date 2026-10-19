@@ -132,7 +132,10 @@ complete, say so without inventing another step. Use the user's language.
 Never bury a required response in a selectable stage, report or generic approval
 marker. Keep any pending user action clear in the accompanying message. Do not
 ask again for retained authorization or turn an optional choice into a blocker;
-continue independent authorized work.
+continue independent authorized work. Before naming a need, use the access
+already granted (repository test accounts, a session the user shared, logging
+in yourself); when it fails, try another route and report the gap instead of
+asking. An optional item carried over by a compaction summary is not a need.
 
 Grill keeps its existing HTML questionnaires, contextual questions, drafts and
 submission flow. Only the parent publishes in the owning T3 thread, using

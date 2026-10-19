@@ -105,6 +105,10 @@ manifest.contractVersion = version;
 for (const artifact of manifest.artifacts) {
   const name = artifact.logicalName;
   if (name === 'skill-catalog') artifact.sourcePath = `catalog/${catalogVersion}.json`;
+  if (name === 'visual-delivery-rule') {
+    artifact.sourcePath = `${prefix}/claude/rules/visual-delivery.md`;
+    await output(artifact.sourcePath, await bytes('config/visual-delivery.md'));
+  }
   // The handoff-aware gate is authored in this version's folder; the published 2.1.6 gate stays as it was.
   if (artifact.destination === '.codex/development-system/runtime/report-gate/stop-gate.mjs') artifact.sourcePath = `${prefix}/runtime/report-gate/stop-gate.mjs`;
   if (name === 'agent-roster') {

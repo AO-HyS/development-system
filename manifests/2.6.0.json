@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.6.0/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "14cd0dc45cb3aec461d383cc358e565a5963ef139d4e829302e7d91ee253ae87",
+      "sha256": "a9e13a15cd05467d12dd9d23f0ae3e6afbd171b215ccbd4f6e4d6c5a4bd02d69",
       "expectedMirrorOf": null
     },
     {
@@ -860,10 +860,10 @@
     {
       "id": "visual-delivery-rule.claude",
       "logicalName": "visual-delivery-rule",
-      "sourcePath": "artifacts/2.5.0/claude/rules/visual-delivery.md",
+      "sourcePath": "artifacts/2.6.0/claude/rules/visual-delivery.md",
       "destination": ".claude/rules/visual-delivery.md",
       "harness": "claude",
-      "sha256": "0faa4bc51121486cfcdf8401e0720469ed9f8de2686a0846b5f8f605b60b4d50",
+      "sha256": "550136b72f1ff782e971e8ee5aed036d7bf6875954011122c973528c102478cb",
       "expectedMirrorOf": null
     }
   ],
