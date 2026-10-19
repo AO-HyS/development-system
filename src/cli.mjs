@@ -1,6 +1,6 @@
 // @ts-check
 
-import { readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -85,7 +85,7 @@ async function readSkillCatalog(explicitVersion) {
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -117,6 +117,7 @@ function parseArguments(argv) {
     else if (token === "--codex-path") options.codexPath = value;
     else if (token === "--node-path") options.nodePath = value;
     else if (token === "--root") options.root = value;
+    else if (token === "--during-active-runs") options.duringActiveRuns = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -349,6 +350,25 @@ function parseThreadHealthArguments(argv) {
   return options;
 }
 
+/**
+ * Installing while agent runs are active changes their instructions mid-run. setup, update and install stop when a
+ * T3 run is active or its state is unknown, listing the threads; `--during-active-runs <who>` records who accepted
+ * the concurrency and continues. It acknowledges the overlap only; it never authorizes the installation itself.
+ * @param {{home: string, operation: string, version?: string, acceptedBy?: string}} options
+ */
+async function guardActiveRuns({ home, operation, version, acceptedBy }) {
+  const { activeRuns } = await import("./t3-state.mjs");
+  const exclude = [process.env.CLAUDE_CODE_SESSION_ID ?? "", process.env.CODEX_THREAD_ID ?? ""];
+  const observed = activeRuns({ home, exclude });
+  const event = { at: new Date().toISOString(), operation, version: version ?? null, state: observed.state, reason: observed.reason, threads: observed.threads.map((run) => run.threadId), acceptedBy: acceptedBy ?? null };
+  const ledger = resolve(home, ".development-system/private/runs/installs.jsonl");
+  await mkdir(dirname(ledger), { recursive: true, mode: 0o700 });
+  await appendFile(ledger, `${JSON.stringify(event)}\n`, { encoding: "utf8", mode: 0o600 });
+  if (observed.state === "terminated" || acceptedBy) return observed;
+  const listed = [...new Set(observed.threads.map((run) => `${run.threadId} (${run.status})`))].slice(0, 12).join(", ");
+  throw new Error(`${operation} stopped: T3 runs are ${observed.state} (${observed.reason})${listed ? `: ${listed}` : ""}. Wait for them to finish, or rerun with --during-active-runs <who accepted> to record the overlap; that flag does not authorize the installation.`);
+}
+
 /** @param {string[]} argv */
 export async function run(argv) {
   const standaloneMutators = ["install", "sync-skills", "rollback-skills", "guardrails-enable", "guardrails-rollback", "claude-orchestration-enable", "claude-orchestration-rollback", "report-gate-enable", "report-gate-rollback", "governance-hooks-enable", "governance-hooks-rollback"];
@@ -487,8 +507,10 @@ async function runCommand(argv) {
   } else if (command === "recover-shared") {
     result = await rollbackSharedInstallation({ home: options.home, recover: true });
   } else if (command === "update") {
-    result = await updateSharedInstallation({ home: options.home, version: options.version, sourceRoot: options.sourceRoot });
+    await guardActiveRuns({ home: options.home, operation: "update", version: options.version, acceptedBy: options.duringActiveRuns });
+    result = await updateSharedInstallation({ home: options.home, version: options.version, sourceRoot: options.sourceRoot, duringActiveRuns: options.duringActiveRuns });
   } else if (command === "setup") {
+    await guardActiveRuns({ home: options.home, operation: "setup", version: options.version, acceptedBy: options.duringActiveRuns });
     if (!loadPackageSource(repositoryRoot)) {
       result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot });
       return { result, output: options.json ? JSON.stringify(result) : formatHuman(result), json: options.json };
@@ -515,6 +537,7 @@ async function runCommand(argv) {
     }});
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");
+    await guardActiveRuns({ home: options.home, operation: "install", version: options.version, acceptedBy: options.duringActiveRuns });
     result = await installVersion({
       home: options.home,
       version: options.version,
