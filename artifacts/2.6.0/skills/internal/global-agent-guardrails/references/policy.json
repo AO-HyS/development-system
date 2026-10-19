@@ -92,7 +92,8 @@
     { "id": "guard-config-write", "reason": "Writing the guard's hook configuration (Claude Code settings, Codex hooks or config, including the project's .claude and .codex settings), the project's .git/config (its aliases run commands) the installed guard skill or the operator's test-write grants is blocked; use the Development System guardrails commands, `git config`, or ask the user to make the edit." },
     { "id": "shell-arithmetic-injection", "reason": "Text shaped like `name[$(…)]` in an assignment, variable name, test or arithmetic runs the subscript as a command when evaluated and is blocked." },
     { "id": "git-config-destructive", "reason": "Git configuration that makes an ordinary command destructive (help.autocorrect, clean.requireForce=false, forced or deleting remote.*.push refspecs, remote.*.mirror) is blocked." },
-    { "id": "merge-gate", "reason": "A PR merge needs --match-head-commit and a fresh merge pass from `development-system pr-review-status <pr> --gate` for that exact head." }
+    { "id": "merge-gate", "reason": "A PR merge needs --match-head-commit and a fresh merge pass from `development-system pr-review-status <pr> --gate` for that exact head." },
+    { "id": "tmp-write", "reason": "Writing to /tmp, /private/tmp, /var/tmp or $TMPDIR is blocked: evidence and helper files belong under ~/.development-system/private (for example ~/.development-system/private/scratch/<task>/). Reads and cd /tmp remain allowed." }
   ],
   "testFilePatterns": [
     "(?:^|/)(?:__tests__|__snapshots__|tests?|e2e|cypress|[A-Za-z0-9_-]*Tests)/(?:[^/]+/)*[^/]+\\.(?:[cm]?[jt]sx?|py|go|swift|rb|snap|json)$",

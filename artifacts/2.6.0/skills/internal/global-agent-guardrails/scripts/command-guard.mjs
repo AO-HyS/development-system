@@ -31,6 +31,8 @@ const HOME = process.env.HOME || homedir();
 const foldCase = process.platform === "darwin" || process.platform === "win32";
 /** Unknown expansion marker inside word values. */
 const UNKNOWN = "\u0000";
+// `$TMPDIR` is read like `$HOME`, so writes through it resolve to the real temporary directory.
+const TMPDIR = (process.env.TMPDIR ?? "").replace(/\/+$/u, "");
 const SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "fish", "ash", "mksh", "yash", "rbash", "pdksh", "oksh", "posh"]);
 /** Evaluation budget: the hook times out after 5 s, so the engine denies on its own before that. */
 const DEADLINE_MS = 3000;
@@ -692,6 +694,7 @@ class Parser {
       const name = /** @type {RegExpExecArray} */ (re.exec(this.s))[0];
       this.i += 1 + name.length;
       if (name === "HOME") word.value += HOME;
+      else if (name === "TMPDIR" && TMPDIR) word.value += TMPDIR;
       else markDynamic(word);
       return;
     }
@@ -795,6 +798,7 @@ class Parser {
     if ((target && CAT_LOOKUP_NAMES.test(target[1])) || assignsLookup(subscript) || assignsLookup(offset)) catTouched = true;
     word.subs.push(...scratch.subs);
     if (content === "HOME") word.value += HOME;
+    else if (content === "TMPDIR" && TMPDIR) word.value += TMPDIR;
     else markDynamic(word);
   }
 
@@ -1352,10 +1356,34 @@ function checkTarget(word, kind, ctx) {
     ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   if (kind !== "write") return;
+  if (unknown < 0 && !(ctx.cwd === null && !isAbsolute(text)) && insideTemporary(absolute)) {
+    throw new Block("tmp-write", `${structural["tmp-write"]} Target: ${absolute}`);
+  }
   const rel = insideScope(ctx.scope, absolute);
   if (rel !== null && testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(rel)) && !(grantable(word, text, ctx) && grantedTestWrite(absolute))) {
     throw new Block("test-file-write", `${structural["test-file-write"]} Target: ${rel}`);
   }
+}
+
+/** Shared temporary directories, physically resolved; evidence and helper files belong in ~/.development-system/private. */
+const TEMPORARY_ROOTS = [...new Set(["/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp", ...(TMPDIR ? [TMPDIR] : [])].flatMap((root) => {
+  try { return [root, realpathSync(root)]; } catch { return [root]; }
+}))];
+
+/** The path with its longest existing prefix resolved through symlinks. @param {string} absolute */
+function physicalPath(absolute) {
+  let existing = absolute;
+  /** @type {string[]} */
+  const rest = [];
+  while (existing !== dirname(existing)) {
+    try { return join(realpathSync(existing), ...rest); } catch { rest.unshift(basename(existing)); existing = dirname(existing); }
+  }
+  return absolute;
+}
+
+/** @param {string} absolute */
+function insideTemporary(absolute) {
+  return [absolute, physicalPath(absolute)].some((path) => TEMPORARY_ROOTS.some((root) => path === root || path.startsWith(`${root}/`)));
 }
 
 /**
