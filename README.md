@@ -4,11 +4,12 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.5.0**, shared skill catalog **0.70.0**. This
-candidate adds `visual-explain` for substantive plans and end-of-work deliveries
-in T3: the approved line and movable window, scoped annotations and explicit
-evidence limits. Existing grill HTML questionnaires and durable reports remain
-unchanged. See [ADR 0072](docs/adr/0072-visual-plans-and-deliveries.md).
+Current source candidate: **2.6.0**, shared skill catalog **0.71.0**. This
+candidate adds weekly learning controls: grouped mistake causes, behavioral
+evidence receipts with a merge gate, a handoff prompt for oversized threads,
+an install stop while T3 runs are active, a guard on shared temporary
+directories and the Codex weekly quota in doctor. See
+[ADR 0073](docs/adr/0073-weekly-learning-controls.md).
 
 The candidate is not a claim of publication or global installation. Browser
 resource preparation remains described in [the browser pool guide](docs/browser-pool/README.md).
