@@ -1,5 +1,12 @@
 # Current work — weekly learning controls (2.6.1 installed globally)
 
+2026-10-23, branch `fix/cross-review-sol-reviewer`: cross reviews sometimes ran on
+Astra because the `cross-review` skill (2.4.0) named `gpt-6-astra` xhigh for a Claude
+author while the review rule says Sol 6.1 High, and `~/.codex/config.toml` defaulted
+to `gpt-6-astra` xhigh. Owner chose: reviewer Sol 6.1 High and Codex default Sol 6.1
+High; no new check («No creo que sea necesaria una verificación»). 2.6.2 / catalog
+0.71.2 republishes only `cross-review`. The Codex default is a local HOME edit.
+
 2026-10-19: 2.6.1 / catalog 0.71.1 is installed globally from develop 27b28e8 (PR #171
 and #172). `development-system doctor --json` reports verified-package, sourceCommit
 27b28e8408f0af4f981aced9d55e2edf86b1ddb9, no problems. 2.6.0 itself never reached
