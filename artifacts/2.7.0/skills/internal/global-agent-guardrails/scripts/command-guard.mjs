@@ -1453,10 +1453,77 @@ function checkTarget(word, kind, ctx, effect) {
 const docsNames = policy.docsConfigNames.map((/** @type {string} */ name) => new RegExp(`^${name.replace(/[.+^${}()|[\]\\]/gu, "\\$&").replaceAll("*", ".*")}$`, foldCase ? "iu" : "u"));
 /** @param {string} name */
 const docsName = (name) => docsNames.some((/** @type {RegExp} */ pattern) => pattern.test(name));
-/** Usual spellings of each protected name (`*` read as nothing or a common extension), for patterns that cannot be expanded. */
-const docsSamples = policy.docsConfigNames.flatMap((/** @type {string} */ name) => name.includes("*")
-  ? ["", "js", ".js", "mjs", ".mjs", "cjs", ".cjs", "ts", ".ts", "json", ".json", "jsonc", ".jsonc", "yml", ".yml", "yaml", ".yaml"].map((ext) => name.replace("*", ext))
-  : [name]).filter(docsName);
+/** Each protected name as glob tokens: its characters, case-folded, and `*` for any text. */
+const docsPatterns = policy.docsConfigNames.map((/** @type {string} */ name) => [...fold(name)].map((c) => c === "*" ? "*" : c));
+
+/**
+ * Whether a glob segment can match some protected name, comparing the two patterns, so a pattern the guard cannot expand
+ * (`*.[mc]ts` under `*\/`) counts whenever any spelling of a protected name fits it. @param {string | GlobSegment} segment
+ */
+function couldBeDocs(segment) {
+  if (typeof segment === "string") return segment === "**" || docsName(segment);
+  return docsPatterns.some((/** @type {string[]} */ name) => {
+    if (segment.hidden && name[0] === ".") return false;
+    const { tokens } = segment;
+    /** @type {Set<number>} */
+    const seen = new Set();
+    /** @param {number} i @param {number} j @returns {boolean} */
+    const meet = (i, j) => {
+      const state = i * (name.length + 1) + j;
+      if (seen.has(state)) return false;
+      seen.add(state);
+      if (i === tokens.length && j === name.length) return true;
+      const token = tokens[i], char = name[j];
+      if (token === "*" && (meet(i + 1, j) || (j < name.length && meet(i, j + 1)))) return true;
+      if (char === "*" && (meet(i, j + 1) || (i < tokens.length && token !== "*" && meet(i + 1, j)))) return true;
+      return typeof token === "function" && j < name.length && char !== "*" && token(char) && meet(i + 1, j + 1);
+    };
+    return meet(0, 0);
+  });
+}
+
+/**
+ * The existing paths a glob reaches below the directory before its first pattern segment, walking only directories the
+ * pattern goes into (links to directories included, like the shell), or null when the walk passes DOCS_WALK_ENTRIES
+ * entries or DOCS_WALK_DEPTH levels, reads `.`/`..` after a pattern or cannot read a directory it enters.
+ * @param {string} base @param {string} value the glob, relative to base or absolute @returns {string[] | null}
+ */
+function globReach(base, value) {
+  /** @type {string[]} */
+  const found = [];
+  let entries = 0;
+  for (const form of broadGlob(value)) {
+    const parts = form.split("/");
+    const first = parts.findIndex((part) => /[*?[\u0002]/u.test(part));
+    if (first < 0) { found.push(resolve(base, form)); continue; }
+    if (parts.slice(first).some((part) => part === "." || part === "..")) return null;
+    const root = resolve(base, parts.slice(0, first).join("/") || (isAbsolute(form) ? "/" : "."));
+    const pattern = parts.slice(first).filter(Boolean).map((part) => globSegment(fold(part)));
+    /** @type {{ path: string, rel: string[] }[]} */
+    const pending = [{ path: root, rel: [] }];
+    while (pending.length > 0) {
+      checkDeadline();
+      const { path, rel } = /** @type {{ path: string, rel: string[] }} */ (pending.pop());
+      if (rel.length > DOCS_WALK_DEPTH) return null;
+      let dirents;
+      try { dirents = readdirSync(path, { withFileTypes: true, encoding: "utf8" }); } catch { if (rel.length === 0) break; return null; }
+      for (const entry of dirents) {
+        if (++entries > DOCS_WALK_ENTRIES) return null;
+        const child = [...rel, fold(entry.name)];
+        /** @type {Set<string>} */
+        const outcomes = new Set();
+        globOutcomes(pattern, 0, child, 0, outcomes, new Set());
+        const full = join(path, entry.name);
+        if (outcomes.has("exact")) found.push(full);
+        if (!outcomes.has("inside")) continue;
+        let directory = entry.isDirectory();
+        if (!directory && entry.isSymbolicLink()) { try { directory = statSync(full).isDirectory(); } catch { directory = false; } }
+        if (directory) pending.push({ path: full, rel: child });
+      }
+    }
+  }
+  return found;
+}
 
 /**
  * The names a brace expansion makes (`{AGENTS,README}.md`), nested lists included; null when they exceed `limit` or use a
@@ -1512,30 +1579,30 @@ function docsTarget(word, absolute, kind, ctx) {
     const shown = value.replaceAll(UNKNOWN, "$…");
     // A copy destination named by a source glob the guard could not expand: any usual spelling the glob can make counts.
     if (word.fromGlob) {
-      const segments = broadGlob(name).map((form) => globSegment(fold(form)));
-      return docsSamples.some((/** @type {string} */ sample) => segments.some((segment) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample)))) ? shown : null;
+      return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? shown : null;
     }
     // Brace expansion makes its names whether or not they exist: expand it exactly.
     if (!/[*?[(^#~]/u.test(name)) {
       const names = braceNames(name, 256);
       if (names) return names.some(docsName) ? shown : null;
-      // Too many names or a sequence: read the braces as any text and test the usual spellings of each protected name.
-      const segment = globSegment(fold(name.replace(/\{[^{}]*\}/gu, "*")));
-      return docsSamples.some((/** @type {string} */ sample) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample))) ? shown : null;
+      // Too many names or a sequence: read the braces as any text and compare with each protected name.
+      return couldBeDocs(globSegment(fold(name.replace(/\{[^{}]*\}/gu, "*")))) ? shown : null;
     }
-    // A glob expands only to existing entries of its directory. When the directory is unknown or itself a pattern
-    // (`*/*.md`), the guard cannot list what it reaches: any usual spelling of a protected name the last part can make counts.
+    // A glob expands only to existing entries. When the directory is unknown the guard cannot list them: any protected name
+    // the last part can make counts. Otherwise it walks what the glob reaches and checks each name and, through links, the
+    // name of the file written; a walk past its bounds fails closed.
     const directory = value.slice(0, value.lastIndexOf("/") + 1);
-    if (directory.includes(UNKNOWN) || /[*?[\]{}()]/u.test(directory) || (ctx.cwd === null && !isAbsolute(directory))) {
-      const segments = broadGlob(name).map((form) => globSegment(fold(form)));
-      return docsSamples.some((/** @type {string} */ sample) => segments.some((segment) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample)))) ? `${shown} (unresolved directory)` : null;
+    if (directory.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(directory))) {
+      return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? `${shown} (unresolved directory)` : null;
     }
-    /** @type {string[]} */
-    let entries;
-    try { entries = readdirSync(resolve(ctx.cwd ?? ctx.scope, directory || "."), { encoding: "utf8" }).slice(0, 5000).filter(docsName); } catch { return null; }
-    const segments = broadGlob(name).map((form) => globSegment(fold(form)));
-    const match = entries.find((entry) => segments.some((segment) => typeof segment === "string" ? segment === fold(entry) : globMatch(segment, fold(entry))));
-    return match ? `${shown} (${directory}${match})` : null;
+    const reached = globReach(ctx.cwd ?? ctx.scope, value);
+    if (!reached) return `${shown} (too many entries to check)`;
+    for (const path of reached) {
+      if (docsName(basename(path))) return `${shown} (${path})`;
+      const real = canonicalPath(path);
+      if (docsName(basename(real))) return `${shown} (${real})`;
+    }
+    return null;
   }
   if (docsName(name)) return value.replaceAll(UNKNOWN, "$…");
   const known = !value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(value));
@@ -1652,7 +1719,12 @@ function insideRepository(directory) {
  *   operands with the format the tool reads (null when the archive is stdin, a default device or an operand the guard cannot
  *   name); without `archives` the contents come from a remote host and cannot be read.
  * @typedef {{ word: Word | null, format: "zip" | "tar" }} ArchiveOperand
- * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean }} TreeEffect
+ * - `patches`: a diff applied in the target directory (`patch`, `git apply`, `git am`); each operand is a file word or the
+ *   text of a heredoc or here-string, null for a patch the guard cannot read (a pipe, a variable).
+ * - `pathspecs`: Git pathspecs a command restores from the index or a revision (`git checkout --ours`, `git checkout <rev> <path>`),
+ *   matched against the tracked files with a protected name; `revision` also lists that revision's files.
+ * @typedef {{ word: Word | null, text: string | null }} PatchOperand
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null } }} TreeEffect
  */
 
 /** How many members an archive listing may hold, and how long it may take, before the guard fails closed. */
@@ -1685,6 +1757,86 @@ function archiveMembers(archive, ctx) {
   if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
   const members = result.stdout.split("\n").filter((line) => line !== "");
   return members.length > ARCHIVE_MEMBERS ? null : members;
+}
+
+/** How large a patch file the guard reads before failing closed. */
+const PATCH_BYTES = 16 * 1024 * 1024;
+
+/**
+ * The file names a diff touches (`diff --git`, `---`/`+++`, `***`, `Index:`, Git rename and copy lines), each with its
+ * leading directories, or null when the patch cannot be read (no literal file, unreadable, larger than PATCH_BYTES) or names
+ * more than ARCHIVE_MEMBERS files. Hunk lines that look like headers are read too, which only adds names.
+ * @param {PatchOperand} patch @param {Context} ctx @returns {string[] | null}
+ */
+function patchMembers(patch, ctx) {
+  let text = patch.text;
+  if (text === null) {
+    if (!patch.word || patch.word.glob || patch.word.value === "-") return null;
+    const paths = operandPaths(patch.word, ctx);
+    if (paths === null || paths.length !== 1) return null;
+    try {
+      if (statSync(paths[0]).size > PATCH_BYTES) return null;
+      text = readFileSync(paths[0], "utf8");
+    } catch { return null; }
+  }
+  /** @type {Set<string>} */
+  const members = new Set();
+  /** @param {string} name */
+  const unquote = (name) => /^".*"$/u.test(name) ? name.slice(1, -1).replace(/\\(.)/gu, "$1") : name;
+  for (const line of text.split(/\r?\n/u)) {
+    const git = /^diff --git (.+)$/u.exec(line);
+    if (git) git[1].split(/ (?=["ab]\/|"[ab]\/)/u).forEach((name) => members.add(unquote(name)));
+    const header = /^(?:---|\+\+\+|\*\*\*) (.+?)(?:\t.*)?$/u.exec(line) ?? /^(?:Index:|(?:rename|copy) (?:from|to)) (.+)$/u.exec(line);
+    if (header) members.add(unquote(header[1].trim()));
+    if (members.size > ARCHIVE_MEMBERS) return null;
+  }
+  members.delete("/dev/null");
+  return [...members];
+}
+
+/**
+ * Whether a Git pathspec, relative to the directory Git runs in, can select a file: the path itself, a directory above it,
+ * or a glob whose `*` also crosses `/`, as Git matches by default. Magic (`:(glob)`, `:!x`, `:/`) and unknown text select anything.
+ * @param {string | null} spec @param {string} file
+ */
+function pathspecSelects(spec, file) {
+  if (spec === null || spec.startsWith(":")) return true;
+  const path = fold(spec.replace(/^(?:\.\/)+/u, "").replace(/\/+$/u, ""));
+  const name = fold(file);
+  if (path === "" || path === "." || name === path || name.startsWith(`${path}/`)) return true;
+  if (!/[*?[]/u.test(path)) return false;
+  const chars = [...path];
+  const classes = classCloses(chars);
+  let source = "";
+  for (let i = 0; i < chars.length; i++) {
+    const end = chars[i] === "[" ? classEnd(chars, i, classes) : -1;
+    if (end > 0) { source += `[${chars.slice(i + 1, end).join("").replace(/^!/u, "^").replace(/\\/gu, "\\\\")}]`; i = end; }
+    else source += chars[i] === "*" ? ".*" : chars[i] === "?" ? "." : chars[i].replace(/[.+^${}()|[\]\\]/gu, "\\$&");
+  }
+  try { return new RegExp(`^${source}(?:/.*)?$`, "su").test(name); } catch { return true; }
+}
+
+/**
+ * The tracked files with a protected name below a directory, relative to it, from the index and, when given, a revision;
+ * null when Git cannot list them (no repository, an unknown revision, a slow or oversized listing).
+ * @param {string} directory @param {string | null} revision @returns {string[] | null}
+ */
+function trackedDocs(directory, revision) {
+  const program = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].map((each) => join(each, "git")).find((candidate) => existsSync(candidate));
+  if (!program) return null;
+  /** @type {string[]} */
+  const found = [];
+  for (const args of [["ls-files", "-z"], ...(revision === null ? [] : [["ls-tree", "-r", "-z", "--name-only", revision]])]) {
+    checkDeadline();
+    const timeout = Math.max(1, Math.min(ARCHIVE_LIST_MS, deadline - Date.now()));
+    const result = spawnSync(program, ["-c", "core.fsmonitor=false", ...args], {
+      cwd: directory, encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"], env: { PATH: "/usr/bin:/bin", HOME: homedir() },
+    });
+    checkDeadline();
+    if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
+    found.push(...result.stdout.split("\0").filter((file) => file !== "" && docsName(basename(file))));
+  }
+  return [...new Set(found)];
 }
 
 /**
@@ -1731,6 +1883,45 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
         block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
       }
     }
+  }
+  if (effect.patches || effect.pathspecs) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null || roots.length !== 1) {
+      if (!ctx.codeString) block(`${shownWord(word)} (${effect.patches ? "a patch applied in" : "Git paths restored in"} an unknown directory)`);
+      return;
+    }
+    const [root] = roots;
+    const wholeDirectory = covered([join(root, "AGENTS.md")], targetKnown);
+    for (const patch of effect.patches ?? []) {
+      const shown = patch?.word ? shownWord(patch.word) : patch ? "a heredoc" : "stdin";
+      const members = patch && patchMembers(patch, ctx);
+      if (!members) {
+        if (!wholeDirectory) block(`${shown} (a patch the guard cannot read) -> ${root}`);
+        continue;
+      }
+      const patchKnown = !patch?.word || grantable(patch.word, patch.word.value, ctx);
+      for (const member of members) {
+        // patch -p and git apply -p strip leading directories: every suffix of the name can be the file written.
+        const parts = member.split("/").filter((part) => part !== "" && part !== ".");
+        for (let k = 0; k < parts.length; k++) {
+          const target = resolve(root, parts.slice(k).join("/"));
+          const real = canonicalPath(target);
+          const hit = docsName(parts.at(-1) ?? "") ? target : docsName(basename(real)) ? real : null;
+          if (hit && !covered([hit], targetKnown && patchKnown)) block(`${shown}: ${member} -> ${hit}`);
+        }
+      }
+    }
+    if (effect.pathspecs) {
+      const { specs, revision } = effect.pathspecs;
+      const tracked = trackedDocs(root, revision);
+      if (tracked === null) {
+        if (!wholeDirectory) block(`${root} (Git paths the guard cannot list)`);
+        return;
+      }
+      const hit = tracked.find((file) => specs.some((spec) => pathspecSelects(spec, file)));
+      if (hit && !covered([join(root, hit)], targetKnown && specs.every((spec) => spec !== null))) block(`${join(root, hit)} (restored by Git)`);
+    }
+    return;
   }
   if (effect.unknownContents) {
     const roots = operandPaths(word, ctx);
@@ -2633,6 +2824,53 @@ function editorScript(script, ed, typed, editor, ctx) {
 }
 
 /**
+ * A patch operand: the file word, else the command's stdin (a file redirect, a heredoc or here-string body), or null when
+ * stdin is a pipe, a terminal or text with expansions in it. @param {Word | null} word @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
+ * @returns {PatchOperand | null}
+ */
+function diffOperand(word, stdin) {
+  if (word && word.value !== "-") return { word, text: null };
+  const source = stdinSource(stdin.redirects);
+  if (!source || (stdin.stdinPiped && source.op !== "<")) return null;
+  if (source.heredoc) return source.heredoc.quoted || source.heredoc.literal ? { word: null, text: source.heredoc.body } : null;
+  if (!source.target) return null;
+  if (source.op === "<<<") return source.target.literal ? { word: null, text: `${source.target.value}\n` } : null;
+  return { word: source.target, text: null };
+}
+
+/**
+ * The pathspecs `git checkout` restores files for, or null when it only switches branches: every operand after `--`, every
+ * operand with --ours, --theirs, -m, --merge, --conflict or -p, and otherwise the operands after the first (the revision).
+ * An unknown operand or --pathspec-from-file is a null spec, which selects anything. @param {Word[]} args
+ * @returns {{ specs: (string | null)[], revision: string | null } | null}
+ */
+function checkoutPathspecs(args) {
+  const dash = args.findIndex((word) => word.value === "--");
+  const before = dash < 0 ? args : args.slice(0, dash);
+  /** @type {(string | null)[]} */
+  const specs = dash < 0 ? [] : args.slice(dash + 1).map((word) => word.literal ? word.value : null);
+  /** @type {Word[]} */
+  const operands = [];
+  let conflict = false;
+  for (let i = 0; i < before.length; i++) {
+    const value = before[i].value;
+    if (["-b", "-B", "--orphan", "--conflict"].includes(value)) { if (value === "--conflict") conflict = true; i++; continue; }
+    if (value === "--pathspec-from-file" || value.startsWith("--pathspec-from-file=")) { specs.push(null); if (!value.includes("=")) i++; continue; }
+    if (/^--(?:ours|theirs|merge|patch|conflict=.*)$/u.test(value) || /^-[A-Za-z]*[mp]/u.test(value) && !value.startsWith("--")) conflict = true;
+    if (value.startsWith("-") && value !== "-") continue;
+    operands.push(before[i]);
+  }
+  const revisionFirst = !conflict && operands.length > 0;
+  const paths = revisionFirst ? operands.slice(1) : operands;
+  specs.push(...paths.map((word) => word.literal ? word.value : null));
+  if (specs.length === 0) return null;
+  const revision = revisionFirst && operands[0].literal ? operands[0].value : null;
+  // An unknown revision cannot be listed: read it as selecting any file.
+  if (revisionFirst && !operands[0].literal) specs.push(null);
+  return { specs, revision };
+}
+
+/**
  * Collect file targets written (or deleted) by a command. @param {string} name @param {Word[]} rest @param {Context} ctx
  * @param {ReturnType<typeof analyzeSed> | null} sed @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
  */
@@ -2756,15 +2994,23 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       // patch writes the files its diff names, relative to -d or the working directory.
       /** @type {Word} */
       let directory = literalWord(".");
+      /** @type {Word | null} */
+      let input = null;
+      /** @type {Word[]} */
+      const positionals = [];
       for (let i = 0; i < rest.length; i++) {
         const value = rest[i].value;
         if ((value === "-o" || value === "--output") && rest[i + 1]) add(rest[++i], "write");
         else if ((value === "-d" || value === "--directory") && rest[i + 1]) directory = rest[++i];
         else if (value.startsWith("--directory=")) directory = optionValue(value);
-        else if (["-i", "--input", "-r", "--reject-file", "-B", "-z", "-F", "-D"].includes(value)) i++;
-        else if (!value.startsWith("-")) add(rest[i], "write");
+        else if ((value === "-i" || value === "--input") && rest[i + 1]) input = rest[++i];
+        else if (value.startsWith("--input=")) input = optionValue(value);
+        else if (/^-i./u.test(value)) input = literalWord(value.slice(2));
+        else if (["-r", "--reject-file", "-B", "-z", "-F", "-D"].includes(value)) i++;
+        else if (!value.startsWith("-")) { add(rest[i], "write"); positionals.push(rest[i]); }
       }
-      add(directory, "tree");
+      // The diff comes from -i, the second operand or stdin; the files it names are checked under the directory.
+      add(directory, "tree", { patches: [diffOperand(input ?? positionals[1] ?? null, stdin)] });
       break;
     }
     case "chmod": case "chown": case "chgrp": case "chflags": {
@@ -2866,6 +3112,24 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       if (sub === "rm") {
         const recursive = subArgs.some((word) => word.literal && /^-[A-Za-z]*r/u.test(word.value));
         operandsOf(subArgs, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
+      }
+      if (sub === "apply" || sub === "am") {
+        const report = sub === "apply" && subArgs.some((word) => /^--(?:check|stat|numstat|summary)$/u.test(word.value)) && !subArgs.some((word) => word.value === "--apply");
+        /** @type {Word[]} */
+        const files = [];
+        let resume = false;
+        for (let i = 0; i < subArgs.length; i++) {
+          const value = subArgs[i].value;
+          if (["--directory", "--exclude", "--include", "-C", "--whitespace", "--build-fake-ancestor", "--patch-format", "--resolvemsg", "--exec"].includes(value)) i++;
+          else if (/^--(?:continue|resolved|skip|abort|quit|retry)$/u.test(value) || value === "-r") resume = true;
+          else if (!value.startsWith("-")) files.push(subArgs[i]);
+        }
+        // The names are checked under the working directory; a protected file name counts wherever --directory puts it.
+        if (!report) add(literalWord("."), "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
+      }
+      if (sub === "checkout") {
+        const pathspecs = checkoutPathspecs(subArgs);
+        if (pathspecs) add(literalWord("."), "tree", { pathspecs });
       }
       for (let i = 0; i < subArgs.length; i++) {
         const value = subArgs[i].value;
