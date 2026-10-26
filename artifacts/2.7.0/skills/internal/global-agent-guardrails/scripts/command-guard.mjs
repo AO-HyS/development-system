@@ -2701,12 +2701,13 @@ function longOption(rest, names) {
  * cp -R, rsync), and so does any directory source with `contents` (ditto). A `remote` source (rsync `host:path`) is not
  * expanded here: the remote shell expands it.
  * @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue
- * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean, targetOption?: boolean }} [options]
+ * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean, targetOption?: boolean, slashContents?: boolean }} [options]
+ * `slashContents: false` keeps a moved directory's name whatever its trailing `/` (`mv`, `git mv`).
  * `targetOption` reads `-t`/`--target-directory` as the destination (not rsync, where `-t` keeps times); `targetLetter` reads `-t` in
  * short clusters and with an attached value (GNU cp, mv, install, ln).
  * @returns {{ sources: Word[], pairs: { target: Word, source: Word }[] }}
  */
-function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false, targetOption = true } = {}) {
+function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false, targetOption = true, slashContents = true } = {}) {
   const { operands, targetDirectory } = operandsOf(rest, withValue, targetLetter, targetOption);
   /** @type {Word[]} */
   const sources = targetDirectory ? operands : operands.slice(0, -1);
@@ -2732,7 +2733,7 @@ function copyTargets(rest, ctx, withValue, { contents = false, remote = () => fa
     try { return statSync(resolve(base, word.value)).isDirectory(); } catch { return false; }
   };
   const pairs = items.map(({ word, slash }) => {
-    if (!directory || slash || (contents && isDirectory(word))) return { target: destination, source: word };
+    if (!directory || (slash && slashContents) || (contents && isDirectory(word))) return { target: destination, source: word };
     // Joined as text, so a destination such as `link/..` keeps its components for the link-aware check.
     const target = literalWord(`${destination.value.replace(/\/+$/u, "")}/${basename(word.value)}`);
     if (word.glob) target.glob = true;
@@ -3163,6 +3164,8 @@ function findRoots(rest) {
   while (next < rest.length && !/^[-(!]/u.test(rest[next].value)) next++;
   roots.push(...rest.slice(i, next));
   if (dot || roots.length === 0) roots.push(literalWord("."));
+  // The `-follow` primary follows links like -L, wherever it stands in the expression.
+  if (findActionIndex(rest.slice(next), "-follow") >= 0) follow = true;
   return { roots, start: next, follow };
 }
 
@@ -3416,7 +3419,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
         // --read-batch replays a recorded transfer into the destination: its files are unknown.
         if (longOption(rest, ["--read-batch"])) {
-          const dryRun = (shortLetters(rest, "eBfMT@").has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"]);
+          const dryRun = ((shortLetters(rest, "eBfMT@").has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) || longOption(rest, ["--list-only"]);
           const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
           if (!dryRun) add(destination ?? literalWord("."), "tree", { unknownContents: true });
           break;
@@ -3438,7 +3441,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const extracts = name === "ditto" && rest.some((word) => word.literal && /^-[A-Za-z]*x/u.test(word.value));
       // rsync -n/--dry-run only reports what it would transfer or delete.
       const rsyncLetters = name === "rsync" ? shortLetters(rest, "eBfMT@") : new Set();
-      if (name === "rsync" && (rsyncLetters.has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) break;
+      // --list-only lists the source without transferring.
+      if (name === "rsync" && (((rsyncLetters.has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) || longOption(rest, ["--list-only"]))) break;
       if (extracts) {
         // ditto -x [-k] archive ... destination: each archive (CPIO, or zip with -k; `-` is stdin) lands in the destination.
         const { operands } = operandsOf(rest, withValue);
@@ -3797,7 +3801,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       break;
     }
     case "mv": {
-      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]), { targetLetter: true });
+      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]), { targetLetter: true, slashContents: false });
       const backups = backupSuffixes(rest, name);
       pairs.forEach(({ target, source }) => {
         add(target, "write", { source });
@@ -3904,7 +3908,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
       }
       if (sub === "mv" && !preview) {
-        const { sources, pairs } = copyTargets(subArgs, ctx, new Set());
+        const { sources, pairs } = copyTargets(subArgs, ctx, new Set(), { slashContents: false });
         pairs.forEach(({ target, source }) => add(target, "write", { source }));
         sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       }
