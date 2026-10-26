@@ -1685,9 +1685,9 @@ function docsInside(directory, follow = false) {
  * The paths a source or removal operand names, canonical: the literal path, or the existing entries a glob in its last
  * segment matches in a known directory (read broadly, like protected-path globs). Null when the operand cannot be known:
  * an expansion, a relative path under an unknown directory, a patterned directory, quoted glob text or an oversized
- * directory. @param {Word} word @param {Context} ctx @returns {string[] | null}
+ * directory. @param {Word} word @param {Context} ctx @param {boolean} [lexical] keep the selected paths as written, without resolving links @returns {string[] | null}
  */
-function operandPaths(word, ctx) {
+function operandPaths(word, ctx, lexical = false) {
   const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
   if (!value || value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(value)) || looseGlob(word, value) !== null) return null;
   const base = ctx.cwd ?? ctx.scope;
@@ -1697,7 +1697,7 @@ function operandPaths(word, ctx) {
   const parent = resolve(base, directory || ".");
   if (!/[*?[(^#~]/u.test(name)) {
     const names = braceNames(name, 256);
-    return names && names.map((each) => canonicalPath(join(parent, each)));
+    return names && names.map((each) => lexical ? join(parent, each) : canonicalPath(join(parent, each)));
   }
   /** @type {string[]} */
   let entries;
@@ -1705,7 +1705,7 @@ function operandPaths(word, ctx) {
   if (entries.length > DOCS_WALK_ENTRIES) return null;
   const segments = broadGlob(name).map((form) => globSegment(fold(form)));
   return entries.filter((entry) => segments.some((segment) => typeof segment === "string" ? segment === fold(entry) : globMatch(segment, fold(entry))))
-    .map((entry) => canonicalPath(join(parent, entry)));
+    .map((entry) => lexical ? join(parent, entry) : canonicalPath(join(parent, entry)));
 }
 
 /** Whether a directory is inside a Git working tree (a `.git` entry in it or an ancestor). @param {string} directory */
@@ -2605,7 +2605,8 @@ function copyTargets(rest, ctx, withValue, { contents = false, remote = () => fa
   /** @type {{ word: Word, slash: boolean }[]} */
   const items = sources.flatMap((source) => {
     const slash = /\/\.?$/u.test(source.value);
-    const paths = source.glob && !remote(source) ? operandPaths(source, ctx) : null;
+    // The copied name is the selected entry's own name (a link `AGENTS.md` copies as `AGENTS.md`), not its target's.
+    const paths = source.glob && !remote(source) ? operandPaths(source, ctx, true) : null;
     if (paths === null) return [{ word: source, slash }];
     return paths.map((path) => ({ word: { ...literalWord(path), fromGlob: true }, slash }));
   });
@@ -3026,16 +3027,18 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       let input = null;
       /** @type {Word[]} */
       const positionals = [];
+      /** @type {Word[]} */
+      const writes = [];
       /** @param {string} option @param {Word} word */
       const take = (option, word) => {
-        if (option === "o" || option === "r") add(word, "write");
+        if (option === "o" || option === "r") writes.push(word);
         else if (option === "d") directory = word;
         else if (option === "i") input = word;
       };
       const long = { "--output": "o", "--reject-file": "r", "--directory": "d", "--input": "i" };
       for (let i = 0; i < rest.length; i++) {
         const value = rest[i].value;
-        if (value === "--") { rest.slice(i + 1).forEach((word) => { add(word, "write"); positionals.push(word); }); break; }
+        if (value === "--") { positionals.push(...rest.slice(i + 1)); break; }
         const named = Object.entries(long).find(([option]) => value === option || value.startsWith(`${option}=`));
         if (named) {
           if (value.includes("=")) take(named[1], optionValue(value));
@@ -3044,7 +3047,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
         if (/^--(?:prefix|suffix|fuzz|ifdef|strip|version-control|basename-prefix|debug|get|quoting-style|reject-format|read-only)$/u.test(value)) { i++; continue; }
         if (value.startsWith("--") || value === "-") continue;
-        if (!value.startsWith("-")) { add(rest[i], "write"); positionals.push(rest[i]); continue; }
+        if (!value.startsWith("-")) { positionals.push(rest[i]); continue; }
         // A cluster of short options (`-frAGENTS.md`, `-fo out`): the first that takes a value uses the rest or the next word.
         for (let k = 1; k < value.length; k++) {
           if (!"BDdFgioprVxYz".includes(value[k])) continue;
@@ -3056,7 +3059,16 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       }
       // The diff comes from -i, the second operand or stdin; the files it names are checked under the directory.
       // Every operand after the first is read as a diff too, so an option value the guard misreads cannot hide it.
-      const diffs = input ? [input] : positionals.slice(1);
+      // patch changes to -d before it opens any file: relative operands, -i, -o and -r name paths there (stdin redirects
+      // stay relative to the shell). Writes are checked at both places.
+      /** @param {Word} word @returns {Word} */
+      const inside = (word) => directory.value === "." || isAbsolute(word.value) ? word
+        : { ...word, value: `${directory.value.replace(/\/+$/u, "")}/${word.value}`, literal: word.literal && directory.literal, glob: word.glob || directory.glob };
+      for (const word of [...writes, ...positionals]) {
+        add(word, "write");
+        if (inside(word) !== word) add(inside(word), "write");
+      }
+      const diffs = (input ? [input] : positionals.slice(1)).map(inside);
       add(directory, "tree", { patches: diffs.length > 0 ? diffs.map((word) => diffOperand(word, stdin)) : [diffOperand(null, stdin)] });
       break;
     }
