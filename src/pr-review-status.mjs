@@ -332,7 +332,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const rounds = /** @type {import("./review-records.mjs").RoundRecord[]} */ (records.filter((record) => record.type === "round"));
   // A later exemption replaces an earlier one; it counts only for the exact head it names.
   const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
-  const solMax = rounds[0]?.result === "blocking" ? 2 : 1;
+  // Rounds past the second exist only with the operator's recorded approval.
+  const solMax = Math.max(rounds[0]?.result === "blocking" ? 2 : 1, rounds.length);
   const lastRound = rounds.at(-1);
   /** @type {Coverage | null} */
   let codexCoverage = null;
@@ -353,7 +354,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   else if (lastRound.result !== "none" && lastRound.result !== "non-blocking") solState = "invalid";
   else if (lastRound.head === head) solState = "approved";
   else {
-    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: admissibleFindings, records });
+    // Co-cited Codex ids only need to exist: any Codex finding with a known origin, not just the latest reviewed head's.
+    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
   const solOk = solState === "exempt" || solState === "approved" || solState === "covered";

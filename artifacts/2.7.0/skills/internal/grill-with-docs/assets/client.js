@@ -50,7 +50,7 @@ function draftBody(source,data,base){return JSON.stringify({expectedRevision:dra
 function scheduleDraft(){if(location.protocol==='file:')return;sync('pending','Cambios sin sincronizar con el servidor…');clearTimeout(draftTimer);draftTimer=setTimeout(pushDraft,800);}
 async function pushDraft(){
   if(recovery||draftSaving){draftPending=true;return;}
-  draftSaving=true;draftPending=false;const source=importPending?'import':'autosave';
+  draftSaving=true;draftPending=false;const source=importPending?'import':'autosave';const sentRevision=revision;
   try{
     const response=await fetch(draftEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:draftBody(source),signal:AbortSignal.timeout(8000)});
     const result=await response.json();
@@ -61,7 +61,9 @@ async function pushDraft(){
       return;
     }
     if(!response.ok)throw new Error(result.error||'No se pudo sincronizar.');
-    draftRevision=result.revision;importPending=false;storeDraft();notice(storageBlocked?noticeEl.firstElementChild.textContent:'');sync('saved','Guardado en el servidor (borrador '+draftRevision+').');
+    draftRevision=result.revision;importPending=false;storeDraft();notice(storageBlocked?noticeEl.firstElementChild.textContent:'');
+    // Edits made while this save was in flight are not on the server yet: stay pending and send them.
+    if(revision!==sentRevision){draftPending=true;sync('pending','Cambios sin sincronizar con el servidor…');}else sync('saved','Guardado en el servidor (borrador '+draftRevision+').');
   }catch{sync('offline','Sin conexión con el servidor. Lo escrito solo está en este navegador: expórtalo si vas a cerrar el túnel o cambiar de host.');draftPending=false;}
   finally{draftSaving=false;if(draftPending)scheduleDraft();}
 }

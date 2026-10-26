@@ -25,7 +25,7 @@ const VERDICTS = ["fix-only", "out-of-scope"];
 
 /**
  * @typedef {{id: string, paths: string[]}} Finding
- * @typedef {{type: "round", pr: string, reviewer: "sol", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string}} RoundRecord
+ * @typedef {{type: "round", pr: string, reviewer: "sol", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string}} RoundRecord
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
  * @typedef {RoundRecord | ExemptionRecord | CoverageRecord} ReviewRecord
@@ -171,9 +171,11 @@ const isFinding = (value) => hasKeys(value, ["id", "paths"]) && typeof value.id 
 function recordProblem(record, key) {
   if (record?.pr !== key) return `is not a review record for ${key}`;
   if (record.type === "round") {
-    if (!hasKeys(record, ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"])) return "round has missing or unknown fields";
+    const keys = ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"];
+    if (!hasKeys(record, Number(record.round) > 2 ? [...keys, "operatorApproval"] : keys)) return "round has missing or unknown fields";
     if (record.reviewer !== "sol") return "round reviewer is not sol";
-    if (record.round !== 1 && record.round !== 2) return "round number is not 1 or 2";
+    if (!Number.isInteger(record.round) || record.round < 1) return "round number is not a positive integer";
+    if (record.round > 2 && (!text(record.operatorApproval) || record.scope !== "full")) return "round past the second has no operator approval or is not full";
     if (typeof record.head !== "string" || !SHA.test(record.head)) return "round head is not a 40-hex SHA";
     if (!SCOPES.includes(record.scope)) return "round scope is not full or fix-diff";
     if (!RESULTS.includes(record.result)) return "round result is not blocking, non-blocking or none";
@@ -198,14 +200,15 @@ function recordProblem(record, key) {
 }
 
 /**
- * The first sequence problem, or "": round 1 full; round 2 only fix-diff after a blocking round 1; never a third;
- * rounds and exemptions never mix (a later exemption replaces an earlier one).
+ * The first sequence problem, or "": round 1 full; round 2 only fix-diff after a blocking round 1; a third or later only
+ * full, after a blocking round, with the operator's approval; rounds and exemptions never mix (a later exemption replaces
+ * an earlier one).
  * @param {ReviewRecord[]} records @returns {string}
  */
 function sequenceProblem(records) {
   const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
   if (rounds.length && records.some((record) => record.type === "exemption")) return "has both Sol rounds and an exemption";
-  if (rounds.length > 2) return "has more than two Sol rounds";
+  if (rounds.some((round, index) => index >= 2 && rounds[index - 1].result !== "blocking")) return "has a Sol round past the second after a non-blocking round";
   if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
   if (rounds[0] && rounds[0].scope !== "full") return "has a first Sol round that is not full";
   if (rounds[1] && (rounds[0].result !== "blocking" || rounds[1].scope !== "fix-diff")) return "has a second Sol round that is not a fix-diff after a blocking first round";
@@ -242,9 +245,9 @@ function appendChecked(home, key, file, record) {
 
 /**
  * Records one Sol round, or an exemption instead of any round.
- * @param {{home: string, pr?: string, reviewer?: string, head?: string, scope?: string, result?: string, thread?: string, findings?: string[] | string, exempt?: string, reason?: string}} options
+ * @param {{home: string, pr?: string, reviewer?: string, head?: string, scope?: string, result?: string, thread?: string, findings?: string[] | string, exempt?: string, reason?: string, operatorApproval?: string}} options
  */
-export function recordReview({ home, pr, reviewer, head, scope, result, thread, findings, exempt, reason }) {
+export function recordReview({ home, pr, reviewer, head, scope, result, thread, findings, exempt, reason, operatorApproval }) {
   const { key, file } = locate(home, pr);
   if (reviewer !== "sol") throw new Error("review record supports only --reviewer sol");
   if (!head || !SHA.test(head)) throw new Error("review record needs --head <40-hex SHA the reviewer read>");
@@ -273,13 +276,19 @@ export function recordReview({ home, pr, reviewer, head, scope, result, thread, 
       return { ok: true, operation: "review-record", path: file, record };
     }
     if (existing.some((record) => record.type === "exemption")) throw new Error(`${key} has a Sol exemption; rounds and exemptions do not mix (record a new exemption for this head or ask the owner)`);
-    // Operator budget: one full round; a fix-diff second round only after a blocking first; never a third.
-    if (rounds.length >= 2) throw new Error(`${key} already has two Sol rounds; a third needs the operator`);
+    // Operator budget: one full round; a fix-diff second round only after a blocking first; a third or later only with
+    // the operator's own words quoted verbatim, as a full round after a blocking one.
+    const approval = text(operatorApproval);
+    if (rounds.length >= 2) {
+      if (!approval) throw new Error(`${key} already has ${rounds.length} Sol rounds; another needs --operator-approval "<the operator's exact words>"`);
+      if (rounds.at(-1)?.result !== "blocking") throw new Error(`another Sol round needs a blocking last round (last was ${rounds.at(-1)?.result})`);
+      if (scope !== "full") throw new Error("a Sol round past the second must be --scope full");
+    } else if (approval) throw new Error("--operator-approval applies only to a Sol round past the second");
     if (rounds.length === 0 && scope !== "full") throw new Error("the first Sol round must be --scope full");
     if (rounds.length === 1 && rounds[0].result !== "blocking") throw new Error(`a second Sol round needs a blocking first round (first was ${rounds[0].result})`);
     if (rounds.length === 1 && scope !== "fix-diff") throw new Error("the second Sol round must be --scope fix-diff");
     /** @type {RoundRecord} */
-    const record = { type: "round", pr: key, reviewer: "sol", round: rounds.length + 1, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: /** @type {RoundRecord["result"]} */ (result), thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt };
+    const record = { type: "round", pr: key, reviewer: "sol", round: rounds.length + 1, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: /** @type {RoundRecord["result"]} */ (result), thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt, ...(rounds.length >= 2 ? { operatorApproval: /** @type {string} */ (approval) } : {}) };
     appendChecked(home, key, file, record);
     return { ok: true, operation: "review-record", path: file, record };
   });

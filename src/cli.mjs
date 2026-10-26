@@ -434,7 +434,7 @@ const COMMAND_TABLE = [
   ["friction add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
   ["friction list", COMMON_OPTIONS],
   ["evidence record", EVIDENCE_USAGE],
-  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <id> [--finding <id>:<path>[+<path>]]... | --exempt docs-only|low-risk --reason <text> [--home <dir>] [--json]"],
+  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <id> [--finding <id>:<path>[+<path>]]... [--operator-approval <operator's exact words> (a full round past the second)] | --exempt docs-only|low-risk --reason <text> [--home <dir>] [--json]"],
   ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
@@ -659,7 +659,7 @@ async function runCommand(argv) {
     const json = argv.includes("--json");
     /** @type {Record<string, string>} */
     const valueFlags = subcommand === "record"
-      ? { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason" }
+      ? { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--operator-approval": "operatorApproval" }
       : { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" };
     /** @type {Record<string, string>} */
     const values = {};
@@ -678,7 +678,7 @@ async function runCommand(argv) {
     const home = values.home ?? homedir();
     const reviews = await import("./review-records.mjs");
     const result = subcommand === "record"
-      ? await reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason })
+      ? await reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, operatorApproval: values.operatorApproval })
       : await reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
     return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
   }

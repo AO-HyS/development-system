@@ -1523,9 +1523,13 @@ function docsTarget(word, absolute, kind, ctx) {
       const segment = globSegment(fold(name.replace(/\{[^{}]*\}/gu, "*")));
       return docsSamples.some((/** @type {string} */ sample) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample))) ? shown : null;
     }
-    // A glob expands only to existing entries of its directory; an unknown or patterned directory is not followed.
+    // A glob expands only to existing entries of its directory. When the directory is unknown or itself a pattern
+    // (`*/*.md`), the guard cannot list what it reaches: any usual spelling of a protected name the last part can make counts.
     const directory = value.slice(0, value.lastIndexOf("/") + 1);
-    if (directory.includes(UNKNOWN) || /[*?[\]{}()]/u.test(directory) || (ctx.cwd === null && !isAbsolute(directory))) return null;
+    if (directory.includes(UNKNOWN) || /[*?[\]{}()]/u.test(directory) || (ctx.cwd === null && !isAbsolute(directory))) {
+      const segments = broadGlob(name).map((form) => globSegment(fold(form)));
+      return docsSamples.some((/** @type {string} */ sample) => segments.some((segment) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample)))) ? `${shown} (unresolved directory)` : null;
+    }
     /** @type {string[]} */
     let entries;
     try { entries = readdirSync(resolve(ctx.cwd ?? ctx.scope, directory || "."), { encoding: "utf8" }).slice(0, 5000).filter(docsName); } catch { return null; }
