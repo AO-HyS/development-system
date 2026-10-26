@@ -1640,10 +1640,11 @@ const DOCS_WALK_ENTRIES = 5000;
  * is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES entries or cannot be read, so the caller fails
  * closed. Any entry with a protected name counts, a symlink included. Symlinks below the directory are not followed unless
  * `follow` is set (a copy that dereferences links: `cp -L`, `rsync -L`); then a link to a directory is walked within the
- * same bounds, a directory already walked (by real path) is skipped, and a broken or unreadable link fails closed.
- * @param {string} directory @param {boolean} [follow] @returns {string[] | null}
+ * same bounds, a directory already walked (by real path) is skipped, and a broken or unreadable link fails closed. Other
+ * symlinks are added to `links` when given. @param {string} directory @param {boolean} [follow] @param {string[] | null} [links]
+ * @returns {string[] | null}
  */
-function docsInside(directory, follow = false) {
+function docsInside(directory, follow = false, links = /** @type {string[] | null} */ (null)) {
   try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
   /** @type {string[]} */
   const found = [];
@@ -1666,6 +1667,7 @@ function docsInside(directory, follow = false) {
       const child = rel ? join(rel, entry.name) : entry.name;
       const full = join(path, entry.name);
       if (docsName(entry.name)) found.push(child);
+      else if (links && entry.isSymbolicLink()) links.push(child);
       if (entry.isDirectory()) {
         if (follow) {
           try { seen.add(realpathSync(full)); } catch { return null; }
@@ -2902,26 +2904,59 @@ function checkoutPathspecs(args) {
 }
 
 /**
- * The protected files a `find` selects: its starting points, walked for protected names, filtered by a plain conjunction of
- * -name/-iname tests (any other test or operator selects every file), plus guard configuration at, inside or below a
- * starting point. `unknown` names a starting point or tree the guard cannot read, so the caller fails closed.
- * @param {Word[]} rest @param {Context} ctx
+ * `find`'s starting points, where its expression begins, and whether it follows links: `-H`/`-L`/`-P` and BSD `-E`/`-X`/`-d`/
+ * `-s`/`-x` options, BSD `-f path` roots, GNU `-D`/`-O` options and `--`. Null when an option before the roots is unknown.
+ * @param {Word[]} rest @returns {{ roots: Word[], start: number, follow: boolean } | null}
+ */
+function findRoots(rest) {
+  /** @type {Word[]} */
+  const roots = [];
+  let follow = false;
+  let i = 0;
+  for (; i < rest.length; i++) {
+    const value = rest[i].value;
+    if (value === "--") { i++; break; }
+    if (value === "-f") { if (!rest[i + 1]) return null; roots.push(rest[++i]); continue; }
+    if (/^-f./u.test(value)) { roots.push(literalWord(value.slice(2))); continue; }
+    if (value === "-D") { i++; continue; }
+    if (/^-(?:D.|O\d*)$/u.test(value)) continue;
+    if (/^-[HLPEXdsx]+$/u.test(value)) {
+      for (const letter of value.slice(1)) if (letter === "L") follow = true; else if (letter === "P" || letter === "H") follow = false;
+      continue;
+    }
+    break;
+  }
+  // GNU find starts its expression at the first `-` word, `(` or `!`; an option-looking word right after `--` is still a root.
+  let next = i;
+  while (next < rest.length && !/^[-(!]/u.test(rest[next].value)) next++;
+  roots.push(...rest.slice(i, next));
+  return { roots: roots.length > 0 ? roots : [literalWord(".")], start: next, follow };
+}
+
+/**
+ * The protected files a `find` action at `action` can reach: its starting points walked for protected names and for links
+ * to protected files (followed into directories under `-L`), filtered by a plain conjunction of -name/-iname tests before
+ * the action (any other test or operator selects every file; tests after the action and commands of other -exec actions do
+ * not filter it), plus guard configuration at, inside, below or linked from a starting point. `unknown` names a starting
+ * point, option or tree the guard cannot read, so the caller fails closed.
+ * @param {Word[]} rest @param {Context} ctx @param {number} action
  * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null }}
  */
-function findSelection(rest, ctx) {
-  let first = 0;
-  while (first < rest.length && /^-[HLP]$/u.test(rest[first].value)) first++;
-  let end = first;
-  while (end < rest.length && !/^[-(!]/u.test(rest[end].value)) end++;
-  const roots = end > first ? rest.slice(first, end) : [literalWord(".")];
-  const expression = rest.slice(end);
+function findSelection(rest, ctx, action) {
+  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null) };
+  const parsed = findRoots(rest);
+  if (parsed === null) { result.unknown = "find options"; return result; }
+  const { roots, start, follow } = parsed;
   /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
   const names = [];
   let plain = true;
-  for (let i = 0; i < expression.length; i++) {
-    const value = expression[i].value;
-    if (value === "-name" || value === "-iname") {
-      const pattern = expression[++i];
+  for (let i = start; i < action; i++) {
+    const value = rest[i].value;
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) {
+      while (i + 1 < action && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
+      i++;
+    } else if (value === "-name" || value === "-iname") {
+      const pattern = rest[++i];
       if (!pattern?.literal) { plain = false; continue; }
       names.push({ glob: globSegment(value === "-iname" ? pattern.value.toLowerCase() : pattern.value), fold: value === "-iname" });
     } else if (["-o", "-or", "!", "-not", "(", ")", ",", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex", "-lname", "-ilname"].includes(value)) plain = false;
@@ -2931,27 +2966,41 @@ function findSelection(rest, ctx) {
     const base = folded ? basename(file).toLowerCase() : basename(file);
     return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
   });
-  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null) };
   const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+  /** A file find visits, by the path it passes to the action: its own name or, through a link, the file it reaches. @param {string} file @param {Word} root */
+  const visit = (file, root) => {
+    if (!selected(file)) return;
+    if (protectedMatch(file, "write", targets)) result.guard.push(file);
+    else if (docsName(basename(file)) || docsName(basename(canonicalPath(file)))) result.docs.push({ file, root });
+  };
   for (const root of roots) {
-    const paths = operandPaths(root, ctx);
+    const paths = operandPaths(root, ctx, true);
     if (paths === null) { if (!ctx.codeString) result.unknown ??= root.value.replaceAll(UNKNOWN, "$…"); continue; }
     for (const path of paths) {
+      // Everything in a protected directory is protected, so a starting point in one is reached whatever the tests.
+      if (targets.some((target) => target.directory && protectedMatch(path, "write", [target]))) result.guard.push(path);
       for (const target of targets) {
+        if (!target.directory) continue;
+        // A protected directory below a starting point is walked into whatever its names.
         for (const protectedPath of target.forms) {
-          for (const candidate of forms(path)) {
-            // The starting point is guard configuration or inside it; a protected directory below it is walked into.
-            if (candidate === protectedPath || (target.directory && candidate.startsWith(`${protectedPath}${sep}`))) result.guard.push(path);
-            else if (protectedPath.startsWith(`${candidate}${sep}`) && (target.directory || selected(protectedPath))) result.guard.push(protectedPath);
-          }
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) result.guard.push(protectedPath);
         }
       }
-      let found;
-      try { found = statSync(path).isDirectory() ? docsInside(path) : docsName(basename(path)) ? [""] : []; } catch { found = []; }
+      visit(path, root);
+      let directory = false;
+      try { directory = statSync(path).isDirectory(); } catch { /* missing: nothing below */ }
+      if (!directory) continue;
+      /** @type {string[]} */
+      const links = [];
+      const found = docsInside(path, follow, links);
       if (found === null) { result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`; continue; }
-      for (const rel of found) {
-        const file = rel ? join(path, rel) : path;
-        if (selected(file)) result.docs.push({ file, root });
+      for (const rel of [...found, ...links]) visit(join(path, rel), root);
+      // Guard files below a starting point are visited by their own names.
+      for (const target of targets) {
+        if (target.directory) continue;
+        for (const protectedPath of target.forms) {
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && selected(protectedPath)) result.guard.push(protectedPath);
+        }
       }
     }
   }
@@ -2964,7 +3013,7 @@ function findSelection(rest, ctx) {
  * never granted. @param {Word[]} rest @param {Context} ctx
  */
 function checkFindDelete(rest, ctx) {
-  const { docs, guard, unknown } = findSelection(rest, ctx);
+  const { docs, guard, unknown } = findSelection(rest, ctx, rest.findIndex((word) => word.value === "-delete"));
   if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
   const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
   if (unknown !== null) block(unknown);
@@ -3947,8 +3996,6 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     return;
   }
   if (name === "find") {
-    /** @type {ReturnType<typeof findSelection> | undefined} */
-    let selection;
     for (let i = 0; i < rest.length; i++) {
       if (!["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) continue;
       let end = i + 1;
@@ -3959,7 +4006,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
       // is checked in its place, so a writer or deleter there blocks while a reader stays allowed.
       let nested = rest.slice(i + 1, end);
       if (nested.some((word) => word.value.includes("{}"))) {
-        selection ??= findSelection(rest, ctx);
+        const selection = findSelection(rest, ctx, i);
         const fill = selection.unknown !== null ? "AGENTS.md" : selection.guard[0] ?? selection.docs[0]?.file ?? null;
         if (fill !== null) nested = nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", dir ? `./${basename(fill)}` : fill)) : word);
       }
@@ -4012,10 +4059,13 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   }
 
   // xargs adds words read from standard input, which can name any file: a protected name stands in for them.
-  const operands = !viaXargs ? rest : replace !== null
-    ? rest.map((word) => word.value.includes(/** @type {string} */ (replace)) ? literalWord(word.value.replaceAll(/** @type {string} */ (replace), "AGENTS.md")) : word)
-    : [...rest, literalWord("AGENTS.md")];
-  for (const { word, kind, effect } of commandTargets(name, operands, ctx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
+  // A replace string (`-I{}`) is also read as unknown text, so the path around it (`{}/hooks.json`) still counts.
+  const filled = (/** @type {string} */ text, /** @type {boolean} */ literal) => rest.map((word) => word.value.includes(/** @type {string} */ (replace))
+    ? { ...literalWord(word.value.replaceAll(/** @type {string} */ (replace), text)), literal } : word);
+  const variants = !viaXargs ? [rest] : replace !== null ? [filled("AGENTS.md", true), filled(UNKNOWN, false)] : [[...rest, literalWord("AGENTS.md")]];
+  for (const operands of variants) {
+    for (const { word, kind, effect } of commandTargets(name, operands, ctx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
+  }
   if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
 
