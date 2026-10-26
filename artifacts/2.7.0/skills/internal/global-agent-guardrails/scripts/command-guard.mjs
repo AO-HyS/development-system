@@ -3101,6 +3101,9 @@ function findActionIndex(rest, primary) {
 const FIND_FILLS = 64;
 
 /** Commands whose written files commandTargets reads from their words (sed only with -i, cp only its destination). */
+/** Project guard file names a backup suffix could complete (`settings` + `.json`); the write check decides where they count. */
+const BACKUP_GUARD_NAMES = new Set(["settings.json", "settings.local.json", "hooks.json", "config.toml", "config"]);
+
 /** rsync options whose value is the next word (or the rest of a short cluster). */
 const RSYNC_VALUE_OPTIONS = new Set(["-e", "-B", "-f", "-M", "-T", "-@", "--rsh", "--block-size", "--filter", "--remote-option", "--temp-dir",
   "--modify-window", "--info", "--debug", "--stderr", "--backup-dir", "--suffix", "--rsync-path", "--max-delete", "--max-size", "--min-size",
@@ -3174,6 +3177,8 @@ function findSelection(rest, ctx, action) {
   const { roots, start, follow } = parsed;
   /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
   const names = [];
+  /** @type {{ letters: string[], dereference: boolean }[]} */
+  const types = [];
   let plain = true;
   for (let i = start; i < action; i++) {
     const value = rest[i].value;
@@ -3183,13 +3188,31 @@ function findSelection(rest, ctx, action) {
       const pattern = rest[++i];
       if (!pattern?.literal) { plain = false; continue; }
       names.push({ glob: globSegment(value === "-iname" ? pattern.value.toLowerCase() : pattern.value), fold: value === "-iname" });
+    } else if (value === "-type" || value === "-xtype") {
+      // `-type d` (a comma list in GNU find) keeps entries of those types; -xtype reads the other side of a link.
+      const kinds = rest[++i];
+      if (!kinds?.literal || !/^[bcdpfls](?:,[bcdpfls])*$/u.test(kinds.value)) { plain = false; continue; }
+      types.push({ letters: kinds.value.split(","), dereference: (value === "-xtype") !== follow });
     } else if (["-o", "-or", "!", "-not", "(", ")", ",", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex", "-lname", "-ilname"].includes(value)) plain = false;
   }
+  /** The type letter of an existing entry, or null when it does not exist. @param {string} file @param {boolean} dereference */
+  const typeOf = (file, dereference) => {
+    let stat;
+    try { stat = dereference ? statSync(file) : lstatSync(file); } catch {
+      try { lstatSync(file); return "l"; } catch { return null; }
+    }
+    return stat.isDirectory() ? "d" : stat.isSymbolicLink() ? "l" : stat.isFIFO() ? "p" : stat.isSocket() ? "s" : stat.isBlockDevice() ? "b" : stat.isCharacterDevice() ? "c" : "f";
+  };
   /** @param {string} file */
-  const selected = (file) => !plain || names.every(({ glob, fold: folded }) => {
-    const base = folded ? basename(file).toLowerCase() : basename(file);
-    return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
-  });
+  const selected = (file) => {
+    // Only an existing entry is found.
+    if (typeOf(file, false) === null) return false;
+    if (!plain) return true;
+    return types.every(({ letters, dereference }) => letters.includes(typeOf(file, dereference) ?? "")) && names.every(({ glob, fold: folded }) => {
+      const base = folded ? basename(file).toLowerCase() : basename(file);
+      return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
+    });
+  };
   const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
   /** A file find visits, by the path it passes to the action: its own name or, through a link, the file it reaches. @param {string} file @param {Word} root */
   const visit = (file, root) => {
@@ -3207,7 +3230,7 @@ function findSelection(rest, ctx, action) {
         if (!target.directory) continue;
         // A protected directory below a starting point is walked into whatever its names.
         for (const protectedPath of target.forms) {
-          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) result.guard.push(protectedPath);
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && typeOf(protectedPath, false) !== null) result.guard.push(protectedPath);
         }
       }
       visit(path, root);
@@ -3223,7 +3246,9 @@ function findSelection(rest, ctx, action) {
       for (const target of targets) {
         if (target.directory) continue;
         for (const protectedPath of target.forms) {
-          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && selected(protectedPath)) result.guard.push(protectedPath);
+          // A missing guard file counts when find removes the existing directory that holds it (`find .codex -delete`).
+          const reached = typeOf(protectedPath, false) !== null ? selected(protectedPath) : selected(dirname(protectedPath));
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && reached) result.guard.push(protectedPath);
         }
       }
     }
@@ -3365,6 +3390,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             rest.push({ ...value, value: `${word.value}=${value.value}`, raw: `${word.value}=${value.raw}` });
           } else rest.push(word);
         }
+        // --read-batch replays a recorded transfer into the destination: its files are unknown.
+        if (longOption(rest, ["--read-batch"])) {
+          const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
+          add(destination ?? literalWord("."), "tree", { unknownContents: true });
+          break;
+        }
       }
       // BSD install -M writes a metadata log.
       if (name === "install") {
@@ -3400,11 +3431,42 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const follow = name === "cp" ? ["L", "H"].some((letter) => shortLetters(rest, "St").has(letter)) || longOption(rest, ["--dereference"])
         : name === "rsync" && (rsyncLetters.has("L") || rsyncLetters.has("k") || longOption(rest, ["--copy-links", "--copy-dirlinks", "--copy-unsafe-links"]));
       const backups = backupSuffixes(rest, name);
+      // rsync --backup-dir keeps backup names unless --suffix is given.
+      const explicitSuffixes = rest.filter((word) => word.value.startsWith("--suffix=")).map((word) => word.value.slice(9));
+      const dirSuffixes = explicitSuffixes.length > 0 ? explicitSuffixes : [""];
+      /**
+       * Each file of a recursive copy that replaces one is backed up under its name plus the suffix, so a source name that
+       * becomes protected with a suffix (`eslint.config` + `.js`) is checked below `base`.
+       * @param {Word} source @param {Word} base @param {string[]} suffixes
+       */
+      const memberBackups = (source, base, suffixes) => {
+        const named = suffixes.filter(Boolean);
+        if (named.length === 0) return;
+        if (remote(source) || !source.literal || source.value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(source.value))) {
+          add(base, "tree", { unknownContents: true });
+          return;
+        }
+        /** @type {string[]} */
+        const all = [];
+        if (docsInside(resolve(ctx.cwd ?? ctx.scope, source.value), follow, null, all) === null) {
+          throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: backups of ${source.value} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+        }
+        for (const rel of all) {
+          for (const suffix of named) {
+            const backupName = `${basename(rel)}${suffix}`;
+            if (!docsName(backupName) && !BACKUP_GUARD_NAMES.has(backupName)) continue;
+            const value = `${base.value.replace(/\/+$/u, "")}/${rel}${suffix}`;
+            add({ ...base, value, raw: value }, "write");
+          }
+        }
+      };
+      const suffixed = (/** @type {Word} */ word, /** @type {string} */ suffix) => suffix ? { ...word, value: `${word.value}${suffix}`, raw: `${word.value}${suffix}` } : word;
       pairs.forEach(({ target, source }) => {
         add(target, "write");
         for (const suffix of backups) add(backupWord(target, suffix), "write");
         if (!recursive) return;
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
+        if (!backupDir) memberBackups(source, target, backups);
       });
       if (name === "rsync" && (shortLetters(rest, "eBfMT@").has("R") || longOption(rest, ["--relative"])) && !longOption(rest, ["--no-relative", "--no-R"])) {
         // -R/--relative recreates each source path (from a `/./` mark, without a leading `/`) under the destination.
@@ -3420,11 +3482,15 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             add(word, "write");
             add(word, "tree", { source, follow });
             if (backupDir) {
-              // Its backup keeps the same path under --backup-dir.
+              // Its backup keeps the same path (plus any --suffix) under --backup-dir.
               const root = isAbsolute(backupDir.value) ? backupDir.value.replace(/\/+$/u, "") : `${destination.value.replace(/\/+$/u, "") || "."}/${backupDir.value.replace(/\/+$/u, "")}`;
               const backup = { ...backupDir, value: `${root}/${path}`, raw: `${root}/${path}`, literal: backupDir.literal && source.literal && destination.literal };
-              add(backup, "write");
-              add(backup, "tree", { source, follow });
+              for (const suffix of dirSuffixes) add(suffixed(backup, suffix), "write");
+              if (dirSuffixes.includes("")) add(backup, "tree", { source, follow });
+              memberBackups(source, backup, dirSuffixes);
+            } else {
+              for (const suffix of backups) add(suffixed(word, suffix), "write");
+              memberBackups(source, word, backups);
             }
           }
         }
@@ -3449,16 +3515,19 @@ function commandTargets(name, rest, ctx, sed, stdin) {
           pairs.forEach(({ target, source }) => {
             if (target.value !== destination.value) {
               const word = backupWordFor(destination.value, basename(target.value));
-              add(word, "write");
-              add(word, "tree", { source, follow });
+              for (const suffix of dirSuffixes) add(suffixed(word, suffix), "write");
+              if (dirSuffixes.includes("")) add(word, "tree", { source, follow });
+              memberBackups(source, word, dirSuffixes);
               if (deletes) add(word, "tree", { source: target });
             } else if (into || /\/\.?$/u.test(source.value)) {
-              add(backupWordFor(destination.value, ""), "tree", { source, follow });
+              if (dirSuffixes.includes("")) add(backupWordFor(destination.value, ""), "tree", { source, follow });
+              memberBackups(source, backupWordFor(destination.value, ""), dirSuffixes);
               if (deletes) add(backupWordFor(destination.value, ""), "tree", { source: destination });
             } else {
-              // A file replaced: dirname(dest)/backup-dir/basename(dest).
+              // A file replaced: dirname(dest)/backup-dir/basename(dest) plus any --suffix.
               const slash = destination.value.lastIndexOf("/");
-              add(backupWordFor(slash < 0 ? "." : destination.value.slice(0, slash) || "/", basename(destination.value)), "write");
+              const word = backupWordFor(slash < 0 ? "." : destination.value.slice(0, slash) || "/", basename(destination.value));
+              for (const suffix of dirSuffixes) add(suffixed(word, suffix), "write");
             }
           });
         }
