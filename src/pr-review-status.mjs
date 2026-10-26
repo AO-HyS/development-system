@@ -151,9 +151,11 @@ function summaryStates(appComments) {
 
 /**
  * The single coverage rule for Codex (budget-spent) and Sol: commits from the reviewed head to the current head.
- * @param {{base: string, from: string, to: string, findings: Finding[], records: any[]}} input @returns {Coverage}
+ * A commit may co-cite the other reviewer's findings (`peers`) when one fix answers both, but it must cite at least
+ * one finding of this review and touch only the cited findings' paths.
+ * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[]}} input @returns {Coverage}
  */
-function coverage({ base, from, to, findings, records }) {
+function coverage({ base, from, to, findings, peers = [], records }) {
   /** @type {CoveredCommit[]} */
   const commits = [];
   /** @param {string} reason @param {boolean} [error] @returns {Coverage} */
@@ -165,7 +167,8 @@ function coverage({ base, from, to, findings, records }) {
   const total = Number(compare.total_commits);
   if (!(total > 0) || total > MAX_COVERAGE_COMMITS) return uncovered(`${total} commits after the reviewed head (limit ${MAX_COVERAGE_COMMITS})`);
   if (!Array.isArray(compare.commits) || compare.commits.length !== total) return uncovered("GitHub listed the commits after the reviewed head partially", true);
-  const known = new Map(findings.map((finding) => [finding.id, finding.paths]));
+  const own = new Set(findings.map((finding) => finding.id));
+  const known = new Map([...peers, ...findings].map((finding) => [finding.id, finding.paths]));
   let filtersPass = true;
   for (const entry of compare.commits) {
     const sha = String(entry.sha);
@@ -184,6 +187,7 @@ function coverage({ base, from, to, findings, records }) {
     const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names };
     if (fixes.length === 0) commit.problem = "no `fixes: <id>` line";
     else if (unknown.length) commit.problem = `cites ids that are not findings of that review: ${unknown.join(", ")}`;
+    else if (!fixes.some((id) => own.has(id))) commit.problem = "cites only the other reviewer's findings";
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem) filtersPass = false;
     commits.push(commit);
@@ -324,7 +328,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   if (budgetSpent && last) {
     codexCoverage = originUnknown
       ? { from: last.sha, to: head, covered: false, error: true, filtersPass: false, reason: "GitHub did not report which commit a Codex thread reviewed", commits: [] }
-      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, records });
+      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: lastRound?.findings ?? [], records });
   }
   /** @type {Coverage | null} */
   let solCoverage = null;
@@ -338,7 +342,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   else if (lastRound.result !== "none" && lastRound.result !== "non-blocking") solState = "invalid";
   else if (lastRound.head === head) solState = "approved";
   else {
-    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, records });
+    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: admissibleFindings, records });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
   const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
