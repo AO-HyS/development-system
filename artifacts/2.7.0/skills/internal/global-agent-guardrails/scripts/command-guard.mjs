@@ -72,7 +72,7 @@ class ParseError extends Error {}
 /**
  * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean, fromGlob?: boolean }} Word
  * @typedef {{ op: string, fd: string, target: Word | null, heredoc: any }} Redirect
- * @typedef {{ cwd: string | null, scope: string, depth: number, aliases?: Map<string, Word[] | null>, lenient?: boolean, cdpath?: boolean, substituted?: boolean, codeString?: boolean }} Context
+ * @typedef {{ cwd: string | null, scope: string, depth: number, aliases?: Map<string, Word[] | null>, lenient?: boolean, cdpath?: boolean, substituted?: boolean, codeString?: boolean, execdir?: boolean }} Context
  */
 
 /** @returns {Word} */
@@ -1437,6 +1437,8 @@ function checkTarget(word, kind, ctx, effect) {
     ?? (word.glob ? protectedGlob(ctx.cwd === null && !isAbsolute(text) ? null : absolute, text, kind, targets) : null)
     ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
+  // find -execdir runs in each match's directory, where a relative name can be a link to any protected file.
+  if (ctx.execdir && !isAbsolute(text)) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${text} (relative to an unknown -execdir directory)`);
   const docs = docsTarget(word, absolute, kind, ctx);
   if (docs && !(grantable(word, text, ctx) && grantedDocsWrite(absolute))) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${docs}`);
   if (effect) checkDocsEffect(word, text, absolute, effect, ctx);
@@ -2900,12 +2902,13 @@ function checkoutPathspecs(args) {
 }
 
 /**
- * `find … -delete` removes every match below its starting points. A protected file below them blocks it unless the
- * expression is a plain conjunction of -name/-iname tests (with -type and similar) that the file's name fails; an
- * unknown starting point, a tree past the walk bounds or a granted file outside a fully known operand fails closed.
+ * The protected files a `find` selects: its starting points, walked for protected names, filtered by a plain conjunction of
+ * -name/-iname tests (any other test or operator selects every file), plus guard configuration at, inside or below a
+ * starting point. `unknown` names a starting point or tree the guard cannot read, so the caller fails closed.
  * @param {Word[]} rest @param {Context} ctx
+ * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null }}
  */
-function checkFindDelete(rest, ctx) {
+function findSelection(rest, ctx) {
   let first = 0;
   while (first < rest.length && /^-[HLP]$/u.test(rest[first].value)) first++;
   let end = first;
@@ -2928,20 +2931,45 @@ function checkFindDelete(rest, ctx) {
     const base = folded ? basename(file).toLowerCase() : basename(file);
     return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
   });
-  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
+  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null) };
+  const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
   for (const root of roots) {
     const paths = operandPaths(root, ctx);
-    if (paths === null) { if (!ctx.codeString) block(root.value.replaceAll(UNKNOWN, "$…")); continue; }
+    if (paths === null) { if (!ctx.codeString) result.unknown ??= root.value.replaceAll(UNKNOWN, "$…"); continue; }
     for (const path of paths) {
+      for (const target of targets) {
+        for (const protectedPath of target.forms) {
+          for (const candidate of forms(path)) {
+            // The starting point is guard configuration or inside it; a protected directory below it is walked into.
+            if (candidate === protectedPath || (target.directory && candidate.startsWith(`${protectedPath}${sep}`))) result.guard.push(path);
+            else if (protectedPath.startsWith(`${candidate}${sep}`) && (target.directory || selected(protectedPath))) result.guard.push(protectedPath);
+          }
+        }
+      }
       let found;
       try { found = statSync(path).isDirectory() ? docsInside(path) : docsName(basename(path)) ? [""] : []; } catch { found = []; }
-      if (found === null) block(`${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
-      const hits = /** @type {string[]} */ (found).map((rel) => rel ? join(path, rel) : path).filter(selected);
-      const known = grantable(root, root.value, ctx);
-      const hit = hits.find((file) => !(known && grantedDocsWrite(file)));
-      if (hit) block(hit);
+      if (found === null) { result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`; continue; }
+      for (const rel of found) {
+        const file = rel ? join(path, rel) : path;
+        if (selected(file)) result.docs.push({ file, root });
+      }
     }
   }
+  return result;
+}
+
+/**
+ * `find … -delete` removes every match below its starting points. A protected file it selects blocks it; an unknown starting
+ * point, a tree past the walk bounds or a granted file outside a fully known operand fails closed, and guard configuration is
+ * never granted. @param {Word[]} rest @param {Context} ctx
+ */
+function checkFindDelete(rest, ctx) {
+  const { docs, guard, unknown } = findSelection(rest, ctx);
+  if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
+  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
+  if (unknown !== null) block(unknown);
+  const hit = docs.find(({ file, root }) => !(grantable(root, root.value, ctx) && grantedDocsWrite(file)));
+  if (hit) block(hit.file);
 }
 
 /**
@@ -3919,13 +3947,23 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     return;
   }
   if (name === "find") {
+    /** @type {ReturnType<typeof findSelection> | undefined} */
+    let selection;
     for (let i = 0; i < rest.length; i++) {
       if (!["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) continue;
       let end = i + 1;
       while (end < rest.length && rest[end].value !== ";" && rest[end].value !== "+") end++;
       // -execdir and -okdir run in each match's directory, which the guard cannot know.
       const dir = rest[i].value.endsWith("dir");
-      evaluateArgv(rest.slice(i + 1, end), [], dir ? { ...ctx, cwd: null } : ctx, false, true);
+      // `{}` stands for each selected file: a protected one it selects (or a protected name when the selection is unknown)
+      // is checked in its place, so a writer or deleter there blocks while a reader stays allowed.
+      let nested = rest.slice(i + 1, end);
+      if (nested.some((word) => word.value.includes("{}"))) {
+        selection ??= findSelection(rest, ctx);
+        const fill = selection.unknown !== null ? "AGENTS.md" : selection.guard[0] ?? selection.docs[0]?.file ?? null;
+        if (fill !== null) nested = nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", dir ? `./${basename(fill)}` : fill)) : word);
+      }
+      evaluateArgv(nested, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
       i = end;
     }
     if (rest.some((word) => word.value === "-delete")) checkFindDelete(rest, ctx);
@@ -3973,7 +4011,11 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     if (unsafe) throw new Block("sensitive-dynamic-argument", "xargs appends arguments from standard input to a destructive-capable command; put them after a literal -- separator.");
   }
 
-  for (const { word, kind, effect } of commandTargets(name, rest, ctx, sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
+  // xargs adds words read from standard input, which can name any file: a protected name stands in for them.
+  const operands = !viaXargs ? rest : replace !== null
+    ? rest.map((word) => word.value.includes(/** @type {string} */ (replace)) ? literalWord(word.value.replaceAll(/** @type {string} */ (replace), "AGENTS.md")) : word)
+    : [...rest, literalWord("AGENTS.md")];
+  for (const { word, kind, effect } of commandTargets(name, operands, ctx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
   if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
 
