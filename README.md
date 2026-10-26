@@ -4,11 +4,14 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.6.2**, shared skill catalog **0.71.2**. This
-candidate adds weekly learning controls: grouped mistake causes, behavioral
-evidence receipts with a merge gate, a handoff prompt for oversized threads,
-an install stop while T3 runs are active, a guard on shared temporary
-directories and the Codex weekly quota in doctor. See
+Current source candidate: **2.7.0**, shared skill catalog **0.72.0**. This
+candidate implements plan v5: the stop gate no longer prompts for a handoff in
+long threads, `pr-review-status` follows the written review-gate contract
+(`review record`, `review coverage`, one next step), the guard blocks agent
+edits to `AGENTS.md`, `CLAUDE.md` and lint config without an operator
+`allow-docs` grant, grill drafts survive restarts, every command answers
+`--help`, and Impeccable is 4.7.0 with a two-pass polish cap. Earlier
+weekly learning controls are described in
 [ADR 0073](docs/adr/0073-weekly-learning-controls.md).
 
 The candidate is not a claim of publication or global installation. Browser

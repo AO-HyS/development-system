@@ -1,0 +1,22 @@
+{
+  "id": "grill-demo-ronda-1",
+  "title": "Un grill, más cómodo de contestar",
+  "productName": "Development System",
+  "introduction": "Esta es una demostración de la plantilla compartida. Puedes probar las opciones, escribir un comentario y enviar. Las preguntas reales de cada grill se cargan desde un JSON.",
+  "questions": [
+    {
+      "id": "lectura",
+      "group": "Prueba de lectura",
+      "text": "¿Cómo prefieres recorrer estas preguntas?",
+      "context": "Puedes cambiar entre verlas todas y leer una por una desde los controles de la página.",
+      "options": {"A": "Ver todas para tener el contexto completo.", "B": "Ir una por una para concentrarme en cada respuesta."},
+      "recommendation": "Prueba ambos modos; cambiar la vista conserva lo que hayas escrito."
+    },
+    {
+      "id": "comentario",
+      "group": "Prueba de respuesta",
+      "text": "¿Qué matiz añadirías a tu elección?",
+      "context": "Este campo demuestra una pregunta abierta. También puedes dejarla para después."
+    }
+  ]
+}
