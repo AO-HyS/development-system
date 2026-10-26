@@ -2900,6 +2900,51 @@ function checkoutPathspecs(args) {
 }
 
 /**
+ * `find … -delete` removes every match below its starting points. A protected file below them blocks it unless the
+ * expression is a plain conjunction of -name/-iname tests (with -type and similar) that the file's name fails; an
+ * unknown starting point, a tree past the walk bounds or a granted file outside a fully known operand fails closed.
+ * @param {Word[]} rest @param {Context} ctx
+ */
+function checkFindDelete(rest, ctx) {
+  let first = 0;
+  while (first < rest.length && /^-[HLP]$/u.test(rest[first].value)) first++;
+  let end = first;
+  while (end < rest.length && !/^[-(!]/u.test(rest[end].value)) end++;
+  const roots = end > first ? rest.slice(first, end) : [literalWord(".")];
+  const expression = rest.slice(end);
+  /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
+  const names = [];
+  let plain = true;
+  for (let i = 0; i < expression.length; i++) {
+    const value = expression[i].value;
+    if (value === "-name" || value === "-iname") {
+      const pattern = expression[++i];
+      if (!pattern?.literal) { plain = false; continue; }
+      names.push({ glob: globSegment(value === "-iname" ? pattern.value.toLowerCase() : pattern.value), fold: value === "-iname" });
+    } else if (["-o", "-or", "!", "-not", "(", ")", ",", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex", "-lname", "-ilname"].includes(value)) plain = false;
+  }
+  /** @param {string} file */
+  const selected = (file) => !plain || names.every(({ glob, fold: folded }) => {
+    const base = folded ? basename(file).toLowerCase() : basename(file);
+    return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
+  });
+  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
+  for (const root of roots) {
+    const paths = operandPaths(root, ctx);
+    if (paths === null) { if (!ctx.codeString) block(root.value.replaceAll(UNKNOWN, "$…")); continue; }
+    for (const path of paths) {
+      let found;
+      try { found = statSync(path).isDirectory() ? docsInside(path) : docsName(basename(path)) ? [""] : []; } catch { found = []; }
+      if (found === null) block(`${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+      const hits = /** @type {string[]} */ (found).map((rel) => rel ? join(path, rel) : path).filter(selected);
+      const known = grantable(root, root.value, ctx);
+      const hit = hits.find((file) => !(known && grantedDocsWrite(file)));
+      if (hit) block(hit);
+    }
+  }
+}
+
+/**
  * Collect file targets written (or deleted) by a command. @param {string} name @param {Word[]} rest @param {Context} ctx
  * @param {ReturnType<typeof analyzeSed> | null} sed @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
  */
@@ -3878,9 +3923,12 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
       if (!["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) continue;
       let end = i + 1;
       while (end < rest.length && rest[end].value !== ";" && rest[end].value !== "+") end++;
-      evaluateArgv(rest.slice(i + 1, end), [], ctx, false, true);
+      // -execdir and -okdir run in each match's directory, which the guard cannot know.
+      const dir = rest[i].value.endsWith("dir");
+      evaluateArgv(rest.slice(i + 1, end), [], dir ? { ...ctx, cwd: null } : ctx, false, true);
       i = end;
     }
+    if (rest.some((word) => word.value === "-delete")) checkFindDelete(rest, ctx);
   }
   if (name === "rg" && rest.some((word) => /^--pre(?:=|$)/u.test(word.value))) throw new Block("read-command-execution");
   if (name === "git") {
