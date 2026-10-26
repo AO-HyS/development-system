@@ -1,0 +1,5257 @@
+#!/usr/bin/env node
+// @ts-check
+
+import { spawnSync } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { posix } from "node:path";
+import { homedir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const policy = JSON.parse(await readFile(resolve(root, "references", "policy.json"), "utf8"));
+
+/** @param {any} rule */
+function compileRule(rule) {
+  return { ...rule, regex: new RegExp(rule.pattern, rule.flags ?? "iu") };
+}
+const commandRules = policy.rules.filter((/** @type {any} */ rule) => (rule.match ?? "command") === "command").map(compileRule);
+const pipelineRules = policy.rules.filter((/** @type {any} */ rule) => rule.match === "pipeline").map(compileRule);
+const rawRules = policy.rules.filter((/** @type {any} */ rule) => rule.match === "raw").map(compileRule);
+/** @type {Record<string, string>} */
+const structural = Object.fromEntries(policy.structuralRules.map((/** @type {any} */ rule) => [rule.id, rule.reason]));
+const testFilePatterns = policy.testFilePatterns.map((/** @type {string} */ source) => new RegExp(source, "u"));
+const readOnlyCommands = new Set(policy.readOnlyCommands);
+const sensitiveCommands = new Set(policy.sensitiveCommands);
+const readOnlyGit = new Set(policy.readOnlyGitSubcommands);
+const readOnlyGitBranchOptions = new Set(policy.readOnlyGitBranchOptions);
+const maxDepth = Number(policy.maxSubstitutionDepth ?? 4);
+
+const HOME = process.env.HOME || homedir();
+const foldCase = process.platform === "darwin" || process.platform === "win32";
+/** Unknown expansion marker inside word values. */
+const UNKNOWN = "\u0000";
+// `$TMPDIR` is read like `$HOME`, so writes through it resolve to the real temporary directory.
+const TMPDIR = (process.env.TMPDIR ?? "").replace(/\/+$/u, "");
+const SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh", "csh", "tcsh", "fish", "ash", "mksh", "yash", "rbash", "pdksh", "oksh", "posh"]);
+/** Evaluation budget: the hook times out after 5 s, so the engine denies on its own before that. */
+const DEADLINE_MS = 3000;
+const MAX_COMMAND_BYTES = 64 * 1024;
+let deadline = Infinity;
+let clockDepth = 0;
+/** Pipelines longer than this are not real usage; the pipeline rules would scan them quadratically. */
+const MAX_PIPELINE_STAGES = 512;
+const TOO_LARGE_REASON = "Command too large or too slow for the guard; split it into smaller commands.";
+function checkDeadline() {
+  if (Date.now() > deadline) throw new Block("guard-timeout", TOO_LARGE_REASON);
+}
+/** @template T @param {() => T} fn @returns {T} */
+function withClock(fn) {
+  if (clockDepth++ === 0) { deadline = Date.now() + DEADLINE_MS; cwdMoved = false; }
+  try { return fn(); }
+  finally { if (--clockDepth === 0) deadline = Infinity; }
+}
+const FILE_TOOLS = new Set(["Edit", "Write", "MultiEdit"]);
+const SHELL_TOOLS = new Set(["Bash", "exec", "Monitor", "shell", "local_shell", "exec_command", "container.exec"]);
+const OPENERS = new Set(["if", "then", "else", "elif", "do", "while", "until", "{", "!", "time", "coproc"]);
+const CLOSERS = new Set(["fi", "done", "esac", "}"]);
+const BRANCH_OPENERS = new Set(["if", "while", "until", "for", "select", "{"]);
+const BRANCH_CLOSERS = new Set(["fi", "done", "}"]);
+
+class Block extends Error {
+  /** @param {string} ruleId @param {string} [reason] */
+  constructor(ruleId, reason) {
+    super(reason ?? structural[ruleId] ?? ruleId);
+    this.ruleId = ruleId;
+    this.reason = reason ?? structural[ruleId] ?? ruleId;
+  }
+}
+class ParseError extends Error {}
+
+/**
+ * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean, fromGlob?: boolean }} Word
+ * @typedef {{ op: string, fd: string, target: Word | null, heredoc: any }} Redirect
+ * @typedef {{ cwd: string | null, scope: string, depth: number, aliases?: Map<string, Word[] | null>, lenient?: boolean, cdpath?: boolean, substituted?: boolean, codeString?: boolean, execdir?: boolean }} Context
+ */
+
+/** @returns {Word} */
+function newWord() {
+  return { value: "", literal: true, quoted: false, raw: "", subs: [], procSubst: false };
+}
+
+/** @param {string} value @returns {Word} */
+function literalWord(value) {
+  return { value, literal: true, quoted: true, raw: value, subs: [], procSubst: false };
+}
+
+/** Builtins whose arguments are variable names or arithmetic. */
+const NAME_BUILTINS = new Set(["let", "printf", "print", "read", "declare", "typeset", "local", "export", "readonly", "integer", "float", "unset", "mapfile", "readarray", "getopts", "wait", "test", "[", "set", "vared"]);
+
+/**
+ * Text shaped like `name[$(…)]` (also nested, `a[b[0]+$(…)]`): bash runs the subscript when the
+ * text is later used as a variable name or in arithmetic. A linear scan: any `$(` or backtick
+ * while a `[` is open.
+ * @param {string} value
+ */
+function checkSubscriptCode(value) {
+  let open = 0;
+  for (let j = 0; j < value.length; j++) {
+    const c = value[j];
+    if (c === "[") open++;
+    else if (c === "]") { if (open > 0) open--; }
+    else if (open > 0 && (c === "`" || (c === "$" && value[j + 1] === "("))) throw new Block("shell-arithmetic-injection");
+  }
+}
+
+/** Set per command: the command changes what `cat` runs (function, alias, hash, enable, PATH), so its output is not known. */
+let catRedefined = false;
+/**
+ * SIMPLE_BACKUP_SUFFIX values the command sets (`SIMPLE_BACKUP_SUFFIX=.md cp -b`, `env …`, `export …`), and whether one of
+ * them cannot be read, so `-b` backups use them as well as the environment's; and the option variables it sets for tar and
+ * unzip (TAR_OPTIONS, UNZIP, UNZIPOPT), whose options the guard does not read; and the files GIT_CONFIG,
+ * GIT_CONFIG_GLOBAL and GIT_CONFIG_SYSTEM name for `git config`, every value set anywhere in the command (null when unreadable).
+ * @type {{ values: string[], unknown: boolean, options: Set<string>, git: Map<string, (Word | null)[]> }}
+ */
+let backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
+
+/** Variables whose value changes what a writer the guard inspects writes. */
+const WRITER_VARIABLES = new Set(["SIMPLE_BACKUP_SUFFIX", "TAR_OPTIONS", "UNZIP", "UNZIPOPT", "GIT_CONFIG", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"]);
+
+/** Record a writer variable the command sets; a null word is a value the guard cannot read. @param {string} name @param {Word | null} word */
+function recordWriterVariable(name, word) {
+  if (!WRITER_VARIABLES.has(name)) return;
+  if (name.startsWith("GIT_CONFIG")) backupEnv.git.set(name, [...(backupEnv.git.get(name) ?? []), word && word.literal ? word : null]);
+  else if (name !== "SIMPLE_BACKUP_SUFFIX") backupEnv.options.add(name);
+  else if (word && word.literal) backupEnv.values.push(word.value);
+  else backupEnv.unknown = true;
+}
+/** Set by the parser when it reads such a change; parseScript then parses again with catRedefined. */
+let catTouched = false;
+
+/** Parse a whole script; when it changes what `cat` runs, parse it again so no `$(cat <<'EOF' …)` counts as literal. @param {string} text @param {number} depth */
+function parseScript(text, depth) {
+  catTouched = false;
+  const list = new Parser(text, depth).parseAll();
+  if (!catTouched || catRedefined) return list;
+  catRedefined = true;
+  return new Parser(text, depth).parseAll();
+}
+
+/** PATH, zsh `path`, and the bash and zsh tables that define functions, commands and aliases by name (`BASH_CMDS[cat]=…`). */
+const CAT_LOOKUP_NAMES = /^(?:path|bash_cmds|bash_aliases|(?:dis_)?(?:functions|commands|aliases|galiases|saliases|builtins))$/iu;
+/** One of those names as a word in arithmetic text (`PATH`, `path[1]`). */
+const CAT_LOOKUP_WORD = new RegExp(String.raw`\b${CAT_LOOKUP_NAMES.source.slice(1, -1)}\b`, "iu");
+/** An arithmetic assignment (`=`, `+=`, `<<=`, `++`, `--`), not a comparison (`==`, `!=`, `<=`, `>=`). */
+const ARITH_ASSIGN_OP = /(?:<<|>>|\*\*|[-+*/%&|^])=|(?<![=!<>])=(?!=)|\+\+|--/u;
+/** One of those names as the target of an arithmetic assignment (`PATH=5`, `path[1] += 2`, `++PATH`). */
+const CAT_LOOKUP_TARGET = new RegExp(String.raw`${CAT_LOOKUP_WORD.source}\s*(?:\[[^\]]*\]\s*)?(?:(?:<<|>>|\*\*|[-+*/%&|^])?=(?!=)|\+\+|--)|(?:\+\+|--)\s*${CAT_LOOKUP_WORD.source}`, "iu");
+/**
+ * Whether arithmetic text can assign one of those names: it assigns and names one (`PATH=5`, `path[1]+=2`, `++PATH`), or,
+ * unless `named`, it assigns and holds text that can build a name (`$n`, `${n:-PATH}`, a quote, a backtick or a backslash,
+ * as in `"PATH" = 5`). Reading (`n = ${#path} + $#`, `PATH == 5`) or assigning a plain name (`i += 1`) does not count.
+ * @param {string} text @param {boolean} [named] a variable's value that arithmetic reads again: only a name it assigns counts
+ */
+function assignsLookup(text, named = false) {
+  if (named) return CAT_LOOKUP_TARGET.test(text);
+  // A length (`${#path}`) or a special parameter (`$#`, `$?`) expands to a number.
+  const plain = text.replace(/\$\{#\w*(?:\[[@*]\])?\}|\$[#?$!]/gu, " 0 ");
+  return ARITH_ASSIGN_OP.test(plain) && (CAT_LOOKUP_WORD.test(plain) || /[$`"'\\]/u.test(plain));
+}
+/** Precommand words that run the next word as the command (`command -p`, `builtin --`, zsh `noglob`, `nocorrect`, `-`). */
+const PRECOMMANDS = new Set(["builtin", "command", "noglob", "nocorrect", "-"]);
+
+/**
+ * Whether a simple command changes what `cat` runs: an alias, hash or enable naming cat, a PATH assignment (also through a
+ * name-taking builtin such as `read`, `getopts` or `printf -v`, or a nameref), a function table entry, or a trap action that can.
+ * @param {{ assigns: Word[], words: Word[] }} node
+ */
+function changesCat(node) {
+  if (node.assigns.some((word) => CAT_LOOKUP_NAMES.test(word.name ?? ""))) return true;
+  let words = node.words;
+  while (words[0]?.literal && PRECOMMANDS.has(words[0].value)) {
+    words = words.slice(1);
+    while (words[0]?.literal && words[0].value.startsWith("-") && words.length > 1) words = words.slice(1);
+  }
+  const [head, ...rest] = words;
+  if (!head?.literal) return false;
+  /** A word naming a variable: a dynamic name, or PATH or a function table, alone or assigned. @param {Word | undefined} word */
+  const namesLookup = (word) => {
+    if (!word) return false;
+    const name = /^([A-Za-z_]\w*)(?:\[[^\]]*\])?(?:\+?=|$)/u.exec(word.value)?.[1];
+    return name === undefined ? !word.literal && !word.value.startsWith("-") : CAT_LOOKUP_NAMES.test(name);
+  };
+  switch (head.value) {
+    // zsh `autoload cat` (from fpath) and `functions -c f cat` define cat as a function.
+    case "alias": case "hash": case "enable": case "trap": case "autoload": case "functions":
+      return rest.some((word) => !word.literal || /(?:^|[^\w.-])cat\b|\bpath(?:\+?=|\[|\s|$)/iu.test(word.value));
+    case "printf": case "print": case "wait": case "set": {
+      // Only the value of -v (printf, print), -p (wait) or -A (zsh set) names a variable, also inside an option cluster.
+      const letter = { printf: "v", print: "v", wait: "p", set: "A" }[head.value];
+      return rest.some((word, k) => {
+        if (!/^[-+]\w/u.test(word.value) || (word.value[0] === "+" && head.value !== "set")) return false;
+        const at = word.value.indexOf(letter, 1);
+        if (at < 0) return false;
+        const name = word.value.slice(at + 1);
+        return namesLookup(name ? { ...word, value: name } : rest[k + 1]);
+      });
+    }
+    case "test": case "[":
+      return false;
+    default:
+      // A nameref (`declare -n p=PATH`) assigns through another name.
+      if (["declare", "typeset", "local"].includes(head.value) && rest.some((word) => /^-[A-Za-z]*n/u.test(word.value))) return true;
+      // `let` text and name subscripts are arithmetic (`let "PATH"=5`, `read 'a[PATH=5]'`), as is an integer's value
+      // (`declare -i x=PATH=5`).
+      return NAME_BUILTINS.has(head.value) && rest.some((word) => {
+        if (namesLookup(word)) return true;
+        if (head.value === "let") return assignsLookup(word.literal ? word.value : word.raw);
+        const [, subscript = "", value = ""] = /^[A-Za-z_]\w*(\[[^\]]*\])?(?:\+?=(.*))?$/su.exec(word.value) ?? [];
+        return assignsLookup(subscript) || assignsLookup(value, true);
+      });
+  }
+}
+
+/** Output of a substitution that is only `cat` reading a quoted (literal) heredoc, or null. @param {any} list */
+function literalOutput(list) {
+  if (catRedefined || list.items.length !== 1 || list.items[0].commands.length !== 1) return null;
+  const node = list.items[0].commands[0];
+  if (node.type !== "simple" || node.assigns.length > 0 || node.words.length !== 1 || node.redirects.length !== 1) return null;
+  const [head] = node.words;
+  const [redirect] = node.redirects;
+  if (!head.literal || head.value !== "cat" || !redirect.heredoc?.quoted || (redirect.fd && redirect.fd !== "0")) return null;
+  return redirect.heredoc.body.replace(/\n+$/u, "");
+}
+
+/** @param {Word} word */
+function markDynamic(word) {
+  word.literal = false;
+  word.value += UNKNOWN;
+}
+
+/** @param {string} c */
+function isBlank(c) {
+  return c === " " || c === "\t" || c === "\r";
+}
+
+/** @param {string} c */
+function endsToken(c) {
+  return c === "" || /[\s;&|<>()]/u.test(c);
+}
+
+/**
+ * Commands after which a tracked variable keeps its value: external programs and builtins that cannot assign shell
+ * variables. A function or alias the script defines under one of these names stops tracking first (its definition is
+ * not one of them); functions from the operator's own shell startup files are outside this check, as elsewhere.
+ */
+const TRACK_SAFE = new Set([":", "true", "false", "test", "[", "echo", "pwd", "mkdir", "touch", "cat", "ls", "cp", "mv", "ln", "rm", "chmod",
+  "head", "tail", "wc", "sort", "uniq", "cut", "tr", "diff", "stat", "tee", "rg", "grep", "sed", "awk", "jq", "node", "python3", "python",
+  "git", "gh", "date", "basename", "dirname", "realpath", "shasum", "sha256sum"]);
+/** Variables the shell or this parser reads specially: assigning one stops tracking. */
+const TRACK_RESERVED = /^(?:IFS|HOME|TMPDIR|PWD|OLDPWD|CDPATH|GLOBIGNORE|ENV|BASH_ENV|ZDOTDIR|FPATH|SHELLOPTS|BASHOPTS)$/u;
+/** A tracked value: a plain path, with no blank, quote, glob or expansion character that splitting or globbing could change. */
+const TRACK_VALUE = /^[A-Za-z0-9_./@%+,=-]+$/u;
+
+class Parser {
+  /** @param {string} source @param {number} depth */
+  constructor(source, depth) {
+    this.s = source;
+    this.i = 0;
+    this.depth = depth;
+    this.nesting = 0;
+    /** @type {any[]} */
+    this.heredocs = [];
+    /** @type {{ close: string, from: number, stop: number, found: boolean } | null} */
+    this.closeScan = null;
+    /** @type {{ from: number, stop: number, expands: Set<number> } | null} */
+    this.braceScan = null;
+    /** Open if/while/until/for/select bodies and brace groups (function bodies included): their commands may not run. */
+    this.branches = 0;
+    /** End of the last `$[…]` checked: a nested one lies inside it and was checked with it. */
+    this.bracketChecked = 0;
+    /** Open lists: 1 is the script's own top-level list. */
+    this.lists = 0;
+    /**
+     * Variables a leading run of the script assigned literal paths to (`D=~/x; mkdir -p "$D"; cat > "$D/a" <<'EOF'`), so a
+     * write through `$D` is checked at its real path. Tracking stops for good at the first construct that could change a
+     * variable or run it conditionally: anything but top-level literal assignments and TRACK_SAFE commands.
+     * @type {Map<string, string>}
+     */
+    this.vars = new Map();
+    this.tracking = true;
+    if (depth > maxDepth) throw new Block("shell-nesting-depth");
+  }
+
+  stopTracking() {
+    this.tracking = false;
+    this.vars.clear();
+  }
+
+  /**
+   * Append a tracked variable's value; the word stays non-literal, so every block that needs literal words (sensitive
+   * commands, command names, shell text) still applies and only path checks read the value. zsh modifiers and subscripts
+   * (`$D:h`, `$D:s/a/b/`, `$D[1,-2]`) change the value, so a name followed by `:` or `[` is not substituted.
+   * @param {Word} word @param {string} name @param {string} next the character after the name
+   */
+  trackedValue(word, name, next) {
+    const value = this.tracking ? this.vars.get(name) : undefined;
+    if (value === undefined || next === ":" || next === "[") return false;
+    word.value += value;
+    word.literal = false;
+    word.tracked = true;
+    return true;
+  }
+
+  /** Record or forget the assignments a finished pipeline made. @param {any} pipeline */
+  trackAssignments(pipeline) {
+    if (!this.tracking) return;
+    const assigning = pipeline.commands.filter((/** @type {any} */ command) => command.type === "simple" && command.words.length === 0 && command.assigns.length > 0);
+    if (assigning.length === 0) return;
+    // Piped or backgrounded assignments run in a subshell; after && or || or in a branch they may not run at all.
+    if (this.lists !== 1 || this.nesting !== 0 || this.branches !== 0 || pipeline.commands.length > 1 || pipeline.conditional || pipeline.background) {
+      this.stopTracking();
+      return;
+    }
+    for (const value of assigning[0].assigns) {
+      const known = value.plain && value.subs.length === 0 && !value.value.includes(UNKNOWN) && (value.literal || value.tracked);
+      if (!known || TRACK_RESERVED.test(value.name) || CAT_LOOKUP_NAMES.test(value.name) || !TRACK_VALUE.test(value.value)) { this.stopTracking(); return; }
+      this.vars.set(value.name, value.value);
+    }
+  }
+
+  peek(offset = 0) { return this.s[this.i + offset] ?? ""; }
+  eof() { return this.i >= this.s.length; }
+  /** @param {string} text */
+  at(text) { return this.s.startsWith(text, this.i); }
+  /** @param {string} char */
+  expect(char) {
+    if (this.peek() !== char) throw new ParseError(`expected ${JSON.stringify(char)} at offset ${this.i}`);
+    this.i++;
+  }
+
+  enter() {
+    this.nesting++;
+    if (this.depth + this.nesting > maxDepth) throw new Block("shell-nesting-depth");
+  }
+  leave() { this.nesting--; }
+
+  parseAll() {
+    const list = this.parseList({});
+    if (!this.eof()) throw new ParseError(`unexpected ${JSON.stringify(this.peek())} at offset ${this.i}`);
+    this.readHeredocs();
+    return list;
+  }
+
+  skipBlanks() {
+    for (;;) {
+      const c = this.peek();
+      if (isBlank(c)) { this.i++; continue; }
+      if (c === "\\" && this.peek(1) === "\n") { this.i += 2; continue; }
+      if (c === "#") { while (!this.eof() && this.peek() !== "\n") this.i++; continue; }
+      return;
+    }
+  }
+
+  skipBlanksAndNewlines() {
+    for (;;) {
+      this.skipBlanks();
+      if (this.peek() === "\n") { this.newline(); continue; }
+      return;
+    }
+  }
+
+  newline() {
+    this.i++;
+    this.readHeredocs();
+  }
+
+  readHeredocs() {
+    const pending = this.heredocs;
+    this.heredocs = [];
+    for (const heredoc of pending) {
+      const lines = [];
+      while (!this.eof()) {
+        const end = this.s.indexOf("\n", this.i);
+        const lineEnd = end < 0 ? this.s.length : end;
+        const line = this.s.slice(this.i, lineEnd);
+        this.i = end < 0 ? this.s.length : end + 1;
+        const compared = (heredoc.strip ? line.replace(/^\t+/u, "") : line).replace(/\r$/u, "");
+        if (compared === heredoc.delimiter) break;
+        lines.push(heredoc.strip ? line.replace(/^\t+/u, "") : line);
+      }
+      heredoc.body = lines.join("\n");
+      if (!heredoc.quoted) {
+        const body = new Parser(heredoc.body, this.depth + this.nesting);
+        const word = body.parseHeredocText();
+        heredoc.subs = word.subs;
+        heredoc.literal = word.literal;
+      }
+    }
+  }
+
+  /** Scan an unquoted heredoc body: only expansions are active. */
+  parseHeredocText() {
+    const word = newWord();
+    while (!this.eof()) {
+      const c = this.peek();
+      if (c === "\\") {
+        const next = this.peek(1);
+        if (next === "\n") { this.i += 2; continue; }
+        if (next === "$" || next === "`" || next === "\\") { word.value += next; this.i += 2; continue; }
+        word.value += c; this.i++; continue;
+      }
+      if (c === "$") { this.parseDollar(word, true); continue; }
+      if (c === "`") { this.parseBacktick(word, true); continue; }
+      word.value += c; this.i++;
+    }
+    return word;
+  }
+
+  peekKeyword() {
+    const re = /[^\s;&|<>()'"\\$`]+/uy;
+    re.lastIndex = this.i;
+    const match = re.exec(this.s);
+    if (!match) return "";
+    if (!endsToken(this.s[this.i + match[0].length] ?? "")) return "";
+    return match[0];
+  }
+
+  /** @param {{paren?: boolean, caseItem?: boolean}} terms @returns {{type: "list", items: any[]}} */
+  parseList(terms) {
+    this.lists++;
+    try { return this.parseListItems(terms); }
+    finally { this.lists--; }
+  }
+
+  /** @param {{paren?: boolean, caseItem?: boolean}} terms @returns {{type: "list", items: any[]}} */
+  parseListItems(terms) {
+    const items = [];
+    let conditional = false;
+    for (;;) {
+      this.skipBlanks();
+      if (this.eof()) break;
+      const c = this.peek();
+      if (c === "\n") { this.newline(); continue; }
+      if (c === ")") {
+        if (terms.paren) break;
+        throw new ParseError(`unexpected ")" at offset ${this.i}`);
+      }
+      if (c === ";") {
+        if (terms.caseItem && (this.at(";;") || this.at(";&"))) break;
+        this.i += this.at(";;&") ? 3 : this.at(";;") || this.at(";&") ? 2 : 1;
+        continue;
+      }
+      if (c === "&" && !this.at("&>")) { this.i += this.at("&&") ? 2 : 1; continue; }
+      if (c === "|" ) throw new ParseError(`unexpected "|" at offset ${this.i}`);
+      if (terms.caseItem && this.peekKeyword() === "esac") break;
+      const pipeline = this.parsePipeline();
+      // After && or || a pipeline may not run; with & it runs in a subshell.
+      pipeline.conditional = conditional || this.branches > 0;
+      items.push(pipeline);
+      this.skipBlanks();
+      conditional = this.at("&&") || this.at("||");
+      if (!conditional) pipeline.background = this.peek() === "&" && !this.at("&>");
+      this.trackAssignments(pipeline);
+      if (conditional) { this.i += 2; continue; }
+    }
+    return { type: "list", items };
+  }
+
+  parsePipeline() {
+    const commands = [];
+    for (;;) {
+      this.skipBlanks();
+      commands.push(this.parseCommand());
+      this.skipBlanks();
+      if (this.peek() === "|" && this.peek(1) !== "|") {
+        this.i += this.peek(1) === "&" ? 2 : 1;
+        this.skipBlanksAndNewlines();
+        continue;
+      }
+      return { type: "pipeline", commands, conditional: false, background: false };
+    }
+  }
+
+  parseCommand() {
+    checkDeadline();
+    for (;;) {
+      this.skipBlanks();
+      if (this.peek() === "\n") { this.newline(); continue; }
+      if (this.eof()) return { type: "simple", assigns: [], words: [], redirects: [] };
+      const keyword = this.peekKeyword();
+      // A compound command, function, test or arithmetic can assign or run commands conditionally.
+      if (this.at("(") || OPENERS.has(keyword) || CLOSERS.has(keyword) || ["for", "select", "case", "[[", "function"].includes(keyword)) this.stopTracking();
+      if (this.at("((")) return this.parseArithmeticCommand();
+      if (this.peek() === "(") {
+        this.i++;
+        this.enterSubshell();
+        const body = this.parseList({ paren: true });
+        this.expect(")");
+        return { type: "subshell", body, redirects: this.parseRedirectsOnly() };
+      }
+      if (BRANCH_OPENERS.has(keyword)) this.branches++;
+      if (BRANCH_CLOSERS.has(keyword)) this.branches = Math.max(0, this.branches - 1);
+      if (OPENERS.has(keyword)) {
+        this.i += keyword.length;
+        if (keyword === "time") { this.skipBlanks(); if (this.at("-p") && endsToken(this.peek(2))) this.i += 2; }
+        continue;
+      }
+      if (CLOSERS.has(keyword)) {
+        this.i += keyword.length;
+        return { type: "simple", assigns: [], words: [], redirects: this.parseRedirectsOnly() };
+      }
+      if (keyword === "for" || keyword === "select") return this.parseFor(keyword);
+      if (keyword === "case") return this.parseCase();
+      if (keyword === "[[") return this.parseConditional();
+      if (keyword === "function") {
+        this.i += keyword.length;
+        this.skipBlanks();
+        // zsh defines every name before the body: `function a cat { … }`.
+        for (let start = -1; start !== this.i && this.i < this.s.length && (start === -1 || !/[{(;&|\n]/u.test(this.s[this.i]));) {
+          start = this.i;
+          const name = this.parseWord(true);
+          if (!name.literal || name.value === "cat") catTouched = true;
+          this.skipBlanks();
+        }
+        if (/^\(\s*\)/u.test(this.s.slice(this.i, this.i + 8))) this.i = this.s.indexOf(")", this.i) + 1;
+        continue;
+      }
+      return this.parseSimple();
+    }
+  }
+
+  enterSubshell() { /* subshells do not count as substitutions */ }
+
+  parseSimple() {
+    /** @type {{type: "simple", assigns: Word[], words: Word[], redirects: Redirect[]}} */
+    const node = { type: "simple", assigns: [], words: [], redirects: [] };
+    const assignment = /[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]\s]*\])?\+?=/uy;
+    for (;;) {
+      this.skipBlanks();
+      const c = this.peek();
+      if (this.eof() || c === "\n" || c === ";" || c === ")" || c === "|") break;
+      if (c === "&" && !this.at("&>")) break;
+      const redirect = this.tryRedirect();
+      if (redirect) { node.redirects.push(redirect); continue; }
+      if (c === "(") {
+        if (node.words.length === 1 && node.assigns.length === 0 && node.redirects.length === 0 && /^\(\s*\)/u.test(this.s.slice(this.i, this.i + 8))) {
+          if (!node.words[0].literal || node.words[0].value === "cat") catTouched = true;
+          this.stopTracking();
+          this.i = this.s.indexOf(")", this.i) + 1;
+          this.skipBlanksAndNewlines();
+          return this.parseCommand();
+        }
+        throw new ParseError(`unexpected "(" at offset ${this.i}`);
+      }
+      if (node.words.length === 0) {
+        assignment.lastIndex = this.i;
+        const match = assignment.exec(this.s);
+        if (match) {
+          checkSubscriptCode(match[0]);
+          // The subscript is arithmetic: `a[PATH=5]=1`.
+          if (assignsLookup(match[0].slice(0, -1))) catTouched = true;
+          this.i += match[0].length;
+          if (this.peek() === "(") {
+            this.i++;
+            const array = newWord();
+            for (;;) {
+              this.skipBlanksAndNewlines();
+              if (this.eof()) throw new ParseError("unterminated array assignment");
+              if (this.peek() === ")") { this.i++; break; }
+              const element = this.parseWord(false);
+              if (!element.raw) throw new ParseError(`unexpected ${JSON.stringify(this.peek())} in array assignment`);
+              // Arithmetic reads an element as arithmetic again (`a=('PATH=5'); (( a ))`).
+              if (assignsLookup(element.literal ? element.value : element.raw, true)) catTouched = true;
+              array.subs.push(...element.subs);
+              array.value += `${element.value} `;
+              if (!element.literal) array.literal = false;
+            }
+            array.name = match[0].replace(/(?:\[[^\]]*\])?\+?=$/u, "");
+            node.assigns.push(array);
+            this.stopTracking();
+          } else {
+            const value = this.parseWord(false, true);
+            // Arithmetic reads a variable's value as arithmetic again (`n='PATH=5'; (( n ))`, `declare -i x; x=PATH=5`).
+            if (assignsLookup(value.literal ? value.value : value.raw, true)) catTouched = true;
+            value.name = match[0].replace(/(?:\[[^\]]*\])?\+?=$/u, "");
+            // Only `name=value` replaces the value; the old value is gone either way (a prefix assignment's own words see it).
+            value.plain = match[0] === `${value.name}=`;
+            this.vars.delete(value.name);
+            node.assigns.push(value);
+          }
+          continue;
+        }
+      }
+      const word = this.parseWord(node.words.length === 0);
+      if (!word.raw) throw new ParseError(`unexpected ${JSON.stringify(this.peek())} at offset ${this.i}`);
+      node.words.push(word);
+    }
+    if (changesCat(node)) catTouched = true;
+    if (node.words.length > 0 && !(node.words[0].literal && TRACK_SAFE.has(commandName(node.words[0].value)))) this.stopTracking();
+    return node;
+  }
+
+  parseRedirectsOnly() {
+    /** @type {Redirect[]} */
+    const redirects = [];
+    for (;;) {
+      this.skipBlanks();
+      const redirect = this.tryRedirect();
+      if (!redirect) return redirects;
+      redirects.push(redirect);
+    }
+  }
+
+  /** @returns {Redirect | null} */
+  tryRedirect() {
+    const re = /(\d*)(<<<|<<-|<<|<>|<&|>>|>&|>\||&>>|&>|<(?!\()|>(?!\())/uy;
+    re.lastIndex = this.i;
+    const match = re.exec(this.s);
+    if (!match) return null;
+    const [, fd, op] = match;
+    this.i = re.lastIndex;
+    this.skipBlanks();
+    if (op === "<<" || op === "<<-") {
+      const word = this.parseWord(false);
+      if (!word.raw) throw new ParseError("missing heredoc delimiter");
+      const heredoc = {
+        delimiter: word.raw.replace(/['"\\]/gu, ""),
+        quoted: /['"\\]/u.test(word.raw),
+        strip: op === "<<-",
+        body: "",
+        subs: [],
+        literal: true,
+      };
+      this.heredocs.push(heredoc);
+      return { op, fd, target: null, heredoc };
+    }
+    const target = this.parseWord(false);
+    if (!target.raw) throw new ParseError(`missing redirection target at offset ${this.i}`);
+    return { op, fd, target, heredoc: null };
+  }
+
+  /** @param {boolean} commandPosition @param {boolean} [assignment] */
+  parseWord(commandPosition, assignment = false) {
+    const start = this.i;
+    const word = newWord();
+    for (;;) {
+      if (this.eof()) break;
+      const c = this.peek();
+      if (c === " " || c === "\t" || c === "\r" || c === "\n" || c === ";" || c === "&" || c === "|" || c === ")") break;
+      if (c === "<" || c === ">") {
+        if (this.peek(1) === "(") { this.parseProcessSubstitution(word); continue; }
+        break;
+      }
+      if (c === "=" && this.i === start && this.peek(1) === "(" && !assignment) { this.parseProcessSubstitution(word); continue; }
+      if (c === "(") {
+        if (this.i === start || commandPosition) break;
+        this.parseGlobGroup(word);
+        continue;
+      }
+      if (c === "\\") {
+        if (this.peek(1) === "\n") { this.i += 2; continue; }
+        if (this.i + 1 >= this.s.length) { word.value += "\\"; this.i++; continue; }
+        word.value += this.peek(1);
+        word.quoted = true;
+        this.i += 2;
+        continue;
+      }
+      if (c === "'") {
+        const end = this.s.indexOf("'", this.i + 1);
+        if (end < 0) throw new ParseError("unterminated single quote");
+        word.value += this.s.slice(this.i + 1, end);
+        word.quoted = true;
+        this.i = end + 1;
+        continue;
+      }
+      if (c === '"') { this.parseDouble(word); word.quoted = true; continue; }
+      if (c === "$") { this.parseDollar(word, false); continue; }
+      if (c === "`") { this.parseBacktick(word, false); continue; }
+      if (c === "~" && this.i === start) { this.parseTilde(word); continue; }
+      // An unquoted `{` or `[` may open a pattern the scans below cannot pair (`{"}",h}`, `[\h]`); looseGlob reads it.
+      if (c === "{" || c === "[") word.opener = true;
+      if (c === "{" && this.isBraceExpansion()) { markDynamic(word); word.glob = true; }
+      if (c === "*" || c === "?" || (c === "[" && this.closesInWord("]"))) word.glob = true;
+      // zsh extended glob operators (^x, x#, x~y).
+      if (c === "^" || c === "#" || (c === "~" && !/^[\s;&|<>()]?$/u.test(this.peek(1)))) word.glob = true;
+      word.value += c;
+      this.i++;
+    }
+    word.raw = this.s.slice(start, this.i);
+    return word;
+  }
+
+  /** True when `close` appears later in the same unquoted word. Each scan's answer holds for every later position it covered, so a word is scanned once. @param {string} close */
+  closesInWord(close) {
+    const cached = this.closeScan;
+    if (cached && cached.close === close && this.i >= cached.from && this.i < cached.stop) return cached.found;
+    let j = this.i + 1;
+    let found = false;
+    for (; j < this.s.length; j++) {
+      const c = this.s[j];
+      if (c === close) { found = true; break; }
+      if (/[\s;&|<>()'"`$\\]/u.test(c)) break;
+    }
+    this.closeScan = { close, from: this.i, stop: j, found };
+    return found;
+  }
+
+  /** Unquoted `{a,b}` or `{a..b}` expands to several words. One pass per word pairs every brace with a stack. */
+  isBraceExpansion() {
+    const cached = this.braceScan;
+    if (cached && this.i >= cached.from && this.i < cached.stop) return cached.expands.has(this.i);
+    /** @type {{ at: number, separator: boolean }[]} */
+    const open = [];
+    const expands = new Set();
+    let j = this.i;
+    for (; j < this.s.length; j++) {
+      if ((j & 1023) === 0) checkDeadline();
+      const c = this.s[j];
+      if (c === "\\") { j++; continue; }
+      if (/[\s;&|<>()]/u.test(c)) break;
+      if (c === "{") open.push({ at: j, separator: false });
+      else if (c === "}") { const brace = open.pop(); if (brace?.separator) expands.add(brace.at); }
+      else if (open.length > 0 && (c === "," || (c === "." && this.s[j + 1] === "."))) open[open.length - 1].separator = true;
+    }
+    this.braceScan = { from: this.i, stop: j, expands };
+    return expands.has(this.i);
+  }
+
+  /** `~`, `~/x` and `~user` expand to a home directory; `~+`, `~-`, `~N` and unknown users are dynamic. @param {Word} word */
+  parseTilde(word) {
+    const re = /~([^\s;&|<>()'"\\$`/]*)/uy;
+    re.lastIndex = this.i;
+    const match = /** @type {RegExpExecArray} */ (re.exec(this.s));
+    const name = match[1];
+    const after = this.s[this.i + match[0].length] ?? "";
+    if (after !== "/" && !endsToken(after)) { word.value += "~"; this.i++; return; }
+    this.i += match[0].length;
+    if (name === "" || name === basename(HOME)) { word.value += HOME; return; }
+    if (/^[A-Za-z_][A-Za-z0-9._-]*$/u.test(name)) {
+      const home = join(dirname(HOME), name);
+      try { if (statSync(home).isDirectory()) { word.value += home; return; } } catch { /* unknown user */ }
+    }
+    markDynamic(word);
+  }
+
+  /** @param {Word} word */
+  parseDouble(word) {
+    this.i++;
+    for (;;) {
+      if (this.eof()) throw new ParseError("unterminated double quote");
+      const c = this.peek();
+      if (c === '"') { this.i++; return; }
+      if (c === "\\") {
+        const next = this.peek(1);
+        if (next === "\n") { this.i += 2; continue; }
+        if (next === "$" || next === "`" || next === '"' || next === "\\") { word.value += next; this.i += 2; continue; }
+        word.value += c;
+        this.i++;
+        continue;
+      }
+      if (c === "$") { this.parseDollar(word, true); continue; }
+      if (c === "`") { this.parseBacktick(word, true); continue; }
+      word.value += c;
+      this.i++;
+    }
+  }
+
+  /** @param {Word} word @param {boolean} inDouble */
+  parseDollar(word, inDouble) {
+    const next = this.peek(1);
+    if (next === "'") {
+      if (inDouble) { word.value += "$"; this.i++; return; }
+      throw new Block("shell-ansi-c-quoting");
+    }
+    if (next === '"') {
+      if (inDouble) { word.value += "$"; this.i++; return; }
+      this.i++;
+      this.parseDouble(word);
+      word.quoted = true;
+      return;
+    }
+    if (next === "(") {
+      if (this.peek(2) === "(") { this.parseArithmetic(word, 3); return; }
+      this.i += 2;
+      this.enter();
+      const body = this.parseList({ paren: true });
+      this.expect(")");
+      this.leave();
+      word.subs.push(body);
+      // `$(cat <<'EOF' … EOF)` prints a literal heredoc (the usual commit-message form): the word keeps that text.
+      const printed = this.heredocs.length > 0 ? null : literalOutput(body);
+      if (printed === null) markDynamic(word);
+      else word.value += printed;
+      return;
+    }
+    if (next === "{") { this.parseParameter(word, inDouble); return; }
+    if (/[A-Za-z_]/u.test(next)) {
+      const re = /[A-Za-z_][A-Za-z0-9_]*/uy;
+      re.lastIndex = this.i + 1;
+      const name = /** @type {RegExpExecArray} */ (re.exec(this.s))[0];
+      this.i += 1 + name.length;
+      if (name === "HOME") word.value += HOME;
+      else if (name === "TMPDIR" && TMPDIR) word.value += TMPDIR;
+      else if (!this.trackedValue(word, name, this.peek())) markDynamic(word);
+      return;
+    }
+    if (next !== "" && "=~^+".includes(next) && /[A-Za-z_{]/u.test(this.peek(2))) {
+      this.i++;
+      if (this.peek(1) === "{") { this.parseParameter(word, inDouble); markDynamic(word); return; }
+      const re = /[A-Za-z_][A-Za-z0-9_]*/uy;
+      re.lastIndex = this.i + 1;
+      this.i += 1 + /** @type {RegExpExecArray} */ (re.exec(this.s))[0].length;
+      markDynamic(word);
+      return;
+    }
+    if (next !== "" && /[0-9?#$!@*-]/u.test(next)) {
+      this.i += 2;
+      markDynamic(word);
+      return;
+    }
+    if (next === "[") this.stopTracking();
+    if (next === "[" && this.i >= this.bracketChecked) {
+      // The old `$[…]` arithmetic form, read here as text, can still assign PATH (`$["PATH"=5]`).
+      let end = this.i + 1;
+      for (let depth = 0; end < this.s.length; end++) {
+        if (this.s[end] === "\\") end++;
+        else if (this.s[end] === "[") depth++;
+        else if (this.s[end] === "]" && --depth === 0) break;
+      }
+      this.bracketChecked = end;
+      if (assignsLookup(this.s.slice(this.i + 2, end))) catTouched = true;
+    }
+    word.value += "$";
+    this.i++;
+  }
+
+  /** @param {Word} word @param {number} skip */
+  parseArithmetic(word, skip) {
+    // Arithmetic can assign any variable (`$(( D = 1 ))`).
+    this.stopTracking();
+    this.i += skip;
+    const start = this.i;
+    this.enter();
+    const scratch = newWord();
+    let depth = 0;
+    for (;;) {
+      if (this.eof()) throw new ParseError("unterminated arithmetic expansion");
+      const c = this.peek();
+      if (c === "(") { depth++; this.i++; continue; }
+      if (c === ")") {
+        if (depth === 0) {
+          if (this.peek(1) !== ")") throw new ParseError("malformed arithmetic expansion");
+          this.i += 2;
+          break;
+        }
+        depth--;
+        this.i++;
+        continue;
+      }
+      if (c === "$") { this.parseDollar(scratch, true); continue; }
+      if (c === "`") { this.parseBacktick(scratch, true); continue; }
+      if (c === "\\") { this.i += 2; continue; }
+      this.i++;
+    }
+    this.leave();
+    // Arithmetic can assign PATH (`(( PATH = 5 ))` looks up `cat` in `./5`).
+    if (assignsLookup(this.s.slice(start, this.i - 2))) catTouched = true;
+    word.subs.push(...scratch.subs);
+    markDynamic(word);
+  }
+
+  /** @param {Word} word @param {boolean} inDouble */
+  parseParameter(word, inDouble) {
+    const start = this.i + 2;
+    if (this.peek(2) === "!" && this.peek(3) !== "}") throw new Block("shell-indirect-expansion");
+    if (this.peek(2) === "(") {
+      const close = this.s.indexOf(")", start);
+      const flags = close < 0 ? "" : this.s.slice(start + 1, close);
+      if (/e/u.test(flags)) throw new Block("shell-indirect-expansion");
+    }
+    this.i += 2;
+    const scratch = newWord();
+    for (;;) {
+      if (this.eof()) throw new ParseError("unterminated parameter expansion");
+      const c = this.peek();
+      if (c === "}") { this.i++; break; }
+      if (c === "\\") { this.i += 2; continue; }
+      if (c === "'" && !inDouble) {
+        const end = this.s.indexOf("'", this.i + 1);
+        if (end < 0) throw new ParseError("unterminated single quote");
+        this.i = end + 1;
+        continue;
+      }
+      if (c === '"') { this.parseDouble(scratch); continue; }
+      if (c === "$") { this.parseDollar(scratch, inDouble); continue; }
+      if (c === "`") { this.parseBacktick(scratch, inDouble); continue; }
+      this.i++;
+    }
+    const content = this.s.slice(start, this.i - 1);
+    // `${D:=…}`, `${D=…}` and zsh `${D::=…}` assign.
+    if (content.includes("=")) this.stopTracking();
+    // `${x:=value}` / `${x=value}` assign as they expand.
+    const assigned = /^[A-Za-z_][A-Za-z0-9_]*:?=/u.exec(content);
+    if (assigned) checkSubscriptCode(content.slice(assigned[0].length));
+    // `${PATH:=…}`, `${path::=…}` (zsh) and `${(A)path=…}` change what `cat` runs.
+    const target = /^(?:\([^)]*\))?([A-Za-z_]\w*)(?:\[[^\]]*\])?:{0,2}=/u.exec(content);
+    // Subscripts and `${x:offset:length}` are arithmetic (`${a[PATH=5]}`); the text after `:-`, `+`, `#` and the rest is a word.
+    const [, subscript = "", offset = ""] = /^(?:\([^)]*\))?[#!]?(?:\w+|[-@*#?$!])?(\[(?:[^\]\\]|\\.)*\])?(?::(?![-=+?])(.*))?/su.exec(content) ?? [];
+    if ((target && CAT_LOOKUP_NAMES.test(target[1])) || assignsLookup(subscript) || assignsLookup(offset)) catTouched = true;
+    word.subs.push(...scratch.subs);
+    if (content === "HOME") word.value += HOME;
+    else if (content === "TMPDIR" && TMPDIR) word.value += TMPDIR;
+    else if (!(/^[A-Za-z_][A-Za-z0-9_]*$/u.test(content) && this.trackedValue(word, content, this.peek()))) markDynamic(word);
+  }
+
+  /** @param {Word} word @param {boolean} inDouble */
+  parseBacktick(word, inDouble) {
+    let j = this.i + 1;
+    let content = "";
+    for (;;) {
+      if (j >= this.s.length) throw new ParseError("unterminated backtick");
+      const c = this.s[j];
+      if (c === "`") break;
+      if (c === "\\") {
+        const next = this.s[j + 1] ?? "";
+        if (next === "`" || next === "\\" || next === "$" || (inDouble && next === '"')) { content += next; j += 2; continue; }
+        if (next === "\n") { j += 2; continue; }
+      }
+      content += c;
+      j++;
+    }
+    this.i = j + 1;
+    this.enter();
+    const body = new Parser(content, this.depth + this.nesting).parseAll();
+    this.leave();
+    word.subs.push(body);
+    markDynamic(word);
+  }
+
+  /** @param {Word} word */
+  parseProcessSubstitution(word) {
+    this.i += 2;
+    this.enter();
+    const body = this.parseList({ paren: true });
+    this.expect(")");
+    this.leave();
+    word.subs.push(body);
+    word.procSubst = true;
+    markDynamic(word);
+  }
+
+  /** Extglob or zsh glob qualifier attached to a word. @param {Word} word */
+  parseGlobGroup(word) {
+    const start = this.i;
+    let depth = 0;
+    for (;;) {
+      if (this.eof()) throw new ParseError("unterminated glob group");
+      const c = this.peek();
+      if (c === "\\") { this.i += 2; continue; }
+      if (c === "'" || c === '"') {
+        const end = this.s.indexOf(c, this.i + 1);
+        if (end < 0) throw new ParseError("unterminated quote in glob group");
+        this.i = end + 1;
+        continue;
+      }
+      if (c === "(") depth++;
+      if (c === ")") { depth--; if (depth === 0) { this.i++; break; } }
+      this.i++;
+    }
+    const content = this.s.slice(start + 1, this.i - 1);
+    if (/^\+/u.test(content) || /(?:^|[^A-Za-z0-9_])e[^\sA-Za-z0-9_|()]/u.test(content)) throw new Block("shell-glob-execution");
+    word.value += `(${content})`;
+    word.glob = true;
+  }
+
+  parseArithmeticCommand() {
+    const word = newWord();
+    this.parseArithmetic(word, 2);
+    return { type: "data", words: [word], redirects: this.parseRedirectsOnly() };
+  }
+
+  /** @param {string} keyword */
+  parseFor(keyword) {
+    this.i += keyword.length;
+    this.skipBlanks();
+    if (this.at("((")) return this.parseArithmeticCommand();
+    const words = [this.parseWord(false)];
+    if (/^path$/iu.test(words[0].value)) catTouched = true;
+    this.skipBlanksAndNewlines();
+    if (this.peekKeyword() === "in") {
+      this.i += 2;
+      for (;;) {
+        this.skipBlanks();
+        const c = this.peek();
+        if (this.eof() || c === "\n" || c === ";") break;
+        const word = this.parseWord(false);
+        if (!word.raw) throw new ParseError(`unexpected ${JSON.stringify(c)} in for list`);
+        words.push(word);
+      }
+    }
+    return { type: "data", words, redirects: [] };
+  }
+
+  parseCase() {
+    this.i += 4;
+    this.skipBlanks();
+    const words = [this.parseWord(false)];
+    this.skipBlanksAndNewlines();
+    if (this.peekKeyword() !== "in") throw new ParseError("case without in");
+    this.i += 2;
+    const items = [];
+    for (;;) {
+      this.skipBlanksAndNewlines();
+      if (this.eof()) throw new ParseError("unterminated case");
+      if (this.peekKeyword() === "esac") { this.i += 4; break; }
+      if (this.peek() === "(") this.i++;
+      for (;;) {
+        this.skipBlanks();
+        const word = this.parseWord(false);
+        if (!word.raw) throw new ParseError("empty case pattern");
+        words.push(word);
+        this.skipBlanks();
+        if (this.peek() === "|") { this.i++; continue; }
+        this.expect(")");
+        break;
+      }
+      items.push(this.parseList({ caseItem: true }));
+      this.skipBlanks();
+      if (this.at(";;&")) this.i += 3;
+      else if (this.at(";;") || this.at(";&")) this.i += 2;
+    }
+    return { type: "case", words, items, redirects: this.parseRedirectsOnly() };
+  }
+
+  parseConditional() {
+    this.i += 2;
+    const words = [];
+    for (;;) {
+      this.skipBlanks();
+      if (this.peek() === "\n") { this.newline(); continue; }
+      if (this.eof()) throw new ParseError("unterminated [[");
+      if (this.peekKeyword() === "]]") { this.i += 2; break; }
+      if (this.at("&&") || this.at("||")) { this.i += 2; continue; }
+      if ("<>()!&|".includes(this.peek())) { this.i++; continue; }
+      const word = this.parseWord(false);
+      if (!word.raw) throw new ParseError("unexpected token in [[");
+      // The operands of `-eq`, `-lt` and the rest are arithmetic (`[[ PATH=5 -eq 1 ]]`).
+      if (assignsLookup(word.literal ? word.value : word.raw)) catTouched = true;
+      words.push(word);
+    }
+    return { type: "data", cond: true, words, redirects: this.parseRedirectsOnly() };
+  }
+}
+
+// ---------------------------------------------------------------- evaluation
+
+/** @type {Map<string, string>} */
+const canonicalCache = new Map();
+
+/** @param {string} path */
+function realpathOrNull(path) {
+  try { return realpathSync(path); } catch { return null; }
+}
+
+/**
+ * Resolve symlinks in the longest existing prefix of an absolute path; the missing remainder is appended as-is.
+ * Existence is monotone along a path, so the prefix is found with a binary search instead of one realpath per level.
+ * @param {string} path
+ */
+function canonicalPath(path) {
+  const cached = canonicalCache.get(path);
+  if (cached !== undefined) return cached;
+  checkDeadline();
+  let result = realpathOrNull(path);
+  if (result === null && !isAbsolute(path)) result = path;
+  if (result === null) {
+    // parts[0] is "" for an absolute path; the prefix of k parts is parts.slice(0, k).join(sep), and k = 1 is the root.
+    const parts = path.split(sep);
+    let best = 1;
+    let bestReal = realpathOrNull(sep) ?? sep;
+    let low = 2;
+    let high = parts.length - 1;
+    while (low <= high) {
+      const middle = (low + high) >> 1;
+      const real = realpathOrNull(parts.slice(0, middle).join(sep));
+      if (real === null) high = middle - 1;
+      else { best = middle; bestReal = real; low = middle + 1; }
+    }
+    result = join(bestReal, ...parts.slice(best));
+  }
+  if (canonicalCache.size > 4096) canonicalCache.clear();
+  canonicalCache.set(path, result);
+  return result;
+}
+
+/** @param {string} path */
+function fold(path) {
+  return foldCase ? path.toLowerCase() : path;
+}
+
+/** @param {string} path */
+function forms(path) {
+  return [...new Set([fold(resolve(path)), fold(canonicalPath(resolve(path)))])];
+}
+
+const protectedTargets = policy.protectedWriteTargets.map((/** @type {string} */ entry) => {
+  const directory = entry.endsWith("/**");
+  const text = directory ? entry.slice(0, -3) : entry;
+  const absolute = text === "~" ? HOME : text.startsWith("~/") ? join(HOME, text.slice(2)) : resolve(text);
+  return { entry, directory, project: false, forms: forms(absolute) };
+});
+
+/** Whether writing a tree rooted at `candidate` can reach `protectedPath`; inside the project only its settings directory counts. */
+function treeReaches(/** @type {string} */ candidate, /** @type {string} */ protectedPath, /** @type {boolean} */ project) {
+  return project ? dirname(protectedPath) === candidate : protectedPath.startsWith(`${candidate}${sep}`);
+}
+
+/** @type {Map<string, typeof protectedTargets>} */
+const projectTargetCache = new Map();
+
+/** Guard targets inside the session's project (its .claude and .codex settings). @param {string} scope */
+function projectTargets(scope) {
+  let targets = projectTargetCache.get(scope);
+  if (!targets) {
+    targets = (policy.protectedProjectWriteTargets ?? []).map((/** @type {string} */ entry) => ({ entry, directory: false, project: true, forms: forms(join(scope, entry)) }));
+    projectTargetCache.set(scope, targets);
+  }
+  return targets;
+}
+
+/**
+ * "delete" and "tree" (a recursive copy or extraction rooted there) also hit every ancestor of a protected path.
+ * @param {string} absolute @param {"write" | "delete" | "tree"} kind @param {typeof protectedTargets} targets
+ */
+function protectedMatch(absolute, kind, targets) {
+  const candidates = forms(absolute);
+  for (const target of targets) {
+    for (const candidate of candidates) {
+      for (const protectedPath of target.forms) {
+        if (candidate === protectedPath) return target.entry;
+        if (target.directory && candidate.startsWith(`${protectedPath}${sep}`)) return target.entry;
+        if (kind === "tree" && treeReaches(candidate, protectedPath, target.project)) return target.entry;
+        // Inside the project only the settings directory itself (`.codex`, `.claude`, `.git`) counts, as for trees.
+        if (kind === "delete" && treeReaches(candidate, protectedPath, target.project)) return target.entry;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * A path whose directory is unknown (dynamic prefix, unknown working directory) still hits a protected path its literal tail can end.
+ * @param {string} tail @param {"write" | "delete" | "tree"} kind @param {typeof protectedTargets} targets
+ */
+function protectedTail(tail, kind, targets) {
+  const parts = tail.split("/").filter((part) => part && part !== ".");
+  const suffix = fold(parts.slice(parts.lastIndexOf("..") + 1).join(sep));
+  if (!suffix) return null;
+  const segments = suffix.split(sep);
+  for (const target of targets) {
+    for (const protectedPath of target.forms) {
+      const path = `${protectedPath}${sep}`;
+      if (path.endsWith(`${sep}${suffix}${sep}`)) return target.entry;
+      if (kind !== "write" && (target.project ? dirname(protectedPath).endsWith(`${sep}${suffix}`) : path.includes(`${sep}${suffix}${sep}`))) return target.entry;
+      if (!target.directory) continue;
+      if (segments.some((_, k) => k > 0 && path.endsWith(`${sep}${segments.slice(0, k).join(sep)}${sep}`))) return target.entry;
+      if (existsSync(join(protectedPath, suffix))) return target.entry;
+      if (protectedFiles(protectedPath).some((file) => file === suffix || file.endsWith(`${sep}${suffix}`))) return target.entry;
+    }
+  }
+  return null;
+}
+
+/** @type {Map<string, string[]>} */
+const protectedFileCache = new Map();
+
+/** Files under a protected directory (relative, case-folded), so an unknown directory still reaches nested files. @param {string} directory */
+function protectedFiles(directory) {
+  let files = protectedFileCache.get(directory);
+  if (!files) {
+    try { files = readdirSync(directory, { recursive: true, encoding: "utf8" }).slice(0, 5000).map(fold); } catch { files = []; }
+    protectedFileCache.set(directory, files);
+  }
+  return files;
+}
+
+/**
+ * A glob target (`setting?.json`, `hooks.js[n]`, `*`) expands to whatever it matches, so it hits every protected path it can
+ * match. Quoted glob characters are treated as pattern characters too. With an unknown directory only the pattern's tail counts.
+ * @param {string | null} absolute @param {string} text @param {"write" | "delete" | "tree"} kind @param {typeof protectedTargets} targets
+ */
+function protectedGlob(absolute, text, kind, targets) {
+  const patterns = (absolute === null ? [text] : globForms(absolute)).flatMap(broadGlob).map((form) => fold(form).split(sep)
+    .filter((part, k, parts) => part && part !== "." && !(part === "**" && parts[k - 1] === "**")).map(globSegment));
+  for (const pattern of patterns) {
+    for (const target of targets) {
+      for (const protectedPath of target.forms) {
+        const path = protectedPath.split(sep).filter(Boolean);
+        /** @type {Set<string>} */
+        const outcomes = new Set();
+        const seen = new Set();
+        for (let start = 0; start < (absolute === null ? path.length : 1); start++) globOutcomes(pattern, 0, path, start, outcomes, seen);
+        if (outcomes.has("exact") || (target.directory && outcomes.has("inside"))) return target.entry;
+        if (kind === "tree" && outcomes.has(target.project ? "parent" : "ancestor")) return target.entry;
+        if (kind === "delete" && outcomes.has(target.project ? "parent" : "ancestor")) return target.entry;
+      }
+    }
+  }
+  return null;
+}
+
+/** The glob and its form with the literal directory prefix resolved through symlinks. @param {string} absolute */
+function globForms(absolute) {
+  const parts = absolute.split(sep);
+  const first = parts.findIndex((part) => /[*?[{}()^#~\u0002]/u.test(part));
+  if (first <= 1) return [absolute];
+  return [...new Set([absolute, join(canonicalPath(parts.slice(0, first).join(sep)), ...parts.slice(first))])];
+}
+
+/**
+ * The glob with every brace expansion, extglob or zsh group or qualifier and zsh operator (^ # ~) replaced by ANY_TEXT, which
+ * matches any text including a leading dot; a region that spans `/` becomes `ANY/**\/ANY`. A repeated region that spans `/`
+ * also yields the forms without it. @param {string} text @returns {string[]}
+ */
+function broadGlob(text) {
+  const chars = [...text];
+  const n = chars.length;
+  const braces = bracketPairs(chars, "{", "}");
+  const groups = bracketPairs(chars, "(", ")");
+  const classes = classCloses(chars);
+  const nextSlash = new Int32Array(n + 1).fill(n);
+  for (let k = n - 1; k >= 0; k--) nextSlash[k] = chars[k] === "/" ? k : nextSlash[k + 1];
+  // Each element is one pattern unit (a character, a bracket expression or ANY_TEXT), so `x#` can drop the unit before it.
+  /** @type {string[]} */
+  const out = [];
+  // Units `x#` repeats that span `/`: zero copies drop a directory level, more copies add some.
+  /** @type {number[]} */
+  const levels = [];
+  for (let i = 0; i < n; i++) {
+    const c = chars[i];
+    const close = c === "{" ? braces[i] : c === "(" ? groups[i] : -1;
+    if (close > 0) {
+      // `@(…)`, `?(…)`, `*(…)`, `+(…)`, `!(…)`: the operator belongs to the group.
+      if (c === "(" && ["@", "+", "!", "?", "*"].includes(out.at(-1) ?? "")) out.pop();
+      out.push(nextSlash[i] < close ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT);
+      i = close;
+      continue;
+    }
+    // A bracket expression inside one segment stays as it is: `^` and `!` there negate it.
+    const end = c === "[" ? classEnd(chars, i, classes) : -1;
+    if (end > 0 && nextSlash[i] > end) {
+      out.push(chars.slice(i, end + 1).join(""));
+      i = end;
+      continue;
+    }
+    // `a~b` matches at most what `a` matches, `^x` anything in its segment, `x#` also no x.
+    if (c === "~" && i > 0 && i < n - 1) break;
+    if (c === "^") {
+      out.push(ANY_TEXT);
+      i = nextSlash[i] - 1;
+    } else if (c === "#") {
+      const unit = out.pop() ?? "";
+      out.push(unit.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT);
+      if (unit.includes("/") && levels.at(-1) !== out.length - 1) levels.push(out.length - 1);
+    } else out.push(c);
+  }
+  // Each repeated level is read as present or absent. From the fifth on, the rest of the glob becomes one level that is
+  // any text with or without directories, so the forms stay at most 32.
+  /** @type {Map<number, string>} */
+  const absent = new Map(levels.slice(0, 4).map((k) => [k, ""]));
+  if (levels.length > 4) {
+    out.length = levels[4];
+    out.push(`${ANY_TEXT}/**/${ANY_TEXT}`);
+    absent.set(levels[4], ANY_TEXT);
+  }
+  const choices = [...absent.keys()];
+  /** @type {string[]} */
+  const forms = [];
+  for (let mask = 0; mask < 1 << choices.length; mask++) {
+    forms.push(out.map((unit, k) => {
+      const bit = choices.indexOf(k);
+      return bit >= 0 && mask & (1 << bit) ? /** @type {string} */ (absent.get(k)) : unit;
+    }).join(""));
+  }
+  return forms;
+}
+
+/** For each opener the index of its closer (one kind of pair, nested), or -1, in one pass. @param {string[]} chars @param {string} open @param {string} close */
+function bracketPairs(chars, open, close) {
+  const match = new Int32Array(chars.length).fill(-1);
+  /** @type {number[]} */
+  const stack = [];
+  for (let k = 0; k < chars.length; k++) {
+    if (chars[k] === open) stack.push(k);
+    else if (chars[k] === close && stack.length > 0) match[/** @type {number} */ (stack.pop())] = k;
+  }
+  return match;
+}
+
+/**
+ * For each index, the `]` that ends a bracket expression body read from there, skipping [:name:], [.x.] and [=x=], or -1.
+ * Built right to left in one pass so every bracket lookup is constant time. @param {string[]} chars
+ */
+function classCloses(chars) {
+  const n = chars.length;
+  /** @type {Record<string, Int32Array>} */
+  const terms = {};
+  for (const kind of [":", ".", "="]) {
+    const next = new Int32Array(n + 2).fill(-1);
+    for (let k = n - 1; k >= 0; k--) next[k] = chars[k] === kind && chars[k + 1] === "]" ? k : next[k + 1];
+    terms[kind] = next;
+  }
+  const scan = new Int32Array(n + 2).fill(-1);
+  for (let k = n - 1; k >= 0; k--) {
+    if (chars[k] === "]") scan[k] = k;
+    else if (chars[k] === "[" && terms[chars[k + 1]]) {
+      const term = terms[chars[k + 1]][k + 2];
+      scan[k] = term < 0 ? -1 : scan[term + 2];
+    } else scan[k] = scan[k + 1];
+  }
+  return scan;
+}
+
+/** Set per command: dotglob, GLOBIGNORE or zsh GLOB_DOTS lets a pattern character match a leading dot. */
+let dotGlob = false;
+const ANY_TEXT = "\u0002";
+
+/**
+ * A path segment as a matcher: `**` for any number of segments, glob tokens for pattern characters, the text otherwise.
+ * @typedef {{ tokens: ("*" | ((c: string) => boolean))[], hidden: boolean }} GlobSegment
+ * @param {string} segment @returns {string | GlobSegment}
+ */
+function globSegment(segment) {
+  if (segment === "**") return "**";
+  if (!/[*?[\u0002]/u.test(segment)) return segment;
+  const chars = [...segment];
+  const classes = classCloses(chars);
+  /** @type {GlobSegment["tokens"]} */
+  const tokens = [];
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (c === "*" || c === ANY_TEXT) { if (tokens.at(-1) !== "*") tokens.push("*"); continue; }
+    if (c === "?") { tokens.push(() => true); continue; }
+    const end = c === "[" ? classEnd(chars, i, classes) : -1;
+    if (end > 0) { tokens.push(charClass(chars.slice(i + 1, end))); i = end; continue; }
+    tokens.push((d) => d === c);
+  }
+  // Like the shell, a pattern character does not match a leading dot.
+  return { tokens, hidden: !dotGlob && /^[*?[]/u.test(segment) && !segment.includes(ANY_TEXT) };
+}
+
+/**
+ * Index of the `]` closing the bracket expression at i, or -1. A `]` first in the set is literal.
+ * @param {string[]} chars @param {number} i @param {Int32Array} classes from classCloses(chars)
+ */
+function classEnd(chars, i, classes) {
+  let k = i + 1;
+  if (chars[k] === "!" || chars[k] === "^") k++;
+  if (chars[k] === "]") k++;
+  return k < chars.length ? classes[k] : -1;
+}
+
+/** A bracket expression as a character test; a named class or a reversed range matches any character. @param {string[]} body */
+function charClass(body) {
+  const negate = body[0] === "!" || body[0] === "^";
+  const set = negate ? body.slice(1) : body;
+  const singles = new Set();
+  /** @type {Set<string>} */
+  const ranges = new Set();
+  for (let k = 0; k < set.length; k++) {
+    if ((set[k] === "[" && [":", ".", "="].includes(set[k + 1])) || (set[k + 1] === "-" && k + 2 < set.length && set[k] > set[k + 2])) return () => true;
+    if (set[k + 1] === "-" && k + 2 < set.length) { ranges.add(`${set[k]}${set[k + 2]}`); k += 2; }
+    else singles.add(set[k]);
+  }
+  const spans = [...ranges].map((range) => [...range]);
+  return (/** @type {string} */ c) => (singles.has(c) || spans.some(([low, high]) => c >= low && c <= high)) !== negate;
+}
+
+/** Whether a glob segment matches a whole name. Backtracking only to the last `*` keeps this O(pattern × name). @param {GlobSegment} glob @param {string} name */
+function globMatch(glob, name) {
+  const text = [...name];
+  if (glob.hidden && text[0] === ".") return false;
+  const { tokens } = glob;
+  let t = 0;
+  let s = 0;
+  let star = -1;
+  let mark = 0;
+  while (s < text.length) {
+    const token = tokens[t];
+    if (token === "*") { star = t++; mark = s; }
+    else if (token && token(text[s])) { t++; s++; }
+    else if (star >= 0) { t = star + 1; s = ++mark; }
+    else return false;
+  }
+  while (tokens[t] === "*") t++;
+  return t === tokens.length;
+}
+
+/**
+ * How glob segments relate to a path from index j: "exact", "inside" (the pattern goes below it), "ancestor" (it stops above),
+ * "parent" (it stops at the directory holding the path).
+ * @param {(string | GlobSegment)[]} pattern @param {number} i @param {string[]} path @param {number} j @param {Set<string>} outcomes @param {Set<number>} seen
+ */
+function globOutcomes(pattern, i, path, j, outcomes, seen) {
+  const state = i * (path.length + 1) + j;
+  if (seen.has(state)) return;
+  seen.add(state);
+  if ((seen.size & 1023) === 0) checkDeadline();
+  if (i === pattern.length) {
+    outcomes.add(j === path.length ? "exact" : "ancestor");
+    if (j === path.length - 1) outcomes.add("parent");
+    return;
+  }
+  if (j === path.length) { outcomes.add("inside"); return; }
+  const segment = pattern[i];
+  if (segment === "**") {
+    globOutcomes(pattern, i + 1, path, j, outcomes, seen);
+    globOutcomes(pattern, i, path, j + 1, outcomes, seen);
+    return;
+  }
+  if (typeof segment === "string" ? segment === path[j] : globMatch(segment, path[j])) globOutcomes(pattern, i + 1, path, j + 1, outcomes, seen);
+}
+
+/** @param {string} scope @param {string} absolute */
+function insideScope(scope, absolute) {
+  const pairs = [[resolve(scope), resolve(absolute)], [canonicalPath(resolve(scope)), canonicalPath(resolve(absolute))]];
+  for (const [base, target] of pairs) {
+    const rel = relative(base, target);
+    if (rel && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel)) return rel.split(sep).join("/");
+  }
+  return null;
+}
+
+/**
+ * Quotes or escapes inside a glob (`{"}",h}`, `[\h]`, `(h|[")"])`) and a bracket holding brace or group text (`[{s],x}`) pair
+ * differently in the shell than in broadGlob, so such a target is also read with its first opener to its last closer as
+ * ANY_TEXT. @param {Word} word @param {string} text @returns {string | null}
+ */
+function looseGlob(word, text) {
+  const first = text.search(/[[{(]/u);
+  if (first < 0 || !(word.glob || word.opener)) return null;
+  let mixed = /["'\\]/u.test(word.raw ?? "");
+  for (let k = first, open = false; !mixed && k < text.length; k++) {
+    if (text[k] === "[") open = true;
+    else if (text[k] === "]" || text[k] === "/") open = false;
+    else if (open && "{}(),".includes(text[k])) mixed = true;
+  }
+  if (!mixed) return null;
+  let last = text.length - 1;
+  while (last > first && !"]})".includes(text[last])) last--;
+  if (last === first) return null;
+  const region = text.slice(first, last + 1);
+  return `${text.slice(0, first)}${region.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT}${text.slice(last + 1)}`;
+}
+
+/**
+ * The path the system opens for `text`: each component is resolved through symbolic links before a later `..` applies, so
+ * `link/../x` is read from the link's target directory. @param {string} base @param {string} text
+ */
+function linkedPath(base, text) {
+  let current = isAbsolute(text) ? sep : canonicalPath(base);
+  for (const part of text.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") { current = dirname(current); continue; }
+    current = join(current, part);
+    current = realpathOrNull(current) ?? current;
+  }
+  return current;
+}
+
+/** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx @param {TreeEffect} [effect] */
+function checkTarget(word, kind, ctx, effect) {
+  if (!word || !word.value) return;
+  // `link/..` names the directory above the link's target: every check (trees, globs, docs names) reads that path.
+  if (word.value.split("/").includes("..") && !word.value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(word.value))) {
+    const base = ctx.cwd ?? ctx.scope;
+    const linked = linkedPath(base, word.value);
+    if (linked !== resolve(base, word.value) && canonicalPath(linked) !== canonicalPath(resolve(base, word.value))) word = { ...word, value: linked, raw: linked };
+  }
+  // A brace expansion marks the word unknown just before its `{`; the glob check reads the braces instead.
+  const text = word.value.replaceAll(`${UNKNOWN}{`, "{").replaceAll(UNKNOWN, "x");
+  const absolute = resolve(ctx.cwd ?? ctx.scope, text);
+  const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+  const unknown = word.value.lastIndexOf(UNKNOWN);
+  const tail = unknown >= 0 ? word.value.slice(unknown + 1) : ctx.cwd === null && !isAbsolute(text) ? text : null;
+  const loose = looseGlob(word, text);
+  const physical = text.split("/").includes("..") ? linkedPath(ctx.cwd ?? ctx.scope, text) : null;
+  const hit = protectedMatch(absolute, kind, targets) ?? (physical === null ? null : protectedMatch(physical, kind, targets))
+    ?? (tail === null ? null : protectedTail(tail, kind, targets))
+    ?? (word.glob ? protectedGlob(ctx.cwd === null && !isAbsolute(text) ? null : absolute, text, kind, targets) : null)
+    ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
+  if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
+  // find -execdir runs in each match's directory, where a relative name can be a link to any protected file.
+  if (ctx.execdir && !isAbsolute(text)) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${text} (relative to an unknown -execdir directory)`);
+  // `link/../notes.txt` opens the file next to the link's target, which can be (or link to) a docs file.
+  const docs = docsTarget(word, absolute, kind, ctx)
+    ?? (physical !== null && docsName(basename(physical)) ? `${text} (${physical})` : null);
+  if (docs && !(grantable(word, text, ctx) && grantedDocsWrite(absolute) && (physical === null || grantedDocsWrite(physical)))) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${docs}`);
+  if (effect) checkDocsEffect(word, text, absolute, effect, ctx);
+  if (kind === "delete") return;
+  if (temporaryTarget(word, text, ctx)) throw new Block("tmp-write", `${structural["tmp-write"]} Target: ${text}`);
+  if (kind !== "write") return;
+  const rel = insideScope(ctx.scope, absolute);
+  if (rel !== null && testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(rel)) && !(grantable(word, text, ctx) && grantedTestWrite(absolute))) {
+    throw new Block("test-file-write", `${structural["test-file-write"]} Target: ${rel}`);
+  }
+}
+
+/** `docsConfigNames` from the policy (`AGENTS.md`, `CLAUDE.md`, lint configuration), matched on a file name in any directory. */
+const docsNames = policy.docsConfigNames.map((/** @type {string} */ name) => new RegExp(`^${name.replace(/[.+^${}()|[\]\\]/gu, "\\$&").replaceAll("*", ".*")}$`, foldCase ? "iu" : "u"));
+/** @param {string} name */
+const docsName = (name) => docsNames.some((/** @type {RegExp} */ pattern) => pattern.test(name));
+/** Each protected name as glob tokens: its characters, case-folded, and `*` for any text. */
+const docsPatterns = policy.docsConfigNames.map((/** @type {string} */ name) => [...fold(name)].map((c) => c === "*" ? "*" : c));
+
+/**
+ * Whether a glob segment can match some protected name, comparing the two patterns, so a pattern the guard cannot expand
+ * (`*.[mc]ts` under `*\/`) counts whenever any spelling of a protected name fits it. @param {string | GlobSegment} segment
+ */
+function couldBeDocs(segment) {
+  if (typeof segment === "string") return segment === "**" || docsName(segment);
+  return docsPatterns.some((/** @type {string[]} */ name) => {
+    if (segment.hidden && name[0] === ".") return false;
+    const { tokens } = segment;
+    /** @type {Set<number>} */
+    const seen = new Set();
+    /** @param {number} i @param {number} j @returns {boolean} */
+    const meet = (i, j) => {
+      const state = i * (name.length + 1) + j;
+      if (seen.has(state)) return false;
+      seen.add(state);
+      if (i === tokens.length && j === name.length) return true;
+      const token = tokens[i], char = name[j];
+      if (token === "*" && (meet(i + 1, j) || (j < name.length && meet(i, j + 1)))) return true;
+      if (char === "*" && (meet(i, j + 1) || (i < tokens.length && token !== "*" && meet(i + 1, j)))) return true;
+      return typeof token === "function" && j < name.length && char !== "*" && token(char) && meet(i + 1, j + 1);
+    };
+    return meet(0, 0);
+  });
+}
+
+/**
+ * The existing paths a glob reaches below the directory before its first pattern segment, walking only directories the
+ * pattern goes into (links to directories included, like the shell), or null when the walk passes DOCS_WALK_ENTRIES
+ * entries or DOCS_WALK_DEPTH levels, reads `.`/`..` after a pattern or cannot read a directory it enters.
+ * @param {string} base @param {string} value the glob, relative to base or absolute @returns {string[] | null}
+ */
+function globReach(base, value) {
+  /** @type {string[]} */
+  const found = [];
+  let entries = 0;
+  for (const form of broadGlob(value)) {
+    const parts = form.split("/");
+    const first = parts.findIndex((part) => /[*?[\u0002]/u.test(part));
+    if (first < 0) { found.push(resolve(base, form)); continue; }
+    if (parts.slice(first).some((part) => part === "." || part === "..")) return null;
+    const root = resolve(base, parts.slice(0, first).join("/") || (isAbsolute(form) ? "/" : "."));
+    const pattern = parts.slice(first).filter(Boolean).map((part) => globSegment(fold(part)));
+    /** @type {{ path: string, rel: string[] }[]} */
+    const pending = [{ path: root, rel: [] }];
+    while (pending.length > 0) {
+      checkDeadline();
+      const { path, rel } = /** @type {{ path: string, rel: string[] }} */ (pending.pop());
+      if (rel.length > DOCS_WALK_DEPTH) return null;
+      let dirents;
+      try { dirents = readdirSync(path, { withFileTypes: true, encoding: "utf8" }); } catch { if (rel.length === 0) break; return null; }
+      for (const entry of dirents) {
+        if (++entries > DOCS_WALK_ENTRIES) return null;
+        const child = [...rel, fold(entry.name)];
+        /** @type {Set<string>} */
+        const outcomes = new Set();
+        globOutcomes(pattern, 0, child, 0, outcomes, new Set());
+        const full = join(path, entry.name);
+        if (outcomes.has("exact")) found.push(full);
+        if (!outcomes.has("inside")) continue;
+        let directory = entry.isDirectory();
+        if (!directory && entry.isSymbolicLink()) { try { directory = statSync(full).isDirectory(); } catch { directory = false; } }
+        if (directory) pending.push({ path: full, rel: child });
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * The names a brace expansion makes (`{AGENTS,README}.md`), nested lists included; null when they exceed `limit` or use a
+ * sequence (`{1..9}`), so the caller treats the pattern as able to make any name.
+ * @param {string} text @param {number} limit @returns {string[] | null}
+ */
+function braceNames(text, limit) {
+  const open = text.indexOf("{");
+  if (open < 0) return [text];
+  /** @type {number[]} */
+  const commas = [];
+  let depth = 0, close = -1;
+  for (let i = open; i < text.length && close < 0; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}" && --depth === 0) close = i;
+    else if (text[i] === "," && depth === 1) commas.push(i);
+  }
+  if (close < 0) return [text];
+  const head = text.slice(0, open), tail = text.slice(close + 1);
+  if (commas.length === 0) {
+    if (text.slice(open + 1, close).includes("..")) return null;
+    const rest = braceNames(tail, limit);
+    return rest && rest.map((name) => `${text.slice(0, close + 1)}${name}`);
+  }
+  /** @type {string[]} */
+  const names = [];
+  let start = open + 1;
+  for (const end of [...commas, close]) {
+    const expanded = braceNames(`${head}${text.slice(start, end)}${tail}`, limit);
+    if (!expanded) return null;
+    names.push(...expanded);
+    if (names.length > limit) return null;
+    start = end + 1;
+  }
+  return names;
+}
+
+/**
+ * The protected agent-instruction or lint file a write, rename or delete reaches, or null: the target's own name (lexical,
+ * after symlinks, or any name its glob can expand to) and, for a delete or rename source, a protected file directly inside
+ * the directory. A name with an expansion in it is unknown and not matched, like the guard's other path checks; the trees a
+ * recursive copy, move, delete or extraction reaches are read by `checkDocsEffect`. Trailing `/` and `/.` name the directory.
+ * @param {Word} word @param {string} absolute @param {"write" | "delete" | "tree"} kind @param {Context} ctx
+ */
+function docsTarget(word, absolute, kind, ctx) {
+  const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
+  const name = value.slice(value.lastIndexOf("/") + 1);
+  if (!name || name.includes(UNKNOWN)) return null;
+  if (word.glob) {
+    // Code fragments an interpreter program holds (`querySelectorAll(':scope > *')`) are read as shell text; only a literal
+    // protected name in them counts, since the program can write files itself anyway.
+    if (ctx.codeString) return null;
+    const shown = value.replaceAll(UNKNOWN, "$…");
+    // A copy destination named by a source glob the guard could not expand: any usual spelling the glob can make counts.
+    if (word.fromGlob) {
+      return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? shown : null;
+    }
+    // Brace expansion makes its names whether or not they exist: expand the last part exactly, and in a plain known
+    // directory follow each name through links. A patterned directory (`{a,b}/x`, `*/x`) or a sequence (`x{1..9}`) is
+    // walked below like a glob, so links it reaches are followed too.
+    const folder = value.slice(0, value.lastIndexOf("/") + 1);
+    if (!/[*?[(^#~]/u.test(name)) {
+      const names = braceNames(name, 256);
+      if (names) {
+        if (names.some(docsName)) return shown;
+        if (folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) return null;
+        if (!/[*?[\]{}()]/u.test(folder)) {
+          const reached = names.map((each) => canonicalPath(resolve(ctx.cwd ?? ctx.scope, `${folder}${each}`))).find((real) => docsName(basename(real)));
+          return reached ? `${shown} (${reached})` : null;
+        }
+      }
+    }
+    // A glob expands only to existing entries. When the directory is unknown the guard cannot list them: any protected name
+    // the last part can make counts. Otherwise it walks what the glob reaches and checks each name and, through links, the
+    // name of the file written; a walk past its bounds fails closed.
+    if (folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) {
+      return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? `${shown} (unresolved directory)` : null;
+    }
+    const reached = globReach(ctx.cwd ?? ctx.scope, value);
+    if (!reached) return `${shown} (too many entries to check)`;
+    for (const path of reached) {
+      if (docsName(basename(path))) return `${shown} (${path})`;
+      const real = canonicalPath(path);
+      if (docsName(basename(real))) return `${shown} (${real})`;
+    }
+    return null;
+  }
+  if (docsName(name)) return value.replaceAll(UNKNOWN, "$…");
+  const known = !value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(value));
+  if (!known) return null;
+  const real = canonicalPath(absolute);
+  if (docsName(basename(real))) return real;
+  if (kind !== "delete") return null;
+  try {
+    if (!statSync(real).isDirectory()) return null;
+    const inside = readdirSync(real).find(docsName);
+    return inside ? join(real, inside) : null;
+  } catch { return null; }
+}
+
+/** `docs/`, `docs/.` and `docs//` name the directory `docs`; a lone `/` stays. @param {string} value */
+function trimDirectorySuffix(value) {
+  return value.replace(/(?<=.)(?:\/\.?)+$/u, "");
+}
+
+/** How far `docsInside` reads a tree before failing closed. */
+const DOCS_WALK_DEPTH = 8;
+const DOCS_WALK_ENTRIES = 5000;
+
+/**
+ * Protected names at any depth below a directory (relative paths); [] for a missing path or a file, and null when the tree
+ * is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES entries or cannot be read, so the caller fails
+ * closed. Any entry with a protected name counts, a symlink included. Symlinks below the directory are not followed unless
+ * `follow` is set (a copy that dereferences links: `cp -L`, `rsync -L`); then a link to a directory is walked within the
+ * same bounds under its own name (another name for a directory already walked is walked again), a link back to one of its
+ * own ancestors (by real path) is skipped, and a broken or unreadable link fails closed. Other
+ * symlinks are added to `links`, and every entry to `all`, when given. @param {string} directory @param {boolean} [follow]
+ * @param {string[] | null} [links] @param {string[] | null} [all] @returns {string[] | null}
+ */
+function docsInside(directory, follow = false, links = /** @type {string[] | null} */ (null), all = /** @type {string[] | null} */ (null)) {
+  try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
+  /** @type {string[]} */
+  const found = [];
+  /** `chain` holds the real paths of an entry's ancestors, so a followed link cycle ends. */
+  /** @type {{ path: string, rel: string, depth: number, chain: Set<string> }[]} */
+  const pending = [{ path: directory, rel: "", depth: 0, chain: new Set() }];
+  if (follow) {
+    try { pending[0].chain.add(realpathSync(directory)); } catch { return null; }
+  }
+  let entries = 0;
+  while (pending.length > 0) {
+    checkDeadline();
+    const { path, rel, depth, chain } = /** @type {{ path: string, rel: string, depth: number, chain: Set<string> }} */ (pending.pop());
+    if (depth > DOCS_WALK_DEPTH) return null;
+    let dirents;
+    try { dirents = readdirSync(path, { withFileTypes: true, encoding: "utf8" }); } catch { return null; }
+    for (const entry of dirents) {
+      if (++entries > DOCS_WALK_ENTRIES) return null;
+      const child = rel ? join(rel, entry.name) : entry.name;
+      const full = join(path, entry.name);
+      all?.push(child);
+      if (docsName(entry.name)) found.push(child);
+      else if (links && entry.isSymbolicLink()) links.push(child);
+      if (entry.isDirectory()) {
+        let next = chain;
+        if (follow) {
+          try { next = new Set(chain).add(realpathSync(full)); } catch { return null; }
+        }
+        pending.push({ path: full, rel: child, depth: depth + 1, chain: next });
+      } else if (follow && entry.isSymbolicLink()) {
+        let real;
+        try { real = realpathSync(full); if (!statSync(real).isDirectory()) continue; } catch { return null; }
+        if (chain.has(real)) continue;
+        pending.push({ path: real, rel: child, depth: depth + 1, chain: new Set(chain).add(real) });
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * The paths a source or removal operand names, canonical: the literal path, or the existing entries a glob in its last
+ * segment matches in a known directory (read broadly, like protected-path globs). Null when the operand cannot be known:
+ * an expansion, a relative path under an unknown directory, a patterned directory, quoted glob text or an oversized
+ * directory. @param {Word} word @param {Context} ctx @param {boolean} [lexical] keep the selected paths as written, without resolving links @returns {string[] | null}
+ */
+function operandPaths(word, ctx, lexical = false) {
+  const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
+  if (!value || value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(value)) || looseGlob(word, value) !== null) return null;
+  const base = ctx.cwd ?? ctx.scope;
+  // `link/..` is read from the link's target directory (also kept as written for a lexical reader such as find's names).
+  const dots = value.split("/").includes("..");
+  if (!word.glob) {
+    const path = lexical ? resolve(base, value) : canonicalPath(resolve(base, value));
+    return dots ? [...new Set([path, lexical ? linkedPath(base, value) : canonicalPath(linkedPath(base, value))])] : [path];
+  }
+  const directory = value.slice(0, value.lastIndexOf("/") + 1), name = value.slice(value.lastIndexOf("/") + 1);
+  if (!name || /[*?[\]{}()]/u.test(directory)) return null;
+  const parent = dots ? linkedPath(base, directory || ".") : resolve(base, directory || ".");
+  if (!/[*?[(^#~]/u.test(name)) {
+    const names = braceNames(name, 256);
+    return names && names.map((each) => lexical ? join(parent, each) : canonicalPath(join(parent, each)));
+  }
+  /** @type {string[]} */
+  let entries;
+  try { entries = readdirSync(parent, { encoding: "utf8" }); } catch { return []; }
+  if (entries.length > DOCS_WALK_ENTRIES) return null;
+  const segments = broadGlob(name).map((form) => globSegment(fold(form)));
+  return entries.filter((entry) => segments.some((segment) => typeof segment === "string" ? segment === fold(entry) : globMatch(segment, fold(entry))))
+    .map((entry) => lexical ? join(parent, entry) : canonicalPath(join(parent, entry)));
+}
+
+/** Whether a directory is inside a Git working tree (a `.git` entry in it or an ancestor). @param {string} directory */
+function insideRepository(directory) {
+  for (let current = directory; ; current = dirname(current)) {
+    if (existsSync(join(current, ".git"))) return true;
+    if (current === dirname(current)) return false;
+  }
+}
+
+/**
+ * What a recursive operation does below its target, beyond the target's own name:
+ * - `remove`: the target directory goes away with everything in it (rm, trash, mv and git mv sources, git rm, rsync --delete);
+ *   `recursive` says whether an unknown operand could be a directory tree;
+ * - `source`: a recursive copy or move writes the tree of `source` at the target; `follow` says the copy dereferences
+ *   symlinks below it (`cp -L`/`-H`, `rsync -L`/`-k`/`--copy-links`/`--copy-dirlinks`/`--copy-unsafe-links`);
+ * - `unknownContents`: an archive or remote source writes contents into the target directory. `archives` lists the archive
+ *   operands with the format the tool reads (null when the archive is stdin, a default device or an operand the guard cannot
+ *   name); without `archives` the contents come from a remote host and cannot be read.
+ * @typedef {{ word: Word | null, format: "zip" | "tar" }} ArchiveOperand
+ * - `patches`: a diff applied in the target directory (`patch`, `git apply`, `git am`); each operand is a file word or the
+ *   text of a heredoc or here-string, null for a patch the guard cannot read (a pipe, a variable).
+ * - `pathspecs`: Git pathspecs a command restores from the index or a revision (`git checkout --ours`, `git checkout <rev> <path>`),
+ *   matched against the tracked files with a protected name; `revision` also lists that revision's files.
+ * @typedef {{ word: Word | null, text: string | null }} PatchOperand
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, strips?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null }, excludes?: string[] }} TreeEffect
+ */
+
+/** How many members an archive listing may hold, and how long it may take, before the guard fails closed. */
+const ARCHIVE_MEMBERS = 20000;
+const ARCHIVE_LIST_MS = 3000;
+
+/**
+ * The member names of a literal, readable archive file, listed by the system tool (`unzip -Z1` for zip, `tar -tf` for
+ * the tar family and ditto's CPIO), or null when the operand is not a single known file (stdin, a variable, a glob), no
+ * system lister exists, or the listing fails, times out or exceeds ARCHIVE_MEMBERS. unzip also finds `name.zip` for `name`.
+ * @param {ArchiveOperand} archive @param {Context} ctx @returns {string[] | null}
+ */
+function archiveMembers(archive, ctx) {
+  const { word, format } = archive;
+  if (!word || word.glob || word.value === "-" || word.value === "") return null;
+  const paths = operandPaths(word, ctx);
+  if (paths === null || paths.length !== 1) return null;
+  let [path] = paths;
+  if (format === "zip" && !existsSync(path) && existsSync(`${path}.zip`)) path = `${path}.zip`;
+  try { if (!statSync(path).isFile()) return null; } catch { return null; }
+  const tool = format === "zip" ? "unzip" : "tar";
+  const program = ["/usr/bin", "/bin"].map((directory) => join(directory, tool)).find((candidate) => existsSync(candidate));
+  if (!program) return null;
+  checkDeadline();
+  const timeout = Math.max(1, Math.min(ARCHIVE_LIST_MS, deadline - Date.now()));
+  const result = spawnSync(program, [format === "zip" ? "-Z1" : "-tf", path], {
+    encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"], env: { PATH: "/usr/bin:/bin" },
+  });
+  checkDeadline();
+  if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
+  const members = result.stdout.split("\n").filter((line) => line !== "");
+  return members.length > ARCHIVE_MEMBERS ? null : members;
+}
+
+/** How large a patch file the guard reads before failing closed. */
+const PATCH_BYTES = 16 * 1024 * 1024;
+
+/**
+ * The file names a diff touches (`diff --git`, `---`/`+++`, `***`, `Index:`, Git rename and copy lines), each with its
+ * leading directories, or null when the patch cannot be read (no literal file, unreadable, larger than PATCH_BYTES) or names
+ * more than ARCHIVE_MEMBERS files. Hunk lines that look like headers are read too, which only adds names.
+ * @param {PatchOperand} patch @param {Context} ctx @returns {string[] | null}
+ */
+function patchMembers(patch, ctx) {
+  let text = patch.text;
+  if (text === null) {
+    if (!patch.word || patch.word.glob || patch.word.value === "-") return null;
+    const paths = operandPaths(patch.word, ctx);
+    if (paths === null || paths.length !== 1) return null;
+    try {
+      if (statSync(paths[0]).size > PATCH_BYTES) return null;
+      text = readFileSync(paths[0], "utf8");
+    } catch { return null; }
+  }
+  /** @type {Set<string>} */
+  const members = new Set();
+  /** Git's C-quoted names: `\\t`, `\\"`, `\\\\` and octal bytes (`\\101` is `A`, UTF-8 in several bytes). @param {string} name */
+  const unquote = (name) => {
+    if (!/^".*"$/u.test(name)) return name;
+    /** @type {number[]} */
+    const bytes = [];
+    const body = name.slice(1, -1);
+    const escapes = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 };
+    for (let i = 0; i < body.length; i++) {
+      if (body[i] !== "\\") { bytes.push(...Buffer.from(body[i], "utf8")); continue; }
+      const octal = /^[0-7]{1,3}/u.exec(body.slice(i + 1))?.[0];
+      if (octal) { bytes.push(Number.parseInt(octal, 8) & 255); i += octal.length; continue; }
+      const next = body[++i] ?? "";
+      bytes.push(...(next in escapes ? [escapes[/** @type {keyof typeof escapes} */ (next)]] : Buffer.from(next, "utf8")));
+    }
+    return Buffer.from(bytes).toString("utf8");
+  };
+  for (const line of text.split(/\r?\n/u)) {
+    const git = /^diff --git (.+)$/u.exec(line);
+    if (git) git[1].split(/ (?=["ab]\/|"[ab]\/)/u).forEach((name) => members.add(unquote(name)));
+    const header = /^(?:---|\+\+\+|\*\*\*) (.+?)(?:\t.*)?$/u.exec(line) ?? /^(?:Index:|(?:rename|copy) (?:from|to)) (.+)$/u.exec(line);
+    if (header) members.add(unquote(header[1].trim()));
+    if (members.size > ARCHIVE_MEMBERS) return null;
+  }
+  members.delete("/dev/null");
+  return [...members];
+}
+
+/**
+ * Whether a Git pathspec, relative to the directory Git runs in, can select a file: the path itself, a directory above it,
+ * or a glob whose `*` also crosses `/`, as Git matches by default. Magic (`:(glob)`, `:!x`, `:/`) and unknown text select anything.
+ * @param {string | null} spec @param {string} file
+ */
+function pathspecSelects(spec, file) {
+  if (spec === null || spec.startsWith(":")) return true;
+  const path = fold(spec.replace(/^(?:\.\/)+/u, "").replace(/\/+$/u, ""));
+  const name = fold(file);
+  if (path === "" || path === "." || name === path || name.startsWith(`${path}/`)) return true;
+  if (!/[*?[]/u.test(path)) return false;
+  const chars = [...path];
+  const classes = classCloses(chars);
+  let source = "";
+  for (let i = 0; i < chars.length; i++) {
+    const end = chars[i] === "[" ? classEnd(chars, i, classes) : -1;
+    if (end > 0) { source += `[${chars.slice(i + 1, end).join("").replace(/^!/u, "^").replace(/\\/gu, "\\\\")}]`; i = end; }
+    else source += chars[i] === "*" ? ".*" : chars[i] === "?" ? "." : chars[i].replace(/[.+^${}()|[\]\\]/gu, "\\$&");
+  }
+  try { return new RegExp(`^${source}(?:/.*)?$`, "su").test(name); } catch { return true; }
+}
+
+/**
+ * The tracked files with a protected name below a directory, relative to it, from the index and, when given, a revision;
+ * null when Git cannot list them (no repository, an unknown revision, a slow or oversized listing).
+ * `extra` also keeps other tracked files (guard configuration). @param {string} directory @param {string | null} revision
+ * @param {(file: string) => boolean} [extra] @returns {string[] | null}
+ */
+function trackedDocs(directory, revision, extra = (/** @type {string} */ _file) => false) {
+  const program = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].map((each) => join(each, "git")).find((candidate) => existsSync(candidate));
+  if (!program) return null;
+  /** @type {string[]} */
+  const found = [];
+  for (const args of [["ls-files", "-z"], ...(revision === null ? [] : [["ls-tree", "-r", "-z", "--name-only", revision]])]) {
+    checkDeadline();
+    const timeout = Math.max(1, Math.min(ARCHIVE_LIST_MS, deadline - Date.now()));
+    const result = spawnSync(program, ["-c", "core.fsmonitor=false", ...args], {
+      cwd: directory, encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"], env: { PATH: "/usr/bin:/bin", HOME: homedir() },
+    });
+    checkDeadline();
+    // A first operand that names no revision is a path, already among the pathspecs.
+    if (args[0] === "ls-tree" && result.status === 128 && !result.error) continue;
+    if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
+    found.push(...result.stdout.split("\0").filter((file) => file !== "" && (docsName(basename(file)) || extra(file))));
+  }
+  return [...new Set(found)];
+}
+
+/**
+ * Blocks `docs-config-write` when a recursive operation reaches a protected name at any depth, unless every affected
+ * protected file is known and inside a valid docs grant (the operands themselves fully known, as `grantable` requires).
+ * Unknown operands, unexpandable globs and trees past the walk bound fail closed. An archive is listed: a member with a
+ * protected name is blocked unless a grant covers it at the target, and an archive the guard cannot list (stdin, a variable
+ * or glob, an unknown format, a failed, slow or oversized listing) or a renaming extraction (`tar -s`, `--transform`) is
+ * blocked wherever it lands unless a grant covers the whole directory. Remote contents are unknown, so an rsync from a host
+ * into a Git working tree is blocked unless a grant covers the whole directory. Extracting or syncing into a directory that
+ * already holds a protected name at any depth is blocked the same way. In interpreter code strings an unlistable archive
+ * is blocked only inside a Git working tree, as before archives were listed.
+ * In interpreter code strings only literal operands count, like the guard's other name checks there.
+ * @param {Word} word @param {string} text @param {string} absolute @param {TreeEffect} effect @param {Context} ctx
+ */
+function checkDocsEffect(word, text, absolute, effect, ctx) {
+  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown}`); };
+  // Guard configuration a tree, patch, archive or Git restore writes is blocked like a direct write; no docs grant lifts it.
+  const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+  const guard = (/** @type {string} */ path, /** @type {string} */ shown) => {
+    const hit = protectedMatch(path, "write", targets);
+    if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit} (${shown})`);
+  };
+  /** Guard configuration below a directory whose contents the guard cannot list. @param {string} root @param {string} shown */
+  const guardBelow = (root, shown) => {
+    for (const target of targets) {
+      for (const protectedPath of target.forms) {
+        if (forms(root).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (${shown})`);
+      }
+    }
+  };
+  const shownWord = (/** @type {Word} */ each) => each.value.replaceAll(UNKNOWN, "$…");
+  const covered = (/** @type {string[]} */ files, /** @type {boolean} */ operands) => operands && files.every((file) => grantedDocsWrite(file));
+  const targetKnown = grantable(word, text, ctx);
+  if (effect.remove) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null) {
+      if (effect.recursive && !ctx.codeString) block(`${shownWord(word)} (a tree the guard cannot read)`);
+      return;
+    }
+    for (const root of roots) {
+      // Guard configuration below the removed tree goes with it (`rsync --delete empty/ .`): an existing file, or one whose
+      // existing directory is removed. No docs grant lifts it.
+      for (const target of targets) {
+        for (const protectedPath of target.forms) {
+          const base = forms(root).find((candidate) => protectedPath.startsWith(`${candidate}${sep}`));
+          if (base === undefined) continue;
+          // rsync --exclude: a name without `/` matches any directory on the way, `/x` or `a/b` anchors at the root.
+          const parts = protectedPath.slice(base.length + 1).split(sep);
+          if ((effect.excludes ?? []).some((pattern) => pattern.includes("/")
+            ? parts.slice(0, -1).join("/").concat("/").startsWith(`${pattern.replace(/^\//u, "")}/`)
+            : parts.slice(0, -1).includes(pattern))) continue;
+          if (existsSync(protectedPath) || existsSync(dirname(protectedPath))) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (removing ${root})`);
+        }
+      }
+      const found = docsInside(root);
+      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+      else if (found.length > 0 && !covered(found.map((rel) => join(root, rel)), targetKnown)) block(join(root, found[0]));
+    }
+  }
+  if (effect.source) {
+    const roots = operandPaths(effect.source, ctx);
+    if (roots === null) {
+      if (!ctx.codeString) block(`${shownWord(effect.source)} (a source tree the guard cannot read)`);
+      return;
+    }
+    const sourceText = effect.source.value.replaceAll(UNKNOWN, "x");
+    for (const root of roots) {
+      /** @type {string[]} */
+      const all = [];
+      const found = docsInside(root, effect.follow, null, all);
+      if (found !== null) for (const rel of all) guard(join(absolute, rel), `${join(root, rel)} -> ${join(absolute, rel)}`);
+      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or a broken or unreadable link" : ""})`);
+      else if (found.length > 0 && !covered(found.map((rel) => join(absolute, rel)), targetKnown && grantable(effect.source, sourceText, ctx))) {
+        block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
+      }
+    }
+  }
+  if (effect.patches || effect.pathspecs) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null || roots.length !== 1) {
+      if (!ctx.codeString) block(`${shownWord(word)} (${effect.patches ? "a patch applied in" : "Git paths restored in"} an unknown directory)`);
+      return;
+    }
+    const [root] = roots;
+    const wholeDirectory = covered([join(root, "AGENTS.md")], targetKnown);
+    for (const patch of effect.patches ?? []) {
+      const shown = patch?.word ? shownWord(patch.word) : patch ? "a heredoc" : "stdin";
+      const members = patch && patchMembers(patch, ctx);
+      if (!members) {
+        if (!wholeDirectory) block(`${shown} (a patch the guard cannot read) -> ${root}`);
+        guardBelow(root, `${shown}, a patch the guard cannot read`);
+        continue;
+      }
+      const patchKnown = !patch?.word || grantable(patch.word, patch.word.value, ctx);
+      for (const member of members) {
+        // patch -p and git apply -p strip leading directories: every suffix of the name can be the file written.
+        const parts = member.split("/").filter((part) => part !== "" && part !== ".");
+        for (let k = 0; k < parts.length; k++) {
+          const target = resolve(root, parts.slice(k).join("/"));
+          guard(target, `${shown}: ${member}`);
+          const real = canonicalPath(target);
+          const hit = docsName(parts.at(-1) ?? "") ? target : docsName(basename(real)) ? real : null;
+          if (hit && !covered([hit], targetKnown && patchKnown)) block(`${shown}: ${member} -> ${hit}`);
+        }
+      }
+    }
+    if (effect.pathspecs) {
+      const { specs, revision } = effect.pathspecs;
+      const tracked = trackedDocs(root, revision, (file) => protectedMatch(join(root, file), "write", targets) !== null);
+      if (tracked === null) {
+        if (!wholeDirectory) block(`${root} (Git paths the guard cannot list)`);
+        guardBelow(root, "Git paths the guard cannot list");
+        return;
+      }
+      for (const file of tracked) if (specs.some((spec) => pathspecSelects(spec, file))) guard(join(root, file), "restored by Git");
+      const hit = tracked.find((file) => specs.some((spec) => pathspecSelects(spec, file)));
+      if (hit && !covered([join(root, hit)], targetKnown && specs.every((spec) => spec !== null))) block(`${join(root, hit)} (restored by Git)`);
+    }
+    return;
+  }
+  if (effect.unknownContents) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null || roots.length !== 1) {
+      if (!ctx.codeString) block(`${shownWord(word)} (archive or remote contents into an unknown directory)`);
+      return;
+    }
+    const [root] = roots;
+    const found = docsInside(root);
+    if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+    const existing = /** @type {string[]} */ (found);
+    const wholeDirectory = covered([...existing.map((rel) => join(root, rel)), join(root, "AGENTS.md")], targetKnown);
+    if (existing.length > 0 && !wholeDirectory) block(`${join(root, existing[0])} (archive or remote contents into a directory that holds it)`);
+    if (effect.archives === undefined) {
+      if (insideRepository(root) && !wholeDirectory) block(`${root} (remote contents the guard cannot read)`);
+      if (!ctx.codeString) guardBelow(root, "remote contents the guard cannot read");
+      return;
+    }
+    if (effect.archives === null || effect.archives.length === 0) {
+      if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${root} (an archive from stdin or an operand the guard cannot read)`);
+      if (!ctx.codeString) guardBelow(root, "an archive the guard cannot read");
+      return;
+    }
+    if (effect.renames) {
+      if (!wholeDirectory) block(`${root} (an extraction that renames members)`);
+      guardBelow(root, "an extraction that renames members");
+      return;
+    }
+    for (const archive of effect.archives) {
+      const shown = archive.word ? shownWord(archive.word) : "stdin";
+      const members = archiveMembers(archive, ctx);
+      if (members === null) {
+        if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${shown} (an archive the guard cannot list) -> ${root}`);
+        if (!ctx.codeString) guardBelow(root, `${shown}, an archive the guard cannot list`);
+        continue;
+      }
+      for (const member of members) {
+        // Dropping leading directories (`--strip-components`, `unzip -j`) can land a member at any suffix of its name.
+        const parts = member.split(/[\\/]/u).filter((part) => part !== "" && part !== ".");
+        for (let k = 0; k < (effect.strips ? parts.length : Math.min(parts.length, 1)); k++) guard(join(root, ...parts.slice(k)), `${shown}: ${member}`);
+      }
+      const hits = members.filter((member) => docsName(member.replace(/[\\/]+$/u, "").split(/[\\/]/u).pop() ?? ""));
+      const archiveKnown = archive.word !== null && grantable(archive.word, archive.word.value, ctx);
+      if (hits.length > 0 && !covered(hits.map((member) => join(root, member)), targetKnown && archiveKnown)) {
+        block(`${shown}: ${hits[0]} -> ${join(root, hits[0])}`);
+      }
+    }
+  }
+}
+
+/** Shared temporary directories, physically resolved; evidence and helper files belong in ~/.development-system/private. */
+const TEMPORARY_ROOTS = [...new Set(["/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp", ...(TMPDIR ? [TMPDIR] : [])].flatMap((root) => {
+  try { return [root, realpathSync(root)]; } catch { return [root]; }
+}))];
+
+/** The path with its longest existing prefix resolved through symlinks. @param {string} absolute */
+function physicalPath(absolute) {
+  let existing = absolute;
+  /** @type {string[]} */
+  const rest = [];
+  while (existing !== dirname(existing)) {
+    try { return join(realpathSync(existing), ...rest); } catch { rest.unshift(basename(existing)); existing = dirname(existing); }
+  }
+  return absolute;
+}
+
+/** The temporary roots as protected directories, so the glob reader of protected paths can test patterns against them. */
+const temporaryTargets = TEMPORARY_ROOTS.map((root) => ({ entry: root, directory: true, project: false, forms: forms(root) }));
+
+/**
+ * Whether a write or extraction target can land in a shared temporary directory: the known directory before a dynamic
+ * part (`/tmp/$name`), any match of a glob or brace pattern (`/t?p/x`), or the resolved literal path.
+ * @param {Word} word @param {string} text @param {Context} ctx
+ */
+function temporaryTarget(word, text, ctx) {
+  const first = word.value.indexOf(UNKNOWN);
+  const literal = first >= 0 ? word.value.slice(0, first) : text;
+  if (ctx.cwd === null && !isAbsolute(literal)) return false;
+  const base = ctx.cwd ?? ctx.scope;
+  // An empty literal prefix (`"$name"`) is the working directory itself, as after `cd /tmp`.
+  if (first >= 0 && insideTemporary(resolve(base, !literal || literal.endsWith("/") ? literal : dirname(literal)))) return true;
+  if (word.glob && protectedGlob(resolve(base, text), text, "write", temporaryTargets)) return true;
+  const loose = looseGlob(word, text);
+  if (loose !== null && protectedGlob(resolve(base, loose), loose, "write", temporaryTargets)) return true;
+  return first < 0 && insideTemporary(resolve(base, text));
+}
+
+/** @param {string} absolute */
+function insideTemporary(absolute) {
+  return [absolute, physicalPath(absolute)].some((path) => TEMPORARY_ROOTS.some((root) => path === root || path.startsWith(`${root}/`)));
+}
+
+/**
+ * Operator test-write grants from `development-system allow-tests`. Agents cannot run that command or
+ * write this file through inspected commands; like the guard's other limits, a deliberate write through
+ * interpreter file APIs is not inspected, so grants stop habitual self-granting, not a determined agent.
+ */
+const TEST_GRANTS = join(HOME, ".development-system", "test-grants.json");
+/** Operator grants from `development-system allow-docs <repo> --task <slug>`, protected the same way. */
+const DOCS_GRANTS = join(HOME, ".development-system", "docs-grants.json");
+const MAX_GRANT_MS = 24 * 3_600_000;
+/** `check --no-grants` ignores grants, so the audit's denial probe holds while the operator has one. */
+let grantsEnabled = true;
+/** Set by any directory change in the evaluated command: `cd -P link; cd ..` returns lexically to the harness cwd but not physically. */
+let cwdMoved = false;
+/**
+ * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
+ * `..` moves the real destination), no name a glob in another operand selected (`fromGlob`), and a
+ * relative target only from the harness working directory, since a `cd` in the command may have crossed a symlink.
+ * @param {Word} word @param {string} text @param {Context} ctx
+ */
+function grantable(word, text, ctx) {
+  return grantsEnabled && !ctx.substituted && !word.tracked && !word.fromGlob && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
+    && (isAbsolute(text) || (!cwdMoved && ctx.cwd === ctx.scope));
+}
+/** Whether a valid, unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
+function grantedTestWrite(absolute) {
+  return grantedIn(TEST_GRANTS, absolute, false);
+}
+/** Whether a valid, unexpired `allow-docs` grant holds this target; docs grants also name their task. @param {string} absolute */
+function grantedDocsWrite(absolute) {
+  return grantedIn(DOCS_GRANTS, absolute, true);
+}
+/** @param {string} file @param {string} absolute @param {boolean} task */
+function grantedIn(file, absolute, task) {
+  let grants;
+  try { grants = JSON.parse(readFileSync(file, "utf8")).grants; } catch { return false; }
+  if (!Array.isArray(grants)) return false;
+  const target = canonicalPath(absolute), now = Date.now();
+  return grants.some((/** @type {any} */ grant) => {
+    if (typeof grant?.root !== "string" || !isAbsolute(grant.root) || grant.root.split(sep).filter(Boolean).length < 3) return false;
+    if (task && !(typeof grant.task === "string" && /^[a-z0-9-]+$/u.test(grant.task))) return false;
+    const created = Date.parse(grant.createdAt), expires = Date.parse(grant.expiresAt);
+    if (!(created <= now && expires > now && expires - created <= MAX_GRANT_MS)) return false;
+    // The granted directory itself, unchanged: not replaced by a symlink or another directory since the grant.
+    try {
+      const stat = lstatSync(grant.root, { bigint: true });
+      if (!stat.isDirectory() || stat.ino.toString() !== grant.inode || canonicalPath(grant.root) !== grant.root) return false;
+    } catch { return false; }
+    const rel = relative(grant.root, target);
+    return rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+  });
+}
+
+/** @param {string} patch @param {Context} ctx */
+function checkPatch(patch, ctx) {
+  for (const line of patch.split(/\r?\n/u)) {
+    const match = /^\s*\*\*\* (Add File|Update File|Move to|Delete File):\s*(.+?)\s*$/u.exec(line);
+    if (!match) continue;
+    checkTarget(literalWord(match[2]), match[1] === "Delete File" ? "delete" : "write", ctx);
+  }
+}
+
+/** @param {string} value */
+function commandName(value) {
+  // zsh `=name` expands to the command's path.
+  return basename(value.replace(/^=(?=.)/u, "")).toLowerCase();
+}
+
+/** Value of the last `-X value`, `-Xvalue`, `--long value` or `--long=value` among a wrapper's options. @param {Word[]} options @param {string} short @param {string} long */
+function optionWord(options, short, long) {
+  /** @type {Word | undefined} */
+  let found;
+  for (let i = 0; i < options.length; i++) {
+    const value = options[i].value;
+    if (value === short || value === long) found = options[i + 1] ?? literalWord("");
+    else if (value.startsWith(`${long}=`)) found = { ...options[i], value: value.slice(long.length + 1) };
+    else if (value.startsWith(short) && value.length > short.length) found = { ...options[i], value: value.slice(short.length) };
+  }
+  return found;
+}
+
+/** @param {Word[]} words @param {number} index */
+function takeOptionValue(words, index) {
+  return words[index + 1];
+}
+
+/**
+ * Strip command wrappers. Returns null when args[0] is not a wrapper.
+ * @param {string} name @param {Word[]} args @param {Context} ctx
+ * @returns {{args: Word[], appended?: boolean, replace?: string | null, chdir?: Word} | null}
+ */
+function unwrapWrapper(name, args, ctx) {
+  const rest = args.slice(1);
+  /** @param {Set<string>} withValue @param {boolean} [assignments] */
+  const skipOptions = (withValue, assignments = false) => {
+    let i = 0;
+    while (i < rest.length) {
+      const value = rest[i].value;
+      if (value === "--") { i++; break; }
+      const assignment = assignments ? /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(value) : null;
+      if (assignment) { checkExecVariable(assignment[1], { ...rest[i], value: value.slice(assignment[0].length) }, ctx); i++; continue; }
+      if (!value.startsWith("-") || value === "-") break;
+      if (withValue.has(value)) { i += 2; continue; }
+      i++;
+    }
+    return rest.slice(i);
+  };
+  switch (name) {
+    case "sudo": case "doas": {
+      const after = skipOptions(new Set(["-u", "-g", "-h", "-p", "-C", "-D", "-r", "-t", "-U", "-T", "--user", "--group", "--host", "--prompt", "--chdir"]), true);
+      // `sudo -s cmd` / `sudo -i cmd` hand the arguments to a shell as one command string.
+      const options = rest.slice(0, rest.length - after.length);
+      const viaShell = options.some((word) => /^-[A-Za-z]*[si]/u.test(word.value) || word.value === "--shell" || word.value === "--login");
+      if (viaShell && after.length === 0) return { args: [literalWord("sh")] };
+      if (viaShell) evaluateRunnerText(after, ctx);
+      return { args: after, chdir: optionWord(options, "-D", "--chdir") };
+    }
+    case "arch": {
+      let i = 0;
+      while (i < rest.length) {
+        const value = rest[i].value;
+        if (value === "--") { i++; break; }
+        if (value === "-e") {
+          const assignment = rest[i + 1] ? /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(rest[i + 1].value) : null;
+          if (assignment && rest[i + 1]) checkExecVariable(assignment[1], { ...rest[i + 1], value: rest[i + 1].value.slice(assignment[0].length) }, ctx);
+          i += 2;
+          continue;
+        }
+        if (value === "-d" || value === "-arch") { i += 2; continue; }
+        if (!value.startsWith("-") || value === "-") break;
+        i++;
+      }
+      return { args: rest.slice(i) };
+    }
+    case "busybox":
+      return { args: skipOptions(new Set()) };
+    case "env": {
+      let i = 0;
+      while (i < rest.length) {
+        const value = rest[i].value;
+        if (value === "--") { i++; break; }
+        const split = /^-[A-Za-z]*S/u.exec(value);
+        if (split || value === "--split-string" || value.startsWith("--split-string=")) {
+          /** @type {Word | undefined} */
+          let code;
+          if (value.startsWith("--split-string=")) code = { ...rest[i], value: value.slice(15) };
+          else if (split && value.length > split[0].length) code = { ...rest[i], value: value.slice(split[0].length) };
+          else { code = rest[i + 1]; i++; }
+          if (!code || !code.literal) throw new Block("shell-dynamic-command");
+          const tail = rest.slice(i + 1);
+          if (tail.some((word) => !word.literal)) throw new Block("shell-dynamic-command");
+          evaluateShellText([code.value, ...tail.map((word) => shellQuote(word.value))].join(" "), ctx);
+          return { args: [] };
+        }
+        if (value === "-u" || value === "-C" || value === "--unset" || value === "--chdir") { i += 2; continue; }
+        const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(value);
+        if (assignment) checkExecVariable(assignment[1], { ...rest[i], value: value.slice(assignment[0].length) }, ctx);
+        if (assignment || (value.startsWith("-") && value.length > 1) || value === "-") { i++; continue; }
+        break;
+      }
+      return { args: rest.slice(i), chdir: optionWord(rest.slice(0, i), "-C", "--chdir") };
+    }
+    case "nohup": case "builtin":
+      return { args: rest };
+    case "command":
+      if (rest[0] && (rest[0].value === "-v" || rest[0].value === "-V")) return { args: [] };
+      return { args: skipOptions(new Set()) };
+    case "exec":
+      return { args: skipOptions(new Set(["-a"])) };
+    case "nice":
+      return { args: skipOptions(new Set(["-n", "--adjustment"])) };
+    case "time":
+      return { args: skipOptions(new Set(["-o", "-f"])) };
+    case "stdbuf":
+      return { args: skipOptions(new Set(["-i", "-o", "-e"])) };
+    case "caffeinate":
+      return { args: skipOptions(new Set(["-t", "-w"])) };
+    case "timeout": {
+      const after = skipOptions(new Set(["-s", "-k", "--signal", "--kill-after"]));
+      return { args: after.slice(1) };
+    }
+    case "xargs": {
+      const withValue = new Set(["-I", "-n", "-P", "-L", "-l", "-d", "-E", "-e", "-s", "-a", "-J", "-R", "-S", "--max-args", "--max-procs", "--delimiter", "--arg-file", "--max-lines", "--replace", "--eof"]);
+      /** @type {string | null} */
+      let replace = null;
+      let i = 0;
+      while (i < rest.length) {
+        const value = rest[i].value;
+        if (value === "--") { i++; break; }
+        if (!value.startsWith("-") || value === "-") break;
+        if (value === "-I" || value === "-J" || value === "--replace") { replace = rest[i + 1]?.value ?? "{}"; i += 2; continue; }
+        if (/^-[IJ]./u.test(value)) replace = value.slice(2);
+        else if (value === "-i") replace = "{}";
+        else if (/^-i./u.test(value)) replace = value.slice(2);
+        else if (value.startsWith("--replace=")) replace = value.slice(10) || "{}";
+        if (withValue.has(value)) { i += 2; continue; }
+        i++;
+      }
+      return { args: rest.slice(i), appended: true, replace };
+    }
+    default:
+      return null;
+  }
+}
+
+/** @param {Word[]} rest */
+function parseGit(rest) {
+  let i = 0;
+  /** Inline configuration (`-c key=value`, `--config-env key=VAR`); values can name programs Git executes. @type {Word[]} */
+  const configs = [];
+  while (i < rest.length) {
+    const value = rest[i].value;
+    if (value === "-c" || value === "--config-env") { if (rest[i + 1]) configs.push(rest[i + 1]); i += 2; continue; }
+    if (value.startsWith("--config-env=")) { configs.push({ ...rest[i], value: value.slice(13) }); i++; continue; }
+    if (["-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix"].includes(value)) { i += 2; continue; }
+    if (value.startsWith("-")) { i++; continue; }
+    break;
+  }
+  const sub = rest[i];
+  const subArgs = rest.slice(i + 1);
+  let readOnly = false;
+  if (sub && sub.literal) {
+    if (sub.value === "branch") {
+      readOnly = subArgs.length > 0 && subArgs.every((word) => word.literal && (readOnlyGitBranchOptions.has(word.value) || /^--(?:format|sort|color)(?:=|$)/u.test(word.value)));
+    } else {
+      readOnly = readOnlyGit.has(sub.value);
+    }
+  }
+  // --output writes a file and -O/--open-files-in-pager runs a program: not read-only.
+  if (subArgs.some((word) => /^--output(?:=|$)|^-O|^--open-files-in-pager(?:=|$)/u.test(word.value))) readOnly = false;
+  if (configs.some((word) => !word.literal)) readOnly = false;
+  return { subIndex: i, sub, readOnly, configs };
+}
+
+/** Long options of the subcommands the rules inspect; Git accepts any unambiguous prefix of them. @type {Record<string, string[]>} */
+const GIT_LONG_OPTIONS = {
+  reset: ["--hard", "--soft", "--mixed", "--merge", "--keep", "--quiet", "--patch", "--recurse-submodules", "--no-recurse-submodules", "--pathspec-from-file", "--pathspec-file-nul", "--intent-to-add", "--refresh", "--no-refresh"],
+  clean: ["--force", "--dry-run", "--interactive", "--quiet", "--exclude"],
+  push: ["--force", "--force-with-lease", "--no-force-with-lease", "--force-if-includes", "--no-force-if-includes", "--mirror", "--all", "--branches", "--tags", "--follow-tags", "--no-follow-tags", "--delete", "--dry-run", "--porcelain", "--prune", "--verbose", "--quiet", "--progress", "--set-upstream", "--atomic", "--no-atomic", "--signed", "--no-signed", "--verify", "--no-verify", "--thin", "--no-thin", "--receive-pack", "--exec", "--repo", "--push-option", "--recurse-submodules", "--no-recurse-submodules", "--ipv4", "--ipv6"],
+  branch: ["--delete", "--force", "--move", "--copy", "--list", "--all", "--remotes", "--verbose", "--quiet", "--track", "--no-track", "--set-upstream-to", "--unset-upstream", "--contains", "--no-contains", "--merged", "--no-merged", "--column", "--no-column", "--sort", "--points-at", "--format", "--color", "--no-color", "--abbrev", "--no-abbrev", "--edit-description", "--create-reflog", "--ignore-case", "--show-current", "--omit-empty", "--recurse-submodules"],
+  checkout: ["--force", "--quiet", "--progress", "--no-progress", "--ours", "--theirs", "--track", "--no-track", "--guess", "--no-guess", "--detach", "--orphan", "--ignore-skip-worktree-bits", "--merge", "--conflict", "--patch", "--ignore-other-worktrees", "--overwrite-ignore", "--no-overwrite-ignore", "--recurse-submodules", "--no-recurse-submodules", "--overlay", "--no-overlay", "--pathspec-from-file", "--pathspec-file-nul"],
+  switch: ["--create", "--force-create", "--detach", "--guess", "--no-guess", "--force", "--discard-changes", "--merge", "--conflict", "--quiet", "--progress", "--no-progress", "--track", "--no-track", "--orphan", "--ignore-other-worktrees", "--recurse-submodules", "--no-recurse-submodules"],
+};
+
+/**
+ * Spell abbreviated long options in full (`--har` is `--hard`) so the rules see what Git runs.
+ * @param {Word[]} rest
+ */
+function expandGitOptions(rest) {
+  const { subIndex, sub } = parseGit(rest);
+  const options = sub?.literal ? GIT_LONG_OPTIONS[sub.value] : undefined;
+  if (!options) return rest;
+  const expanded = [...rest];
+  for (let i = subIndex + 1; i < expanded.length; i++) {
+    const word = expanded[i];
+    if (word.value === "--") break;
+    if (!word.literal || !word.value.startsWith("--")) continue;
+    const eq = word.value.indexOf("=");
+    const flag = eq < 0 ? word.value : word.value.slice(0, eq);
+    if (flag.length < 3 || options.includes(flag)) continue;
+    const matches = options.filter((option) => option.startsWith(flag));
+    if (matches.length > 1) throw new Block("shell-parse-error", `Ambiguous abbreviated Git option ${flag}; spell the option in full.`);
+    if (matches.length === 1) expanded[i] = { ...word, value: matches[0] + (eq < 0 ? "" : word.value.slice(eq)) };
+  }
+  return expanded;
+}
+
+/**
+ * Configuration that makes an ordinary Git command destructive: autocorrect running a mistyped
+ * command, clean without force, forced or deleting push refspecs, mirror pushes.
+ * @param {string} key @param {string | null} value null when the key is set without `=` @param {boolean} literal
+ */
+function destructiveGitConfig(key, value, literal) {
+  const name = key.toLowerCase();
+  if (!(name === "help.autocorrect" || name === "clean.requireforce" || /^remote\..+\.(?:push|mirror)$/u.test(name))) return false;
+  if (!literal) return true;
+  const text = (value ?? "true").trim().toLowerCase();
+  if (name === "help.autocorrect") return !/^(?:0|false|no|off|never|prompt|show)$/u.test(text);
+  if (name === "clean.requireforce") return /^(?:false|no|off|0)$/u.test(text);
+  if (name.endsWith(".mirror")) return !/^(?:false|no|off|0)$/u.test(text);
+  return /^[+:]/u.test(text);
+}
+
+/** Git configuration keys whose values Git runs as programs or shell text. */
+const GIT_EXEC_CONFIG = /^(?:alias\..+|core\.(?:pager|editor|sshcommand|fsmonitor|askpass|gitproxy)|pager\..+|sequence\.editor|diff\..*(?:external|textconv|command)|merge\..*driver|filter\..+\.(?:clean|smudge|process)|credential\..*helper|gpg\..*program|uploadpack\.packobjectshook|.*\.(?:cmd|command|program|helper|tool))$/iu;
+
+/**
+ * Evaluate inline Git configuration that Git may execute (aliases, pagers, editors, helpers).
+ * @param {Word[]} configs @param {Word[]} subArgs @param {Context} ctx
+ */
+function evaluateGitConfigs(configs, subArgs, ctx) {
+  for (const word of configs) {
+    const index = word.value.indexOf("=");
+    const key = index < 0 ? word.value : word.value.slice(0, index);
+    if (destructiveGitConfig(key.replaceAll(UNKNOWN, "x"), index < 0 ? null : word.value.slice(index + 1), word.literal)) throw new Block("git-config-destructive");
+    if (!GIT_EXEC_CONFIG.test(key.replaceAll(UNKNOWN, "x"))) continue;
+    if (!word.literal || index < 0) throw new Block("shell-dynamic-command", "Inline Git configuration that names an executed program must be a literal key=value pair.");
+    const value = word.value.slice(index + 1);
+    if (/^alias\./iu.test(key) && !value.startsWith("!")) {
+      const aliased = parseScript(value, ctx.depth + 1);
+      const words = aliased.items.length === 1 && aliased.items[0].commands.length === 1 ? aliased.items[0].commands[0].words : null;
+      if (!words || words.some((/** @type {Word} */ entry) => !entry.literal)) throw new Block("shell-dynamic-command");
+      evaluateArgv([literalWord("git"), ...words, ...subArgs], [], { ...ctx, depth: ctx.depth + 1 }, false, false);
+      continue;
+    }
+    evaluateShellText(value.replace(/^!/u, ""), ctx);
+  }
+}
+
+/**
+ * Words an alias stands for; anything but one literal simple command is dynamic (null).
+ * @param {string} text @param {Context} ctx @returns {Word[] | null}
+ */
+function aliasWords(text, ctx) {
+  try {
+    const list = parseScript(text, ctx.depth + 1);
+    const words = list.items.length === 1 && list.items[0].commands.length === 1 ? list.items[0].commands[0].words : null;
+    return words && words.length > 0 && words.every((/** @type {Word} */ word) => word.literal) ? words : null;
+  } catch {
+    return null;
+  }
+}
+
+/** @param {Context} ctx @param {string} name @param {Word[] | null} words */
+function defineAlias(ctx, name, words) {
+  if (!ctx.aliases) ctx.aliases = new Map();
+  ctx.aliases.set(commandName(name), words);
+}
+
+/** @param {string} name */
+function isSensitive(name) {
+  for (const entry of sensitiveCommands) if (name === entry || name.startsWith(`${entry}.`)) return true;
+  return false;
+}
+
+/** @param {string} script */
+function scanSed(script) {
+  const out = { exec: false, /** @type {string[]} */ writes: [], uncertain: false };
+  const s = script;
+  const n = s.length;
+  let i = 0;
+  const toEol = () => {
+    const end = s.indexOf("\n", i);
+    const text = s.slice(i, end < 0 ? n : end);
+    i = end < 0 ? n : end + 1;
+    return text;
+  };
+  const toSeparator = () => { while (i < n && !/[;\n}]/u.test(s[i])) i++; };
+  /** @param {string} delimiter */
+  const skipDelimited = (delimiter) => {
+    while (i < n) {
+      const c = s[i];
+      if (c === "\\") { i += 2; continue; }
+      if (c === delimiter) { i++; return true; }
+      i++;
+    }
+    return false;
+  };
+  const skipAddress = () => {
+    const c = s[i] ?? "";
+    if (/[0-9]/u.test(c)) { while (i < n && /[0-9~]/u.test(s[i])) i++; return true; }
+    if (c === "$") { i++; return true; }
+    if (c === "/" || c === "\\") {
+      const delimiter = c === "/" ? "/" : s[i + 1];
+      i += c === "/" ? 1 : 2;
+      if (!delimiter || !skipDelimited(delimiter)) return false;
+      while (s[i] === "I" || s[i] === "M") i++;
+      return true;
+    }
+    return true;
+  };
+  while (i < n) {
+    const c = s[i];
+    if (/[\s;}{]/u.test(c)) { i++; continue; }
+    if (c === "#") { toEol(); continue; }
+    if (/[0-9$/\\]/u.test(c)) {
+      if (!skipAddress()) { out.uncertain = true; return out; }
+      while (s[i] === " " || s[i] === "\t") i++;
+      if (s[i] === ",") {
+        i++;
+        while (s[i] === " " || s[i] === "\t") i++;
+        if (s[i] === "+" || s[i] === "~") i++;
+        if (!skipAddress()) { out.uncertain = true; return out; }
+      }
+    }
+    while (s[i] === " " || s[i] === "\t") i++;
+    if (s[i] === "!") { i++; while (s[i] === " " || s[i] === "\t") i++; }
+    const command = s[i++];
+    if (command === undefined) break;
+    switch (command) {
+      case "{": case "}": case "=": case "d": case "D": case "g": case "G": case "h": case "H":
+      case "n": case "N": case "p": case "P": case "x": case "z": case "F": case ";": case "\n":
+        break;
+      case "l": case "q": case "Q": case "L":
+        while (i < n && /[0-9 ]/u.test(s[i])) i++;
+        break;
+      case ":": case "b": case "t": case "T":
+        toSeparator();
+        break;
+      case "a": case "i": case "c":
+        while (i < n) { const line = toEol(); if (!line.endsWith("\\")) break; }
+        break;
+      case "r": case "R":
+        toEol();
+        break;
+      case "w": case "W":
+        out.writes.push(toEol().trim());
+        break;
+      case "e":
+        out.exec = true;
+        toEol();
+        break;
+      case "s": {
+        const delimiter = s[i++];
+        if (!delimiter || delimiter === "\n" || delimiter === "\\" || !skipDelimited(delimiter) || !skipDelimited(delimiter)) { out.uncertain = true; return out; }
+        while (i < n && /[gpiImMe0-9w]/u.test(s[i])) {
+          const flag = s[i++];
+          if (flag === "e") out.exec = true;
+          if (flag === "w") { out.writes.push(toEol().trim()); break; }
+        }
+        break;
+      }
+      case "y": {
+        const delimiter = s[i++];
+        if (!delimiter || !skipDelimited(delimiter) || !skipDelimited(delimiter)) { out.uncertain = true; return out; }
+        break;
+      }
+      default:
+        out.uncertain = true;
+        return out;
+    }
+  }
+  return out;
+}
+
+/** @param {Word[]} rest */
+function analyzeSed(rest) {
+  const info = { inPlace: false, exec: false, /** @type {Word[]} */ writes: [], /** @type {Word[]} */ files: [], uncertain: false, /** @type {string[]} */ suffixes: [] };
+  /** @type {(Word | undefined)[]} */
+  const scripts = [];
+  let scriptGiven = false;
+  /** @type {Word[]} */
+  const operands = [];
+  let i = 0;
+  while (i < rest.length) {
+    const word = rest[i];
+    const value = word.value;
+    if (value === "--") { operands.push(...rest.slice(i + 1)); break; }
+    if (value === "--in-place" || value.startsWith("--in-place=")) {
+      info.inPlace = true;
+      if (value.includes("=")) info.suffixes.push(value.slice(11));
+      i++;
+      continue;
+    }
+    if (value === "--expression") { scripts.push(rest[i + 1]); scriptGiven = true; i += 2; continue; }
+    if (value.startsWith("--expression=")) { scripts.push(literalWord(value.slice(13))); scriptGiven = true; i++; continue; }
+    if (value === "--file" || value.startsWith("--file=")) { info.uncertain = true; scriptGiven = true; i += value.includes("=") ? 1 : 2; continue; }
+    if (value.startsWith("--")) { i++; continue; }
+    if (value.startsWith("-") && value.length > 1 && word.literal) {
+      for (let j = 1; j < value.length; j++) {
+        const flag = value[j];
+        if (flag === "i") {
+          info.inPlace = true;
+          // GNU takes a backup suffix attached (`-i.bak`); BSD takes the next word, whatever it is, so both readings count.
+          if (j < value.length - 1) info.suffixes.push(value.slice(j + 1));
+          else {
+            const next = rest[i + 1];
+            if (next) info.suffixes.push(next.value);
+            if (next && next.literal && (next.value === "" || /^\.[\w.-]*$/u.test(next.value))) i++;
+          }
+          break;
+        }
+        if (flag === "e") {
+          const attached = value.slice(j + 1);
+          if (attached) scripts.push(literalWord(attached));
+          else { scripts.push(rest[i + 1]); i++; }
+          scriptGiven = true;
+          break;
+        }
+        if (flag === "f") { info.uncertain = true; scriptGiven = true; if (j === value.length - 1) i++; break; }
+        if (flag === "l") { if (j === value.length - 1) i++; break; }
+      }
+      i++;
+      continue;
+    }
+    operands.push(word);
+    i++;
+  }
+  if (!scriptGiven) scripts.push(operands.shift());
+  info.files = operands;
+  for (const script of scripts) {
+    if (!script) continue;
+    if (!script.literal) { info.uncertain = true; continue; }
+    const result = scanSed(script.value);
+    if (result.exec) info.exec = true;
+    if (result.uncertain) info.uncertain = true;
+    info.writes.push(...result.writes.filter(Boolean).map(literalWord));
+  }
+  return info;
+}
+
+/** @param {Word[]} rest */
+function awkIsPureRead(rest) {
+  let i = 0;
+  while (i < rest.length) {
+    const value = rest[i].value;
+    if (value === "--") { i++; break; }
+    if (value === "-f" || value.startsWith("--file")) return false;
+    if (value === "-F" || value === "-v") { i += 2; continue; }
+    if (value.startsWith("-") && value.length > 1) { i++; continue; }
+    break;
+  }
+  const program = rest[i];
+  return Boolean(program && program.literal && !/system\s*\(|\||>/u.test(program.value));
+}
+
+/** @param {Word[]} rest @param {Set<string>} withValue */
+function operandsOf(rest, withValue, targetLetter = false, targetOption = true) {
+  /** @type {Word[]} */
+  const operands = [];
+  /** @type {Word | null} */
+  let targetDirectory = null;
+  let i = 0;
+  let optionsDone = false;
+  while (i < rest.length) {
+    const word = rest[i];
+    const value = word.value;
+    if (!optionsDone && value === "--") { optionsDone = true; i++; continue; }
+    if (!optionsDone && targetOption && (value === "-t" || value === "--target-directory")) { targetDirectory = rest[i + 1] ?? null; i += 2; continue; }
+    if (!optionsDone && targetLetter && word.literal && /^-[A-Za-z]/u.test(value)) {
+      // A short cluster (`-rt.codex`, `-t.codex`): -t takes the rest of the word or the next one; another value option ends it.
+      let step = 1;
+      for (let k = 1; k < value.length; k++) {
+        if (value[k] === "t") {
+          if (k < value.length - 1) targetDirectory = { ...word, value: value.slice(k + 1), raw: value.slice(k + 1) };
+          else { targetDirectory = rest[i + 1] ?? null; step = 2; }
+          break;
+        }
+        if (withValue.has(`-${value[k]}`)) { if (k === value.length - 1) step = 2; break; }
+      }
+      i += step;
+      continue;
+    }
+    if (!optionsDone && targetOption && value.startsWith("--target-directory=")) { targetDirectory = literalWord(value.slice(19)); i++; continue; }
+    if (!optionsDone && withValue.has(value)) { i += 2; continue; }
+    if (!optionsDone && value.startsWith("-") && value.length > 1 && word.literal) { i++; continue; }
+    operands.push(word);
+    i++;
+  }
+  return { operands, targetDirectory };
+}
+
+/**
+ * The short option letters of literal option words before `--` (`-avn` gives a, v, n). A letter in `valueLetters` takes
+ * the rest of its word or the next word as its value, so letters after it are not options.
+ * @param {Word[]} rest @param {string} valueLetters @returns {Set<string>}
+ */
+function shortLetters(rest, valueLetters) {
+  /** @type {Set<string>} */
+  const letters = new Set();
+  for (let i = 0; i < rest.length; i++) {
+    const { value, literal } = rest[i];
+    if (value === "--") break;
+    if (!literal || !value.startsWith("-") || value.startsWith("--") || value.length < 2) continue;
+    for (let k = 1; k < value.length; k++) {
+      letters.add(value[k]);
+      if (valueLetters.includes(value[k])) { if (k === value.length - 1) i++; break; }
+    }
+  }
+  return letters;
+}
+
+/** Whether a literal option word before `--` is one of `names`. @param {Word[]} rest @param {string[]} names */
+function longOption(rest, names) {
+  const end = rest.findIndex((word) => word.value === "--");
+  return (end < 0 ? rest : rest.slice(0, end)).some((word) => word.literal && names.includes(word.value.split("=")[0]));
+}
+
+/**
+ * What a copy or move writes: one pair per name it creates, with the operand that name's tree comes from. A glob source
+ * copies each existing entry it selects under that entry's own name, so every selected entry is a pair of its own whose
+ * source is the entry's literal path and whose names are marked `fromGlob` (never granted); a glob the guard cannot
+ * expand keeps its pattern as the destination name, which `docsTarget` reads by spelling, and itself as the source, on
+ * which `checkDocsEffect` fails closed. `src/` and `src/.` copy the directory's contents into the destination itself (BSD
+ * cp -R, rsync), and so does any directory source with `contents` (ditto). A `remote` source (rsync `host:path`) is not
+ * expanded here: the remote shell expands it.
+ * @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue
+ * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean, targetOption?: boolean, slashContents?: boolean }} [options]
+ * `slashContents: false` keeps a moved directory's name whatever its trailing `/` (`mv`, `git mv`).
+ * `targetOption` reads `-t`/`--target-directory` as the destination (not rsync, where `-t` keeps times); `targetLetter` reads `-t` in
+ * short clusters and with an attached value (GNU cp, mv, install, ln).
+ * @returns {{ sources: Word[], pairs: { target: Word, source: Word }[] }}
+ */
+function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false, targetOption = true, slashContents = true } = {}) {
+  const { operands, targetDirectory } = operandsOf(rest, withValue, targetLetter, targetOption);
+  /** @type {Word[]} */
+  const sources = targetDirectory ? operands : operands.slice(0, -1);
+  const destination = targetDirectory ?? operands[operands.length - 1];
+  if (!destination || sources.length === 0) return { sources, pairs: [] };
+  const base = ctx.cwd ?? ctx.scope;
+  /** @type {{ word: Word, slash: boolean }[]} */
+  const items = sources.flatMap((source) => {
+    const slash = /\/\.?$/u.test(source.value);
+    // The copied name is the selected entry's own name (a link `AGENTS.md` copies as `AGENTS.md`), not its target's.
+    const paths = source.glob && !remote(source) ? operandPaths(source, ctx, true) : null;
+    if (paths === null) return [{ word: source, slash }];
+    return paths.map((path) => ({ word: { ...literalWord(path), fromGlob: true }, slash }));
+  });
+  if (items.length === 0) return { sources, pairs: [] };
+  let directory = Boolean(targetDirectory) || destination.value.endsWith("/") || items.length > 1;
+  if (!directory && destination.literal) {
+    try { directory = statSync(resolve(base, destination.value)).isDirectory(); } catch { directory = false; }
+  }
+  /** @param {Word} word */
+  const isDirectory = (word) => {
+    if (word.value.includes(UNKNOWN) || word.glob || (ctx.cwd === null && !isAbsolute(word.value))) return false;
+    try { return statSync(resolve(base, word.value)).isDirectory(); } catch { return false; }
+  };
+  const pairs = items.map(({ word, slash }) => {
+    if (!directory || (slash && slashContents) || (contents && isDirectory(word))) return { target: destination, source: word };
+    // Joined as text, so a destination such as `link/..` keeps its components for the link-aware check.
+    const target = literalWord(`${destination.value.replace(/\/+$/u, "")}/${basename(word.value)}`);
+    if (word.glob) target.glob = true;
+    if (word.glob || word.fromGlob) target.fromGlob = true;
+    return { target, source: word };
+  });
+  return { sources, pairs };
+}
+
+/**
+ * The archive operand of unzip (its first operand that is not an option or the value of -d or -P), the -d directory and the
+ * option letters given. @param {Word[]} rest @returns {{ archive: Word | null, directory: Word, letters: Set<string> }}
+ */
+function unzipArchive(rest) {
+  /** @type {Word | null} */
+  let archive = null;
+  /** @type {Word} */
+  let directory = literalWord(".");
+  /** @type {Set<string>} */
+  const letters = new Set();
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (!word.literal || !word.value.startsWith("-") || word.value.length < 2) {
+      if (archive === null) archive = word;
+      continue;
+    }
+    // Option letters cluster (`-qod dir`); -d (the extraction directory) and -P take the rest of the word or the next one,
+    // and -x the member names up to the next option. A `-` inside a cluster (`-l-l`, `--v`) negates the letters after it, so
+    // those letters are not recorded.
+    let negated = false;
+    for (let k = 1; k < word.value.length; k++) {
+      const letter = word.value[k];
+      if (letter === "-") { negated = true; continue; }
+      if (!negated) letters.add(letter);
+      else letters.add(`-${letter}`);
+      if (letter === "x") { while (i + 1 < rest.length && !rest[i + 1].value.startsWith("-")) i++; break; }
+      if (letter !== "d" && letter !== "P") continue;
+      const taken = k < word.value.length - 1 ? { ...word, value: word.value.slice(k + 1), raw: word.value.slice(k + 1) } : rest[++i];
+      if (letter === "d" && taken) directory = taken;
+      break;
+    }
+  }
+  return { archive, directory, letters };
+}
+
+/**
+ * The archive a tar extraction reads (its -f, `--file` or old-style `f` value), or null when it reads stdin or a default
+ * device, or the option words cannot be read for sure (another value-taking letter before `f` in one cluster), and
+ * whether member names are rewritten (bsdtar `-s`, GNU `--transform`/`--xform`). bsdtar's value-taking letters are used for
+ * `tar` on macOS and `bsdtar`, GNU tar's elsewhere.
+ * `strips` is set by `--strip-components`/`--strip`, which drop leading member directories.
+ * `letters` holds the mode and option letters (long options as their letters) and `directory` the -C/--directory/--cd value.
+ * @param {string} name @param {Word[]} rest
+ * `operands` are the member names given on the command line, each under the -C in force where it appears, and `outputs`
+ * the other files GNU tar writes.
+ * @returns {{ archive: Word | null, renames: boolean, strips: boolean, letters: Set<string>, directory: Word, operands: Word[], outputs: Word[] }}
+ */
+function tarArchive(name, rest) {
+  const bsd = name === "bsdtar" || (name === "tar" && process.platform === "darwin");
+  const valueLetters = bsd ? "bCfIsTX" : "bCfFgHIKLNTVX";
+  /** @type {Word | null} */
+  let archive = null;
+  /** @type {Word} */
+  let directory = literalWord(".");
+  /** @type {Set<string>} The mode and option letters given, long options read as theirs. */
+  const letters = new Set();
+  const longLetters = /** @type {Record<string, string>} */ ({ "--extract": "x", "--get": "x", "--create": "c", "--append": "r", "--update": "u", "--concatenate": "A", "--catenate": "A", "--delete": "D", "--to-stdout": "O", "--list": "t", "--absolute-names": "P" });
+  let unsure = false, renames = false, strips = false;
+  /** @type {Word[]} Member names given on the command line (the files a create mode reads), under the -C in force. */
+  const operands = [];
+  /** @type {Word[]} Files GNU tar writes besides the archive (`--index-file`, `--listed-incremental`/`-g`, `--volno-file`). */
+  const outputs = [];
+  const operand = (/** @type {Word} */ word) => operands.push(directory.value === "." || isAbsolute(word.value) ? word
+    : { ...word, value: `${directory.value}/${word.value}`, raw: `${directory.value}/${word.value}`, literal: directory.literal && word.literal });
+  // Each -C/--cd/--directory is read from the directory the previous one set.
+  const enter = (/** @type {Word} */ taken) => {
+    directory = directory.value === "." || isAbsolute(taken.value) ? taken
+      : { ...taken, value: `${directory.value}/${taken.value}`, raw: `${directory.value}/${taken.value}`, literal: directory.literal && taken.literal };
+  };
+  const end = rest.findIndex((word) => word.value === "--");
+  const options = end < 0 ? rest.length : end;
+  for (let i = 0; i < options; i++) {
+    const { value, literal } = rest[i];
+    if (!literal) { operand(rest[i]); continue; }
+    if (i === 0 && /^[A-Za-z]+$/u.test(value)) {
+      // Old-style bundle (`xvf a.tar`): each value-taking letter takes the next word, in order.
+      let next = 1;
+      for (const letter of value) {
+        letters.add(letter);
+        if (letter === "s" && bsd) renames = true;
+        if (!valueLetters.includes(letter)) continue;
+        const taken = rest[next++] ?? null;
+        if (letter === "f") archive = taken;
+        if (letter === "g" && !bsd && taken) outputs.push(taken);
+        if (letter === "C" && taken) enter(taken);
+      }
+      i = next - 1;
+      continue;
+    }
+    if (value.startsWith("--")) {
+      const option = value.split("=")[0];
+      if (longLetters[option]) letters.add(longLetters[option]);
+      if (option === "--files-from") letters.add("T");
+      if (["--index-file", "--listed-incremental", "--volno-file"].includes(option)) {
+        const taken = value.includes("=") ? { ...rest[i], value: value.slice(value.indexOf("=") + 1), raw: value.slice(value.indexOf("=") + 1) } : rest[++i];
+        if (taken) outputs.push(taken);
+        continue;
+      }
+      if (option === "--directory" || option === "--cd") {
+        const taken = value.includes("=") ? { ...rest[i], value: value.slice(value.indexOf("=") + 1), raw: value.slice(value.indexOf("=") + 1) } : rest[++i];
+        if (taken) enter(taken);
+        continue;
+      }
+      if (option === "--transform" || option === "--xform") renames = true;
+      if (option === "--strip-components" || option === "--strip") strips = true;
+      if (option === "--file") archive = value.includes("=") ? literalWord(value.slice(7)) : rest[++i] ?? null;
+      else if (!value.includes("=") && ["--directory", "--files-from", "--exclude-from", "--blocking-factor", "--transform", "--xform", "--use-compress-program", "--format", "--options", "--exclude", "--strip-components", "--newer", "--newer-mtime", "--owner", "--group", "--mode", "--include", "--uname", "--gname", "--uid", "--gid"].includes(option)) i++;
+      continue;
+    }
+    if (!value.startsWith("-") || value.length < 2) { operand(rest[i]); continue; }
+    for (let k = 1; k < value.length; k++) {
+      const letter = value[k];
+      letters.add(letter);
+      if (letter === "s" && bsd) renames = true;
+      if (!valueLetters.includes(letter)) continue;
+      const taken = k < value.length - 1 ? literalWord(value.slice(k + 1)) : rest[++i] ?? null;
+      if (letter === "f") archive = taken;
+      if (letter === "g" && !bsd && taken) outputs.push(taken);
+      if (letter === "C" && taken) enter(taken);
+      else if (value.slice(k + 1).includes("f")) unsure = true;
+      break;
+    }
+  }
+  if (end >= 0) rest.slice(end + 1).forEach(operand);
+  return { archive: unsure ? null : archive, renames, strips, letters, directory, operands, outputs };
+}
+
+/**
+ * curl -O saves each URL under its last path segment in the working directory.
+ * @param {Word[]} rest @param {(word: Word, kind: "write" | "delete" | "tree") => void} add
+ */
+function remoteNames(rest, add) {
+  for (const word of rest) {
+    const match = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^/?#]*([^?#]*)/u.exec(word.value);
+    if (match) add(literalWord(basename(match[1]) || "index.html"), "write");
+  }
+}
+
+/** An ex command name from its shortest to its full spelling: `exName("sp", "lit")` reads `sp`, `spl`, `spli` and `split`. @param {string} short @param {string} [more] */
+function exName(short, more = "") {
+  return short + [...more].reduceRight((tail, c) => `(?:${c}${tail})?`, "");
+}
+
+/** Ex commands that write, open or dump to a named file (`:w`, `:e`, `:drop`, `:args`, `:redir >`, `:mksession`, `:hardcopy >`, ed `W` and `f`). */
+const EDITOR_FILE_NAMES = [
+  ["w", "rite"], ["wq"], ["x", "it"], ["W"], ["f", "ile"], ["sav", "eas"], ["up", "date"], ["wn", "ext"], ["wN", "ext"],
+  ["wp", "revious"], ["wa", "ll"], ["xa", "ll"], ["wqa", "ll"], ["e", "dit"], ["E"], ["ex"], ["vi", "sual"], ["vie", "w"],
+  ["sp", "lit"], ["vs", "plit"], ["new"], ["vne", "w"], ["sv", "iew"], ["tabe", "dit"], ["tabnew"], ["tabf", "ind"],
+  ["fin", "d"], ["sf", "ind"], ["bad", "d"], ["arga", "dd"], ["arge", "dit"], ["ar", "gs"], ["n", "ext"], ["dr", "op"],
+  ["ped", "it"], ["diffs", "plit"], ["mks", "ession"], ["mkvie", "w"], ["mkv", "imrc"], ["mk", "exrc"], ["wv", "iminfo"],
+  ["wsh", "ada"], ["wu", "ndo"], ["redi", "r"], ["ha", "rdcopy"],
+].map(([short, more]) => exName(short, more)).join("|");
+/**
+ * An editor command that writes or opens a named file, after an optional line address (`:w FILE`, `%w FILE`, `1,$w!FILE`,
+ * `:sav ++enc=x FILE`, `e +10 FILE`, `e + FILE`, `redir! > FILE`, `exe "w FILE"`). Group 1 holds the `+cmd` and `++opt`
+ * words, group 2 the file, empty when `:e +cmd` re-edits the current file. An escaped space does not start a command.
+ */
+const EDITOR_FILE_COMMAND = new RegExp(String.raw`(?:^|(?<!\\)[|:\s"'])[%.$\d,;+*-]*(?:${EDITOR_FILE_NAMES})(?:!\s*|\s+|(?=>))((?:\+(?:[^\s\\]|\\.)*(?:\s+|$))*)(?:>>?!?\s*)?([^\s|"']*)`, "gu");
+/** A shell command in an editor line: `:!cmd`, a range filter (`%!cmd`, `1,2!cmd`), `r !cmd`, `w !cmd`, `e !cmd`, `exe "!cmd"`. */
+const EDITOR_SHELL_ESCAPE = /(?:^|[|:\s"])(?:[%.$\d,'<>+-]*|(?:r|read)\s*|(?:e|edit|w|write)\s+)!(.*)$/u;
+/** Command modifiers and `:*do` loops that may come before an ex command (`sil!`, `vert`, `keepalt`, `bufdo`, `3verbose`). */
+const EDITOR_MODIFIERS = String.raw`(?:(?:sil(?:e(?:n(?:t)?)?)?!?|uns\w*|vert\w*|lefta\w*|abo\w*|rightb\w*|bel\w*|to\w*|bo\w*|tab|hid\w*|conf\w*|bro\w*|keep\w*|loc\w*|noa\w*|nos\w*|san\w*|\d*verb\w*|(?:win|buf|arg|tab|c|cf|l|lf)do)\s+)*`;
+/**
+ * Vim script the guard cannot read: process, file and option-setting functions, embedded languages, a terminal or shell,
+ * commands that run a configured program (`:make`, `:grep`, `:cscope`), a sourced script, or `:execute` of built text.
+ */
+const EDITOR_CODE = new RegExp(String.raw`\b(?:system|systemlist|writefile|delete|rename|mkdir|execute|feedkeys|job_start|jobstart|termopen|term_start|libcall|libcallnr|luaeval|pyeval|py3eval|pyxeval|perleval|rubyeval|chansend|setbufvar|setwinvar|settabvar|settabwinvar)\s*\(|(?:^|[|:])\s*${EDITOR_MODIFIERS}(?:lua\w*|py\w*|perl\w*|ruby\w*|mz\w*|tcl\w*|ter\w*|${[["sh", "ell"], ["so", "urce"], ["ru", "ntime"], ["mak", "e"], ["lmak", "e"], ["gr", "ep"], ["lgr", "ep"], ["grepa", "dd"], ["lgrepa", "dd"], ["cs", "cope"], ["lcs", "cope"], ["scs", "cope"]].map(([short, more]) => exName(short, more)).join("|")})\b|(?:^|[|:])\s*${EDITOR_MODIFIERS}exe(?:c|cu|cut|cute)?\s+(?!(["'])[^"']*\1\s*(?:\||$))`, "u");
+/**
+ * A `:set` or `:let &` of an option that names a program or an expression the editor runs (`shell`, `shellcmdflag`,
+ * `makeprg`, `diffexpr`). Clearing an expression option (`set indentexpr=`) is allowed; clearing a shell option is not
+ * (an empty `shellcmdflag` makes `:!notes.txt` run the file as a script).
+ */
+const EDITOR_PROGRAM_OPTION = new RegExp(String.raw`(?:^|\|)[\s:]*${EDITOR_MODIFIERS}(?:exe\w*\s+["'])?(?:se\w*|let)(?=\s)[^|]*?[\s&](?:[lg]:)?(?:(?:sh|shell\w*|s(?:hcf|hq|cf|p|rr|xq|xe)|mp|makeprg|gp|grepprg|ep|equalprg|fp|formatprg|kp|keywordprg|csprg|cscopeprg)\s*[+^-]?=|(?:\w*expr|\w*func|pex|dex|fex|inex|inde|fde|ccv|cfu|ofu|tfu)\s*[+^-]?=(?!\s*(?:\||$)))`, "u");
+/** A directory change inside the editor (`:cd`, `:lcd`, `:tcd`, `chdir()`, `autochdir`) moves the base of later relative file names. */
+const EDITOR_CD = /(?:^|[|:\s"'])(?:cd|chd(?:ir?)?|lcd|lch(?:d(?:ir?)?)?|tcd|tch(?:d(?:ir?)?)?)(?:!|\s|$)|\bchdir\s*\(|\b(?:acd|autochdir)\b/u;
+/**
+ * A line address before an ex or ed command: numbers, `.`, `$`, `%`, `*`, marks, offsets, `/re/` or `?re?` searches and
+ * the last search or substitute pattern (`\/`, `\?`, `\&`).
+ */
+const EDITOR_ADDRESS = /^(?:[\s:%.$\d,;+*-]|'[\w<>[\]'`"^.(){}]|\\[/?&]|\/(?:[^/\\]|\\.)*\/?|\?(?:[^?\\]|\\.)*\??)*/u;
+
+/** How many `+cmd` bodies are being read inside one another. */
+let plusDepth = 0;
+
+/** Index just after the next unescaped `delimiter` at or after `from`, or the text length. @param {string} text @param {number} from @param {string} delimiter */
+function delimitedEnd(text, from, delimiter) {
+  for (let k = from; k < text.length; k++) {
+    if (text[k] === "\\") k++;
+    else if (text[k] === delimiter) return k + 1;
+  }
+  return text.length;
+}
+
+/**
+ * Record each file an editor command line writes or opens, and read each `+cmd` it runs on the opened file as a command
+ * (`e +w!\ FILE notes.txt` writes FILE). The text is also read unescaped, as an `:execute` string or a `cpo+=b` mapping
+ * runs it (`exe "sil\ w FILE"`, `map x y\|w FILE`). @param {string} text
+ * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
+ */
+function editorFiles(text, editor, ctx) {
+  const read = new Set();
+  for (const line of text.includes("\\") ? [text, text.replace(/\\(.)/gsu, "$1")] : [text]) {
+    for (const match of line.matchAll(EDITOR_FILE_COMMAND)) {
+      if (match[2]) editor.write(match[2]);
+      for (const [, command] of match[1].matchAll(/\+((?:[^\s\\]|\\.)*)/gu)) {
+        const body = command.replace(/\\(.)/gsu, "$1");
+        if (!command || command.startsWith("+") || read.has(body)) continue;
+        read.add(body);
+        // Both readings of a `+cmd` nested in a `+cmd` recurse, so the nesting is bounded like substitutions.
+        if (plusDepth >= maxDepth) throw new Block("shell-nesting-depth");
+        plusDepth++;
+        try { editorScript(body, false, false, editor, ctx); } finally { plusDepth--; }
+      }
+    }
+  }
+}
+
+/**
+ * Read an ex, vim or ed script: each file a write or edit command names is a write target, shell commands (`:!`, range
+ * filters, `r !`) are evaluated, and vimscript or normal-mode keys the guard cannot read are blocked. Substitution text and,
+ * in an ed script read line by line, the lines typed after `a`, `i` or `c` up to `.` are data: ed exits at the first error
+ * in a script. vim runs those lines as commands when the append fails or is skipped (inside `:g`, a missing line or mark,
+ * `nomodifiable`, `:if 0`), so vim and ex lines are always read as commands, as are ed lines typed inside `g` or after `G`.
+ * @param {string} script @param {boolean} ed @param {boolean} typed whether `a`, `i` and `c` read the following lines
+ * @param {{ moved: boolean, write: (value: string) => void }} editor @param {Context} ctx
+ */
+function editorScript(script, ed, typed, editor, ctx) {
+  let typing = false;
+  // ed's `G` and `V` read the command for each matching line from the next script lines.
+  let interactive = false;
+  for (const line of script.split(/\r?\n/u)) {
+    checkDeadline();
+    if (typing) { typing = line !== "."; continue; }
+    let rest = line;
+    let first = true;
+    let prefixed = false;
+    // Each command on the line (vim separates them with `|`): its address, `:g` prefix and `:s` are read first.
+    while (rest) {
+      rest = rest.slice(EDITOR_ADDRESS.exec(rest)?.[0].length ?? 0);
+      // `:g/re/cmd` runs cmd; `:s` stops at the first unescaped `|` (ed has no `|`).
+      const global = /^(?:g|global|v|vglobal|G|V)!?([^\w\s"|\\])/u.exec(rest);
+      if (global) {
+        prefixed = true;
+        if (ed && /^[GV]/u.test(global[0])) interactive = true;
+        rest = rest.slice(delimitedEnd(rest, global[0].length, global[1]));
+        continue;
+      }
+      const substitute = /^(?:s|substitute)[^\w\s"|\\]/u.exec(rest);
+      if (substitute) {
+        const end = ed ? rest.length : delimitedEnd(rest, substitute[0].length, "|");
+        if (!ed && /\\=/u.test(rest.slice(0, end)) && EDITOR_CODE.test(rest.slice(0, end))) {
+          throw new Block("shell-dynamic-command", "A substitution expression that calls a process or file function cannot be inspected.");
+        }
+        rest = rest.slice(end);
+        continue;
+      }
+      if (typed && ed && first && !prefixed && !interactive && /^[aic]\s*$/u.test(rest)) { typing = true; break; }
+      const shell = (ed ? /^(?:(?:r|w|W|e|E)\s*)?!(.*)$/u : /^(?:(?:r|read)\s*|(?:w|write|e|edit)\s+)?!(.*)$/u).exec(rest);
+      if (shell) { evaluateShellText(shell[1], ctx); break; }
+      if (first) {
+        first = false;
+        if (!ed && EDITOR_CD.test(rest)) editor.moved = true;
+        editorFiles(rest, editor, ctx);
+        const escape = EDITOR_SHELL_ESCAPE.exec(rest);
+        if (escape) evaluateShellText(escape[1], ctx);
+        if (!ed) {
+          const keys = /(?:^|[|:\s"'])norm(?:a|al)?!?\s/u.exec(rest);
+          if (EDITOR_CODE.test(rest) || EDITOR_PROGRAM_OPTION.test(rest)
+            || (keys && /[!Q@]|"=|<[Cc]-[RrOo\\]>|[\x0f\x12\x1c]/u.test(rest.slice(keys.index + keys[0].length)))) {
+            throw new Block("shell-dynamic-command", "An editor script that calls a process or file function, an embedded language, a configured program, a built `:execute` or normal-mode keys that run commands cannot be inspected.");
+          }
+        }
+      }
+      if (ed) break;
+      // A later command after `|` may start with its own address (`let a=1|/x/w FILE`, `|'aw FILE`).
+      const end = delimitedEnd(rest, 0, "|");
+      editorFiles(rest.slice(0, end), editor, ctx);
+      rest = rest.slice(end);
+    }
+  }
+}
+
+/**
+ * A patch operand: the file word, else the command's stdin (a file redirect, a heredoc or here-string body), or null when
+ * stdin is a pipe, a terminal or text with expansions in it. @param {Word | null} word @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
+ * @returns {PatchOperand | null}
+ */
+function diffOperand(word, stdin) {
+  if (word && word.value !== "-") return { word, text: null };
+  const source = stdinSource(stdin.redirects);
+  if (!source || (stdin.stdinPiped && source.op !== "<")) return null;
+  if (source.heredoc) return source.heredoc.quoted || source.heredoc.literal ? { word: null, text: source.heredoc.body } : null;
+  if (!source.target) return null;
+  if (source.op === "<<<") return source.target.literal ? { word: null, text: `${source.target.value}\n` } : null;
+  return { word: source.target, text: null };
+}
+
+/**
+ * The pathspecs `git checkout` restores files for, or null when it only switches branches: every operand after `--`, every
+ * operand with --ours, --theirs, -m, --merge, --conflict or -p, and otherwise the operands after the first (the revision).
+ * An unknown operand or --pathspec-from-file is a null spec, which selects anything. @param {Word[]} args
+ * @returns {{ specs: (string | null)[], revision: string | null } | null}
+ */
+function checkoutPathspecs(args) {
+  const dash = args.findIndex((word) => word.value === "--");
+  const before = dash < 0 ? args : args.slice(0, dash);
+  /** @type {(string | null)[]} */
+  const specs = dash < 0 ? [] : args.slice(dash + 1).map((word) => word.literal ? word.value : null);
+  /** @type {Word[]} */
+  const operands = [];
+  let conflict = false;
+  for (let i = 0; i < before.length; i++) {
+    const value = before[i].value;
+    if (["-b", "-B", "--orphan", "--conflict"].includes(value)) { if (value === "--conflict") conflict = true; i++; continue; }
+    if (value === "--pathspec-from-file" || value.startsWith("--pathspec-from-file=")) { specs.push(null); if (!value.includes("=")) i++; continue; }
+    if (/^--(?:ours|theirs|merge|patch|conflict=.*)$/u.test(value) || /^-[A-Za-z]*[mp]/u.test(value) && !value.startsWith("--")) conflict = true;
+    if (value.startsWith("-") && value !== "-") continue;
+    operands.push(before[i]);
+  }
+  // Without --, Git reads the first operand as a revision when it names one and as a path otherwise (`git checkout AGENTS.md`
+  // restores it from the index): it is kept as a pathspec too, and its revision listing is skipped when it names none.
+  // -p takes an optional revision too (`git checkout -p HEAD`), and with no pathspec it walks every file.
+  const patchMode = before.some((word) => word.value === "--patch" || /^-[A-Za-z]*p/u.test(word.value) && !word.value.startsWith("--"));
+  const revisionFirst = (!conflict || patchMode) && operands.length > 0;
+  const paths = revisionFirst && dash >= 0 ? operands.slice(1) : operands;
+  specs.push(...paths.map((word) => word.literal ? word.value : null));
+  if (patchMode && (dash < 0 ? operands.length <= 1 : specs.length === 0)) specs.push(null);
+  if (specs.length === 0) return null;
+  const revision = revisionFirst && operands[0].literal ? operands[0].value : null;
+  // An unknown revision cannot be listed: read it as selecting any file.
+  if (revisionFirst && !operands[0].literal) specs.push(null);
+  return { specs, revision };
+}
+
+/**
+ * The index of the word that ends a `find -exec`/`-ok` action starting at `start`: `;`, or `+` right after `{}` (a `+`
+ * elsewhere is an argument), or the end of the words. @param {Word[]} rest @param {number} start @param {number} [limit]
+ */
+function execEnd(rest, start, limit = rest.length) {
+  let end = start + 1;
+  while (end < limit && rest[end].value !== ";" && !(rest[end].value === "+" && rest[end - 1].value === "{}" && end - 1 > start)) end++;
+  return end;
+}
+
+/** The index of a `find` primary outside -exec/-ok bodies, or -1. @param {Word[]} rest @param {string} primary */
+function findActionIndex(rest, primary) {
+  return findActionIndexes(rest, primary)[0] ?? -1;
+}
+
+/** Every index of a `find` primary outside -exec/-ok bodies. @param {Word[]} rest @param {string} primary @returns {number[]} */
+function findActionIndexes(rest, primary) {
+  /** @type {number[]} */
+  const found = [];
+  for (let i = 0; i < rest.length; i++) {
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
+      i = execEnd(rest, i);
+    } else if (rest[i].value === primary) found.push(i);
+  }
+  return found;
+}
+
+/** How many selected protected files `find -exec` checks one by one before standing in a protected name for the rest. */
+const FIND_FILLS = 64;
+
+/** Project guard file names a backup suffix could complete (`settings` + `.json`); the write check decides where they count. */
+const BACKUP_GUARD_NAMES = new Set(["settings.json", "settings.local.json", "hooks.json", "config.toml", "config"]);
+
+/** rsync options whose value is the next word (or the rest of a short cluster). */
+const RSYNC_VALUE_OPTIONS = new Set(["-e", "-B", "-f", "-M", "-T", "-@", "--rsh", "--block-size", "--filter", "--remote-option", "--temp-dir",
+  "--modify-window", "--info", "--debug", "--stderr", "--backup-dir", "--suffix", "--rsync-path", "--max-delete", "--max-size", "--min-size",
+  "--max-alloc", "--partial-dir", "--usermap", "--groupmap", "--chown", "--timeout", "--contimeout", "--compare-dest", "--copy-dest",
+  "--link-dest", "--compress-choice", "--zc", "--compress-level", "--zl", "--skip-compress", "--exclude", "--exclude-from", "--include",
+  "--include-from", "--files-from", "--address", "--port", "--sockopts", "--out-format", "--log-file", "--log-file-format",
+  "--password-file", "--bwlimit", "--stop-after", "--stop-at", "--time-limit", "--write-batch", "--only-write-batch", "--read-batch",
+  "--protocol", "--iconv", "--checksum-choice", "--cc", "--checksum-seed", "--chmod", "--outbuf", "--early-input", "--copy-as"]);
+
+/** Commands whose written files commandTargets reads from their words (sed only with -i, cp only its destination). */
+const TARGETED_COMMANDS = new Set(["tee", "sponge", "cp", "install", "ln", "rsync", "ditto", "tar", "bsdtar", "gtar", "unzip", "perl", "ruby", "curl", "wget", "patch", "chmod", "chown", "chgrp", "chflags", "mv", "touch", "truncate", "rm", "unlink", "rmdir", "trash", "srm", "sort", "dd", "sed"]);
+
+/**
+ * `find`'s starting points, where its expression begins, and whether it follows links: `-H`/`-L`/`-P` and BSD `-E`/`-X`/`-d`/
+ * `-s`/`-x` options, BSD `-f path` roots, GNU `-D`/`-O` options and `--`. Null when an option before the roots is unknown.
+ * @param {Word[]} rest @returns {{ roots: Word[], start: number, follow: boolean } | null}
+ */
+function findRoots(rest) {
+  /** @type {Word[]} */
+  const roots = [];
+  let follow = false;
+  let dot = false;
+  let i = 0;
+  for (; i < rest.length; i++) {
+    const value = rest[i].value;
+    if (value === "--") { i++; break; }
+    if (value === "-D") { i++; continue; }
+    if (/^-(?:D.|O\d*)$/u.test(value)) continue;
+    // BSD reads options with getopt: clusters of -H -L -P -E -X -d -s -x, and -f taking the rest of the word or the next
+    // word as a starting point (`-Xf path`, `-fpath`).
+    const cluster = /^-([HLPEXdsx]*)(?:f(.*))?$/u.exec(value);
+    if (cluster && value.length > 1) {
+      for (const letter of cluster[1]) if (letter === "L") follow = true; else if (letter === "P" || letter === "H") follow = false;
+      if (cluster[2] === undefined) continue;
+      if (cluster[2]) {
+        roots.push({ ...rest[i], value: cluster[2], raw: cluster[2] });
+        // GNU reads `-follow`, `-false` or `-fls` as a test, so `.` is searched too.
+        dot = true;
+      } else {
+        if (!rest[i + 1]) return null;
+        roots.push(rest[++i]);
+      }
+      continue;
+    }
+    // A one-letter option the guard does not know could take a starting point as its value.
+    if (/^-[A-Za-z]$/u.test(value)) return null;
+    break;
+  }
+  // GNU find starts its expression at the first `-` word, `(` or `!`; an option-looking word right after `--` is still a root.
+  let next = i;
+  while (next < rest.length && !/^[-(!]/u.test(rest[next].value)) next++;
+  roots.push(...rest.slice(i, next));
+  if (dot || roots.length === 0) roots.push(literalWord("."));
+  // The `-follow` primary follows links like -L, wherever it stands in the expression.
+  if (findActionIndex(rest.slice(next), "-follow") >= 0) follow = true;
+  return { roots, start: next, follow };
+}
+
+/**
+ * The protected files a `find` action at `action` can reach: its starting points walked for protected names and for links
+ * to protected files (followed into directories under `-L`), filtered by a plain conjunction of -name/-iname tests before
+ * the action (any other test or operator selects every file; tests after the action and commands of other -exec actions do
+ * not filter it), plus guard configuration at, inside, below or linked from a starting point. `unknown` names a starting
+ * point, option or tree the guard cannot read, so the caller fails closed.
+ * @param {Word[]} rest @param {Context} ctx @param {number} action
+ * `selected` tells whether the tests before the action pass a path.
+ * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null, selected: (file: string) => boolean }}
+ */
+function findSelection(rest, ctx, action) {
+  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null), selected: (/** @type {string} */ _file) => true };
+  const parsed = findRoots(rest);
+  if (parsed === null) { result.unknown = "find options"; return result; }
+  result.selected = (file) => selected(file);
+  const { roots, start, follow } = parsed;
+  /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
+  const names = [];
+  /** @type {{ letters: string[], dereference: boolean }[]} */
+  const types = [];
+  let plain = true;
+  // An action after a top-level `-o` runs only for entries its own branch selects (`A -delete -o B -delete`).
+  let from = start;
+  let depth = 0;
+  for (let i = start; i < action; i++) {
+    const value = rest[i].value;
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) i = execEnd(rest, i, action);
+    else if (value === "(") depth++;
+    else if (value === ")") depth--;
+    else if (depth === 0 && (value === "-o" || value === "-or")) from = i + 1;
+  }
+  if (depth !== 0) from = start;
+  for (let i = from; i < action; i++) {
+    const value = rest[i].value;
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) {
+      i = execEnd(rest, i, action);
+    } else if (value === "-name" || value === "-iname") {
+      const pattern = rest[++i];
+      if (!pattern?.literal) { plain = false; continue; }
+      names.push({ glob: globSegment(value === "-iname" ? pattern.value.toLowerCase() : pattern.value), fold: value === "-iname" });
+    } else if (value === "-type" || value === "-xtype") {
+      // `-type d` (a comma list in GNU find) keeps entries of those types; -xtype reads the other side of a link.
+      const kinds = rest[++i];
+      if (!kinds?.literal || !/^[bcdpfls](?:,[bcdpfls])*$/u.test(kinds.value)) { plain = false; continue; }
+      types.push({ letters: kinds.value.split(","), dereference: (value === "-xtype") !== follow });
+    } else if (["-o", "-or", "!", "-not", "(", ")", ",", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex", "-lname", "-ilname"].includes(value)) plain = false;
+  }
+  /** The type letter of an existing entry, or null when it does not exist. @param {string} file @param {boolean} dereference */
+  const typeOf = (file, dereference) => {
+    let stat;
+    try { stat = dereference ? statSync(file) : lstatSync(file); } catch {
+      try { lstatSync(file); return "l"; } catch { return null; }
+    }
+    return stat.isDirectory() ? "d" : stat.isSymbolicLink() ? "l" : stat.isFIFO() ? "p" : stat.isSocket() ? "s" : stat.isBlockDevice() ? "b" : stat.isCharacterDevice() ? "c" : "f";
+  };
+  /** @param {string} file */
+  const selected = (file) => {
+    // Only an existing entry is found.
+    if (typeOf(file, false) === null) return false;
+    if (!plain) return true;
+    return types.every(({ letters, dereference }) => letters.includes(typeOf(file, dereference) ?? "")) && names.every(({ glob, fold: folded }) => {
+      const base = folded ? basename(file).toLowerCase() : basename(file);
+      return typeof glob === "string" ? glob === base : globMatch({ ...glob, hidden: false }, base);
+    });
+  };
+  const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+  /** A file find visits, by the path it passes to the action: its own name or, through a link, the file it reaches. @param {string} file @param {Word} root */
+  const visit = (file, root) => {
+    if (!selected(file)) return;
+    if (protectedMatch(file, "write", targets)) result.guard.push(file);
+    else if (docsName(basename(file)) || docsName(basename(canonicalPath(file)))) result.docs.push({ file, root });
+  };
+  for (const root of roots) {
+    const paths = operandPaths(root, ctx, true);
+    if (paths === null) { if (!ctx.codeString) result.unknown ??= root.value.replaceAll(UNKNOWN, "$…"); continue; }
+    for (const path of paths) {
+      // Everything in a protected directory is protected, so a starting point in one is reached whatever the tests.
+      if (targets.some((target) => target.directory && protectedMatch(path, "write", [target]))) result.guard.push(path);
+      for (const target of targets) {
+        if (!target.directory) continue;
+        // A protected directory below a starting point is walked into whatever its names.
+        for (const protectedPath of target.forms) {
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && typeOf(protectedPath, false) !== null) result.guard.push(protectedPath);
+        }
+      }
+      visit(path, root);
+      let directory = false;
+      try { directory = statSync(path).isDirectory(); } catch { /* missing: nothing below */ }
+      if (!directory) continue;
+      /** @type {string[]} */
+      const links = [];
+      // Following links, any entry can be guard configuration reached through a linked directory, so every one is visited.
+      const all = follow ? /** @type {string[]} */ ([]) : null;
+      const found = docsInside(path, follow, links, all);
+      if (found === null) { result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`; continue; }
+      for (const rel of new Set([...found, ...links, ...(all ?? [])])) visit(join(path, rel), root);
+      // Guard files below a starting point are visited by their own names.
+      for (const target of targets) {
+        if (target.directory) continue;
+        for (const protectedPath of target.forms) {
+          // A missing guard file counts when find removes the existing directory that holds it (`find .codex -delete`).
+          const reached = typeOf(protectedPath, false) !== null ? selected(protectedPath) : selected(dirname(protectedPath));
+          if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && reached) result.guard.push(protectedPath);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * `find … -delete` removes every match below its starting points. A protected file it selects blocks it; an unknown starting
+ * point, a tree past the walk bounds or a granted file outside a fully known operand fails closed, and guard configuration is
+ * never granted. @param {Word[]} rest @param {Context} ctx
+ */
+function checkFindDelete(rest, ctx) {
+  // Each -delete removes what the tests before it select (`-name '*.txt' -delete -o -name AGENTS.md -delete`).
+  for (const action of findActionIndexes(rest, "-delete")) checkFindDeleteAt(rest, ctx, action);
+}
+
+/** @param {Word[]} rest @param {Context} ctx @param {number} action */
+function checkFindDeleteAt(rest, ctx, action) {
+  const { docs, guard, unknown } = findSelection(rest, ctx, action);
+  if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
+  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
+  if (unknown !== null) block(unknown);
+  const hit = docs.find(({ file, root }) => !(grantable(root, root.value, ctx) && grantedDocsWrite(file)));
+  if (hit) block(hit.file);
+}
+
+/**
+ * The backup suffixes a `cp`, `mv` or `install` writes next to each destination: `-S`/`--suffix` (GNU), BSD `install -B`,
+ * or with `-b`/`--backup` alone the default `~` and SIMPLE_BACKUP_SUFFIX. Empty when no backup is made.
+ * @param {Word[]} rest @param {string} name @returns {string[]}
+ */
+function backupSuffixes(rest, name) {
+  /** @type {string[]} */
+  const suffixes = [];
+  let backup = false;
+  for (let i = 0; i < rest.length; i++) {
+    const { value } = rest[i];
+    if (value === "--") break;
+    if (value === "--suffix" || (value === "-S" && name !== "rsync") || (name === "install" && value === "-B")) {
+      if (name === "install" && value === "-S" && process.platform === "darwin") continue;
+      if (rest[i + 1]) suffixes.push(rest[++i].value);
+      backup = true;
+    } else if (value.startsWith("--suffix=")) { suffixes.push(value.slice(9)); backup = true; }
+    else if (/^--backup(?:=|$)/u.test(value)) backup = true;
+    else if (/^-[A-Za-z]/u.test(value) && !value.startsWith("--")) {
+      // A cluster's value letter takes the rest of the word (`-bS.md`, `-B.config.js`); other value letters end the scan.
+      // rsync's -S is --sparse; its value letters are e, B, f, M, T and @.
+      const valueLetters = name === "install" ? "mogfMTNhDlt" : name === "rsync" ? "eBfMT@" : "t";
+      for (let k = 1; k < value.length; k++) {
+        if (value[k] === "b") backup = true;
+        if (valueLetters.includes(value[k]) && !(value[k] === "D" && process.platform !== "darwin")) break;
+        if ((value[k] === "S" && name !== "rsync") || (name === "install" && value[k] === "B")) {
+          if (!(name === "install" && value[k] === "S" && process.platform === "darwin")) {
+            suffixes.push(k < value.length - 1 ? value.slice(k + 1) : rest[++i]?.value ?? "");
+            backup = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (!backup) return [];
+  if (suffixes.length === 0) {
+    if (backupEnv.unknown) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: a backup suffix from SIMPLE_BACKUP_SUFFIX the guard cannot read`);
+    suffixes.push("~", process.env.SIMPLE_BACKUP_SUFFIX ?? "~", ...backupEnv.values);
+  }
+  return [...new Set(suffixes.filter(Boolean))];
+}
+
+/**
+ * Blocks a symbolic link whose text names guard configuration or a directory at or above it, project targets included.
+ * @param {Word} word @param {Context} ctx
+ */
+function checkLinkSource(word, ctx) {
+  if (word.value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(word.value))) return;
+  const candidates = forms(resolve(ctx.cwd ?? ctx.scope, word.value));
+  for (const target of [...protectedTargets, ...projectTargets(ctx.scope)]) {
+    for (const protectedPath of target.forms) {
+      if (candidates.some((candidate) => candidate === protectedPath || protectedPath.startsWith(`${candidate}${sep}`) || (target.directory && candidate.startsWith(`${protectedPath}${sep}`)))) {
+        throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (a link to ${word.value})`);
+      }
+    }
+  }
+}
+
+/**
+ * The backup an in-place edit (`sed -i`, `perl -i`, `ruby -i`) writes: the file name plus the suffix, or the suffix with `*`
+ * replaced by the file's name (in the file's directory unless the suffix holds a `/`). @param {Word} word @param {string} suffix
+ * @returns {Word}
+ */
+function backupWord(word, suffix) {
+  const base = word.value.slice(word.value.lastIndexOf("/") + 1), folder = word.value.slice(0, word.value.lastIndexOf("/") + 1);
+  const backup = !suffix.includes("*") ? `${word.value}${suffix}` : suffix.includes("/") ? suffix.replaceAll("*", base) : `${folder}${suffix.replaceAll("*", base)}`;
+  return { ...word, value: backup, raw: backup };
+}
+
+/**
+ * Collect file targets written (or deleted) by a command. @param {string} name @param {Word[]} rest @param {Context} ctx
+ * @param {ReturnType<typeof analyzeSed> | null} sed @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
+ */
+function commandTargets(name, rest, ctx, sed, stdin) {
+  /** @type {{word: Word, kind: "write" | "delete" | "tree", effect?: TreeEffect}[]} */
+  const targets = [];
+  const add = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind, /** @type {TreeEffect | undefined} */ effect = undefined) => targets.push({ word, kind, effect });
+  /** @param {string} value */
+  const optionValue = (value) => literalWord(value.slice(value.indexOf("=") + 1));
+  switch (name) {
+    case "find":
+      // -fprint, -fprint0, -fprintf and -fls write their output to the next word.
+      for (let i = 0; i < rest.length; i++) {
+        if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
+          i = execEnd(rest, i);
+        } else if (/^-f(?:print0?|printf|ls)$/u.test(rest[i].value) && rest[i + 1]) add(rest[++i], "write");
+      }
+      break;
+    case "tee": case "sponge":
+      operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
+      break;
+    case "cp": case "install": case "ln": case "rsync": case "ditto": {
+      // rsync takes the next word as the value of these options even when it starts with `-` (`--exclude -n`).
+      const withValue = name === "rsync" ? RSYNC_VALUE_OPTIONS : new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group",
+        ...(name === "install" ? ["-B", "-M", ...(process.platform === "darwin" ? ["-D", "-f", "-h", "-l", "-N", "-T"] : [])] : [])]);
+      /** @type {Word | null} */
+      let backupDir = null;
+      if (name === "rsync") {
+        // --log-file and --write-batch write a file (the batch also writes `<file>.sh`); --backup-dir receives the backups.
+        for (let i = 0; i < rest.length && rest[i].value !== "--"; i++) {
+          const option = rest[i].value.split("=")[0];
+          const value = rest[i].value.includes("=") ? { ...rest[i], value: rest[i].value.slice(option.length + 1), raw: rest[i].value.slice(option.length + 1) } : null;
+          if (!["--log-file", "--write-batch", "--only-write-batch", "--backup-dir"].includes(option)) continue;
+          const target = value ?? rest[++i];
+          if (!target) continue;
+          if (option === "--backup-dir") backupDir = target;
+          else add(target, "write");
+          if (option.endsWith("write-batch")) add({ ...target, value: `${target.value}.sh`, raw: `${target.value}.sh` }, "write");
+        }
+        // Option values are not options or operands: `--exclude -n` is read as `--exclude=-n`, not a dry run.
+        const words = rest;
+        rest = [];
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          if (word.literal && word.value.startsWith("--") && RSYNC_VALUE_OPTIONS.has(word.value) && words[i + 1]) {
+            const value = words[++i];
+            rest.push({ ...value, value: `${word.value}=${value.value}`, raw: `${word.value}=${value.raw}` });
+          } else rest.push(word);
+        }
+        // --read-batch replays a recorded transfer into the destination: its files are unknown.
+        if (longOption(rest, ["--read-batch"])) {
+          const dryRun = ((shortLetters(rest, "eBfMT@").has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) || longOption(rest, ["--list-only"]);
+          const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
+          if (!dryRun) add(destination ?? literalWord("."), "tree", { unknownContents: true });
+          break;
+        }
+      }
+      // BSD install -M writes a metadata log.
+      if (name === "install") {
+        for (let i = 0; i < rest.length && rest[i].value !== "--"; i++) {
+          const value = rest[i].value;
+          if (!/^-[A-Za-z]/u.test(value) || value.startsWith("--")) continue;
+          const at = value.search(/[mogfMTNhDlBS]/u);
+          if (at < 0 || value[at] !== "M") { if (at >= 0 && at === value.length - 1) i++; continue; }
+          if (at < value.length - 1) add({ ...rest[i], value: value.slice(at + 1), raw: value.slice(at + 1) }, "write");
+          else if (rest[i + 1]) add(rest[++i], "write");
+        }
+      }
+      // rsync reads `host:path` and `rsync://` operands as remote; ditto -x extracts an archive.
+      const remote = (/** @type {Word} */ word) => name === "rsync" && /^(?:rsync:\/\/|[^/]*:)/u.test(word.value);
+      const extracts = name === "ditto" && rest.some((word) => word.literal && /^-[A-Za-z]*x/u.test(word.value));
+      // rsync -n/--dry-run only reports what it would transfer or delete.
+      const rsyncLetters = name === "rsync" ? shortLetters(rest, "eBfMT@") : new Set();
+      // --list-only lists the source without transferring.
+      if (name === "rsync" && (((rsyncLetters.has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) || longOption(rest, ["--list-only"]))) break;
+      if (extracts) {
+        // ditto -x [-k] archive ... destination: each archive (CPIO, or zip with -k; `-` is stdin) lands in the destination.
+        const { operands } = operandsOf(rest, withValue);
+        const destination = operands.at(-1);
+        if (!destination) break;
+        const format = rest.some((word) => word.literal && /^-[A-Za-z]*k/u.test(word.value)) ? "zip" : "tar";
+        add(destination, "write");
+        add(destination, "tree", { unknownContents: true, archives: operands.slice(0, -1).map((word) => ({ word, format })) });
+        break;
+      }
+      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote, targetLetter: name !== "rsync" && name !== "ditto", targetOption: name !== "rsync" });
+      const recursive = name === "rsync" || name === "ditto"
+        || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
+      // cp -L/-H and rsync -L/-k (and their long forms) copy what symlinks below the source point to; ditto does not.
+      const follow = name === "cp" ? ["L", "H"].some((letter) => shortLetters(rest, "St").has(letter)) || longOption(rest, ["--dereference"])
+        : name === "rsync" && (rsyncLetters.has("L") || rsyncLetters.has("k") || longOption(rest, ["--copy-links", "--copy-dirlinks", "--copy-unsafe-links"]));
+      const backups = backupSuffixes(rest, name);
+      // rsync --backup-dir keeps backup names unless --suffix is given.
+      const explicitSuffixes = rest.filter((word) => word.value.startsWith("--suffix=")).map((word) => word.value.slice(9));
+      const dirSuffixes = explicitSuffixes.length > 0 ? explicitSuffixes : [""];
+      /**
+       * Each file of a recursive copy that replaces one is backed up under its name plus the suffix, so a source name that
+       * becomes protected with a suffix (`eslint.config` + `.js`) is checked below `base`.
+       * @param {Word} source @param {Word} base @param {string[]} suffixes
+       */
+      const memberBackups = (source, base, suffixes) => {
+        const named = suffixes.filter(Boolean);
+        if (named.length === 0) return;
+        if (remote(source) || !source.literal || source.value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(source.value))) {
+          add(base, "tree", { unknownContents: true });
+          return;
+        }
+        /** @type {string[]} */
+        const all = [];
+        if (docsInside(resolve(ctx.cwd ?? ctx.scope, source.value), follow, null, all) === null) {
+          throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: backups of ${source.value} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+        }
+        for (const rel of all) {
+          for (const suffix of named) {
+            const backupName = `${basename(rel)}${suffix}`;
+            if (!docsName(backupName) && !BACKUP_GUARD_NAMES.has(fold(backupName))) continue;
+            const value = `${base.value.replace(/\/+$/u, "")}/${rel}${suffix}`;
+            add({ ...base, value, raw: value }, "write");
+          }
+        }
+      };
+      const suffixed = (/** @type {Word} */ word, /** @type {string} */ suffix) => suffix ? { ...word, value: `${word.value}${suffix}`, raw: `${word.value}${suffix}` } : word;
+      pairs.forEach(({ target, source }) => {
+        add(target, "write");
+        for (const suffix of backups) add(backupWord(target, suffix), "write");
+        if (!recursive) return;
+        add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
+        if (!backupDir) memberBackups(source, target, backups);
+      });
+      if (name === "rsync" && (shortLetters(rest, "eBfMT@").has("R") || longOption(rest, ["--relative"])) && !longOption(rest, ["--no-relative", "--no-R"])) {
+        // -R/--relative recreates each source path (from a `/./` mark, without a leading `/`) under the destination.
+        const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
+        if (destination && !remote(destination)) {
+          for (const source of sources) {
+            if (remote(source)) continue;
+            const mark = source.value.lastIndexOf("/./");
+            const path = (mark >= 0 ? source.value.slice(mark + 3) : source.value).replace(/^\/+/u, "").replace(/\/+\.?$/u, "");
+            if (!path || path === ".") continue;
+            const value = `${destination.value.replace(/\/+$/u, "") || "."}/${path}`;
+            const word = { ...source, value, raw: value, literal: source.literal && destination.literal };
+            add(word, "write");
+            add(word, "tree", { source, follow });
+            if (backupDir) {
+              // Its backup keeps the same path (plus any --suffix) under --backup-dir.
+              const root = isAbsolute(backupDir.value) ? backupDir.value.replace(/\/+$/u, "") : `${destination.value.replace(/\/+$/u, "") || "."}/${backupDir.value.replace(/\/+$/u, "")}`;
+              const backup = { ...backupDir, value: `${root}/${path}`, raw: `${root}/${path}`, literal: backupDir.literal && source.literal && destination.literal };
+              for (const suffix of dirSuffixes) add(suffixed(backup, suffix), "write");
+              if (dirSuffixes.includes("")) add(backup, "tree", { source, follow });
+              memberBackups(source, backup, dirSuffixes);
+            } else {
+              for (const suffix of backups) add(suffixed(word, suffix), "write");
+              memberBackups(source, word, backups);
+            }
+          }
+        }
+      }
+      if (backupDir && pairs.length > 0) {
+        // A replaced file moves under --backup-dir, which is relative to the directory the files land in, at the same path.
+        const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
+        if (destination && !remote(destination)) {
+          const trim = (/** @type {string} */ text) => text.replace(/\/+$/u, "") || "/";
+          let into = destination.value.endsWith("/");
+          if (!into && !destination.value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(destination.value))) {
+            try { into = statSync(resolve(ctx.cwd ?? ctx.scope, destination.value)).isDirectory(); } catch { into = false; }
+          }
+          const backupWordFor = (/** @type {string} */ directory, /** @type {string} */ path) => {
+            const root = isAbsolute(backupDir.value) ? trim(backupDir.value) : `${trim(directory)}/${backupDir.value.replace(/\/+$/u, "")}`;
+            const value = path ? `${root}/${path}` : root;
+            return { ...backupDir, value, raw: value, literal: backupDir.literal && destination.literal };
+          };
+          // A backup has the name of a file the source replaces, so the source's names are checked under the backup directory;
+          // --delete also backs up every destination file it removes.
+          const deletes = rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value));
+          pairs.forEach(({ target, source }) => {
+            if (target.value !== destination.value) {
+              const word = backupWordFor(destination.value, basename(target.value));
+              for (const suffix of dirSuffixes) add(suffixed(word, suffix), "write");
+              if (dirSuffixes.includes("")) add(word, "tree", { source, follow });
+              memberBackups(source, word, dirSuffixes);
+              if (deletes) add(word, "tree", { source: target });
+            } else if (into || /\/\.?$/u.test(source.value)) {
+              if (dirSuffixes.includes("")) add(backupWordFor(destination.value, ""), "tree", { source, follow });
+              memberBackups(source, backupWordFor(destination.value, ""), dirSuffixes);
+              if (deletes) add(backupWordFor(destination.value, ""), "tree", { source: destination });
+            } else {
+              // A file replaced: dirname(dest)/backup-dir/basename(dest) plus any --suffix.
+              const slash = destination.value.lastIndexOf("/");
+              const word = backupWordFor(slash < 0 ? "." : destination.value.slice(0, slash) || "/", basename(destination.value));
+              for (const suffix of dirSuffixes) add(suffixed(word, suffix), "write");
+            }
+          });
+        }
+      }
+      if (name === "ln") {
+        // A hard link to a protected file, or a symbolic link to one or to a directory above one, is another name to write it
+        // through; a symbolic link's text is read from the link's directory too.
+        const symbolic = shortLetters(rest, "St").has("s") || longOption(rest, ["--symbolic"]);
+        sources.forEach((word) => add(word, "delete"));
+        if (symbolic) {
+          pairs.forEach(({ target, source }) => {
+            const linked = isAbsolute(source.value) ? source : { ...source, value: `${target.value.slice(0, target.value.lastIndexOf("/") + 1)}${source.value}` };
+            if (linked !== source) add({ ...linked, raw: linked.value }, "delete");
+            // A link to a directory at or above project guard configuration (`.codex`, `.`) writes it through the link.
+            for (const word of [source, linked]) checkLinkSource(word, ctx);
+          });
+        }
+      }
+      if (name === "rsync" && sources.length > 0) {
+        // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
+        const { operands, targetDirectory } = operandsOf(rest, withValue, false, name !== "rsync");
+        const destination = targetDirectory ?? operands.at(-1);
+        if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) {
+          // Plain --exclude names (no wildcards) keep those paths, unless another filter or --delete-excluded can reach them.
+          const filtered = rest.some((word) => !word.literal || /^--(?:include|filter|exclude-from|include-from|files-from|delete-excluded)(?:=|$)/u.test(word.value)
+            || /^-[A-Za-z]*[Ff]/u.test(word.value) && !word.value.startsWith("--"));
+          const excludes = filtered ? [] : rest.filter((word) => word.value.startsWith("--exclude=")).map((word) => word.value.slice(10))
+            .filter((pattern) => pattern && !/[*?[\\]/u.test(pattern)).map((pattern) => pattern.replace(/\/+$/u, ""));
+          add(destination, "delete", { remove: true, recursive: true, excludes });
+        }
+        if (rest.some((word) => word.literal && word.value === "--remove-source-files")) sources.forEach((word) => { if (!remote(word)) add(word, "delete", { remove: true, recursive: true }); });
+      }
+      break;
+    }
+    case "tar": case "bsdtar": case "gtar": case "unzip": {
+      // Extraction writes whatever the archive holds under -C/-d or the working directory; creating, appending or updating
+      // writes the -f archive. Listing, testing and extracting to stdout (`tar -xO`, `unzip -l/-p/-t/-v/-c/-z/-Z`) read.
+      if (name === "unzip") {
+        if (backupEnv.options.has("UNZIP") || backupEnv.options.has("UNZIPOPT") || process.env.UNZIP || process.env.UNZIPOPT) {
+          throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: unzip options from UNZIP or UNZIPOPT that the guard cannot read`);
+        }
+        const { archive, directory, letters } = unzipArchive(rest);
+        // A negated letter (`-l-l`) may cancel a listing mode, so listing passes only when no letter is negated.
+        const negates = [...letters].some((letter) => letter.startsWith("-"));
+        if (!negates && ["l", "p", "t", "v", "c", "z", "Z"].some((letter) => letters.has(letter))) break;
+        // unzip -j drops member directories.
+        add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: "zip" }] : null, renames: false, strips: letters.has("j") });
+        break;
+      }
+      if (backupEnv.options.has("TAR_OPTIONS") || process.env.TAR_OPTIONS) {
+        throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: tar options from TAR_OPTIONS that the guard cannot read`);
+      }
+      const { archive, renames, strips, letters, directory, operands, outputs } = tarArchive(name, rest);
+      outputs.forEach((word) => add(word, "write"));
+      const creates = ["c", "r", "u", "A", "D"].some((letter) => letters.has(letter));
+      if (creates && archive && archive.value !== "-") add(archive, "write");
+      if (creates && rest.some((word) => word.value === "--remove-files")) {
+        // GNU --remove-files deletes each file it archived, read from the -C directory.
+        if (letters.has("T")) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: files --remove-files deletes from a list the guard does not read`);
+        for (const word of operands) add(word, "delete", { remove: true, recursive: true });
+      }
+      if (!letters.has("x") || letters.has("O")) break;
+      // -P keeps absolute member names, which land outside the extraction directory.
+      if (letters.has("P")) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: a tar extraction that keeps absolute member names (-P)`);
+      add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: "tar" }] : null, renames, strips });
+      break;
+    }
+    case "perl": case "ruby": {
+      // Switch clusters: `-i` takes the rest of its switch as a backup suffix (`-pi.orig`), the program switch (`-e`, perl `-E`)
+      // the rest or the next word, `-0`/`-l` (and ruby `-W`/`-T`) optional digits before the cluster goes on, and the other
+      // value switches the rest of the word (ruby `-C`/`-I`/`-r`/`-E` the next word when nothing follows). Every suffix given
+      // counts. ruby -C changes directory before the files are opened.
+      let inPlace = false, code = false;
+      /** @type {Word | null} */
+      let chdir = null;
+      const perl = name === "perl";
+      let syntaxOnly = false;
+      const restLetters = perl ? "MmxDFCV" : "F";
+      const nextLetters = perl ? "eEI" : "eCXIrE";
+      // ruby -C and -X move to a directory before the files are opened, as does -x with a directory attached.
+      const enter = (/** @type {Word} */ taken) => {
+        chdir = chdir && !isAbsolute(taken.value) ? { ...taken, value: `${chdir.value}/${taken.value}`, literal: chdir.literal && taken.literal } : taken;
+      };
+      const digitLetters = perl ? "0l" : "0lWT";
+      /** @type {string[]} */
+      const suffixes = [];
+      /** @type {Word[]} */
+      const files = [];
+      for (let i = 0; i < rest.length; i++) {
+        const word = rest[i];
+        const value = word.value;
+        if (word.literal && value === "--") { files.push(...rest.slice(i + 1)); break; }
+        if (word.literal && /^--in-?place(?:=|$)/u.test(value)) { inPlace = true; if (value.includes("=")) suffixes.push(value.slice(value.indexOf("=") + 1)); continue; }
+        if (word.literal && value.startsWith("--")) continue;
+        if (word.literal && value.startsWith("-") && value.length > 1) {
+          // Switches end at the first argument (the program file, or the first file after -e): words after it, such as
+          // `-c`, are arguments for the program.
+          for (let k = 1; k < value.length; k++) {
+            const letter = value[k];
+            if (letter === "i") { inPlace = true; suffixes.push(value.slice(k + 1)); break; }
+            if (nextLetters.includes(letter)) {
+              if (letter === "e" || (perl && letter === "E")) code = true;
+              const taken = k < value.length - 1 ? { ...word, value: value.slice(k + 1), raw: value.slice(k + 1) } : rest[++i];
+              if (!perl && (letter === "C" || letter === "X") && taken) enter(taken);
+              break;
+            }
+            if (!perl && letter === "x") {
+              if (k < value.length - 1) enter({ ...word, value: value.slice(k + 1), raw: value.slice(k + 1) });
+              break;
+            }
+            // -c only checks the program's syntax.
+            if (letter === "c") syntaxOnly = true;
+            if (restLetters.includes(letter)) break;
+            if (perl && letter === "d" && /^[:=]/u.test(value.slice(k + 1))) break;
+            if (!perl && letter === "W" && value[k + 1] === ":") break;
+            if (!perl && letter === "K") { k++; continue; }
+            if (!digitLetters.includes(letter)) continue;
+            // perl -0x… takes hex digits, -0 octal ones; -l, ruby -W and -T decimal ones.
+            const digits = perl && letter === "0" && value[k + 1] === "x" ? (k++, /[0-9a-fA-F]/u) : letter === "0" ? /[0-7]/u : /[0-9]/u;
+            while (k + 1 < value.length && digits.test(value[k + 1])) k++;
+          }
+          continue;
+        }
+        files.push(...rest.slice(i));
+        break;
+      }
+      if (!inPlace || syntaxOnly) break;
+      (code ? files : files.slice(1)).forEach((file) => {
+        const word = chdir && !isAbsolute(file.value) ? { ...file, value: `${chdir.value}/${file.value}`, raw: `${chdir.value}/${file.value}`, literal: chdir.literal && file.literal } : file;
+        add(word, "write");
+        for (const suffix of suffixes) if (suffix) add(backupWord(word, suffix), "write");
+      });
+      break;
+    }
+    case "curl": {
+      // --next (`-:`) starts another transfer whose options, --output-dir included, are read on their own.
+      const next = rest.findIndex((word) => word.literal && (word.value === "--next" || word.value === "-:"));
+      if (next >= 0) {
+        targets.push(...commandTargets(name, rest.slice(0, next), ctx, sed, stdin), ...commandTargets(name, rest.slice(next + 1), ctx, sed, stdin));
+        break;
+      }
+      const writes = new Set(["--output", "--dump-header", "--cookie-jar", "--trace", "--trace-ascii", "--stderr", "--etag-save", "--hsts", "--alt-svc"]);
+      // --output-dir puts -o and -O files in that directory.
+      /** @type {Word | null} */
+      let outputDir = null;
+      for (let i = 0; i < rest.length; i++) {
+        if (rest[i].value === "--output-dir" && rest[i + 1]) outputDir = rest[++i];
+        else if (rest[i].value.startsWith("--output-dir=")) outputDir = { ...rest[i], value: rest[i].value.slice(13), raw: rest[i].value.slice(13) };
+      }
+      const out = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind) => add(outputDir && !isAbsolute(word.value)
+        ? { ...word, value: `${outputDir.value}/${word.value}`, raw: `${outputDir.value}/${word.value}`, literal: outputDir.literal && word.literal } : word, kind);
+      for (let i = 0; i < rest.length; i++) {
+        const word = rest[i];
+        const value = word.value;
+        if (!word.literal || !value.startsWith("-") || value === "-") continue;
+        if (value.startsWith("--")) {
+          const option = value.split("=")[0];
+          if (option === "--output") out(value.includes("=") ? optionValue(value) : rest[++i] ?? literalWord(""), "write");
+          else if (writes.has(option)) add(value.includes("=") ? optionValue(value) : rest[++i] ?? literalWord(""), "write");
+          else if (option === "--output-dir" && !value.includes("=")) i++;
+          else if (option === "--remote-name" || option === "--remote-name-all") remoteNames(rest, out);
+          continue;
+        }
+        // In a cluster like -sSLo the first option that takes a value uses the rest of the word or the next word.
+        for (let k = 1; k < value.length; k++) {
+          if (value[k] === "O") { remoteNames(rest, out); continue; }
+          if (!"oDcHdXuAebFTKmwxrCEYyztUPQ".includes(value[k])) continue;
+          const attached = value.slice(k + 1);
+          const target = attached ? literalWord(attached) : rest[++i];
+          if (value[k] === "o" && target) out(target, "write");
+          else if ("Dc".includes(value[k]) && target) add(target, "write");
+          break;
+        }
+      }
+      break;
+    }
+    case "wget":
+      for (let i = 0; i < rest.length; i++) {
+        const word = rest[i];
+        const value = word.value;
+        if (!word.literal) continue;
+        const long = /^--(output-document|output-file|append-output|directory-prefix)(=)?/u.exec(value);
+        const short = /^-[A-Za-z]*?([OoaP])(.*)$/u.exec(value);
+        const kind = long?.[1] === "directory-prefix" || short?.[1] === "P" ? "tree" : "write";
+        if (long) add(long[2] ? optionValue(value) : rest[++i] ?? literalWord(""), kind);
+        else if (short && !value.startsWith("--")) add(short[2] ? literalWord(short[2]) : rest[++i] ?? literalWord(""), kind);
+      }
+      break;
+    case "patch": {
+      // patch writes the files its diff names, relative to -d or the working directory.
+      /** @type {Word} */
+      let directory = literalWord(".");
+      /** @type {Word | null} */
+      let input = null;
+      /** @type {Word[]} */
+      const positionals = [];
+      /** @type {Word[]} */
+      const writes = [];
+      /** @param {string} option @param {Word} word */
+      const take = (option, word) => {
+        if (option === "o" || option === "r") writes.push(word);
+        else if (option === "d") directory = word;
+        else if (option === "i") input = word;
+      };
+      const long = { "--output": "o", "--reject-file": "r", "--directory": "d", "--input": "i" };
+      for (let i = 0; i < rest.length; i++) {
+        const value = rest[i].value;
+        if (value === "--") { positionals.push(...rest.slice(i + 1)); break; }
+        const named = Object.entries(long).find(([option]) => value === option || value.startsWith(`${option}=`));
+        if (named) {
+          if (value.includes("=")) take(named[1], optionValue(value));
+          else if (rest[i + 1]) take(named[1], rest[++i]);
+          continue;
+        }
+        if (/^--(?:prefix|suffix|fuzz|ifdef|strip|version-control|basename-prefix|debug|get|quoting-style|reject-format|read-only)$/u.test(value)) { i++; continue; }
+        if (value.startsWith("--") || value === "-") continue;
+        if (!value.startsWith("-")) { positionals.push(rest[i]); continue; }
+        // A cluster of short options (`-frAGENTS.md`, `-fo out`): the first that takes a value uses the rest or the next word.
+        for (let k = 1; k < value.length; k++) {
+          if (!"BDdFgioprVxYz".includes(value[k])) continue;
+          const attached = value.slice(k + 1);
+          if (attached) take(value[k], literalWord(attached));
+          else if (rest[i + 1]) take(value[k], rest[++i]);
+          break;
+        }
+      }
+      // The diff comes from -i, the second operand or stdin; the files it names are checked under the directory.
+      // Every operand after the first is read as a diff too, so an option value the guard misreads cannot hide it.
+      // patch changes to -d before it opens any file: relative operands, -i, -o and -r name paths there (stdin redirects
+      // stay relative to the shell). Writes are checked at both places.
+      /** @param {Word} word @returns {Word} */
+      const inside = (word) => directory.value === "." || isAbsolute(word.value) ? word
+        : { ...word, value: `${directory.value.replace(/\/+$/u, "")}/${word.value}`, literal: word.literal && directory.literal, glob: word.glob || directory.glob };
+      for (const word of [...writes, ...positionals]) {
+        add(word, "write");
+        if (inside(word) !== word) add(inside(word), "write");
+      }
+      const diffs = (input ? [input] : positionals.slice(1)).map(inside);
+      add(directory, "tree", { patches: diffs.length > 0 ? diffs.map((word) => diffOperand(word, stdin)) : [diffOperand(null, stdin)] });
+      break;
+    }
+    case "chmod": case "chown": case "chgrp": case "chflags": {
+      // The first operand is the mode, owner or flags (`-w` is a mode); --reference replaces it.
+      // Locking a parent directory makes the guard unreadable, so ancestors count ("delete").
+      const operands = rest.filter((word) => !(word.literal && (/^-[RfvhHLPcn]+$/u.test(word.value) || word.value === "--")));
+      const reference = operands.some((word) => word.value.startsWith("--reference"));
+      const recursive = rest.some((word) => word.literal && /^-[A-Za-z]*R/u.test(word.value));
+      operands.filter((word) => !word.value.startsWith("--")).slice(reference ? 0 : 1).forEach((word) => add(word, recursive ? "tree" : "delete"));
+      break;
+    }
+    case "mv": {
+      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]), { targetLetter: true, slashContents: false });
+      const backups = backupSuffixes(rest, name);
+      pairs.forEach(({ target, source }) => {
+        add(target, "write", { source });
+        for (const suffix of backups) add(backupWord(target, suffix), "write");
+      });
+      sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
+      break;
+    }
+    case "touch": case "truncate":
+      operandsOf(rest, new Set(["-t", "-d", "-r", "-s", "--reference", "--size", "--date"])).operands.forEach((word) => add(word, "write"));
+      break;
+    case "ex": case "vi": case "vim": case "nvim": case "ed": case "view": {
+      // Editor scripts (-c, --cmd, +cmd, a heredoc or piped keys) can write every file operand (`:w!` also under -R), any
+      // file a `:w` or `:e` command names and the -w/-W keystroke log, and run shell commands through `:!`.
+      /** @type {string[]} */
+      const scripts = [];
+      for (let i = 0; i < rest.length; i++) {
+        const word = rest[i];
+        const value = word.value;
+        if ((value === "-w" || value === "-W") && rest[i + 1]) { add(rest[++i], "write"); continue; }
+        const script = value === "-c" || value === "--cmd" ? rest[++i] ?? literalWord("")
+          : /^-c./u.test(value) ? { ...word, value: value.slice(2) } : value.startsWith("+") ? { ...word, value: value.slice(1) } : null;
+        if (!script) continue;
+        if (!script.literal) throw new Block("shell-dynamic-command");
+        scripts.push(script.value);
+      }
+      // Without a `-` operand (the buffer read from stdin), ed and ex mode (`ex`, `-e`, `-es`) read commands from stdin and
+      // a visual editor reads keys, which the guard does not follow.
+      /** @type {string[]} */
+      const commands = [];
+      if (name === "ed" || !rest.some((word) => word.literal && word.value === "-")) {
+        const source = stdinSource(stdin.redirects);
+        if (source?.heredoc?.literal === false) throw new Block("shell-dynamic-stdin");
+        const exMode = name === "ed" || name === "ex" || rest.some((word) => word.literal && /^-[A-Za-z]*[eE][A-Za-z]*$/u.test(word.value));
+        if (!exMode && (source?.heredoc || source?.op === "<<<")) {
+          throw new Block("shell-dynamic-stdin", "Keys typed into a visual editor from stdin cannot be inspected.");
+        }
+        programFromStdin(stdin.redirects, ctx, { stdinPiped: stdin.stdinPiped, lenient: true }, commands);
+      }
+      // The editor expands `~`, environment variables, `%`/`#` (current and alternate file), `<cfile>`-style names and
+      // wildcards in a file name; an expansion is unknown text, and after a `:cd` so is the base of a relative name.
+      const editor = {
+        moved: false,
+        /** @param {string} value */
+        write(value) {
+          if (value.includes("`")) throw new Block("shell-dynamic-command", "A backtick file name in an editor command runs a shell command.");
+          const text = value.replace(/^~(?=\/|$)/u, HOME).replace(/\$(?:\{\w+\}|\w+)|[%#][^/]*|<\w+>/gu, UNKNOWN);
+          const word = literalWord(editor.moved && !isAbsolute(text) && !text.startsWith(UNKNOWN) ? `${UNKNOWN}/${text}` : text);
+          if (/[*?[{]/u.test(text)) word.glob = true;
+          add(word, "write");
+        },
+      };
+      for (const script of scripts) editorScript(script, name === "ed", false, editor, ctx);
+      for (const script of commands) editorScript(script, name === "ed", true, editor, ctx);
+      operandsOf(rest, new Set(["-c", "--cmd", "-S", "-u", "-U", "-i", "-T", "-w", "-W", "-t", "-q"])).operands
+        .filter((word) => !word.value.startsWith("+")).forEach((word) => add(word, "write"));
+      break;
+    }
+    case "rm": case "unlink": case "rmdir": case "trash": case "srm": {
+      // trash moves whole directories; rm and srm reach a tree only with -r/-R.
+      const recursive = name === "trash" || ((name === "rm" || name === "srm") && rest.some((word) => word.literal && (/^-[A-Za-z]*[rR]/u.test(word.value) || word.value === "--recursive")));
+      operandsOf(rest, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
+      break;
+    }
+    case "sort": {
+      for (let i = 0; i < rest.length; i++) {
+        const value = rest[i].value;
+        if (value === "-o" || value === "--output") { if (rest[i + 1]) add(rest[i + 1], "write"); i++; }
+        else if (value.startsWith("--output=")) add(literalWord(value.slice(9)), "write");
+        else if (/^-[A-Za-z]*o./u.test(value) && rest[i].literal && !value.startsWith("--")) add(literalWord(value.slice(value.indexOf("o") + 1)), "write");
+      }
+      break;
+    }
+    case "dd":
+      rest.filter((word) => word.value.startsWith("of=")).forEach((word) => add({ ...word, value: word.value.slice(3) }, "write"));
+      break;
+    case "sed":
+      if (sed?.inPlace) {
+        sed.files.forEach((word) => {
+          add(word, "write");
+          // The backup is the file name plus the suffix, or the suffix with `*` replaced by the file's name.
+          for (const suffix of sed.suffixes) {
+            if (!suffix) continue;
+            add(backupWord(word, suffix), "write");
+          }
+        });
+      }
+      sed?.writes.forEach((word) => add(word, "write"));
+      break;
+    case "git": {
+      const git = parseGit(rest);
+      const sub = git.sub?.value;
+      const subArgs = rest.slice(git.subIndex + 1);
+      // `-n`/`--dry-run` only lists what git mv or git rm would do.
+      const optionEnd = subArgs.findIndex((word) => word.value === "--");
+      // The last of -n/--dry-run and --no-dry-run wins.
+      let preview = false;
+      if (sub === "mv" || sub === "rm") {
+        for (const word of subArgs.slice(0, optionEnd < 0 ? subArgs.length : optionEnd)) {
+          if (!word.literal) continue;
+          // Git accepts any unambiguous prefix (`--dry`, `--no-dry`).
+          if ((word.value.length >= 3 && "--dry-run".startsWith(word.value)) || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)) preview = true;
+          else if (word.value.length >= 6 && "--no-dry-run".startsWith(word.value)) preview = false;
+        }
+      }
+      if (sub === "mv" && !preview) {
+        const { sources, pairs } = copyTargets(subArgs, ctx, new Set(), { slashContents: false });
+        pairs.forEach(({ target, source }) => add(target, "write", { source }));
+        sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
+      }
+      if (sub === "rm" && !preview) {
+        const recursive = subArgs.some((word) => word.literal && /^-[A-Za-z]*r/u.test(word.value));
+        operandsOf(subArgs, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
+      }
+      if (sub === "apply" || sub === "am") {
+        const report = sub === "apply" && subArgs.some((word) => /^--(?:check|stat|numstat|summary)$/u.test(word.value)) && !subArgs.some((word) => word.value === "--apply");
+        /** @type {Word[]} */
+        const files = [];
+        let resume = false;
+        /** @type {Word} */
+        let root = literalWord(".");
+        for (let i = 0; i < subArgs.length; i++) {
+          const value = subArgs[i].value;
+          // --directory puts every patched path below that directory.
+          if (value === "--directory" && subArgs[i + 1]) { root = subArgs[++i]; continue; }
+          if (value.startsWith("--directory=")) { root = { ...subArgs[i], value: value.slice(12), raw: value.slice(12) }; continue; }
+          // --build-fake-ancestor writes an index file, even with --stat or --check.
+          if (value === "--build-fake-ancestor" && subArgs[i + 1]) { add(subArgs[++i], "write"); continue; }
+          if (value.startsWith("--build-fake-ancestor=")) { add({ ...subArgs[i], value: value.slice(22), raw: value.slice(22) }, "write"); continue; }
+          if (["--exclude", "--include", "-C", "--whitespace", "--patch-format", "--resolvemsg", "--exec"].includes(value)) i++;
+          else if (/^--(?:continue|resolved|skip|abort|quit|retry)$/u.test(value) || value === "-r") resume = true;
+          else if (!value.startsWith("-")) files.push(subArgs[i]);
+        }
+        // The names are checked under the working directory or --directory; a protected file name counts wherever it lands.
+        if (!report) add(root, "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
+      }
+      if (sub === "config") {
+        // A setting change (set, --add, --unset, sections, --edit) rewrites the --file it names, or the file GIT_CONFIG
+        // (GIT_CONFIG_GLOBAL with --global, GIT_CONFIG_SYSTEM with --system) names.
+        const subArgs = gitConfigArgs(rest.slice(git.subIndex + 1));
+        // Options are read before `--`, skipping the values of options that take one (`--file --list` names a file).
+        /** @type {string[]} */
+        const options = [];
+        /** @type {Word[]} */
+        const files = [];
+        /** @type {Word | undefined} */
+        let verb;
+        for (let i = 0; i < subArgs.length; i++) {
+          const value = subArgs[i].value;
+          if (value === "--") { verb ??= subArgs[i + 1]; break; }
+          if ((value === "-f" || value === "--file") && subArgs[i + 1]) { options.push(value); files.push(subArgs[++i]); }
+          else if (value.startsWith("--file=")) { options.push("--file"); files.push({ ...subArgs[i], value: value.slice(7), raw: value.slice(7) }); }
+          else if (/^-f./u.test(value)) { options.push("-f"); files.push({ ...subArgs[i], value: value.slice(2), raw: value.slice(2) }); }
+          else if (GIT_CONFIG_VALUE_OPTIONS.has(value)) { options.push(value); i++; }
+          else if (value.startsWith("-") && value.length > 1) options.push(value.split("=")[0]);
+          else verb ??= subArgs[i];
+        }
+        const reads = options.some((option) => /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|list)|-l)$/u.test(option));
+        const changes = !reads && (gitConfigAssignment(subArgs) !== null
+          || options.some((option) => /^(?:--(?:unset|unset-all|rename-section|remove-section|edit)|-e)$/u.test(option))
+          || (verb?.literal === true && ["set", "unset", "rename-section", "remove-section", "edit"].includes(verb.value)));
+        if (changes) files.forEach((word) => add(word, "write"));
+        const scoped = (/** @type {string} */ option) => options.includes(option);
+        const variable = files.length > 0 || scoped("--local") || scoped("--worktree") ? null
+          : scoped("--global") ? "GIT_CONFIG_GLOBAL" : scoped("--system") ? "GIT_CONFIG_SYSTEM" : "GIT_CONFIG";
+        if (changes && variable) {
+          // Every value the command gave the variable counts (a prefix sets it for one command only), and the environment's.
+          const values = [...(backupEnv.git.get(variable) ?? []), ...(process.env[variable] ? [literalWord(process.env[variable] ?? "")] : [])];
+          if (values.includes(null)) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: a git config file from ${variable} the guard cannot read`);
+          values.forEach((word) => { if (word) add(word, "write"); });
+        }
+      }
+      if (sub === "checkout") {
+        const pathspecs = checkoutPathspecs(subArgs);
+        if (pathspecs) add(literalWord("."), "tree", { pathspecs });
+      }
+      for (let i = 0; i < subArgs.length; i++) {
+        const value = subArgs[i].value;
+        if (value === "--output" && subArgs[i + 1]) add(subArgs[i + 1], "write");
+        else if (value.startsWith("--output=")) add({ ...subArgs[i], value: value.slice(9) }, "write");
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  return targets;
+}
+
+const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>", "<>"]);
+
+/** @param {Redirect[]} redirects @param {Context} ctx */
+function checkRedirects(redirects, ctx) {
+  for (const redirect of redirects) {
+    if (!redirect.target) continue;
+    if (WRITE_REDIRECTS.has(redirect.op)) checkTarget(redirect.target, "write", ctx);
+    if (redirect.op === ">&" && !/^(?:\d+|-)$/u.test(redirect.target.value)) checkTarget(redirect.target, "write", ctx);
+  }
+}
+
+/** @param {Word} word @param {Context} ctx */
+function evaluateSubs(word, ctx) {
+  for (const sub of word.subs) evaluateList(sub, { ...ctx });
+}
+
+/** @param {any} list @param {Context} ctx */
+function evaluateList(list, ctx) {
+  for (const pipeline of list.items) {
+    const before = ctx.cwd;
+    evaluatePipeline(pipeline, ctx);
+    // A background directory change stays in its subshell; one after && or || may not happen.
+    if (ctx.cwd !== before) ctx.cwd = pipeline.background ? before : pipeline.conditional ? null : ctx.cwd;
+  }
+}
+
+/** @param {any} node @param {Context} ctx */
+function effectiveName(node, ctx) {
+  if (node.type === "subshell") return "(";
+  if (node.type !== "simple" || node.words.length === 0) return "";
+  let args = node.words;
+  for (let guard = 0; guard < 8; guard++) {
+    const head = args[0];
+    if (!head || !head.literal || head.glob) return "?";
+    const name = commandName(head.value);
+    let next = null;
+    try { next = unwrapWrapper(name, args, ctx); } catch { return "?"; }
+    if (!next) return name;
+    args = next.args;
+  }
+  return "?";
+}
+
+/** @param {any} pipeline @param {Context} ctx */
+function evaluatePipeline(pipeline, ctx) {
+  checkDeadline();
+  if (pipeline.commands.length > MAX_PIPELINE_STAGES) throw new Block("guard-timeout", TOO_LARGE_REASON);
+  const names = pipeline.commands.map((/** @type {any} */ node) => effectiveName(node, ctx));
+  const joined = names.join("|");
+  for (const rule of pipelineRules) if (rule.regex.test(joined)) throw new Block(rule.id, rule.reason);
+  const piped = pipeline.commands.length > 1;
+  pipeline.commands.forEach((/** @type {any} */ node, /** @type {number} */ index) => {
+    const stage = piped ? { ...ctx } : ctx;
+    evaluateNode(node, stage, index > 0);
+    // zsh runs the last stage in this shell, bash in a subshell: a directory change there leaves it unknown.
+    if (piped && index === pipeline.commands.length - 1 && stage.cwd !== ctx.cwd) ctx.cwd = null;
+  });
+}
+
+/** @param {any} node @param {Context} ctx @param {boolean} stdinPiped */
+function evaluateNode(node, ctx, stdinPiped) {
+  if (node.type === "subshell") {
+    evaluateList(node.body, { ...ctx });
+    evaluateRedirectSubs(node.redirects, ctx);
+    checkRedirects(node.redirects, ctx);
+    return;
+  }
+  if (node.type === "data" || node.type === "case") {
+    node.words.forEach((/** @type {Word} */ word) => { if (node.type === "data") checkSubscriptCode(word.value); evaluateSubs(word, ctx); });
+    // Branches and loop bodies may not run: a directory change inside leaves the working directory unknown.
+    const inner = { ...ctx };
+    (node.items ?? []).forEach((/** @type {any} */ item) => evaluateList(item, inner));
+    if (inner.cwd !== ctx.cwd) ctx.cwd = null;
+    evaluateRedirectSubs(node.redirects, ctx);
+    checkRedirects(node.redirects, ctx);
+    return;
+  }
+  for (const word of [...node.assigns, ...node.words]) evaluateSubs(word, ctx);
+  for (const word of node.assigns) { checkSubscriptCode(word.value); checkExecVariable(word.name ?? "", word, ctx); }
+  evaluateRedirectSubs(node.redirects, ctx);
+  checkRedirects(node.redirects, ctx);
+  if (node.words.length === 0) return;
+  evaluateArgv(node.words, node.redirects, ctx, stdinPiped, false);
+}
+
+/** Environment variables whose value programs (git, less, bash) run as a command. */
+const EXEC_VARIABLES = new Set(["GIT_PAGER", "PAGER", "MANPAGER", "GIT_EDITOR", "EDITOR", "VISUAL", "GIT_SEQUENCE_EDITOR", "GIT_SSH", "GIT_SSH_COMMAND", "GIT_EXTERNAL_DIFF", "GIT_ASKPASS", "SSH_ASKPASS", "LESSOPEN", "LESSCLOSE", "BASH_ENV", "ENV", "PROMPT_COMMAND"]);
+
+/** @param {string} name @param {Word} word @param {Context} ctx */
+function checkExecVariable(name, word, ctx) {
+  checkSubscriptCode(word.value);
+  // `NAME+=value` (plain is false) appends to a value the guard may not know.
+  recordWriterVariable(name, word.plain === false ? null : word);
+  if (!EXEC_VARIABLES.has(name)) return;
+  if (!word.literal) throw new Block("shell-dynamic-command", `${name} names a program that will be executed; it must be literal.`);
+  // BASH_ENV and ENV name a startup file the shell sources, not command text.
+  if (name === "BASH_ENV" || name === "ENV") { checkShellStartupFile(word, ctx); return; }
+  if (word.value) evaluateShellText(word.value.replace(/^\|/u, ""), ctx);
+}
+
+/** Absolute, normalized forms of a path operand (lexical and symlink-resolved). @param {string} value @param {Context} ctx */
+function pathForms(value, ctx) {
+  const absolute = resolve(ctx.cwd ?? ctx.scope, value.replaceAll(UNKNOWN, "x"));
+  return [absolute, canonicalPath(absolute)];
+}
+
+/** @param {string} value @param {Context} ctx */
+function isDevicePath(value, ctx) {
+  return pathForms(value, ctx).some((path) => /^\/(?:dev|proc)(?:\/|$)/u.test(posix.normalize(path)));
+}
+
+/** A startup file a shell sources (BASH_ENV, ENV, --rcfile, --init-file): devices and process substitution feed code. @param {Word | undefined} word @param {Context} ctx */
+function checkShellStartupFile(word, ctx) {
+  if (!word) return;
+  if (word.procSubst || !word.literal) throw new Block("shell-dynamic-script");
+  if (word.value && isDevicePath(word.value, ctx)) throw new Block("shell-dynamic-script");
+}
+
+/** @param {Redirect[]} redirects @param {Context} ctx */
+function evaluateRedirectSubs(redirects, ctx) {
+  for (const redirect of redirects) {
+    if (redirect.target) evaluateSubs(redirect.target, ctx);
+    if (redirect.heredoc) for (const sub of redirect.heredoc.subs) evaluateList(sub, { ...ctx });
+  }
+}
+
+/** @param {string} text @param {Context} ctx */
+function evaluateShellText(text, ctx) {
+  for (const rule of rawRules) if (rule.regex.test(text)) throw new Block(rule.id, rule.reason);
+  const depth = ctx.depth + 1;
+  if (depth > maxDepth) throw new Block("shell-nesting-depth");
+  const list = parseScript(text, depth);
+  evaluateList(list, { ...ctx, depth });
+}
+
+/** @param {Redirect[]} redirects */
+function stdinSource(redirects) {
+  /** @type {Redirect | null} */
+  let source = null;
+  for (const redirect of redirects) {
+    if (redirect.fd && redirect.fd !== "0") continue;
+    if (redirect.heredoc || redirect.op === "<<<" || redirect.op === "<" || redirect.op === "<>") source = redirect;
+  }
+  return source;
+}
+
+/**
+ * @param {Word[]} args @param {Redirect[]} redirects @param {Context} ctx @param {boolean} stdinPiped
+ * @param {boolean} [lenient] shell named inside another command's arguments: only its own or piped stdin is inspected.
+ */
+function evaluateShell(args, redirects, ctx, stdinPiped, lenient = false) {
+  const rest = args.slice(1);
+  let i = 0;
+  let hasCommand = false;
+  let stdinMode = false;
+  while (i < rest.length) {
+    const word = rest[i];
+    const value = word.value;
+    if (!word.literal) break;
+    if (value === "--" || value === "-") { i++; break; }
+    if (value === "--rcfile" || value === "--init-file") { checkShellStartupFile(rest[i + 1], ctx); i += 2; continue; }
+    if (/^--(?:rcfile|init-file)=/u.test(value)) { checkShellStartupFile({ ...word, value: value.slice(value.indexOf("=") + 1) }, ctx); i++; continue; }
+    if (["-o", "+o", "-O", "+O"].includes(value)) { i += 2; continue; }
+    if (/^[-+][A-Za-z]+$/u.test(value)) {
+      if (value[0] === "-" && value.includes("c")) hasCommand = true;
+      if (value[0] === "-" && value.includes("s")) stdinMode = true;
+      i++;
+      continue;
+    }
+    if (value.startsWith("--")) { i++; continue; }
+    break;
+  }
+  const operand = rest[i];
+  if (hasCommand) {
+    if (!operand || !operand.literal) throw new Block("shell-dynamic-command");
+    evaluateShellText(operand.value, ctx);
+    return;
+  }
+  if (operand && !stdinMode && !isStdinDevice(operand, ctx)) {
+    // A script file operand: a literal heredoc or here-string still feeds the script's stdin, which it may execute.
+    const source = stdinSource(redirects);
+    if (source?.heredoc || source?.op === "<<<") evaluateShellStdin(redirects, ctx, stdinPiped);
+    return;
+  }
+  evaluateShellStdin(redirects, ctx, stdinPiped, lenient);
+}
+
+/**
+ * Whether a script operand makes the shell read code from standard input (or another inherited stream).
+ * Any path under /dev or /proc, after normalization and symlink resolution, counts as standard input.
+ * @param {Word | undefined} word @param {Context} ctx
+ */
+function isStdinDevice(word, ctx) {
+  if (!word) return false;
+  if (word.procSubst) throw new Block("shell-dynamic-script");
+  if (!word.literal || word.value === "-") return true;
+  for (const path of pathForms(word.value, ctx)) {
+    if (/^\/(?:dev\/fd|proc\/[^/]+\/fd)\/(?!0$)\d+$/u.test(posix.normalize(path))) throw new Block("shell-dynamic-script");
+  }
+  return isDevicePath(word.value, ctx);
+}
+
+/**
+ * Evaluate what a shell reads as its script from standard input. Without its own literal source the shell inherits
+ * stdin (a pipe, `exec 0<`, a redirected group or function), which the guard cannot see: blocked.
+ * @param {Redirect[]} redirects @param {Context} ctx @param {boolean} stdinPiped @param {boolean} [lenient]
+ */
+function evaluateShellStdin(redirects, ctx, stdinPiped, lenient = false) {
+  const source = stdinSource(redirects);
+  if (source?.heredoc) {
+    if (source.heredoc.literal === false) throw new Block("shell-dynamic-stdin");
+    evaluateShellText(source.heredoc.body, ctx);
+    return;
+  }
+  if (source?.op === "<<<") {
+    if (!source.target || !source.target.literal) throw new Block("shell-dynamic-stdin");
+    evaluateShellText(source.target.value, ctx);
+    return;
+  }
+  checkStdinFile(source, ctx, stdinPiped, lenient);
+}
+
+/**
+ * Standard input without a heredoc or here-string: a literal regular file is allowed; a device other than /dev/null, a
+ * dynamic target, or an inherited or piped stream is blocked.
+ * @param {Redirect | null} source @param {Context} ctx @param {boolean} stdinPiped @param {boolean} [lenient]
+ */
+function checkStdinFile(source, ctx, stdinPiped, lenient = false) {
+  if (source?.target) {
+    if (source.target.procSubst || !source.target.literal) throw new Block("shell-dynamic-script");
+    const value = source.target.value;
+    if (isDevicePath(value, ctx) && posix.normalize(resolve(ctx.cwd ?? ctx.scope, value)) !== "/dev/null") throw new Block("shell-dynamic-stdin");
+    return;
+  }
+  if (lenient && !stdinPiped) return;
+  throw new Block("shell-dynamic-stdin");
+}
+
+/** @param {Word[]} rest @param {Redirect[]} redirects */
+function patchInput(rest, redirects) {
+  const source = stdinSource(redirects);
+  if (source?.heredoc) return source.heredoc.body;
+  if (source?.op === "<<<" && source.target?.literal) return source.target.value;
+  const literal = rest.find((word) => word.literal && word.value.includes("*** Begin Patch"));
+  if (literal) return literal.value;
+  return null;
+}
+
+/**
+ * Runners that execute their remaining arguments (watch, ssh, flock, docker exec, pnpm exec, su -c, ...) cannot all be
+ * listed as wrappers. Evaluate any argument position that names a destructive-capable command or a shell, and any
+ * multi-word literal argument whose first token does, so anchored rules still see the nested command.
+ * @param {string} name @param {Word[]} rest @param {Redirect[]} redirects @param {Context} ctx @param {boolean} stdinPiped
+ */
+function scanNestedCommands(name, rest, redirects, ctx, stdinPiped) {
+  if (isSensitive(name) || SHELLS.has(name)) return;
+  for (let k = 0; k < rest.length; k++) {
+    const word = rest[k];
+    if (!word.literal) continue;
+    const nested = commandName(word.value);
+    if (isSensitive(nested) || SHELLS.has(nested) || nested === "eval") {
+      if (ctx.depth + 1 > maxDepth) throw new Block("shell-nesting-depth");
+      // The runner hands its own stdin (redirects, pipe) to the nested command.
+      evaluateArgv(rest.slice(k), redirects, { ...ctx, depth: ctx.depth + 1 }, stdinPiped, true, true);
+      return;
+    }
+    // A literal argument that is itself shell code (`tmux new -d 'true; …'`, `parallel ::: '…'`); interpreter programs are
+    // scanned by scanInterpreterCode instead.
+    if (!/\s/u.test(word.value) || interpreterFamily(name)) continue;
+    const leaders = commandPositions(word.value);
+    const executes = leaders.some((leader) => isSensitive(leader) || SHELLS.has(leader) || leader === "eval");
+    if (!executes && !leaders.some((leader) => LEADING_RUNNERS.has(leader))) continue;
+    try { evaluateShellText(word.value, ctx); }
+    catch (error) { if (!(error instanceof ParseError) || executes) throw error; }
+  }
+}
+
+/** Wrappers and runners whose arguments form the command they run. */
+const LEADING_RUNNERS = new Set(["sudo", "doas", "arch", "busybox", "env", "nohup", "builtin", "command", "exec", "nice", "time", "stdbuf", "caffeinate", "timeout", "xargs", "ssh", "watch", "su", "runuser", "script", "flock", "sg", "find", "parallel", "tmux", "screen", "source", "."]);
+
+/**
+ * Command names at command positions of shell-like text: the start and after `;` `&` `|` newline, backtick or `$(`, past
+ * `(` `{` `!`, keywords and assignments. A `(` after a word (`f(x)`, prose) is not a command position.
+ * @param {string} text
+ */
+function commandPositions(text) {
+  const re = /(?:^|[;&|\n`]|\$\()(?:\s*(?:[({!]|(?:if|then|else|elif|do|while|until|time)(?=\s)))*\s*(?:[A-Za-z_][A-Za-z0-9_]*=[^\s;&|<>(){}`]*\s+)*([^\s;&|<>(){}`]+)/gu;
+  return [...text.matchAll(re)].map((match) => commandName(match[1].replace(/['"\\]/gu, "")));
+}
+
+/** Inline-program options per interpreter family; awk takes its program as the first operand. */
+const INLINE_CODE = {
+  python: /^-[A-Za-z]*c$/u, node: /^(?:-[A-Za-z]*[ep]|--eval|--print)$/u, bun: /^(?:-[A-Za-z]*[ep]|--eval|--print)$/u, deno: /^eval$/u,
+  perl: /^-[A-Za-z0-9]*[eE]$/u, ruby: /^-[A-Za-z0-9]*e$/u, osascript: /^-e$/u, php: /^-[rBRE]$/u, rscript: /^-e$/u, lua: /^-e$/u,
+};
+
+/** Options whose value is the next word, per family, to find the script operand. */
+const INTERPRETER_VALUE_OPTIONS = {
+  python: ["-W", "-X", "-Q"], node: ["-r", "--require", "--import", "--loader", "--experimental-loader", "-C", "--conditions", "--title"],
+  bun: ["-r", "--preload", "--cwd", "--config", "-c"], perl: ["-I"], ruby: ["-I", "-r", "-C", "-E", "-F"], php: ["-c", "-d", "-z"],
+  osascript: ["-l", "-s"], lua: ["-l"],
+};
+
+/** Options after which an interpreter prints information, runs a module or checks syntax instead of reading a program. */
+const INTERPRETER_NO_PROGRAM = /^(?:-V|-VV|-v|--version|-h|--help|-\?|--v8-options)$/u;
+/** @type {Record<string, RegExp>} */
+const FAMILY_NO_PROGRAM = { python: /^-m/u, php: /^-[mil]$/u };
+
+/** Structural blocks that ordinary program strings trip without running anything; destructive rules still apply. */
+const CODE_STRING_IGNORED = new Set(["dynamic-command-name", "shell-eval", "shell-ansi-c-quoting", "shell-indirect-expansion", "shell-glob-execution", "read-command-execution", "shell-arithmetic-injection"]);
+
+/** @param {string} name @returns {keyof typeof INLINE_CODE | "awk" | null} */
+function interpreterFamily(name) {
+  if (/^python[0-9.]*$/u.test(name) || name === "pypy3") return "python";
+  if (name === "nodejs") return "node";
+  if (/^[gmn]?awk$/u.test(name)) return "awk";
+  return Object.hasOwn(INLINE_CODE, name) ? /** @type {keyof typeof INLINE_CODE} */ (name) : null;
+}
+
+/**
+ * Program texts an interpreter runs: its inline options, else a heredoc or here-string on stdin. A program the interpreter
+ * reads from stdin without its own literal source (a pipe, an inherited stream, a device) cannot be seen and is blocked
+ * like a shell's; `-m`, version and help options, xargs-appended operands and script files read no program from stdin.
+ * @param {keyof typeof INLINE_CODE | "awk"} family @param {Word[]} rest @param {Redirect[]} redirects @param {Context} ctx
+ * @param {{ stdinPiped: boolean, lenient: boolean, appended: boolean }} stdin
+ */
+function interpreterCode(family, rest, redirects, ctx, stdin) {
+  /** @type {string[]} */
+  const codes = [];
+  if (family === "awk") {
+    if (awkIsPureRead(rest)) return codes;
+    for (let i = 0; i < rest.length; i++) {
+      const value = rest[i].value;
+      const file = value === "-f" || value === "--file" ? rest[i + 1] : /^-f./u.test(value) ? { ...rest[i], value: value.slice(2) } : value.startsWith("--file=") ? { ...rest[i], value: value.slice(7) } : null;
+      if (file !== null) {
+        // `-f -` and `-f /dev/stdin` read the program from standard input.
+        if (file?.procSubst) throw new Block("shell-dynamic-script");
+        if (file?.literal && (file.value === "-" || isStdinDevice(file, ctx))) programFromStdin(redirects, ctx, stdin, codes);
+        return codes;
+      }
+      if (value === "-F" || value === "-v") { i++; continue; }
+      if (value.startsWith("-") && value.length > 1) continue;
+      codes.push(value);
+      break;
+    }
+    return codes;
+  }
+  for (let i = 0; i < rest.length; i++) {
+    const value = rest[i].value;
+    if (!rest[i].literal) continue;
+    if ((family === "node" || family === "bun") && /^--(?:eval|print)=/u.test(value)) codes.push(value.slice(value.indexOf("=") + 1));
+    else if (INLINE_CODE[family].test(value) && rest[i + 1]) codes.push(rest[++i].value);
+  }
+  if (codes.length > 0) return codes;
+  const operand = interpreterOperand(family, rest);
+  if (operand === null) return codes;
+  if (family === "deno" || family === "rscript" || stdin.appended || (operand && !isStdinDevice(operand, ctx))) {
+    // A script file operand: a heredoc or here-string still feeds the script's stdin, which it may run.
+    const source = stdinSource(redirects);
+    if (source?.heredoc) codes.push(source.heredoc.body);
+    else if (source?.op === "<<<" && source.target) codes.push(source.target.value);
+    return codes;
+  }
+  programFromStdin(redirects, ctx, stdin, codes);
+  return codes;
+}
+
+/**
+ * The first operand (script path, `-`) after an interpreter's options; undefined without one, null when an option means no
+ * program is read. A dynamic operand counts as a script path.
+ * @param {keyof typeof INLINE_CODE} family @param {Word[]} rest
+ * @returns {Word | undefined | null}
+ */
+function interpreterOperand(family, rest) {
+  const withValue = INTERPRETER_VALUE_OPTIONS[/** @type {keyof typeof INTERPRETER_VALUE_OPTIONS} */ (family)] ?? [];
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word.procSubst) throw new Block("shell-dynamic-script");
+    if (!word.literal) return word.value === UNKNOWN ? literalWord("script") : literalWord(word.value.replaceAll(UNKNOWN, "x"));
+    const value = word.value;
+    if (value === "--") return rest[i + 1];
+    if (value === "-" || !value.startsWith("-")) return word;
+    if ((INTERPRETER_NO_PROGRAM.test(value) && !(family === "python" && value === "-v")) || FAMILY_NO_PROGRAM[family]?.test(value)) return null;
+    if (withValue.includes(value)) i++;
+  }
+  return undefined;
+}
+
+/** @param {Redirect[]} redirects @param {Context} ctx @param {{ stdinPiped: boolean, lenient: boolean }} stdin @param {string[]} codes */
+function programFromStdin(redirects, ctx, stdin, codes) {
+  const source = stdinSource(redirects);
+  if (source?.heredoc) { codes.push(source.heredoc.body); return; }
+  if (source?.op === "<<<") {
+    if (!source.target || !source.target.literal) throw new Block("shell-dynamic-stdin");
+    codes.push(source.target.value);
+    return;
+  }
+  checkStdinFile(source, ctx, stdin.stdinPiped, stdin.lenient);
+}
+
+/**
+ * String literals in program text, alone and joined where the program concatenates them (`+`, adjacency) or lists
+ * them as argv (`,`, `[`), so `'r' + 'm -rf x'` and `['git', 'reset', '--hard']` read as the command they build.
+ * @param {string} code
+ */
+function codeStrings(code) {
+  const found = [...code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/gu)].map((match) => ({
+    text: (match[1] ?? match[2] ?? match[3]).replace(/\\(.)/gu, "$1"),
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
+  const strings = found.map((item) => item.text);
+  /** Strings not joined with a neighbor: a lone "sh" is a shell started without arguments. @type {string[]} */
+  const lone = [];
+  let group = found[0]?.text ?? "";
+  let size = found.length > 0 ? 1 : 0;
+  for (let k = 1; k < found.length; k++) {
+    const between = code.slice(found[k - 1].end, found[k].start);
+    if (/^\s*\+?\s*$/u.test(between)) group += found[k].text;
+    else if (/^\s*,\s*\[?\s*$/u.test(between)) group += ` ${found[k].text}`;
+    else { strings.push(group); if (size === 1) lone.push(group); group = found[k].text; size = 0; }
+    size++;
+  }
+  strings.push(group);
+  if (size === 1) lone.push(group);
+  return { strings, lone };
+}
+
+/** Program text that starts processes; with it, a lone shell-name string runs a shell reading the program's stdin. */
+const PROCESS_API = /\b(?:system|exec\w*|spawn\w*|popen\w*|Popen|run|call|check_call|check_output|getoutput|getstatusoutput|qx|shell)\b|`|%x/u;
+
+/**
+ * Interpreters hand strings to a shell (os.system, execSync, system(), do shell script, qx{}, %x()). Evaluate each string
+ * literal of an inline or stdin program, and each code fragment between delimiters (newline ; quotes brackets) for quote
+ * forms the literal scan does not know, as shell text with interpolations (`${x}`, `$x`, `{x}`, `%s`) as placeholders.
+ * @param {string} name @param {Word[]} rest @param {Redirect[]} redirects @param {Context} ctx
+ * @param {{ stdinPiped: boolean, lenient: boolean, appended: boolean }} stdin
+ */
+function scanInterpreterCode(name, rest, redirects, ctx, stdin) {
+  const family = interpreterFamily(name);
+  if (!family) return;
+  for (const code of interpreterCode(family, rest, redirects, ctx, stdin)) {
+    const plain = code.replaceAll(UNKNOWN, "x");
+    const { strings, lone } = codeStrings(plain);
+    if (PROCESS_API.test(plain) && lone.some((text) => SHELLS.has(commandName(text.trim())))) {
+      throw new Block("shell-dynamic-stdin", "The program starts a shell without a command; the shell reads the program's standard input, which cannot be inspected.");
+    }
+    for (const text of new Set([...strings, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
+      checkDeadline();
+      if (!/\S\s+\S/u.test(text)) continue;
+      const shellText = text.replace(/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_.]*\}|%[sdr]/gu, "x");
+      try { evaluateShellText(shellText, { ...ctx, codeString: true }); }
+      catch (error) {
+        if (error instanceof ParseError) continue;
+        if (error instanceof Block && CODE_STRING_IGNORED.has(error.ruleId)) continue;
+        throw error;
+      }
+    }
+  }
+}
+
+/**
+ * Evaluate words a command runner joins into one command string for a shell. Parse errors are ignored because the
+ * runner, not this shell, interprets the text; dynamic words cannot be inspected and are blocked.
+ * @param {Word[]} words @param {Context} ctx
+ */
+function evaluateRunnerText(words, ctx) {
+  if (words.length === 0) return;
+  if (words.some((word) => !word.literal)) throw new Block("shell-dynamic-command", "A command runner received a command string that is not literal.");
+  evaluateRunnerString(words.map((word) => word.value).join(" "), ctx);
+}
+
+/** @param {string} text @param {Context} ctx */
+function evaluateRunnerString(text, ctx) {
+  try { evaluateShellText(text, ctx); }
+  catch (error) { if (!(error instanceof ParseError)) throw error; }
+}
+
+/** Value of option `-x value`, `-xvalue` or `--long value` / `--long=value` at index i, or undefined. @param {Word[]} rest @param {number} i @param {string[]} short @param {string[]} long */
+function runnerOptionValue(rest, i, short, long) {
+  const value = rest[i].value;
+  for (const option of long) {
+    if (value === option) return rest[i + 1] ?? literalWord("");
+    if (value.startsWith(`${option}=`)) return { ...rest[i], value: value.slice(option.length + 1) };
+  }
+  for (const option of short) {
+    if (value === option) return rest[i + 1] ?? literalWord("");
+    if (value.startsWith(option) && /^-[A-Za-z]$/u.test(option) && value.length > 2) return { ...rest[i], value: value.slice(2) };
+  }
+  return undefined;
+}
+
+const SSH_OPTIONS_WITH_VALUE = new Set(["-B", "-b", "-c", "-D", "-E", "-e", "-F", "-I", "-i", "-J", "-L", "-l", "-m", "-O", "-o", "-P", "-p", "-Q", "-R", "-S", "-W", "-w"]);
+
+/**
+ * Command runners that execute a literal argument as shell text (ssh remote words, watch, su/runuser/script/flock -c,
+ * mapfile/readarray -C). Only these runners treat a whole argument as code; other commands' arguments stay data.
+ * @param {string} name @param {Word[]} rest @param {Context} ctx
+ */
+function evaluateRunner(name, rest, ctx) {
+  switch (name) {
+    case "ssh": {
+      let i = 0;
+      while (i < rest.length) {
+        const value = rest[i].value;
+        if (value === "--") { i++; break; }
+        if (!value.startsWith("-") || value === "-") break;
+        if (value === "-o" || /^-o./u.test(value)) {
+          const option = value === "-o" ? rest[i + 1] : { ...rest[i], value: value.slice(2) };
+          if (option && /^\s*(?:proxycommand|localcommand|remotecommand|knownhostscommand)\s*[= ]/iu.test(option.value)) {
+            if (!option.literal) throw new Block("shell-dynamic-command");
+            evaluateRunnerString(option.value.replace(/^\s*[A-Za-z]+\s*[= ]\s*/u, ""), ctx);
+          }
+        }
+        i += SSH_OPTIONS_WITH_VALUE.has(value) ? 2 : 1;
+      }
+      evaluateRunnerText(rest.slice(i + 1), ctx);
+      return;
+    }
+    case "watch": {
+      let i = 0;
+      while (i < rest.length) {
+        const value = rest[i].value;
+        if (value === "--") { i++; break; }
+        if (!value.startsWith("-") || value === "-") break;
+        i += value === "-n" || value === "--interval" ? 2 : 1;
+      }
+      evaluateRunnerText(rest.slice(i), ctx);
+      return;
+    }
+    case "su": case "runuser": case "script": case "flock": case "sg": {
+      for (let i = 0; i < rest.length; i++) {
+        const code = runnerOptionValue(rest, i, ["-c"], ["--command", "--session-command"]);
+        if (code) evaluateRunnerText([code], ctx);
+      }
+      return;
+    }
+    case "mapfile": case "readarray": {
+      for (let i = 0; i < rest.length; i++) {
+        const code = runnerOptionValue(rest, i, ["-C"], []);
+        if (code) evaluateRunnerText([code], ctx);
+      }
+      return;
+    }
+    default:
+  }
+}
+
+/** git config's long options; git accepts any unambiguous prefix of one (`--fil` for `--file`). */
+const GIT_CONFIG_OPTIONS = ["--global", "--system", "--local", "--worktree", "--file", "--blob", "--get", "--get-all", "--get-regexp",
+  "--get-urlmatch", "--replace-all", "--add", "--unset", "--unset-all", "--rename-section", "--remove-section", "--list", "--fixed-value",
+  "--edit", "--get-color", "--get-colorbool", "--type", "--no-type", "--bool", "--int", "--bool-or-int", "--path", "--expiry-date", "--null",
+  "--name-only", "--includes", "--no-includes", "--show-origin", "--show-scope", "--default", "--comment", "--value", "--all", "--regexp",
+  "--url", "--append", "--show-names"];
+
+/** git config options whose value is the next word. */
+const GIT_CONFIG_VALUE_OPTIONS = new Set(["-f", "--file", "--blob", "--type", "--default", "--comment", "--value"]);
+
+/** git config arguments with abbreviated long options spelled out. @param {Word[]} subArgs @returns {Word[]} */
+function gitConfigArgs(subArgs) {
+  const end = subArgs.findIndex((word) => word.value === "--");
+  return subArgs.map((word, i) => {
+    if ((end >= 0 && i >= end) || !word.literal || !word.value.startsWith("--") || word.value === "--") return word;
+    const at = word.value.indexOf("=");
+    const option = at < 0 ? word.value : word.value.slice(0, at);
+    if (GIT_CONFIG_OPTIONS.includes(option)) return word;
+    const matches = GIT_CONFIG_OPTIONS.filter((candidate) => candidate.startsWith(option));
+    if (matches.length !== 1) return word;
+    const value = `${matches[0]}${at < 0 ? "" : word.value.slice(at)}`;
+    return { ...word, value, raw: value };
+  });
+}
+
+/**
+ * `git config [scope options] [set] <key> <value>` stores a setting that later git runs execute (aliases, pagers,
+ * editors, helpers). Returns the stored key=value word, or null when the invocation does not set a value.
+ * @param {Word[]} subArgs
+ * @returns {Word | null}
+ */
+function gitConfigAssignment(subArgs) {
+  subArgs = gitConfigArgs(subArgs);
+  const withValue = GIT_CONFIG_VALUE_OPTIONS;
+  const reading = /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|unset|unset-all|list|edit|rename-section|remove-section|show-origin|show-scope)|-l|-e)$/u;
+  /** @type {Word[]} */
+  const positional = [];
+  for (let i = 0; i < subArgs.length; i++) {
+    const word = subArgs[i];
+    const value = word.value;
+    if (value === "--") { positional.push(...subArgs.slice(i + 1)); break; }
+    if (withValue.has(value)) { i++; continue; }
+    if (reading.test(value)) return null;
+    if (value.startsWith("-") && value.length > 1) continue;
+    positional.push(word);
+  }
+  if (positional[0]?.literal && positional[0].value === "set") positional.shift();
+  else if (positional[0]?.literal && ["get", "unset", "list", "edit", "rename-section", "remove-section"].includes(positional[0].value)) return null;
+  const [key, value] = positional;
+  if (!key || !value) return null;
+  return { ...key, value: `${key.value}=${value.value}`, literal: key.literal && value.literal };
+}
+
+/**
+ * @param {Word[]} argv @param {Redirect[]} redirects @param {Context} ctx @param {boolean} stdinPiped @param {boolean} appended
+ * @param {boolean} [nested] named inside another command's arguments (runner fallback)
+ */
+function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false) {
+  checkDeadline();
+  let args = argv;
+  let viaXargs = false;
+  /** @type {string | null} */
+  let replace = null;
+  for (let guard = 0; ; guard++) {
+    const head = args[0];
+    if (!head) return;
+    if (!head.literal || head.glob) throw new Block("dynamic-command-name");
+    if (guard > 8) throw new Block("shell-nesting-depth");
+    // An alias or hashed name defined earlier in this command line runs what it stands for.
+    const aliased = ctx.aliases?.get(commandName(head.value));
+    if (aliased === null) throw new Block("dynamic-command-name");
+    if (aliased) { args = [...aliased, ...args.slice(1)]; continue; }
+    // xargs, find -exec and parallel fill in arguments at run time, so no target this command or its nested commands write is fully known.
+    if (["xargs", "find", "parallel"].includes(commandName(head.value))) ctx = { ...ctx, substituted: true };
+    const next = unwrapWrapper(commandName(head.value), args, ctx);
+    if (!next) break;
+    args = next.args;
+    if (next.appended) { appended = true; viaXargs = true; replace = next.replace ?? null; }
+    // `env -C dir` and `sudo -D dir` run the command in that directory.
+    if (next.chdir) { cwdMoved = true; ctx = { ...ctx, cwd: chdirTarget(next.chdir, ctx) }; }
+  }
+  // git-core executables (`.../git-core/git-reset`) are git subcommands.
+  const gitCore = /^git-([a-z][a-z0-9-]*)$/u.exec(commandName(args[0].value));
+  if (gitCore) args = [{ ...args[0], value: "git" }, { ...args[0], value: gitCore[1], raw: gitCore[1] }, ...args.slice(1)];
+  const name = commandName(args[0].value);
+  const rest = name === "git" ? expandGitOptions(args.slice(1)) : args.slice(1);
+
+  if (viaXargs) {
+    // xargs builds arguments from standard input, which the guard cannot see.
+    if (SHELLS.has(name) || name === "eval" || name === "source" || name === ".") {
+      throw new Block("shell-dynamic-command", "xargs passes standard input to a shell or eval; the command text cannot be inspected.");
+    }
+  }
+
+  if (name === "eval") throw new Block("shell-eval");
+  if (SHELLS.has(name)) { evaluateShell(args, redirects, ctx, stdinPiped, nested); return; }
+  if (name === "source" || name === ".") {
+    if (isStdinDevice(rest[0], ctx)) evaluateShellStdin(redirects, ctx, stdinPiped);
+    else if (rest[0]) {
+      const source = stdinSource(redirects);
+      if (source?.heredoc || source?.op === "<<<") evaluateShellStdin(redirects, ctx, stdinPiped);
+    }
+    return;
+  }
+  evaluateRunner(name, rest, ctx);
+  if (NAME_BUILTINS.has(name)) {
+    for (const word of rest) checkSubscriptCode(word.value);
+    // `export NAME=value` sets a writer variable; `read NAME`, `printf -v NAME` (`-vNAME`), `let NAME=…` or a built
+    // assignment sets one the guard cannot read. Format and data arguments are text.
+    const declares = ["export", "declare", "typeset", "local", "readonly", "integer", "float"].includes(name);
+    const unreadable = (/** @type {string} */ named) => { if (WRITER_VARIABLES.has(named)) recordWriterVariable(named, null); };
+    // A name the guard cannot read (`printf -v "$slot"`) may be any of them.
+    const anyUnreadable = () => { for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null); };
+    const named = (/** @type {Word | undefined} */ word) => { if (word && !word.literal) anyUnreadable(); else unreadable(word?.value ?? ""); };
+    for (let k = 0; k < rest.length; k++) {
+      const word = rest[k];
+      const assignment = /^([A-Za-z_][A-Za-z0-9_]*)(\+?)=/u.exec(word.value);
+      if (declares) {
+        // `NAME+=value` appends to a value the guard may not know; `declare -n ref=NAME` makes later `ref=` assign NAME.
+        if (assignment && word.literal && !assignment[2] && !WRITER_VARIABLES.has(word.value.slice(assignment[0].length))) {
+          recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
+        } else if (assignment && word.literal) {
+          unreadable(assignment[1]);
+          unreadable(word.value.slice(assignment[0].length));
+        } else if (!word.literal && word.value.includes("=")) anyUnreadable();
+      } else if (name === "printf" || name === "print") {
+        // Options end at `--` or the format; later words are data.
+        if (word.value === "--" || !word.value.startsWith("-")) break;
+        if (word.value === "-v") named(rest[++k]);
+        else if (word.value.startsWith("-v")) named({ ...word, value: word.value.slice(2) });
+      } else if (name === "let") {
+        if (assignment) unreadable(assignment[1]);
+      } else if (["read", "mapfile", "readarray", "vared", "getopts"].includes(name)) named(word);
+    }
+    const source = name === "read" || name === "mapfile" || name === "readarray" ? stdinSource(redirects) : null;
+    if (source?.heredoc) checkSubscriptCode(source.heredoc.body);
+    else if (source?.op === "<<<" && source.target) checkSubscriptCode(source.target.value);
+  }
+  if (name === "alias") {
+    for (const word of rest) {
+      const index = word.value.indexOf("=");
+      if (index < 0) continue;
+      if (!word.literal) throw new Block("shell-dynamic-command");
+      evaluateShellText(word.value.slice(index + 1), ctx);
+      defineAlias(ctx, word.value.slice(0, index), aliasWords(word.value.slice(index + 1), ctx));
+    }
+    return;
+  }
+  if (name === "hash") {
+    // bash `hash -p path name` and zsh `hash name=path` make name run that path.
+    const p = rest.findIndex((word) => word.literal && word.value === "-p");
+    if (p >= 0 && rest[p + 2]) {
+      if (!rest[p + 2].literal) throw new Block("dynamic-command-name");
+      defineAlias(ctx, rest[p + 2].value, rest[p + 1].literal ? [rest[p + 1]] : null);
+    }
+    for (const word of rest) {
+      const index = word.value.indexOf("=");
+      if (index <= 0) continue;
+      if (!word.literal) throw new Block("dynamic-command-name");
+      defineAlias(ctx, word.value.slice(0, index), [literalWord(word.value.slice(index + 1))]);
+    }
+    return;
+  }
+  if (name === "trap") {
+    const code = rest[0];
+    if (code && code.value !== "-" && !/^-[lp]$/u.test(code.value)) {
+      if (!code.literal) throw new Block("shell-dynamic-command");
+      evaluateShellText(code.value, ctx);
+    }
+    return;
+  }
+  if (name === "apply_patch" || name === "applypatch") {
+    const patch = patchInput(rest, redirects);
+    if (patch === null) throw new Block("malformed-payload", "apply_patch input could not be inspected; blocked closed.");
+    checkPatch(patch, ctx);
+    return;
+  }
+  if (name === "find") {
+    for (let i = 0; i < rest.length; i++) {
+      if (!["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) continue;
+      const end = execEnd(rest, i);
+      // -execdir and -okdir run in each match's directory, which the guard cannot know.
+      const dir = rest[i].value.endsWith("dir");
+      // `{}` stands for each selected file: unknown text (so `{}/hooks.json` still counts) and every protected file the action
+      // selects (a protected name when the selection is unknown or too large) are each checked in its place, so a writer or
+      // deleter there blocks while a reader stays allowed.
+      const nested = rest.slice(i + 1, end);
+      if (nested[0]?.value.includes("{}")) throw new Block("dynamic-command-name");
+      let variants = [nested];
+      if (nested.some((word) => word.value.includes("{}"))) {
+        const selection = findSelection(rest, ctx, i);
+        const files = [...new Set([...selection.guard, ...selection.docs.map(({ file }) => file)])];
+        const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : [])];
+        variants = fills.map((fill) => nested.map((word) => word.value.includes("{}")
+          ? literalWord(word.value.replaceAll("{}", dir && fill !== UNKNOWN ? `./${basename(fill)}` : fill)) : word));
+        // A word that adds text to `{}` (`{}.json`, `{}/hooks.json`) builds a new path from each file find visits: every file
+        // the action selects is walked (within the docs walk bounds), and each one whose built path is protected is checked in
+        // place of `{}`. An unknown starting point or a larger tree fails closed.
+        if (!dir && nested.some((word) => word.value.includes("{}") && word.value !== "{}")) {
+          const unknownBuild = () => new Block("docs-config-write", `${structural["docs-config-write"]} Target: a path built from {} that the guard cannot list`);
+          // Whether the command writes a word built from `{}` (`cp x {}.json`, `sort -o {}.json`), read from its targets.
+          const marker = "\u0001";
+          let probe = nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", marker)) : word);
+          let moved = false;
+          for (let unwrapped; probe.length > 0 && (unwrapped = unwrapWrapper(commandName(probe[0].value), probe, ctx));) {
+            probe = unwrapped.args;
+            if (unwrapped.chdir) moved = true;
+          }
+          const probeName = probe.length > 0 ? commandName(probe[0].value) : "", probeRest = probe.slice(1);
+          // Readers and commands whose written files the guard reads from their words count only when a target is built from
+          // `{}`; any other program (or one moved to another directory) may write it.
+          // A program whose targets the guard does not read is checked here directly: evaluating it again would not block.
+          const blind = moved || probe.length === 0 || !(readOnlyCommands.has(probeName) || TARGETED_COMMANDS.has(probeName));
+          const writes = blind
+            || commandTargets(probeName, probeRest, ctx, probeName === "sed" ? analyzeSed(probeRest) : null, { redirects: [], stdinPiped: false }).some(({ word }) => word.value.includes(marker));
+          const parsed = findRoots(rest);
+          if (writes && (selection.unknown !== null || parsed === null)) throw unknownBuild();
+          if (writes && parsed !== null && selection.unknown === null) {
+          const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+          const built = nested.filter((word) => word.value.includes("{}") && word.value !== "{}");
+          for (const root of parsed.roots) {
+            const paths = operandPaths(root, ctx, true);
+            if (paths === null) { if (writes) throw unknownBuild(); continue; }
+            for (const path of paths) {
+              // find passes each file as its starting point's text followed by the path below it (`hooks`, `dir/x`).
+              const start = root.glob ? (isAbsolute(root.value) ? path : relative(ctx.cwd ?? ctx.scope, path) || ".") : root.value;
+              /** @type {{ path: string, shown: string }[]} */
+              const visited = [{ path, shown: start }];
+              /** @type {string[]} */
+              const all = [];
+              let directory = false;
+              try { directory = statSync(path).isDirectory(); } catch { /* missing: only the starting point */ }
+              if (directory && docsInside(path, parsed.follow, null, all) === null) { if (writes) throw unknownBuild(); continue; }
+              visited.push(...all.map((rel) => ({ path: join(path, rel), shown: start.endsWith("/") ? `${start}${rel}` : `${start}/${rel}` })));
+              for (const { path: file, shown } of visited) {
+                if (!selection.selected(file)) continue;
+                const reaches = built.some((word) => {
+                  const absolute = resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", shown));
+                  return docsName(basename(absolute)) || docsName(basename(canonicalPath(absolute))) || protectedMatch(absolute, "write", targets) !== null;
+                });
+                if (!reaches) continue;
+                if (blind) {
+                  const shownPath = built.find((word) => word.value.includes("{}"))?.value.replaceAll("{}", shown) ?? shown;
+                  const guarded = built.some((word) => protectedMatch(resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", shown)), "write", targets) !== null);
+                  throw new Block(guarded ? "guard-config-write" : "docs-config-write", `${structural[guarded ? "guard-config-write" : "docs-config-write"]} Target: ${shownPath} (built from {} for a program the guard cannot read)`);
+                }
+                if (variants.length > FIND_FILLS) throw unknownBuild();
+                variants.push(nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", shown)) : word));
+              }
+            }
+          }
+          }
+        }
+      }
+      for (const argv of variants) evaluateArgv(argv, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
+      i = end;
+    }
+    if (findActionIndex(rest, "-delete") >= 0) checkFindDelete(rest, ctx);
+  }
+  if (name === "rg" && rest.some((word) => /^--pre(?:=|$)/u.test(word.value))) throw new Block("read-command-execution");
+  if (name === "git") {
+    const git = parseGit(rest);
+    const subArgs = rest.slice(git.subIndex + 1);
+    if (git.sub?.value === "grep" && subArgs.some((word) => /^-O|^--open-files-in-pager(?:=|$)/u.test(word.value))) throw new Block("read-command-execution");
+    evaluateGitConfigs(git.configs, subArgs, ctx);
+    if (git.sub?.literal && git.sub.value === "config") {
+      const stored = gitConfigAssignment(subArgs);
+      if (stored) evaluateGitConfigs([stored], [], ctx);
+    }
+  }
+
+  const sed = name === "sed" ? analyzeSed(rest) : null;
+  if (sed?.exec) throw new Block("read-command-execution", "sed e commands execute arbitrary shell commands and are blocked.");
+
+  let pureRead = readOnlyCommands.has(name);
+  if (name === "sed") pureRead = Boolean(sed && !sed.inPlace && sed.writes.length === 0 && !sed.uncertain);
+  if (name === "awk") pureRead = awkIsPureRead(rest);
+
+  if (isSensitive(name)) {
+    if (name === "git") {
+      const git = parseGit(rest);
+      if (!git.readOnly && rest.some((word) => !word.literal)) throw new Block("sensitive-dynamic-argument");
+    } else if (rest.some((word) => !word.literal) && !(name === "gh" && readOnlyGhApi(rest))) {
+      throw new Block("sensitive-dynamic-argument");
+    }
+  }
+
+  if (!pureRead) {
+    const words = name === "git" ? rest.slice(parseGit(rest).subIndex) : rest;
+    const canonical = [name, ...words.map((word) => word.value.replace(/\s/gu, "\u001f"))].join(" ");
+    for (const rule of commandRules) if (rule.regex.test(canonical)) throw new Block(rule.id, rule.reason);
+  }
+
+  if (name === "gh") checkMergeGate(rest);
+
+  if (viaXargs && isSensitive(name)) {
+    // Appended (or replaced) words from stdin are only operands when they follow a literal -- separator.
+    const separator = rest.findIndex((word) => word.literal && word.value === "--");
+    const unsafe = separator < 0 || (replace !== null && rest.slice(0, separator).some((word) => word.value.includes(/** @type {string} */ (replace))));
+    if (unsafe) throw new Block("sensitive-dynamic-argument", "xargs appends arguments from standard input to a destructive-capable command; put them after a literal -- separator.");
+  }
+
+  // xargs adds words read from standard input, which can name any file: a protected name stands in for them.
+  // A replace string (`-I{}`) is also read as unknown text, so the path around it (`{}/hooks.json`) still counts.
+  const filled = (/** @type {string} */ text, /** @type {boolean} */ literal) => rest.map((word) => word.value.includes(/** @type {string} */ (replace))
+    ? { ...literalWord(word.value.replaceAll(/** @type {string} */ (replace), text)), literal } : word);
+  const variants = !viaXargs ? [rest] : replace !== null ? [filled("AGENTS.md", true), filled(UNKNOWN, false)] : [[...rest, literalWord("AGENTS.md")]];
+  // git -C runs in that directory (each -C read from the one before); the protected project stays the same.
+  let targetCtx = ctx;
+  if (name === "git") {
+    const { subIndex } = parseGit(rest);
+    for (let k = 0; k < subIndex; k++) {
+      if (rest[k].value !== "-C" || !rest[k + 1]) continue;
+      targetCtx = { ...targetCtx, cwd: chdirTarget(rest[++k], targetCtx) };
+    }
+  }
+  for (const operands of variants) {
+    for (const { word, kind, effect } of commandTargets(name, operands, targetCtx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, targetCtx, effect);
+  }
+  if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
+  scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
+
+  if (name === "cd" || name === "pushd" || name === "popd") {
+    cwdMoved = true;
+    const operands = rest.filter((word) => !(word.literal && /^-[LPe@]+$/u.test(word.value)));
+    const target = operands[0];
+    // popd, a bare pushd and pushd +N/-N return to a directory from the stack, which is not tracked; zsh `cd old new` substitutes.
+    if (name === "popd" || operands.length > 1 || (name === "pushd" && (!target || /^[+-]\d+$/u.test(target.value)))) ctx.cwd = null;
+    else if (!target) ctx.cwd = HOME;
+    // CDPATH can send a bare relative name elsewhere.
+    else if (ctx.cdpath && target.literal && !isAbsolute(target.value) && !/^\.\.?(?:\/|$)/u.test(target.value)) ctx.cwd = null;
+    else ctx.cwd = chdirTarget(target, ctx);
+  }
+}
+
+// `gh` value options across `pr merge` and `api`; every other `--flag` is boolean.
+const GH_VALUE_OPTIONS = new Set(["-R", "--repo", "-t", "--subject", "-b", "--body", "-F", "--body-file", "-A", "--author-email", "--match-head-commit",
+  "--hostname", "-X", "--method", "-f", "--raw-field", "--field", "-H", "--header", "-q", "--jq", "--template", "--input", "--cache", "-p", "--preview"]);
+
+/** `gh api` options a read-only call may use, and those of them that take a value. */
+const GH_API_READ_OPTIONS = new Set(["-q", "--jq", "-t", "--template", "--paginate", "--slurp", "-i", "--include", "--silent", "--verbose",
+  "-H", "--header", "-X", "--method", "--hostname", "--cache", "-p", "--preview"]);
+const GH_API_READ_VALUES = new Set(["-q", "--jq", "-t", "--template", "-H", "--header", "-X", "--method", "--hostname", "--cache", "-p", "--preview"]);
+/**
+ * A read-only `gh api` call whose only dynamic word is its endpoint, as in `gh api "repos/$R/pulls"`: a GET (no method or
+ * `-X GET`, no `-f`/`-F`/`--input` field, which would make it a POST, and no method-override header), every option literal,
+ * and one endpoint written in double quotes after a literal prefix, with plain `$name`/`${name}` variables only, so it
+ * stays one argument that cannot become an option, a second endpoint or a GraphQL call.
+ * @param {Word[]} rest
+ */
+function readOnlyGhApi(rest) {
+  if (!rest[0]?.literal || rest[0].value !== "api") return false;
+  /** @type {Word | null} */
+  let endpoint = null;
+  for (let i = 1; i < rest.length; i++) {
+    const word = rest[i];
+    if (!word.literal || !word.value.startsWith("-") || word.value === "-") {
+      if (endpoint) return false;
+      endpoint = word;
+      continue;
+    }
+    const equals = word.value.startsWith("--") ? word.value.indexOf("=") : -1;
+    let flag = equals > 0 ? word.value.slice(0, equals) : word.value;
+    /** @type {string | null} */
+    let value = equals > 0 ? word.value.slice(equals + 1) : null;
+    // A short cluster (`-if`) sets each letter; only a value option may carry its value attached (`-XGET`, `-q.x`).
+    if (!flag.startsWith("--") && flag.length > 2) {
+      if (!GH_API_READ_VALUES.has(flag.slice(0, 2))) return false;
+      value = flag.slice(2);
+      flag = flag.slice(0, 2);
+    }
+    if (!GH_API_READ_OPTIONS.has(flag)) return false;
+    if (GH_API_READ_VALUES.has(flag) && value === null) {
+      const next = rest[++i];
+      if (!next?.literal) return false;
+      value = next.value;
+    }
+    if ((flag === "-X" || flag === "--method") && value?.toUpperCase() !== "GET") return false;
+    if ((flag === "-H" || flag === "--header") && /method|override/iu.test(value ?? "")) return false;
+  }
+  return endpoint !== null && !/graphql/iu.test(endpoint.raw)
+    && /^"[A-Za-z0-9_./{}](?:[A-Za-z0-9_./{}?=&,%-]|\$[A-Za-z_][A-Za-z0-9_]*(?![[:A-Za-z0-9_])|\$\{[A-Za-z_][A-Za-z0-9_]*\})*"$/u.test(endpoint.raw);
+}
+
+/** `owner/repo`, lowercased, from a `-R` value; null when it cannot be read. @param {string | null | undefined} value */
+function ghRepository(value) {
+  const match = /^(?:https?:\/\/)?(?:[^/]+\.[^/]+\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?\/?$/u.exec(value ?? "");
+  return match ? `${match[1]}/${match[2]}`.toLowerCase() : null;
+}
+
+/** `gh` long aliases read as their short flag, so a repeated option keeps gh's last-occurrence value. */
+const GH_ALIASES = new Map([["--repo", "-R"]]);
+
+/** An endpoint as a bare API path: no host, query, fragment, encoding or repeated slashes. @param {string} text */
+function endpointPath(text) {
+  let path = text.replace(/^https?:\/\/[^/]+/iu, "").split(/[?#]/u)[0];
+  try { path = decodeURIComponent(path); } catch { /* keep the raw text */ }
+  return path.replace(/\/{2,}/gu, "/").replace(/^\//u, "").replace(/\/$/u, "").replace(/^api\/(?:v3\/)?/u, "");
+}
+
+/** gh aliases from its config (`GH_CONFIG_DIR` or ~/.config/gh), name to expansion; empty when unreadable. */
+function ghAliases() {
+  /** @type {Map<string, string>} */
+  const aliases = new Map();
+  const directory = process.env.GH_CONFIG_DIR || (process.env.XDG_CONFIG_HOME ? join(process.env.XDG_CONFIG_HOME, "gh") : join(HOME, ".config/gh"));
+  let text = "";
+  try { text = readFileSync(join(directory, "config.yml"), "utf8"); } catch { return aliases; }
+  let inside = false;
+  for (const line of text.split("\n")) {
+    if (/^aliases:\s*$/u.test(line)) { inside = true; continue; }
+    if (inside && /^\S/u.test(line)) break;
+    const match = inside ? /^\s+([^:\s]+):\s*(.*)$/u.exec(line) : null;
+    if (match) aliases.set(match[1].replace(/^["']|["']$/gu, ""), match[2].replace(/^["']|["']$/gu, ""));
+  }
+  return aliases;
+}
+
+/** Whether an endpoint names the REST merge route, ignoring host, query, fragment, encoding and repeated slashes. @param {string} text */
+function mergeEndpoint(text) {
+  return /^repos\/[^/]+\/[^/]+\/pulls\/[^/]+\/merge$/u.test(endpointPath(text));
+}
+
+/**
+ * A merge needs the pass `development-system pr-review-status <pr> --gate` writes for the exact PR and head, named with
+ * `--match-head-commit` so GitHub itself refuses the merge if the head moves. The pass says the Codex review is clean
+ * and, for develop, that behavioral evidence (or the owner's quoted waiver) covers that head. Authorization stays separate.
+ * Options may sit anywhere (`gh --repo o/r pr merge`), so the subcommand is read from the positional words.
+ * @param {Word[]} rest
+ */
+function checkMergeGate(rest) {
+  const words = rest.map((word) => word.value);
+  /** @type {string[]} */
+  const positionals = [];
+  /** @type {Map<string, string | null>} */
+  const options = new Map();
+  /** @type {string[]} */
+  const values = [];
+  /** @type {string[]} */
+  const fields = [];
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    if (word === "--") { positionals.push(...words.slice(i + 1)); break; }
+    if (!word.startsWith("-") || word === "-") { positionals.push(word); continue; }
+    const equals = word.startsWith("--") ? word.indexOf("=") : -1;
+    let flag = equals > 0 ? word.slice(0, equals) : word;
+    /** @type {string | null} */
+    let value = equals > 0 ? word.slice(equals + 1) : null;
+    if (!word.startsWith("--") && word.length > 2 && GH_VALUE_OPTIONS.has(word.slice(0, 2))) { flag = word.slice(0, 2); value = word.slice(2); }
+    else if (value === null && GH_VALUE_OPTIONS.has(flag)) value = words[++i] ?? null;
+    flag = GH_ALIASES.get(flag) ?? flag;
+    options.delete(flag);
+    options.set(flag, value);
+    if (value !== null) values.push(value);
+    if (/^(?:-f|-F|--field|--raw-field)$/u.test(flag) && value !== null) fields.push(value);
+  }
+  const how = "Run `development-system pr-review-status <owner/repo#n> --gate`, then merge with `gh pr merge <PR URL> --match-head-commit <head>`.";
+  // An alias can expand to a merge (`gh alias set m 'api -X PUT …/merge'`); one that names merging is refused, and an
+  // existing alias is read from gh's config before its name is taken as a command.
+  if (positionals[0] === "alias" && positionals[1] === "import") throw new Block("merge-gate", `Imported gh aliases are not inspected and could merge a PR; define each alias with \`gh alias set\`. ${how}`);
+  if (positionals[0] === "alias" && positionals[1] === "set" && /merge/iu.test(positionals.slice(3).join(" "))) {
+    throw new Block("merge-gate", `A gh alias that can merge skips the merge pass; run the merge command itself. ${how}`);
+  }
+  const alias = positionals[0] === undefined ? undefined : ghAliases().get(positionals[0]);
+  if (alias !== undefined && /merge/iu.test(alias)) throw new Block("merge-gate", `The gh alias \`${positionals[0]}\` expands to \`${alias}\`, which can merge without the merge pass. ${how}`);
+  if (positionals[0] === "api") {
+    if (positionals[1] !== undefined && endpointPath(positionals[1]) === "graphql") {
+      // A body or field read from a file or stdin is not inspected and could hold a merge mutation.
+      if (options.has("--input")) throw new Block("merge-gate", `A GraphQL body read from --input is not inspected and could merge a PR. ${how}`);
+      if (fields.some((field) => field.slice(field.indexOf("=") + 1).startsWith("@"))) throw new Block("merge-gate", `A GraphQL field read from a file (\`key=@file\`) is not inspected and could merge a PR. ${how}`);
+    }
+    for (const text of [...positionals.slice(1), ...values]) {
+      if (/\b(?:mergePullRequest|enablePullRequestAutoMerge)\b/u.test(text)) throw new Block("merge-gate", `Merging through the GraphQL API skips the merge pass. ${how}`);
+      if (mergeEndpoint(text)) throw new Block("merge-gate", `Merging through \`gh api …/pulls/<n>/merge\` skips the merge pass. ${how}`);
+    }
+    return;
+  }
+  if (positionals[0] !== "pr" || positionals[1] !== "merge") return;
+  // Cancelling a queued auto-merge merges nothing; it must work even when the pass has expired.
+  // Only an effective true cancels: `--disable-auto=false` merges normally (gh reads the value like Go's ParseBool).
+  if (options.has("--disable-auto") && /^(?:1|t|T|true|TRUE|True)?$/u.test(options.get("--disable-auto") ?? "")) return;
+  const head = options.get("--match-head-commit") ?? null;
+  if (!head || !/^[0-9a-f]{40}$/u.test(head)) throw new Block("merge-gate", `gh pr merge needs --match-head-commit <40-hex head> backed by a merge pass. ${how}`);
+  const operand = positionals[2];
+  const url = operand ? /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#]|$)/u.exec(operand) : null;
+  const number = url ? Number(url[3]) : operand && /^#?\d+$/u.test(operand) ? Number(operand.replace("#", "")) : NaN;
+  const named = ghRepository(options.get("-R"));
+  const repository = url ? `${url[1]}/${url[2]}`.toLowerCase() : named;
+  if (!Number.isSafeInteger(number) || !repository || (url && named && named !== repository)) {
+    throw new Block("merge-gate", `Name the PR explicitly so its pass can be matched: \`gh pr merge <PR URL>\` or \`gh pr merge <n> -R owner/repo\`, with --match-head-commit <head>. ${how}`);
+  }
+  const key = `${repository}#${number}`;
+  /** @type {any} */
+  let gate;
+  try { gate = JSON.parse(readFileSync(join(HOME, ".development-system/private/merge-gates", `${repository.replace("/", "-")}-${number}-${head}.json`), "utf8")); }
+  catch { throw new Block("merge-gate", `No merge pass for ${key} at ${head.slice(0, 12)}. ${how}`); }
+  if (gate?.head !== head || gate?.pr !== key) throw new Block("merge-gate", `The merge pass for ${key} at ${head.slice(0, 12)} names another PR or head. ${how}`);
+  if (!(Date.parse(gate.expiresAt) > Date.now())) throw new Block("merge-gate", `The merge pass for ${key} at ${head.slice(0, 12)} expired; check the PR again. ${how}`);
+  if (gate.mergeReady !== true) {
+    throw new Block("merge-gate", `${gate.pr} is not merge ready at ${head.slice(0, 12)}: Codex ${gate.codex}, behavioral evidence ${gate.behavioralEvidence}${gate.base === "develop" ? "" : ` (base ${gate.base})`}. Fix the gate; do not route around it.`);
+  }
+}
+
+/** Working directory after changing to `word`: unknown when dynamic, relative to an unknown directory, or missing (the change fails). @param {Word} word @param {Context} ctx */
+function chdirTarget(word, ctx) {
+  if (!word.literal || word.value === "-" || (ctx.cwd === null && !isAbsolute(word.value))) return null;
+  const target = resolve(ctx.cwd ?? ctx.scope, word.value);
+  // `link/..` is the link's parent for a logical `cd` and its target's parent for `cd -P`, `env -C` and `sudo -D`: when
+  // the two differ the directory is unknown.
+  if (word.value.split("/").includes("..") && canonicalPath(linkedPath(ctx.cwd ?? ctx.scope, word.value)) !== canonicalPath(target)) return null;
+  return existsSync(target) ? target : null;
+}
+
+/** @param {unknown} command @param {{cwd?: string, scope?: string}} [options] */
+export function evaluateCommand(command, options = {}) {
+  return withClock(() => evaluateCommandNow(command, options));
+}
+
+/** @param {unknown} command @param {{cwd?: string, scope?: string}} options */
+function evaluateCommandNow(command, options) {
+  if (typeof command !== "string" || command.trim().length === 0) {
+    return { allowed: false, ruleId: "missing-command", reason: structural["missing-command"] };
+  }
+  if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return { allowed: false, ruleId: "guard-timeout", reason: TOO_LARGE_REASON };
+  const scope = options.scope ?? process.cwd();
+  catRedefined = false;
+  backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
+  dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
+  try {
+    for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
+    const list = parseScript(command, 0);
+    // A CDPATH from the environment or set in this command redirects bare relative directory names.
+    evaluateList(list, { cwd: options.cwd ?? scope, scope, depth: 0, aliases: new Map(), cdpath: Boolean(process.env.CDPATH) || /cdpath/iu.test(command) });
+    return { allowed: true, ruleId: null, reason: null };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+/** @param {unknown} error */
+function failure(error) {
+  if (error instanceof Block) return { allowed: false, ruleId: error.ruleId, reason: error.reason };
+  if (error instanceof ParseError) return { allowed: false, ruleId: "shell-parse-error", reason: `${structural["shell-parse-error"]} (${error.message})` };
+  return { allowed: false, ruleId: "guard-error", reason: `Guard evaluation failed; blocked closed: ${error instanceof Error ? error.message : String(error)}` };
+}
+
+/** @param {string} value */
+function shellQuote(value) {
+  return /^[A-Za-z0-9_./=:@%+,-]+$/u.test(value) ? value : `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+/** @param {unknown} value */
+function commandsFrom(value) {
+  /** @type {string[]} */
+  const commands = [];
+  /** @param {unknown} current @param {string} key */
+  function walk(current, key = "") {
+    const commandKey = key === "command" || key === "cmd" || key === "script";
+    if (typeof current === "string" && commandKey) commands.push(current);
+    else if (Array.isArray(current) && commandKey && current.every((entry) => typeof entry === "string")) commands.push(current.map(shellQuote).join(" "));
+    else if (Array.isArray(current)) current.forEach((entry) => walk(entry));
+    else if (current && typeof current === "object") Object.entries(current).forEach(([childKey, child]) => walk(child, childKey));
+  }
+  walk(value);
+  return commands;
+}
+
+/** @param {unknown} value */
+function patchTexts(value) {
+  /** @type {string[]} */
+  const patches = [];
+  /** @param {unknown} current */
+  function walk(current) {
+    if (typeof current === "string") { if (current.includes("*** Begin Patch")) patches.push(current); }
+    else if (Array.isArray(current)) current.forEach(walk);
+    else if (current && typeof current === "object") Object.values(current).forEach(walk);
+  }
+  walk(value);
+  return patches;
+}
+
+const ALLOWED = { allowed: true, ruleId: null, reason: null };
+
+/** Evaluate a PreToolUse hook payload. @param {any} payload */
+export function evaluatePayload(payload) {
+  return withClock(() => evaluatePayloadNow(payload));
+}
+
+/** @param {any} payload */
+function evaluatePayloadNow(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { allowed: false, ruleId: "malformed-payload", reason: structural["malformed-payload"] };
+  }
+  const tool = String(payload.tool_name ?? payload.toolName ?? "");
+  const input = payload.tool_input ?? payload.toolInput ?? payload.input;
+  const scope = typeof payload.cwd === "string" && payload.cwd ? resolve(payload.cwd) : process.cwd();
+  /** @type {Context} */
+  const ctx = { cwd: scope, scope, depth: 0, aliases: new Map() };
+  try {
+    if (FILE_TOOLS.has(tool) || tool === "NotebookEdit") {
+      const path = tool === "NotebookEdit" ? input?.notebook_path : input?.file_path;
+      if (typeof path !== "string" || !path) throw new Block("malformed-payload");
+      checkTarget(literalWord(path), "write", ctx);
+      return ALLOWED;
+    }
+    if (/^apply_?patch$/iu.test(tool)) {
+      const patches = patchTexts(input);
+      if (patches.length === 0) throw new Block("malformed-payload", "apply_patch payload did not contain patch text; blocked closed.");
+      patches.forEach((patch) => checkPatch(patch, ctx));
+      return ALLOWED;
+    }
+    const commands = commandsFrom(input);
+    if (SHELL_TOOLS.has(tool) || commands.length > 0) {
+      if (commands.length === 0) throw new Block("missing-command");
+      const workdir = typeof input?.workdir === "string" && input.workdir ? resolve(scope, input.workdir) : scope;
+      for (const command of commands) {
+        const result = evaluateCommand(command, { scope, cwd: workdir });
+        if (!result.allowed) return result;
+      }
+      return ALLOWED;
+    }
+    const patches = patchTexts(input);
+    if (patches.length > 0) { patches.forEach((patch) => checkPatch(patch, ctx)); return ALLOWED; }
+    if (typeof input?.file_path === "string" && input.file_path) { checkTarget(literalWord(input.file_path), "write", ctx); return ALLOWED; }
+    throw new Block("malformed-payload");
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+async function stdinJson() {
+  let input = "";
+  for await (const chunk of process.stdin) {
+    input += chunk;
+    if (input.length > 1_000_000) throw new Error("Hook input exceeds 1 MB");
+  }
+  if (!input.trim()) throw new Error("Hook input is empty");
+  return JSON.parse(input);
+}
+
+/** @param {string} reason */
+function deny(reason) {
+  process.stdout.write(`${JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: reason,
+    },
+  })}\n`);
+  process.exitCode = 0;
+}
+
+async function main() {
+  const [command, ...args] = process.argv.slice(2);
+  if (command === "check") {
+    grantsEnabled = !args.includes("--no-grants");
+    const toolIndex = args.indexOf("--tool-json");
+    const commandIndex = args.indexOf("--command");
+    const cwdIndex = args.indexOf("--cwd");
+    const cwd = cwdIndex >= 0 && args[cwdIndex + 1] ? resolve(args[cwdIndex + 1]) : process.cwd();
+    let result;
+    if (toolIndex >= 0 && args[toolIndex + 1]) result = evaluatePayload(JSON.parse(args[toolIndex + 1]));
+    else if (commandIndex >= 0 && args[commandIndex + 1]) result = evaluateCommand(args[commandIndex + 1], { scope: cwd, cwd });
+    else throw new Error("check requires --command <shell-command> [--cwd <dir>] or --tool-json <hook-payload-json> [--no-grants]");
+    process.stdout.write(`${JSON.stringify({ policyVersion: policy.policyVersion, ...result })}\n`);
+    process.exitCode = result.allowed ? 0 : 2;
+    return;
+  }
+  if (command !== "hook") throw new Error("Usage: command-guard.mjs <check|hook> [options]");
+  const harnessIndex = args.indexOf("--harness");
+  const harness = harnessIndex >= 0 ? args[harnessIndex + 1] : null;
+  if (harness !== "codex" && harness !== "claude") throw new Error("hook requires --harness codex or claude");
+  try {
+    const result = evaluatePayload(await stdinJson());
+    if (!result.allowed) deny(`[${result.ruleId}] ${result.reason}`);
+  } catch (error) {
+    deny(`Malformed hook input; blocked closed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/** Run the CLI only when executed directly, so evaluateCommand/evaluatePayload can be imported. */
+function invokedDirectly() {
+  const script = process.argv[1];
+  if (!script) return false;
+  try { return realpathSync(script) === realpathSync(fileURLToPath(import.meta.url)); }
+  catch { return resolve(script) === fileURLToPath(import.meta.url); }
+}
+
+if (invokedDirectly()) {
+  await main().catch((error) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}

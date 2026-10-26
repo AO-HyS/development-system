@@ -1,5 +1,36 @@
 # Current work — weekly learning controls (2.6.1 installed globally)
 
+2026-10-25, develop f1c8ae1 (no branch yet), thread f051c9c7: audit of 2.6.2 plus a
+review of 15 X posts. Handoff at a safe point; nothing in the repo changed except this note.
+Done: the audit was cross-reviewed with Sol 6.1 High (thread
+mcp:85e0667d-b99b-43dc-955c-25bb6c01e5d2) and agreed in 3 rounds; the accepted version is
+~/.development-system/private/cross-review/audit-ds-262-20261025/audit-v3.md (sha256
+fea81b3d…7a80). The earlier HTML report
+(~/.development-system/private/documents/auditor-a-del-development-system-2-6-2-y-760a4ff90b68ccf4.html)
+has the pre-review numbers; v3 supersedes it. Three frictions were recorded.
+Owner decisions:
+- Update everything: pstack 0.15.0 to 0.15.32 and impeccable 4.3.1 to 4.7.0 («sí quiero actualizar todo», «si adelante»).
+- Agents must not edit AGENTS.md, CLAUDE.md or lint config without explicit permission, including in this repo. README, ADRs, current-work and other docs stay free, because the owner does not want frequent prompts.
+- The CI rule-floor proposal is dropped in favour of that guard block.
+- «Investigación condicionada» is dropped.
+- The secret id `nutriplan-test-credential-in-thread` was a mistake on my part; the real pattern is `delegate-secret-echo` and related output-leak ids.
+Plan v1, waiting for the owner's corrections:
+- Phase 0, read-only, now: reconcile the 13 Steward recommendations and build a per-cause control matrix; decide whether to simplify the mistake and friction log.
+- Phase 1, DS, one PR each:
+  - (1) pstack and impeccable update (authorized), with impeccable capped at 2 passes.
+  - (2) pr-review-status fixes: Codex receipts, budget, the wrong `run --request` message, a stuck-review state, Sol rounds in `mergeReady`. Limits are in audit-v3.
+  - (3) Guard block on AGENTS.md, CLAUDE.md and lint config, with a per-task terminal grant `allow-docs`.
+  - (4) Durable grill that saves answers.
+  - (5) `--help` on every subcommand, plus guard precision.
+  - (6) Reducer guidance in `architect` for flows of 3 or more steps.
+- Phase 2, products: (7) a Convex preview deployment per Barber branch (no extra cost; verify the plan, seed and env first); (8) a Casa Roca dashboard animation experiment, then prune the 9 animation skills.
+- Later: (9) secrets out of agent reach (1Password for Agents).
+- The formal plan goes through plan review (Sol authors, Opus reviews) and is presented visually.
+Retained authorization for a continuation:
+- Read-only work (phase 0, research).
+- The pstack/impeccable update on a branch from updated develop, up to a PR to develop, with the usual evidence and review budget.
+- No merge without the gate, no release, no main, no product PRs until the plan is approved.
+
 2026-10-23, branch `fix/cross-review-sol-reviewer`: cross reviews sometimes ran on
 Astra because the `cross-review` skill (2.4.0) named `gpt-6-astra` xhigh for a Claude
 author while the review rule says Sol 6.1 High, and `~/.codex/config.toml` defaulted
