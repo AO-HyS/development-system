@@ -240,11 +240,18 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     const receipts = receiptEntries.map((entry) => entry.sha);
     /** The one commit Codex completed a review or receipt for in (from, to); "" when none or ambiguous. */
     const reviewedBetween = (/** @type {number} */ from, /** @type {number} */ to) => {
-      const shas = new Set([
+      /** @type {string[]} */
+      const shas = [];
+      // A receipt cites an abbreviated SHA: it names the same commit as a full SHA (or a longer abbreviation) it prefixes.
+      for (const sha of [
         ...reviews.filter((review) => { const at = Date.parse(review.submitted_at); return at > from && at < to; }).map((review) => String(review.commit_id)),
         ...receiptEntries.filter((entry) => entry.at > from && entry.at < to).map((entry) => /** @type {string} */ (entry.sha)),
-      ]);
-      return shas.size === 1 ? [...shas][0] : "";
+      ]) {
+        const same = shas.findIndex((known) => known.startsWith(sha) || sha.startsWith(known));
+        if (same < 0) shas.push(sha);
+        else if (sha.length > shas[same].length) shas[same] = sha;
+      }
+      return shas.length === 1 ? shas[0] : "";
     };
     const validReview = (/** @type {string} */ sha) => sha !== "" && (reviews.some((review) => review.commit_id === sha)
       || receipts.some((cited) => cites(sha, /** @type {string} */ (cited)))

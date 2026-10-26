@@ -1581,10 +1581,16 @@ function docsTarget(word, absolute, kind, ctx) {
     if (word.fromGlob) {
       return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? shown : null;
     }
-    // Brace expansion makes its names whether or not they exist: expand it exactly.
+    // Brace expansion makes its names whether or not they exist: expand it exactly, and follow each one through links.
     if (!/[*?[(^#~]/u.test(name)) {
       const names = braceNames(name, 256);
-      if (names) return names.some(docsName) ? shown : null;
+      if (names) {
+        if (names.some(docsName)) return shown;
+        const folder = value.slice(0, value.lastIndexOf("/") + 1);
+        if (/[*?[\]{}()]/u.test(folder) || folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) return null;
+        const reached = names.map((each) => canonicalPath(resolve(ctx.cwd ?? ctx.scope, `${folder}${each}`))).find((real) => docsName(basename(real)));
+        return reached ? `${shown} (${reached})` : null;
+      }
       // Too many names or a sequence: read the braces as any text and compare with each protected name.
       return couldBeDocs(globSegment(fold(name.replace(/\{[^{}]*\}/gu, "*")))) ? shown : null;
     }
@@ -1781,8 +1787,22 @@ function patchMembers(patch, ctx) {
   }
   /** @type {Set<string>} */
   const members = new Set();
-  /** @param {string} name */
-  const unquote = (name) => /^".*"$/u.test(name) ? name.slice(1, -1).replace(/\\(.)/gu, "$1") : name;
+  /** Git's C-quoted names: `\\t`, `\\"`, `\\\\` and octal bytes (`\\101` is `A`, UTF-8 in several bytes). @param {string} name */
+  const unquote = (name) => {
+    if (!/^".*"$/u.test(name)) return name;
+    /** @type {number[]} */
+    const bytes = [];
+    const body = name.slice(1, -1);
+    const escapes = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13 };
+    for (let i = 0; i < body.length; i++) {
+      if (body[i] !== "\\") { bytes.push(...Buffer.from(body[i], "utf8")); continue; }
+      const octal = /^[0-7]{1,3}/u.exec(body.slice(i + 1))?.[0];
+      if (octal) { bytes.push(Number.parseInt(octal, 8) & 255); i += octal.length; continue; }
+      const next = body[++i] ?? "";
+      bytes.push(...(next in escapes ? [escapes[/** @type {keyof typeof escapes} */ (next)]] : Buffer.from(next, "utf8")));
+    }
+    return Buffer.from(bytes).toString("utf8");
+  };
   for (const line of text.split(/\r?\n/u)) {
     const git = /^diff --git (.+)$/u.exec(line);
     if (git) git[1].split(/ (?=["ab]\/|"[ab]\/)/u).forEach((name) => members.add(unquote(name)));
@@ -1833,6 +1853,8 @@ function trackedDocs(directory, revision) {
       cwd: directory, encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"], env: { PATH: "/usr/bin:/bin", HOME: homedir() },
     });
     checkDeadline();
+    // A first operand that names no revision is a path, already among the pathspecs.
+    if (args[0] === "ls-tree" && result.status === 128 && !result.error) continue;
     if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
     found.push(...result.stdout.split("\0").filter((file) => file !== "" && docsName(basename(file))));
   }
@@ -2860,9 +2882,13 @@ function checkoutPathspecs(args) {
     if (value.startsWith("-") && value !== "-") continue;
     operands.push(before[i]);
   }
+  // Without --, Git reads the first operand as a revision when it names one and as a path otherwise (`git checkout AGENTS.md`
+  // restores it from the index): it is kept as a pathspec too, and its revision listing is skipped when it names none.
   const revisionFirst = !conflict && operands.length > 0;
-  const paths = revisionFirst ? operands.slice(1) : operands;
+  const paths = revisionFirst && dash >= 0 ? operands.slice(1) : operands;
   specs.push(...paths.map((word) => word.literal ? word.value : null));
+  // -p with no pathspec walks every changed file.
+  if (specs.length === 0 && before.some((word) => word.value === "--patch" || /^-[A-Za-z]*p/u.test(word.value) && !word.value.startsWith("--"))) specs.push(null);
   if (specs.length === 0) return null;
   const revision = revisionFirst && operands[0].literal ? operands[0].value : null;
   // An unknown revision cannot be listed: read it as selecting any file.
@@ -3006,7 +3032,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         else if ((value === "-i" || value === "--input") && rest[i + 1]) input = rest[++i];
         else if (value.startsWith("--input=")) input = optionValue(value);
         else if (/^-i./u.test(value)) input = literalWord(value.slice(2));
-        else if (["-r", "--reject-file", "-B", "-z", "-F", "-D"].includes(value)) i++;
+        else if ((value === "-r" || value === "--reject-file") && rest[i + 1]) add(rest[++i], "write");
+        else if (value.startsWith("--reject-file=")) add(optionValue(value), "write");
+        else if (/^-r./u.test(value)) add(literalWord(value.slice(2)), "write");
+        else if (value.startsWith("--output=")) add(optionValue(value), "write");
+        else if (/^-o./u.test(value)) add(literalWord(value.slice(2)), "write");
+        else if (["-B", "-z", "-F", "-D"].includes(value)) i++;
         else if (!value.startsWith("-")) { add(rest[i], "write"); positionals.push(rest[i]); }
       }
       // The diff comes from -i, the second operand or stdin; the files it names are checked under the directory.

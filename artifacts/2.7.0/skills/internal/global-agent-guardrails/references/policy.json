@@ -131,7 +131,8 @@
     "~/.development-system/test-grants.json",
     "~/.development-system/docs-grants.json",
     "~/.development-system/private/merge-gates/**",
-    "~/.development-system/private/evidence/**"
+    "~/.development-system/private/evidence/**",
+    "~/.development-system/private/reviews/**"
   ],
   "protectedProjectWriteTargets": [
     ".claude/settings.json",
