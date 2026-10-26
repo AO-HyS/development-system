@@ -1787,7 +1787,7 @@ function insideRepository(directory) {
  * - `pathspecs`: Git pathspecs a command restores from the index or a revision (`git checkout --ours`, `git checkout <rev> <path>`),
  *   matched against the tracked files with a protected name; `revision` also lists that revision's files.
  * @typedef {{ word: Word | null, text: string | null }} PatchOperand
- * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, strips?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null } }} TreeEffect
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, strips?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null }, excludes?: string[] }} TreeEffect
  */
 
 /** How many members an archive listing may hold, and how long it may take, before the guard fails closed. */
@@ -1962,7 +1962,13 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
       // existing directory is removed. No docs grant lifts it.
       for (const target of targets) {
         for (const protectedPath of target.forms) {
-          if (!forms(root).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) continue;
+          const base = forms(root).find((candidate) => protectedPath.startsWith(`${candidate}${sep}`));
+          if (base === undefined) continue;
+          // rsync --exclude: a name without `/` matches any directory on the way, `/x` or `a/b` anchors at the root.
+          const parts = protectedPath.slice(base.length + 1).split(sep);
+          if ((effect.excludes ?? []).some((pattern) => pattern.includes("/")
+            ? parts.slice(0, -1).join("/").concat("/").startsWith(`${pattern.replace(/^\//u, "")}/`)
+            : parts.slice(0, -1).includes(pattern))) continue;
           if (existsSync(protectedPath) || existsSync(dirname(protectedPath))) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (removing ${root})`);
         }
       }
@@ -3589,7 +3595,14 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
         const { operands, targetDirectory } = operandsOf(rest, withValue, false, name !== "rsync");
         const destination = targetDirectory ?? operands.at(-1);
-        if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) add(destination, "delete", { remove: true, recursive: true });
+        if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) {
+          // Plain --exclude names (no wildcards) keep those paths, unless another filter or --delete-excluded can reach them.
+          const filtered = rest.some((word) => !word.literal || /^--(?:include|filter|exclude-from|include-from|files-from|delete-excluded)(?:=|$)/u.test(word.value)
+            || /^-[A-Za-z]*[Ff]/u.test(word.value) && !word.value.startsWith("--"));
+          const excludes = filtered ? [] : rest.filter((word) => word.value.startsWith("--exclude=")).map((word) => word.value.slice(10))
+            .filter((pattern) => pattern && !/[*?[\\]/u.test(pattern)).map((pattern) => pattern.replace(/\/+$/u, ""));
+          add(destination, "delete", { remove: true, recursive: true, excludes });
+        }
         if (rest.some((word) => word.literal && word.value === "--remove-source-files")) sources.forEach((word) => { if (!remote(word)) add(word, "delete", { remove: true, recursive: true }); });
       }
       break;
