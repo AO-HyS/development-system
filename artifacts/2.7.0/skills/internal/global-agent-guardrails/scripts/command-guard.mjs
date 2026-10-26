@@ -1129,7 +1129,8 @@ function protectedMatch(absolute, kind, targets) {
         if (candidate === protectedPath) return target.entry;
         if (target.directory && candidate.startsWith(`${protectedPath}${sep}`)) return target.entry;
         if (kind === "tree" && treeReaches(candidate, protectedPath, target.project)) return target.entry;
-        if (kind === "delete" && !target.project && protectedPath.startsWith(`${candidate}${sep}`)) return target.entry;
+        // Inside the project only the settings directory itself (`.codex`, `.claude`, `.git`) counts, as for trees.
+        if (kind === "delete" && treeReaches(candidate, protectedPath, target.project)) return target.entry;
       }
     }
   }
@@ -1441,6 +1442,21 @@ function looseGlob(word, text) {
   return `${text.slice(0, first)}${region.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT}${text.slice(last + 1)}`;
 }
 
+/**
+ * The path the system opens for `text`: each component is resolved through symbolic links before a later `..` applies, so
+ * `link/../x` is read from the link's target directory. @param {string} base @param {string} text
+ */
+function linkedPath(base, text) {
+  let current = isAbsolute(text) ? sep : canonicalPath(base);
+  for (const part of text.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") { current = dirname(current); continue; }
+    current = join(current, part);
+    current = realpathOrNull(current) ?? current;
+  }
+  return current;
+}
+
 /** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx @param {TreeEffect} [effect] */
 function checkTarget(word, kind, ctx, effect) {
   if (!word || !word.value) return;
@@ -1451,7 +1467,9 @@ function checkTarget(word, kind, ctx, effect) {
   const unknown = word.value.lastIndexOf(UNKNOWN);
   const tail = unknown >= 0 ? word.value.slice(unknown + 1) : ctx.cwd === null && !isAbsolute(text) ? text : null;
   const loose = looseGlob(word, text);
-  const hit = protectedMatch(absolute, kind, targets) ?? (tail === null ? null : protectedTail(tail, kind, targets))
+  const physical = text.split("/").includes("..") ? linkedPath(ctx.cwd ?? ctx.scope, text) : null;
+  const hit = protectedMatch(absolute, kind, targets) ?? (physical === null ? null : protectedMatch(physical, kind, targets))
+    ?? (tail === null ? null : protectedTail(tail, kind, targets))
     ?? (word.glob ? protectedGlob(ctx.cwd === null && !isAbsolute(text) ? null : absolute, text, kind, targets) : null)
     ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
@@ -2751,8 +2769,9 @@ function unzipArchive(rest) {
  * `strips` is set by `--strip-components`/`--strip`, which drop leading member directories.
  * `letters` holds the mode and option letters (long options as their letters) and `directory` the -C/--directory/--cd value.
  * @param {string} name @param {Word[]} rest
- * `operands` are the member names given on the command line.
- * @returns {{ archive: Word | null, renames: boolean, strips: boolean, letters: Set<string>, directory: Word, operands: Word[] }}
+ * `operands` are the member names given on the command line, each under the -C in force where it appears, and `outputs`
+ * the other files GNU tar writes.
+ * @returns {{ archive: Word | null, renames: boolean, strips: boolean, letters: Set<string>, directory: Word, operands: Word[], outputs: Word[] }}
  */
 function tarArchive(name, rest) {
   const bsd = name === "bsdtar" || (name === "tar" && process.platform === "darwin");
@@ -2765,8 +2784,12 @@ function tarArchive(name, rest) {
   const letters = new Set();
   const longLetters = /** @type {Record<string, string>} */ ({ "--extract": "x", "--get": "x", "--create": "c", "--append": "r", "--update": "u", "--concatenate": "A", "--catenate": "A", "--delete": "D", "--to-stdout": "O", "--list": "t", "--absolute-names": "P" });
   let unsure = false, renames = false, strips = false;
-  /** @type {Word[]} Member names given on the command line (the files a create mode reads). */
+  /** @type {Word[]} Member names given on the command line (the files a create mode reads), under the -C in force. */
   const operands = [];
+  /** @type {Word[]} Files GNU tar writes besides the archive (`--index-file`, `--listed-incremental`/`-g`, `--volno-file`). */
+  const outputs = [];
+  const operand = (/** @type {Word} */ word) => operands.push(directory.value === "." || isAbsolute(word.value) ? word
+    : { ...word, value: `${directory.value}/${word.value}`, raw: `${directory.value}/${word.value}`, literal: directory.literal && word.literal });
   // Each -C/--cd/--directory is read from the directory the previous one set.
   const enter = (/** @type {Word} */ taken) => {
     directory = directory.value === "." || isAbsolute(taken.value) ? taken
@@ -2776,7 +2799,7 @@ function tarArchive(name, rest) {
   const options = end < 0 ? rest.length : end;
   for (let i = 0; i < options; i++) {
     const { value, literal } = rest[i];
-    if (!literal) { operands.push(rest[i]); continue; }
+    if (!literal) { operand(rest[i]); continue; }
     if (i === 0 && /^[A-Za-z]+$/u.test(value)) {
       // Old-style bundle (`xvf a.tar`): each value-taking letter takes the next word, in order.
       let next = 1;
@@ -2786,6 +2809,7 @@ function tarArchive(name, rest) {
         if (!valueLetters.includes(letter)) continue;
         const taken = rest[next++] ?? null;
         if (letter === "f") archive = taken;
+        if (letter === "g" && !bsd && taken) outputs.push(taken);
         if (letter === "C" && taken) enter(taken);
       }
       i = next - 1;
@@ -2795,6 +2819,11 @@ function tarArchive(name, rest) {
       const option = value.split("=")[0];
       if (longLetters[option]) letters.add(longLetters[option]);
       if (option === "--files-from") letters.add("T");
+      if (["--index-file", "--listed-incremental", "--volno-file"].includes(option)) {
+        const taken = value.includes("=") ? { ...rest[i], value: value.slice(value.indexOf("=") + 1), raw: value.slice(value.indexOf("=") + 1) } : rest[++i];
+        if (taken) outputs.push(taken);
+        continue;
+      }
       if (option === "--directory" || option === "--cd") {
         const taken = value.includes("=") ? { ...rest[i], value: value.slice(value.indexOf("=") + 1), raw: value.slice(value.indexOf("=") + 1) } : rest[++i];
         if (taken) enter(taken);
@@ -2806,7 +2835,7 @@ function tarArchive(name, rest) {
       else if (!value.includes("=") && ["--directory", "--files-from", "--exclude-from", "--blocking-factor", "--transform", "--xform", "--use-compress-program", "--format", "--options", "--exclude", "--strip-components", "--newer", "--newer-mtime", "--owner", "--group", "--mode", "--include", "--uname", "--gname", "--uid", "--gid"].includes(option)) i++;
       continue;
     }
-    if (!value.startsWith("-") || value.length < 2) { operands.push(rest[i]); continue; }
+    if (!value.startsWith("-") || value.length < 2) { operand(rest[i]); continue; }
     for (let k = 1; k < value.length; k++) {
       const letter = value[k];
       letters.add(letter);
@@ -2814,13 +2843,14 @@ function tarArchive(name, rest) {
       if (!valueLetters.includes(letter)) continue;
       const taken = k < value.length - 1 ? literalWord(value.slice(k + 1)) : rest[++i] ?? null;
       if (letter === "f") archive = taken;
+      if (letter === "g" && !bsd && taken) outputs.push(taken);
       if (letter === "C" && taken) enter(taken);
       else if (value.slice(k + 1).includes("f")) unsure = true;
       break;
     }
   }
-  if (end >= 0) operands.push(...rest.slice(end + 1));
-  return { archive: unsure ? null : archive, renames, strips, letters, directory, operands };
+  if (end >= 0) rest.slice(end + 1).forEach(operand);
+  return { archive: unsure ? null : archive, renames, strips, letters, directory, operands, outputs };
 }
 
 /**
@@ -3364,17 +3394,14 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       if (backupEnv.options.has("TAR_OPTIONS") || process.env.TAR_OPTIONS) {
         throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: tar options from TAR_OPTIONS that the guard cannot read`);
       }
-      const { archive, renames, strips, letters, directory, operands } = tarArchive(name, rest);
+      const { archive, renames, strips, letters, directory, operands, outputs } = tarArchive(name, rest);
+      outputs.forEach((word) => add(word, "write"));
       const creates = ["c", "r", "u", "A", "D"].some((letter) => letters.has(letter));
       if (creates && archive && archive.value !== "-") add(archive, "write");
       if (creates && rest.some((word) => word.value === "--remove-files")) {
         // GNU --remove-files deletes each file it archived, read from the -C directory.
         if (letters.has("T")) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: files --remove-files deletes from a list the guard does not read`);
-        for (const word of operands) {
-          const source = directory.value === "." || isAbsolute(word.value) ? word
-            : { ...word, value: `${directory.value}/${word.value}`, raw: `${directory.value}/${word.value}`, literal: directory.literal && word.literal };
-          add(source, "delete", { remove: true, recursive: true });
-        }
+        for (const word of operands) add(word, "delete", { remove: true, recursive: true });
       }
       if (!letters.has("x") || letters.has("O")) break;
       // -P keeps absolute member names, which land outside the extraction directory.
@@ -3410,6 +3437,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (word.literal && /^--in-?place(?:=|$)/u.test(value)) { inPlace = true; if (value.includes("=")) suffixes.push(value.slice(value.indexOf("=") + 1)); continue; }
         if (word.literal && value.startsWith("--")) continue;
         if (word.literal && value.startsWith("-") && value.length > 1) {
+          // Switches end at the first argument (the program file, or the first file after -e): words after it, such as
+          // `-c`, are arguments for the program.
           for (let k = 1; k < value.length; k++) {
             const letter = value[k];
             if (letter === "i") { inPlace = true; suffixes.push(value.slice(k + 1)); break; }
@@ -3436,7 +3465,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
           }
           continue;
         }
-        files.push(word);
+        files.push(...rest.slice(i));
+        break;
       }
       if (!inPlace || syntaxOnly) break;
       (code ? files : files.slice(1)).forEach((file) => {
@@ -4315,17 +4345,23 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   evaluateRunner(name, rest, ctx);
   if (NAME_BUILTINS.has(name)) {
     for (const word of rest) checkSubscriptCode(word.value);
-    // `export NAME=value` sets a writer variable; `read NAME`, `printf -v NAME` or a built assignment sets one the guard
-    // cannot read.
+    // `export NAME=value` sets a writer variable; `read NAME`, `printf -v NAME` (`-vNAME`), `let NAME=…` or a built
+    // assignment sets one the guard cannot read. Format and data arguments are text.
     const declares = ["export", "declare", "typeset", "local", "readonly", "integer", "float"].includes(name);
-    for (const word of rest) {
+    const unreadable = (/** @type {string} */ named) => { if (WRITER_VARIABLES.has(named)) recordWriterVariable(named, null); };
+    for (let k = 0; k < rest.length; k++) {
+      const word = rest[k];
       const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(word.value);
-      if (declares && assignment && word.literal) recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
-      else if (!word.literal && word.value.includes("=")) for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null);
-      else if (!declares || assignment) {
-        const named = assignment ? assignment[1] : word.value;
-        if (WRITER_VARIABLES.has(named)) recordWriterVariable(named, null);
-      }
+      if (declares) {
+        if (assignment && word.literal) recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
+        else if (!word.literal && word.value.includes("=")) for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null);
+      } else if (name === "printf" || name === "print") {
+        if (word.value === "--") break;
+        if (word.value === "-v") unreadable(rest[++k]?.value ?? "");
+        else if (word.value.startsWith("-v")) unreadable(word.value.slice(2));
+      } else if (name === "let") {
+        if (assignment) unreadable(assignment[1]);
+      } else if (["read", "mapfile", "readarray", "vared", "getopts"].includes(name)) unreadable(word.value);
     }
     const source = name === "read" || name === "mapfile" || name === "readarray" ? stdinSource(redirects) : null;
     if (source?.heredoc) checkSubscriptCode(source.heredoc.body);
