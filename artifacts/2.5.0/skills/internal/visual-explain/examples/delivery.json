@@ -1,0 +1,62 @@
+{
+  "mode": "delivery",
+  "language": "es",
+  "title": "Entrega parcial · Ejemplo ilustrativo",
+  "intro": "Contenido ilustrativo: una entrega distingue lo terminado de lo que aún no tiene evidencia.",
+  "selected": "verification",
+  "steps": [
+    {
+      "id": "scope",
+      "label": "Alcance",
+      "state": "done",
+      "include": "El alcance acordado incluye planes y entregas.",
+      "exclude": "No se evaluó una presentación nueva para mensajes breves."
+    },
+    {
+      "id": "direction",
+      "label": "Dirección",
+      "state": "done",
+      "include": "El dueño eligió una línea de trabajo con un foco móvil.",
+      "exclude": "La aceptación del diseño en otros tamaños de pantalla."
+    },
+    {
+      "id": "skill",
+      "label": "Habilidad",
+      "state": "done",
+      "include": "El renderer generó un HTML autocontenido sin recursos externos.",
+      "exclude": "La carga automática de la habilidad por el host."
+    },
+    {
+      "id": "integration",
+      "label": "Integración",
+      "state": "done",
+      "include": "El catálogo contiene una copia y un espejo de la habilidad.",
+      "exclude": "La instalación en el entorno habitual del dueño."
+    },
+    {
+      "id": "verification",
+      "label": "Verificación",
+      "state": "active",
+      "include": "El plan se leyó a 728 px en tema claro.",
+      "exclude": "La navegación con teclado a 390 px."
+    },
+    {
+      "id": "installation",
+      "label": "Instalación global",
+      "state": "pending",
+      "include": "Hay un paquete preparado para instalar.",
+      "exclude": "No se ha instalado en el entorno habitual del dueño."
+    }
+  ],
+  "gates": [
+    {
+      "before": "skill",
+      "label": "Decisión del dueño"
+    },
+    {
+      "before": "installation",
+      "label": "Autorización aparte"
+    }
+  ],
+  "closing": "En este ejemplo: Qué necesito de ti: nada por ahora. Qué sigue: el agente completa la verificación ya autorizada; la instalación global queda fuera de este alcance."
+}

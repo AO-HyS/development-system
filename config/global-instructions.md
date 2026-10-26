@@ -13,8 +13,9 @@ repository execution use `coding-orchestration` or an already selected
 `orchestrate-work` method, reading only relevant task references.
 
 Before planning non-trivial work, restate in your own words the user's goal, the
-problem it solves and your approach (`in-your-own-words`), then continue; stop
-only for a real ambiguity.
+problem it solves and your approach, then continue; stop only for a real
+ambiguity. An explicit `in-your-own-words` invocation ends the turn with the
+proposal and waits for the user's approval before execution.
 
 ## Orchestration
 
@@ -103,16 +104,19 @@ kill what you launched, never by name and never another thread's.
 
 - `Done when:` is executable: a command and its expected observation; the writer retries up to 3 times, the coordinator reruns it.
 - `Outcome:` is optional, only when it adds signal.
-- Develop merges are autonomous after real verification, an independent review with no blocking findings and `development-system pr-review-status <pr>` showing a clean Codex review (`no-findings` on the head, or `budget-spent` once both Codex requests are used and every finding of the last reviewed head is answered; later commits only fix those findings); main, releases and production wait for the user.
+- Develop merges are autonomous after real verification recorded with `development-system evidence record` for the PR head (or the owner's explicit waiver, such as «pásatela», quoted verbatim in the PR and recorded with `--owner-waiver`), an independent review with no blocking findings and `development-system pr-review-status <pr> --gate` showing `mergeReady` with a clean Codex review (`no-findings` on the head, or `budget-spent` once both Codex requests are used and every finding of the last reviewed head is answered; later commits only fix those findings); main, releases and production wait for the user.
 - Review budget (operator decision 2026-10-14; every review round costs real quota): review the finished PR, never each push. One independent Sol 6.1 High review per PR on its ready head; a docs-only or small low-risk PR skips Sol and relies on the Codex review. A second Sol round only when the first had a blocking finding (security, authorization, data loss, money), and it reviews only the fix diff; non-blocking findings are fixed without re-review or recorded as follow-ups. Never a third Sol round without the operator. Ask Codex (`--request`) once when the PR is ready and at most once more after fixes; after that second review, answer its findings and merge, naming any later fix commits in the report.
 - `cross-review` runs only when the operator asks for it; plans and primitive lists otherwise get the single plan review of the shared host rules, with at most one more round for a blocking finding.
 - Browser and computer use run on Sol 6.1 High; a parent on another model delegates the browser work instead of driving it at extra-high effort.
+- Browser budget (operator decision 2026-10-14): one browser or computer-use session per PR, on its ready head, covering every affected flow in one pass. A second session only when the first found a real defect, and it checks only that fix; never a session per push or per polish change. An independent visual critique runs once per PR and only for UI changes. Never a third session without the operator.
 - Primitives: each product repo keeps `docs/architecture/primitives.json` true (`development-system check-primitives`); `primitives-gardener` fixes them and the Steward tends them. PRs carry a `system-recap`.
 - Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report; one-way (deleting data, destructive migrations, production, money, messages to customers): stop and ask.
 - Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.
-- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref>`; an id with two distinct incidents becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the final report; frictions feed the Steward and never count as mistakes.
+- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref> --repository <repo>`, reusing the existing id it suggests for the same cause (`--new-id` only for a truly new cause) and adding `--cause <slug>` once the root cause is confirmed; a cause with two distinct incidents (`mistake list --repeated --by cause`) becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the final report; frictions feed the Steward and never count as mistakes.
 - An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
 - No evals.
+
+{{visual-delivery}}
 
 ## Report and Headroom evidence
 

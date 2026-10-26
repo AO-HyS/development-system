@@ -8,7 +8,7 @@ import { loadPackageSource, verifyPackageFile } from './package-source.mjs';
 
 const execute = promisify(execFile);
 /** Run one explicit release adoption, never a product dependency update.
- * @param {{home:string, version?:string, sourceRoot?:string, checkoutRoot?:string}} options
+ * @param {{home:string, version?:string, sourceRoot?:string, checkoutRoot?:string, duringActiveRuns?:string}} options
  */
 export async function updateSharedInstallation(options) {
   const home = await realpath(resolve(options.home));
@@ -46,6 +46,6 @@ export async function updateSharedInstallation(options) {
   if (!source || (options.version && source.packageVersion !== options.version)) throw new Error('Update requires the exact verified package');
   for (const [file, metadata] of source.files) verifyPackageFile(source, file, metadata.sha256);
   const metadata = JSON.parse(await readFile(resolve(sourceRoot, 'package.json'), 'utf8'));
-  const result = await execute(process.execPath, [resolve(sourceRoot, 'bin/development-system.mjs'), 'setup', '--home', home, '--version', metadata.contractVersion ?? metadata.version, '--json'], { maxBuffer: 32 * 1024 * 1024 });
+  const result = await execute(process.execPath, [resolve(sourceRoot, 'bin/development-system.mjs'), 'setup', '--home', home, '--version', metadata.contractVersion ?? metadata.version, ...(options.duringActiveRuns ? ['--during-active-runs', options.duringActiveRuns] : []), '--json'], { maxBuffer: 32 * 1024 * 1024 });
   return { ...JSON.parse(result.stdout), operation: 'update', productRepositoriesWritten: false };
 }

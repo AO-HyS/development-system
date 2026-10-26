@@ -1,6 +1,6 @@
 // @ts-check
 
-import { readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -34,7 +34,7 @@ import {
 } from "./claude-orchestration.mjs";
 import { auditReportGate, enableReportGate, rollbackReportGate } from "./report-gate.mjs";
 import { findAutomatedTests } from "./no-tests.mjs";
-import { addMistake, listMistakes } from "./mistakes.mjs";
+import { addMistake, annotateMistake, listMistakes } from "./mistakes.mjs";
 import { formatThreadHealth, threadHealth } from "./thread-health.mjs";
 import { runWorkingBackwardsScenario } from "./working-backwards.mjs";
 import { createHumanLayerAdapter } from "./humanlayer-adapter.mjs";
@@ -63,6 +63,7 @@ import { evaluateOrchestrationPilot } from "./orchestration-pilot.mjs";
 import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
+import { codexQuota } from "./codex-quota.mjs";
 import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation, withLegacyInstallationMutation } from "./shared-installation.mjs";
 import { updateSharedInstallation } from "./shared-update.mjs";
 import { loadPackageSource } from "./package-source.mjs";
@@ -85,7 +86,7 @@ async function readSkillCatalog(explicitVersion) {
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -117,6 +118,7 @@ function parseArguments(argv) {
     else if (token === "--codex-path") options.codexPath = value;
     else if (token === "--node-path") options.nodePath = value;
     else if (token === "--root") options.root = value;
+    else if (token === "--during-active-runs") options.duringActiveRuns = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -138,7 +140,11 @@ function formatHuman(result) {
     const label = result.operation === "update"
       ? `Development System ${result.version} (catalog ${result.catalogVersion ?? "unknown"}, ${String(shared?.sourceCommit ?? "unknown").slice(0, 12)}) installed`
       : `Development System ${active?.packageVersion ?? "unknown"} (catalog ${active?.catalogVersion ?? "unknown"}, ${String(active?.sourceCommit ?? "unknown").slice(0, 12)})`;
-    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}`;
+    const quota = /** @type {ReturnType<typeof codexQuota> | undefined} */ (result.codexQuota);
+    const quotaLines = !quota ? "" : quota.state === "desconocido"
+      ? "\nCodex weekly quota: desconocido (no rate limits in recent sessions)."
+      : `\nCodex weekly quota:${quota.accounts.map((item) => `\n- ${item.account}${item.plan ? ` (${item.plan})` : ""}: ${item.usedPercent}% used, observed ${item.observedAt} [${item.freshness}]${item.resetsAt ? `, resets ${item.resetsAt}` : ""}${item.warn ? " WARNING >= 80%" : ""}`).join("")}`;
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}`;
   }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
@@ -255,16 +261,21 @@ function formatHuman(result) {
 function parseMistakeArguments(argv) {
   const [command, subcommand, ...tokens] = argv;
   const kind = command === "friction" ? "friction" : "mistake";
-  if (subcommand !== "add" && subcommand !== "list") throw new Error(`Usage: development-system ${kind} <add|list> [options]`);
-  /** @type {{kind: "mistake" | "friction", subcommand: "add" | "list", home: string, json: boolean, repeated: boolean, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string}} */
-  const options = { kind, subcommand, home: homedir(), json: false, repeated: false };
+  const subcommands = kind === "mistake" ? ["add", "list", "annotate"] : ["add", "list"];
+  if (!subcommands.includes(subcommand)) throw new Error(`Usage: development-system ${kind} <${subcommands.join("|")}> [options]`);
+  /** @type {{kind: "mistake" | "friction", subcommand: "add" | "list" | "annotate", home: string, json: boolean, repeated: boolean, newId: boolean, by?: string, line?: string, id?: string, incident?: string, evidence?: string, summary?: string, fix?: string, control?: string, repository?: string, topic?: string, cause?: string}} */
+  const options = { kind, subcommand: /** @type {"add" | "list" | "annotate"} */ (subcommand), home: homedir(), json: false, repeated: false, newId: false };
+  /** @type {Record<string, string>} */
   const valueFlags = subcommand === "add"
-    ? { "--home": "home", "--id": "id", "--incident": "incident", "--evidence": "evidence", "--summary": "summary", "--fix": "fix", "--control": "control", "--repository": "repository" }
-    : { "--home": "home" };
+    ? { "--home": "home", "--id": "id", "--incident": "incident", "--evidence": "evidence", "--summary": "summary", "--fix": "fix", "--control": "control", "--repository": "repository", "--topic": "topic", "--cause": "cause" }
+    : subcommand === "annotate"
+      ? { "--home": "home", "--line": "line", "--topic": "topic", "--cause": "cause" }
+      : { "--home": "home", ...(kind === "mistake" ? { "--by": "by" } : {}) };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--json") { options.json = true; continue; }
     if (token === "--repeated" && subcommand === "list" && kind === "mistake") { options.repeated = true; continue; }
+    if (token === "--new-id" && subcommand === "add") { options.newId = true; continue; }
     const key = /** @type {Record<string, string>} */ (valueFlags)[token];
     if (!key) throw new Error(`Unknown option for ${kind} ${subcommand}: ${token}`);
     const value = tokens[index + 1];
@@ -272,23 +283,57 @@ function parseMistakeArguments(argv) {
     /** @type {Record<string, unknown>} */ (options)[key] = value;
     index += 1;
   }
+  if (options.by !== undefined && !["id", "cause", "topic"].includes(options.by)) throw new Error("--by must be id, cause or topic");
+  if (options.line !== undefined && !/^[1-9][0-9]*$/.test(options.line)) throw new Error("--line must be a positive line number of the mistake log");
   return options;
+}
+
+/** @param {string[]} argv */
+function parseEvidenceArguments(argv) {
+  const [, subcommand, ...tokens] = argv;
+  if (subcommand !== "record") throw new Error(`Usage: development-system evidence record ${EVIDENCE_USAGE}`);
+  /** @type {{home: string, json: boolean, captures: string[], [key: string]: unknown}} */
+  const options = { home: homedir(), json: false, captures: [] };
+  /** @type {Record<string, string>} */
+  const valueFlags = { "--home": "home", "--pr": "pr", "--verified-sha": "verifiedSha", "--deployed-sha": "deployedSha", "--environment": "environment", "--account": "account", "--role": "role", "--allowed": "allowed", "--denied": "denied", "--effects": "effects", "--exception": "exception", "--reason": "reason", "--checks": "checks", "--owner-waiver": "ownerWaiver" };
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token === "--json") { options.json = true; continue; }
+    const value = tokens[index + 1];
+    if (token === "--capture") {
+      if (value === undefined || value.startsWith("--")) throw new Error("Missing value for --capture");
+      options.captures.push(value); index += 1; continue;
+    }
+    const key = valueFlags[token];
+    if (!key) throw new Error(`Unknown option for evidence record: ${token}`);
+    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
+    options[key] = value;
+    index += 1;
+  }
+  return /** @type {{home: string, json: boolean, captures: string[], pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} */ (options);
 }
 
 /** @param {Record<string, unknown>} result */
 function formatMistake(result) {
+  if (result.operation === "mistake-annotate") {
+    const annotation = /** @type {{line: number, topic?: string, cause?: string}} */ (result.annotation);
+    return `Annotated mistake log line ${annotation.line}${annotation.topic ? ` topic ${annotation.topic}` : ""}${annotation.cause ? ` cause ${annotation.cause}` : ""}.`;
+  }
   const kind = String(result.operation).startsWith("friction") ? "friction" : "mistake";
   if (String(result.operation).endsWith("-add")) {
     return result.status === "duplicate"
       ? `${kind === "friction" ? "Friction" : "Mistake"} ${result.id} incident ${result.incident} already recorded.`
       : `Recorded ${kind} ${result.id} (${result.incidents} distinct incidents).`;
   }
-  const mistakes = /** @type {{id: string, incidents: string[], summary: string | null, hint?: string}[]} */ (Array.isArray(result.mistakes) ? result.mistakes : []);
-  if (mistakes.length === 0) return result.repeated ? "No repeated mistakes recorded." : `No ${kind === "friction" ? "frictions" : "mistakes"} recorded.`;
-  return mistakes.flatMap((mistake) => [
+  const mistakes = /** @type {{id: string, ids?: string[], incidents: string[], summary: string | null, hint?: string}[]} */ (Array.isArray(result.mistakes) ? result.mistakes : []);
+  const rejected = /** @type {{line: number, reason: string}[]} */ (Array.isArray(result.rejectedAnnotations) ? result.rejectedAnnotations : []);
+  const warnings = rejected.map((item) => `Rejected annotation for line ${item.line}: ${item.reason}.`);
+  if (mistakes.length === 0) return [result.repeated ? "No repeated mistakes recorded." : `No ${kind === "friction" ? "frictions" : "mistakes"} recorded.`, ...warnings].join("\n");
+  return [...mistakes.flatMap((mistake) => [
     `${mistake.id}: ${mistake.incidents.length} incidents — ${mistake.summary ?? "no summary"}`,
+    ...(mistake.ids && (mistake.ids.length > 1 || mistake.ids[0] !== mistake.id) ? [`  ids: ${mistake.ids.join(", ")}`] : []),
     ...(mistake.hint ? [`  ${mistake.hint}`] : []),
-  ]).join("\n");
+  ]), ...warnings].join("\n");
 }
 
 /** @param {string[]} argv */
@@ -310,8 +355,188 @@ function parseThreadHealthArguments(argv) {
   return options;
 }
 
+const EVIDENCE_USAGE = "--pr <ref> --verified-sha <sha> (--deployed-sha <sha> --environment <url> --allowed pass|fail --denied pass|fail --effects pass|fail | --exception nonvisual --reason <text> --checks <text> | --owner-waiver <owner's exact words>) [--account <a>] [--role <r>] [--capture <path>]... [--home <dir>] [--json]";
+const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json]";
+const COMMON_OPTIONS = "[--home <dir>] [--json]";
+
+const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
+/** Governance subcommands and usage; the dispatcher rejects any subcommand absent here. */
+/** @type {[string, string][]} */
+const GOVERNANCE_TABLE = [
+  ["begin", GOVERNANCE_INPUT],
+  ["preflight", GOVERNANCE_INPUT],
+  ["classify", GOVERNANCE_INPUT],
+  ["prepare", `--boundary <id> ${GOVERNANCE_INPUT}`],
+  ["status", "[--home <abs dir>] [--run <id>] [--json]"],
+  ["advance", GOVERNANCE_INPUT],
+  ["confirm-effort", GOVERNANCE_INPUT],
+  ["close", GOVERNANCE_INPUT],
+  ["recover", `--run <id> ${GOVERNANCE_INPUT}`],
+  ["recover-host-attempt", `--run <id> ${GOVERNANCE_INPUT}`],
+  ["execute", GOVERNANCE_INPUT],
+  ["help", "[<command>] [--home <abs dir>] [--json]"],
+  ["schema", "[<command>] [--home <abs dir>] [--json]"],
+  ["examples", "[<command>] [--home <abs dir>] [--json]"],
+].map(([name, usage]) => [`governance ${name}`, usage]);
+
+const BROWSER_POOL_INPUT = "--input <file> [--home <dir>] [--json]";
+/** Browser-pool operations and usage; the dispatcher rejects any operation absent here. */
+/** @type {[string, string][]} */
+const BROWSER_POOL_TABLE = [
+  ["inventory", "[--home <dir>] [--json]"],
+  ["status", "[--home <dir>] [--json]"],
+  ["register", BROWSER_POOL_INPUT],
+  ["unregister", BROWSER_POOL_INPUT],
+  ["acquire", BROWSER_POOL_INPUT],
+  ["release", BROWSER_POOL_INPUT],
+  ["quarantine", BROWSER_POOL_INPUT],
+  ["reconcile", BROWSER_POOL_INPUT],
+].map(([name, usage]) => [`browser-pool ${name}`, usage]);
+
+/** Single registry of command paths and usage lines; drives `commands` and `--help`. Nested commands list each leaf path. */
+/** @type {[string, string][]} */
+const COMMAND_TABLE = [
+  ["setup", `[--version <x.y.z>] [--source-root <dir>] [--during-active-runs <who>] ${COMMON_OPTIONS}`],
+  ["update", `[--version <x.y.z>] [--source-root <dir>] [--during-active-runs <who>] ${COMMON_OPTIONS}`],
+  ["doctor", COMMON_OPTIONS],
+  ["shared-audit", COMMON_OPTIONS],
+  ["recover-shared", COMMON_OPTIONS],
+  ["install", `[--version <x.y.z>] [--source-commit <sha>] [--source-root <dir>] ${COMMON_OPTIONS}`],
+  ["audit", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
+  ["validate", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
+  ["rollback", COMMON_OPTIONS],
+  ...GOVERNANCE_TABLE,
+  ["governance-hooks-enable", COMMON_OPTIONS],
+  ["governance-hooks-audit", COMMON_OPTIONS],
+  ["governance-hooks-rollback", COMMON_OPTIONS],
+  ["audit-skills", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
+  ["sync-skills", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
+  ["rollback-skills", COMMON_OPTIONS],
+  ["guardrails-enable", COMMON_OPTIONS],
+  ["guardrails-audit", COMMON_OPTIONS],
+  ["guardrails-rollback", COMMON_OPTIONS],
+  ["claude-orchestration-enable", COMMON_OPTIONS],
+  ["claude-orchestration-audit", COMMON_OPTIONS],
+  ["claude-orchestration-rollback", COMMON_OPTIONS],
+  ["report-gate-enable", COMMON_OPTIONS],
+  ["report-gate-audit", COMMON_OPTIONS],
+  ["report-gate-rollback", COMMON_OPTIONS],
+  ["check-no-tests", `[--root <dir>] ${COMMON_OPTIONS}`],
+  ["allow-tests", "<directory> [--hours N] [--reason text] | --revoke <directory> [--home <dir>] [--json]"],
+  ["test-grants", COMMON_OPTIONS],
+  ["allow-docs", "<repo> --task <slug> [--hours N] [--reason text] | --revoke <repo> [--home <dir>] [--json]"],
+  ["docs-grants", COMMON_OPTIONS],
+  ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
+  ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
+  ["mistake add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
+  ["mistake list", "[--repeated] [--by id|cause|topic] [--home <dir>] [--json]"],
+  ["mistake annotate", "--line <n> [--topic <t>] [--cause <slug>] [--home <dir>] [--json]"],
+  ["friction add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
+  ["friction list", COMMON_OPTIONS],
+  ["evidence record", EVIDENCE_USAGE],
+  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <id> [--finding <id>:<path>[+<path>]]... [--operator-approval <operator's exact words> (a full round past the second)] | --exempt docs-only|low-risk --reason <text> [--home <dir>] [--json]"],
+  ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
+  ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
+  ["pr-review-status", PR_REVIEW_USAGE],
+  ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
+  ...BROWSER_POOL_TABLE,
+  ["commands", "[--json]"],
+  ["validate-repository", `[--root <dir>] ${COMMON_OPTIONS}`],
+  ["audit-repository", `[--repository <dir>] ${COMMON_OPTIONS}`],
+  ["initialize-repository", `[--repository <dir>] ${COMMON_OPTIONS}`],
+  ["normalize-repository", `[--repository <dir>] ${COMMON_OPTIONS}`],
+  ["lifecycle-request", `--workflow <id> --request <text> [options] ${COMMON_OPTIONS}`],
+  ["lifecycle-execute", `--workflow <id> --operation <op> [options] ${COMMON_OPTIONS}`],
+  ["lifecycle-status", `--workflow <id> ${COMMON_OPTIONS}`],
+  ["implement-preview", `[options] ${COMMON_OPTIONS}`],
+  ["document", `--input <file> ${COMMON_OPTIONS}`],
+  ["run-worker", "[options]"],
+  ["definition-route", `--input <file> ${COMMON_OPTIONS}`],
+  ["visual-grill-route", `--input <file> ${COMMON_OPTIONS}`],
+  ["development-run", `--input <file> ${COMMON_OPTIONS}`],
+  ["orchestrator-pilot", `--input <file> ${COMMON_OPTIONS}`],
+  ["orchestration-plan", `--input <file> ${COMMON_OPTIONS}`],
+  ["advisory-status", "[options]"],
+  ["classify-atom", "[options]"],
+  ["record-route-decision", "[options]"],
+  ["jev-workflow-measure", `--input <file> ${COMMON_OPTIONS}`],
+  ["validate-atom-plan", `--input <file> ${COMMON_OPTIONS}`],
+  ["verify-path-confinement", `--input <file> ${COMMON_OPTIONS}`],
+  ["model-route", `[options] ${COMMON_OPTIONS}`],
+  ["record-provider-failure", `[options] ${COMMON_OPTIONS}`],
+  ["parallel-work", `--input <file> ${COMMON_OPTIONS}`],
+  ["work-multiple", `--input <file> ${COMMON_OPTIONS}`],
+  ["release-train-v2", `--input <file> ${COMMON_OPTIONS}`],
+  ["check-in", `--input <file> ${COMMON_OPTIONS}`],
+  ["linear-hygiene", `--input <file> ${COMMON_OPTIONS}`],
+  ["development-steward", `--input <file> ${COMMON_OPTIONS}`],
+  ["development-steward-schedule-enable", `[options] ${COMMON_OPTIONS}`],
+  ["development-steward-schedule-audit", COMMON_OPTIONS],
+  ["development-steward-schedule-disable", COMMON_OPTIONS],
+  ["posthog-observability", `--input <file> ${COMMON_OPTIONS}`],
+  ["convex-guardian", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards-publication-intent", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards-t3-handoff", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards-handoff-freshness", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards-evaluate", `--input <file> ${COMMON_OPTIONS}`],
+  ["working-backwards-humanlayer", `--input <file> ${COMMON_OPTIONS}`],
+];
+
+/** Command groups whose leaf subcommands are listed individually, so `mistake --help` still resolves. */
+const COMMAND_GROUPS = ["mistake", "friction", "evidence", "review", "governance", "browser-pool"];
+
+function topLevelUsage() {
+  const names = [...new Set(COMMAND_TABLE.map(([path]) => path.split(" ")[0]))];
+  return `Usage: development-system <${names.join("|")}> [options]`;
+}
+
+/**
+ * Help for `<path...> --help|-h`, answered before any validation or side effect.
+ * @param {string[]} argv
+ * @returns {string | undefined}
+ */
+function helpFor(argv) {
+  if (!argv.includes("--help") && !argv.includes("-h")) return undefined;
+  /** @type {string[]} */
+  const words = [];
+  for (const arg of argv) { if (arg.startsWith("-")) break; words.push(arg); }
+  if (words.length === 0) return topLevelUsage();
+  for (let length = Math.min(words.length, 2); length >= 1; length -= 1) {
+    const path = words.slice(0, length).join(" ");
+    const entry = COMMAND_TABLE.find(([candidate]) => candidate === path);
+    if (entry) return `Usage: development-system ${entry[0]} ${entry[1]}`;
+  }
+  if (COMMAND_GROUPS.includes(words[0])) {
+    const leaves = COMMAND_TABLE.filter(([path]) => path.startsWith(`${words[0]} `)).map(([path]) => path.slice(words[0].length + 1));
+    return `Usage: development-system ${words[0]} <${leaves.join("|")}> [options]`;
+  }
+  return topLevelUsage();
+}
+
+/**
+ * Installing while agent runs are active changes their instructions mid-run. setup, update and install stop when a
+ * T3 run is active or its state is unknown, listing the threads; `--during-active-runs <who>` records who accepted
+ * the concurrency and continues. It acknowledges the overlap only; it never authorizes the installation itself.
+ * @param {{home: string, operation: string, version?: string, acceptedBy?: string}} options
+ */
+async function guardActiveRuns({ home, operation, version, acceptedBy }) {
+  const { activeRuns } = await import("./t3-state.mjs");
+  const exclude = [process.env.CLAUDE_CODE_SESSION_ID ?? "", process.env.CODEX_THREAD_ID ?? ""];
+  const observed = activeRuns({ home, exclude });
+  const event = { at: new Date().toISOString(), operation, version: version ?? null, state: observed.state, reason: observed.reason, threads: observed.threads.map((run) => run.threadId), acceptedBy: acceptedBy ?? null };
+  const ledger = resolve(home, ".development-system/private/runs/installs.jsonl");
+  await mkdir(dirname(ledger), { recursive: true, mode: 0o700 });
+  await appendFile(ledger, `${JSON.stringify(event)}\n`, { encoding: "utf8", mode: 0o600 });
+  if (observed.state === "terminated" || acceptedBy) return observed;
+  const listed = [...new Set(observed.threads.map((run) => `${run.threadId} (${run.status})`))].slice(0, 12).join(", ");
+  throw new Error(`${operation} stopped: T3 runs are ${observed.state} (${observed.reason})${listed ? `: ${listed}` : ""}. Wait for them to finish, or rerun with --during-active-runs <who accepted> to record the overlap; that flag does not authorize the installation.`);
+}
+
 /** @param {string[]} argv */
 export async function run(argv) {
+  const help = helpFor(argv);
+  if (help !== undefined) return { result: { ok: true, operation: "help" }, output: help, json: false };
   const standaloneMutators = ["install", "sync-skills", "rollback-skills", "guardrails-enable", "guardrails-rollback", "claude-orchestration-enable", "claude-orchestration-rollback", "report-gate-enable", "report-gate-rollback", "governance-hooks-enable", "governance-hooks-rollback"];
   if (standaloneMutators.includes(argv[0])) {
     const { options } = parseArguments(argv);
@@ -320,9 +545,17 @@ export async function run(argv) {
   return runCommand(argv);
 }
 
+/** The command table is the dispatcher's accepted subcommand list for grouped commands. @param {string[]} argv */
+function rejectUnlistedSubcommand(argv) {
+  const sub = argv[1];
+  if (sub === undefined || sub.startsWith("-")) return;
+  if (!COMMAND_TABLE.some(([path]) => path === `${argv[0]} ${sub}`)) throw new Error(`Unknown ${argv[0]} subcommand: ${sub}`);
+}
+
 /** @param {string[]} argv */
 async function runCommand(argv) {
   if (argv[0] === "browser-pool") {
+    rejectUnlistedSubcommand(argv);
     const { runBrowserPool } = await import("../runtime/native-browser/cli.mjs");
     return runBrowserPool(argv.slice(1));
   }
@@ -385,6 +618,70 @@ async function runCommand(argv) {
       : listTestGrants({ home });
     return { result, output: json ? JSON.stringify(result) : formatTestGrants(result), json };
   }
+  if (argv[0] === "commands") {
+    const json = argv.includes("--json");
+    const extra = argv.slice(1).find((arg) => arg !== "--json");
+    if (extra !== undefined) throw new Error(`Unknown option for commands: ${extra}`);
+    const paths = COMMAND_TABLE.map(([path]) => path);
+    return { result: { ok: true, operation: "commands", commands: paths }, output: json ? JSON.stringify(paths) : paths.join("\n"), json };
+  }
+  if (argv[0] === "allow-docs" || argv[0] === "docs-grants") {
+    const json = argv.includes("--json");
+    /** @type {Record<string, string>} */
+    const values = {};
+    /** @type {string[]} */
+    const roots = [];
+    let revoke = false;
+    for (let index = 1; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      if (arg === "--revoke" && argv[0] === "allow-docs") { revoke = true; continue; }
+      if (["--home", "--hours", "--reason", "--task"].includes(arg) && (arg === "--home" || argv[0] === "allow-docs")) {
+        const value = argv[++index];
+        if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
+        values[arg.slice(2)] = value;
+        continue;
+      }
+      if (arg.startsWith("--") || argv[0] === "docs-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
+      roots.push(arg);
+    }
+    const { allowDocs, confirmOperatorDocsGrant, listDocsGrants, formatDocsGrants } = await import("./docs-grants.mjs");
+    const home = values.home ?? homedir();
+    if (argv[0] === "allow-docs" && (roots.length !== 1 || (!revoke && values.task === undefined))) throw new Error("Usage: development-system allow-docs <repo> --task <slug> [--hours N] [--reason text] | --revoke <repo>");
+    const result = argv[0] === "allow-docs"
+      ? await allowDocs({ home, root: roots[0], task: values.task, hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke, confirm: confirmOperatorDocsGrant })
+      : listDocsGrants({ home });
+    return { result, output: json ? JSON.stringify(result) : formatDocsGrants(result), json };
+  }
+  if (argv[0] === "review") {
+    const subcommand = argv[1];
+    if (subcommand !== "record" && subcommand !== "coverage") throw new Error("Usage: development-system review <record|coverage> [options]");
+    const json = argv.includes("--json");
+    /** @type {Record<string, string>} */
+    const valueFlags = subcommand === "record"
+      ? { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--operator-approval": "operatorApproval" }
+      : { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" };
+    /** @type {Record<string, string>} */
+    const values = {};
+    /** @type {string[]} */
+    const findings = [];
+    for (let index = 2; index < argv.length; index += 1) {
+      const arg = argv[index];
+      if (arg === "--json") continue;
+      const isFinding = arg === "--finding" && subcommand === "record";
+      const key = valueFlags[arg];
+      if (!key && !isFinding) throw new Error(`Unknown option for review ${subcommand}: ${arg}`);
+      const value = argv[++index];
+      if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${arg}`);
+      if (isFinding) findings.push(value); else values[key] = value;
+    }
+    const home = values.home ?? homedir();
+    const reviews = await import("./review-records.mjs");
+    const result = subcommand === "record"
+      ? await reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, operatorApproval: values.operatorApproval })
+      : await reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
+    return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
+  }
   if (argv[0] === "check-primitives") {
     const json = argv.includes("--json");
     /** @type {Record<string, string>} */
@@ -404,20 +701,36 @@ async function runCommand(argv) {
   if (argv[0] === "pr-review-status") {
     const json = argv.includes("--json");
     const request = argv.includes("--request");
-    const positional = argv.slice(1).filter((arg) => !arg.startsWith("--"));
-    if (positional.length !== 1 || argv.slice(1).some((arg) => arg.startsWith("--") && !["--json", "--request"].includes(arg))) {
-      throw new Error("Usage: development-system pr-review-status <owner/repo#number | PR URL> [--request] [--json]");
+    const gate = argv.includes("--gate");
+    const homeIndex = argv.indexOf("--home");
+    const home = homeIndex > 0 ? argv[homeIndex + 1] : homedir();
+    const rest = homeIndex > 0 ? [...argv.slice(1, homeIndex), ...argv.slice(homeIndex + 2)] : argv.slice(1);
+    const positional = rest.filter((arg) => !arg.startsWith("--"));
+    if (!home || home.startsWith("--") || positional.length !== 1 || rest.some((arg) => arg.startsWith("--") && !["--json", "--request", "--gate"].includes(arg))) {
+      throw new Error(`Usage: development-system pr-review-status ${PR_REVIEW_USAGE}`);
     }
     const { prReviewStatus, formatPrReviewStatus } = await import("./pr-review-status.mjs");
-    const result = prReviewStatus({ pr: positional[0], request });
+    const result = prReviewStatus({ pr: positional[0], request, gate, home });
     return { result, output: json ? JSON.stringify(result) : formatPrReviewStatus(result), json };
   }
+  if (argv[0] === "evidence") {
+    const { home, json, ...fields } = parseEvidenceArguments(argv);
+    const { recordEvidence } = await import("./evidence.mjs");
+    const result = recordEvidence({ home, ...fields });
+    const output = json ? JSON.stringify(result) : `Evidence receipt ${result.status} for ${result.pr} at ${result.verifiedSha.slice(0, 12)}${result.problems.length ? ` (${result.problems.join("; ")})` : ""}: ${result.path}`;
+    return { result, output, json };
+  }
   if (argv[0] === "mistake" || argv[0] === "friction") {
-    const { subcommand, home, json, repeated, kind, ...fields } = parseMistakeArguments(argv);
-    const result = subcommand === "add" ? addMistake({ home, kind, ...fields }) : listMistakes({ home, kind, repeated });
+    const { subcommand, home, json, repeated, kind, by, line, topic, cause, ...fields } = parseMistakeArguments(argv);
+    const result = subcommand === "add"
+      ? addMistake({ home, kind, topic, cause, ...fields })
+      : subcommand === "annotate"
+        ? annotateMistake({ home, line: Number(line), topic, cause })
+        : listMistakes({ home, kind, repeated, by: /** @type {"id" | "cause" | "topic" | undefined} */ (by) });
     return { result, output: json ? JSON.stringify(result) : formatMistake(result), json };
   }
   if (argv[0] === "governance") {
+    rejectUnlistedSubcommand(argv);
     const { runGovernance } = await import("../runtime/jev-governance/cli.mjs");
     return runGovernance(argv.slice(1));
   }
@@ -430,13 +743,17 @@ async function runCommand(argv) {
 
   if (command === "shared-audit" || command === "doctor") {
     result = await auditSharedInstallation({ home: options.home, root: repositoryRoot });
+    // Descriptive, separate from `ok`: a nearly spent Codex week is a warning, never an installation problem.
+    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }) };
   } else if (command === "recover-shared") {
     result = await rollbackSharedInstallation({ home: options.home, recover: true });
   } else if (command === "update") {
-    result = await updateSharedInstallation({ home: options.home, version: options.version, sourceRoot: options.sourceRoot });
+    await guardActiveRuns({ home: options.home, operation: "update", version: options.version, acceptedBy: options.duringActiveRuns });
+    result = await updateSharedInstallation({ home: options.home, version: options.version, sourceRoot: options.sourceRoot, duringActiveRuns: options.duringActiveRuns });
   } else if (command === "setup") {
+    await guardActiveRuns({ home: options.home, operation: "setup", version: options.version, acceptedBy: options.duringActiveRuns });
     if (!loadPackageSource(repositoryRoot)) {
-      result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot });
+      result = await updateSharedInstallation({ home: options.home, version: options.version, checkoutRoot: repositoryRoot, duringActiveRuns: options.duringActiveRuns });
       return { result, output: options.json ? JSON.stringify(result) : formatHuman(result), json: options.json };
     }
     const metadata = JSON.parse(await readFile(resolve(repositoryRoot, "package.json"), "utf8"));
@@ -461,6 +778,7 @@ async function runCommand(argv) {
     }});
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");
+    await guardActiveRuns({ home: options.home, operation: "install", version: options.version, acceptedBy: options.duringActiveRuns });
     result = await installVersion({
       home: options.home,
       version: options.version,
@@ -736,9 +1054,7 @@ async function runCommand(argv) {
       };
     }
   } else {
-    throw new Error(
-      "Usage: development-system <setup|update|doctor|shared-audit|recover-shared|install|audit|validate|rollback|governance|governance-hooks-enable|governance-hooks-audit|governance-hooks-rollback|audit-skills|sync-skills|rollback-skills|guardrails-enable|guardrails-audit|guardrails-rollback|claude-orchestration-enable|claude-orchestration-audit|claude-orchestration-rollback|report-gate-enable|report-gate-audit|report-gate-rollback|check-no-tests|allow-tests|test-grants|check-agents-rules|check-lint-floor|mistake|friction|check-primitives|pr-review-status|thread-health|validate-repository|audit-repository|initialize-repository|normalize-repository|lifecycle-request|lifecycle-execute|lifecycle-status|implement-preview|document|run-worker|definition-route|visual-grill-route|development-run|orchestrator-pilot|orchestration-plan|advisory-status|classify-atom|record-route-decision|jev-workflow-measure|validate-atom-plan|verify-path-confinement|model-route|record-provider-failure|parallel-work|work-multiple|release-train-v2|check-in|linear-hygiene|development-steward|development-steward-schedule-enable|development-steward-schedule-audit|development-steward-schedule-disable|posthog-observability|convex-guardian|working-backwards|working-backwards-publication-intent|working-backwards-t3-handoff|working-backwards-handoff-freshness|working-backwards-evaluate|working-backwards-humanlayer> [options]",
-    );
+    throw new Error(topLevelUsage());
   }
 
   const output = options.json ? JSON.stringify(result) : formatHuman(result);
