@@ -1581,24 +1581,25 @@ function docsTarget(word, absolute, kind, ctx) {
     if (word.fromGlob) {
       return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? shown : null;
     }
-    // Brace expansion makes its names whether or not they exist: expand it exactly, and follow each one through links.
+    // Brace expansion makes its names whether or not they exist: expand the last part exactly, and in a plain known
+    // directory follow each name through links. A patterned directory (`{a,b}/x`, `*/x`) or a sequence (`x{1..9}`) is
+    // walked below like a glob, so links it reaches are followed too.
+    const folder = value.slice(0, value.lastIndexOf("/") + 1);
     if (!/[*?[(^#~]/u.test(name)) {
       const names = braceNames(name, 256);
       if (names) {
         if (names.some(docsName)) return shown;
-        const folder = value.slice(0, value.lastIndexOf("/") + 1);
-        if (/[*?[\]{}()]/u.test(folder) || folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) return null;
-        const reached = names.map((each) => canonicalPath(resolve(ctx.cwd ?? ctx.scope, `${folder}${each}`))).find((real) => docsName(basename(real)));
-        return reached ? `${shown} (${reached})` : null;
+        if (folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) return null;
+        if (!/[*?[\]{}()]/u.test(folder)) {
+          const reached = names.map((each) => canonicalPath(resolve(ctx.cwd ?? ctx.scope, `${folder}${each}`))).find((real) => docsName(basename(real)));
+          return reached ? `${shown} (${reached})` : null;
+        }
       }
-      // Too many names or a sequence: read the braces as any text and compare with each protected name.
-      return couldBeDocs(globSegment(fold(name.replace(/\{[^{}]*\}/gu, "*")))) ? shown : null;
     }
     // A glob expands only to existing entries. When the directory is unknown the guard cannot list them: any protected name
     // the last part can make counts. Otherwise it walks what the glob reaches and checks each name and, through links, the
     // name of the file written; a walk past its bounds fails closed.
-    const directory = value.slice(0, value.lastIndexOf("/") + 1);
-    if (directory.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(directory))) {
+    if (folder.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(folder))) {
       return broadGlob(name).some((form) => couldBeDocs(globSegment(fold(form)))) ? `${shown} (unresolved directory)` : null;
     }
     const reached = globReach(ctx.cwd ?? ctx.scope, value);
@@ -2884,11 +2885,12 @@ function checkoutPathspecs(args) {
   }
   // Without --, Git reads the first operand as a revision when it names one and as a path otherwise (`git checkout AGENTS.md`
   // restores it from the index): it is kept as a pathspec too, and its revision listing is skipped when it names none.
-  const revisionFirst = !conflict && operands.length > 0;
+  // -p takes an optional revision too (`git checkout -p HEAD`), and with no pathspec it walks every file.
+  const patchMode = before.some((word) => word.value === "--patch" || /^-[A-Za-z]*p/u.test(word.value) && !word.value.startsWith("--"));
+  const revisionFirst = (!conflict || patchMode) && operands.length > 0;
   const paths = revisionFirst && dash >= 0 ? operands.slice(1) : operands;
   specs.push(...paths.map((word) => word.literal ? word.value : null));
-  // -p with no pathspec walks every changed file.
-  if (specs.length === 0 && before.some((word) => word.value === "--patch" || /^-[A-Za-z]*p/u.test(word.value) && !word.value.startsWith("--"))) specs.push(null);
+  if (patchMode && (dash < 0 ? operands.length <= 1 : specs.length === 0)) specs.push(null);
   if (specs.length === 0) return null;
   const revision = revisionFirst && operands[0].literal ? operands[0].value : null;
   // An unknown revision cannot be listed: read it as selecting any file.
@@ -3024,24 +3026,38 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       let input = null;
       /** @type {Word[]} */
       const positionals = [];
+      /** @param {string} option @param {Word} word */
+      const take = (option, word) => {
+        if (option === "o" || option === "r") add(word, "write");
+        else if (option === "d") directory = word;
+        else if (option === "i") input = word;
+      };
+      const long = { "--output": "o", "--reject-file": "r", "--directory": "d", "--input": "i" };
       for (let i = 0; i < rest.length; i++) {
         const value = rest[i].value;
-        if ((value === "-o" || value === "--output") && rest[i + 1]) add(rest[++i], "write");
-        else if ((value === "-d" || value === "--directory") && rest[i + 1]) directory = rest[++i];
-        else if (value.startsWith("--directory=")) directory = optionValue(value);
-        else if ((value === "-i" || value === "--input") && rest[i + 1]) input = rest[++i];
-        else if (value.startsWith("--input=")) input = optionValue(value);
-        else if (/^-i./u.test(value)) input = literalWord(value.slice(2));
-        else if ((value === "-r" || value === "--reject-file") && rest[i + 1]) add(rest[++i], "write");
-        else if (value.startsWith("--reject-file=")) add(optionValue(value), "write");
-        else if (/^-r./u.test(value)) add(literalWord(value.slice(2)), "write");
-        else if (value.startsWith("--output=")) add(optionValue(value), "write");
-        else if (/^-o./u.test(value)) add(literalWord(value.slice(2)), "write");
-        else if (["-B", "-z", "-F", "-D"].includes(value)) i++;
-        else if (!value.startsWith("-")) { add(rest[i], "write"); positionals.push(rest[i]); }
+        if (value === "--") { rest.slice(i + 1).forEach((word) => { add(word, "write"); positionals.push(word); }); break; }
+        const named = Object.entries(long).find(([option]) => value === option || value.startsWith(`${option}=`));
+        if (named) {
+          if (value.includes("=")) take(named[1], optionValue(value));
+          else if (rest[i + 1]) take(named[1], rest[++i]);
+          continue;
+        }
+        if (/^--(?:prefix|suffix|fuzz|ifdef|strip|version-control|basename-prefix|debug|get|quoting-style|reject-format|read-only)$/u.test(value)) { i++; continue; }
+        if (value.startsWith("--") || value === "-") continue;
+        if (!value.startsWith("-")) { add(rest[i], "write"); positionals.push(rest[i]); continue; }
+        // A cluster of short options (`-frAGENTS.md`, `-fo out`): the first that takes a value uses the rest or the next word.
+        for (let k = 1; k < value.length; k++) {
+          if (!"BDdFgioprVxYz".includes(value[k])) continue;
+          const attached = value.slice(k + 1);
+          if (attached) take(value[k], literalWord(attached));
+          else if (rest[i + 1]) take(value[k], rest[++i]);
+          break;
+        }
       }
       // The diff comes from -i, the second operand or stdin; the files it names are checked under the directory.
-      add(directory, "tree", { patches: [diffOperand(input ?? positionals[1] ?? null, stdin)] });
+      // Every operand after the first is read as a diff too, so an option value the guard misreads cannot hide it.
+      const diffs = input ? [input] : positionals.slice(1);
+      add(directory, "tree", { patches: diffs.length > 0 ? diffs.map((word) => diffOperand(word, stdin)) : [diffOperand(null, stdin)] });
       break;
     }
     case "chmod": case "chown": case "chgrp": case "chflags": {
