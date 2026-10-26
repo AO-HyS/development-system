@@ -110,8 +110,8 @@ let catRedefined = false;
  * SIMPLE_BACKUP_SUFFIX values the command sets (`SIMPLE_BACKUP_SUFFIX=.md cp -b`, `env …`, `export …`), and whether one of
  * them cannot be read, so `-b` backups use them as well as the environment's; and the option variables it sets for tar and
  * unzip (TAR_OPTIONS, UNZIP, UNZIPOPT), whose options the guard does not read; and the files GIT_CONFIG,
- * GIT_CONFIG_GLOBAL and GIT_CONFIG_SYSTEM name for `git config` (null when unreadable).
- * @type {{ values: string[], unknown: boolean, options: Set<string>, git: Map<string, Word | null> }}
+ * GIT_CONFIG_GLOBAL and GIT_CONFIG_SYSTEM name for `git config`, every value set anywhere in the command (null when unreadable).
+ * @type {{ values: string[], unknown: boolean, options: Set<string>, git: Map<string, (Word | null)[]> }}
  */
 let backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
 
@@ -121,7 +121,7 @@ const WRITER_VARIABLES = new Set(["SIMPLE_BACKUP_SUFFIX", "TAR_OPTIONS", "UNZIP"
 /** Record a writer variable the command sets; a null word is a value the guard cannot read. @param {string} name @param {Word | null} word */
 function recordWriterVariable(name, word) {
   if (!WRITER_VARIABLES.has(name)) return;
-  if (name.startsWith("GIT_CONFIG")) backupEnv.git.set(name, word && word.literal ? word : null);
+  if (name.startsWith("GIT_CONFIG")) backupEnv.git.set(name, [...(backupEnv.git.get(name) ?? []), word && word.literal ? word : null]);
   else if (name !== "SIMPLE_BACKUP_SUFFIX") backupEnv.options.add(name);
   else if (word && word.literal) backupEnv.values.push(word.value);
   else backupEnv.unknown = true;
@@ -3406,6 +3406,22 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (!recursive) return;
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
+      if (name === "rsync" && (shortLetters(rest, "eBfMT@").has("R") || longOption(rest, ["--relative"])) && !longOption(rest, ["--no-relative", "--no-R"])) {
+        // -R/--relative recreates each source path (from a `/./` mark, without a leading `/`) under the destination.
+        const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
+        if (destination && !remote(destination)) {
+          for (const source of sources) {
+            if (remote(source)) continue;
+            const mark = source.value.lastIndexOf("/./");
+            const path = (mark >= 0 ? source.value.slice(mark + 3) : source.value).replace(/^\/+/u, "").replace(/\/+\.?$/u, "");
+            if (!path || path === ".") continue;
+            const value = `${destination.value.replace(/\/+$/u, "") || "."}/${path}`;
+            const word = { ...source, value, raw: value, literal: source.literal && destination.literal };
+            add(word, "write");
+            add(word, "tree", { source, follow });
+          }
+        }
+      }
       if (backupDir && pairs.length > 0) {
         // A replaced file moves under --backup-dir, which is relative to the directory the files land in, at the same path.
         const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
@@ -3420,15 +3436,18 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             const value = path ? `${root}/${path}` : root;
             return { ...backupDir, value, raw: value, literal: backupDir.literal && destination.literal };
           };
+          // A backup has the name of a file the source replaces, so the source's names are checked under the backup directory;
+          // --delete also backs up every destination file it removes.
+          const deletes = rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value));
           pairs.forEach(({ target, source }) => {
             if (target.value !== destination.value) {
-              // dest/name: the old dest/name tree.
               const word = backupWordFor(destination.value, basename(target.value));
               add(word, "write");
-              add(word, "tree", { source: target });
+              add(word, "tree", { source });
+              if (deletes) add(word, "tree", { source: target });
             } else if (into || /\/\.?$/u.test(source.value)) {
-              // Contents copied into the destination directory: the old contents.
-              add(backupWordFor(destination.value, ""), "tree", { source: destination });
+              add(backupWordFor(destination.value, ""), "tree", { source });
+              if (deletes) add(backupWordFor(destination.value, ""), "tree", { source: destination });
             } else {
               // A file replaced: dirname(dest)/backup-dir/basename(dest).
               const slash = destination.value.lastIndexOf("/");
@@ -3818,25 +3837,36 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         // A setting change (set, --add, --unset, sections, --edit) rewrites the --file it names, or the file GIT_CONFIG
         // (GIT_CONFIG_GLOBAL with --global, GIT_CONFIG_SYSTEM with --system) names.
         const subArgs = gitConfigArgs(rest.slice(git.subIndex + 1));
-        const reads = subArgs.some((word) => /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|list)|-l)$/u.test(word.value));
-        const verb = subArgs.find((word) => !word.value.startsWith("-"));
-        const changes = !reads && (gitConfigAssignment(subArgs) !== null
-          || subArgs.some((word) => /^(?:--(?:unset|unset-all|rename-section|remove-section|edit)|-e)$/u.test(word.value))
-          || (verb?.literal === true && ["set", "unset", "rename-section", "remove-section", "edit"].includes(verb.value)));
-        for (let i = 0; changes && i < subArgs.length && subArgs[i].value !== "--"; i++) {
+        // Options are read before `--`, skipping the values of options that take one (`--file --list` names a file).
+        /** @type {string[]} */
+        const options = [];
+        /** @type {Word[]} */
+        const files = [];
+        /** @type {Word | undefined} */
+        let verb;
+        for (let i = 0; i < subArgs.length; i++) {
           const value = subArgs[i].value;
-          if ((value === "-f" || value === "--file") && subArgs[i + 1]) add(subArgs[++i], "write");
-          else if (value.startsWith("--file=")) add({ ...subArgs[i], value: value.slice(7), raw: value.slice(7) }, "write");
-          else if (/^-f./u.test(value)) add({ ...subArgs[i], value: value.slice(2), raw: value.slice(2) }, "write");
+          if (value === "--") { verb ??= subArgs[i + 1]; break; }
+          if ((value === "-f" || value === "--file") && subArgs[i + 1]) { options.push(value); files.push(subArgs[++i]); }
+          else if (value.startsWith("--file=")) { options.push("--file"); files.push({ ...subArgs[i], value: value.slice(7), raw: value.slice(7) }); }
+          else if (/^-f./u.test(value)) { options.push("-f"); files.push({ ...subArgs[i], value: value.slice(2), raw: value.slice(2) }); }
+          else if (GIT_CONFIG_VALUE_OPTIONS.has(value)) { options.push(value); i++; }
+          else if (value.startsWith("-") && value.length > 1) options.push(value.split("=")[0]);
+          else verb ??= subArgs[i];
         }
-        const scoped = (/** @type {string} */ option) => subArgs.some((word) => word.value === option);
-        const file = subArgs.some((word) => /^(?:-f|--file(?:=|$))/u.test(word.value));
-        const variable = file || scoped("--local") || scoped("--worktree") ? null
+        const reads = options.some((option) => /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|list)|-l)$/u.test(option));
+        const changes = !reads && (gitConfigAssignment(subArgs) !== null
+          || options.some((option) => /^(?:--(?:unset|unset-all|rename-section|remove-section|edit)|-e)$/u.test(option))
+          || (verb?.literal === true && ["set", "unset", "rename-section", "remove-section", "edit"].includes(verb.value)));
+        if (changes) files.forEach((word) => add(word, "write"));
+        const scoped = (/** @type {string} */ option) => options.includes(option);
+        const variable = files.length > 0 || scoped("--local") || scoped("--worktree") ? null
           : scoped("--global") ? "GIT_CONFIG_GLOBAL" : scoped("--system") ? "GIT_CONFIG_SYSTEM" : "GIT_CONFIG";
         if (changes && variable) {
-          const set = backupEnv.git.has(variable) ? backupEnv.git.get(variable) : process.env[variable] ? literalWord(process.env[variable] ?? "") : undefined;
-          if (set === null) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: a git config file from ${variable} the guard cannot read`);
-          if (set) add(set, "write");
+          // Every value the command gave the variable counts (a prefix sets it for one command only), and the environment's.
+          const values = [...(backupEnv.git.get(variable) ?? []), ...(process.env[variable] ? [literalWord(process.env[variable] ?? "")] : [])];
+          if (values.includes(null)) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: a git config file from ${variable} the guard cannot read`);
+          values.forEach((word) => { if (word) add(word, "write"); });
         }
       }
       if (sub === "checkout") {
@@ -4411,6 +4441,9 @@ const GIT_CONFIG_OPTIONS = ["--global", "--system", "--local", "--worktree", "--
   "--name-only", "--includes", "--no-includes", "--show-origin", "--show-scope", "--default", "--comment", "--value", "--all", "--regexp",
   "--url", "--append", "--show-names"];
 
+/** git config options whose value is the next word. */
+const GIT_CONFIG_VALUE_OPTIONS = new Set(["-f", "--file", "--blob", "--type", "--default", "--comment", "--value"]);
+
 /** git config arguments with abbreviated long options spelled out. @param {Word[]} subArgs @returns {Word[]} */
 function gitConfigArgs(subArgs) {
   const end = subArgs.findIndex((word) => word.value === "--");
@@ -4434,16 +4467,16 @@ function gitConfigArgs(subArgs) {
  */
 function gitConfigAssignment(subArgs) {
   subArgs = gitConfigArgs(subArgs);
-  const withValue = new Set(["-f", "--file", "--blob", "--type", "--default", "--comment", "--value"]);
+  const withValue = GIT_CONFIG_VALUE_OPTIONS;
   const reading = /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|unset|unset-all|list|edit|rename-section|remove-section|show-origin|show-scope)|-l|-e)$/u;
   /** @type {Word[]} */
   const positional = [];
   for (let i = 0; i < subArgs.length; i++) {
     const word = subArgs[i];
     const value = word.value;
-    if (reading.test(value)) return null;
     if (value === "--") { positional.push(...subArgs.slice(i + 1)); break; }
     if (withValue.has(value)) { i++; continue; }
+    if (reading.test(value)) return null;
     if (value.startsWith("-") && value.length > 1) continue;
     positional.push(word);
   }
