@@ -1958,6 +1958,14 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
       return;
     }
     for (const root of roots) {
+      // Guard configuration below the removed tree goes with it (`rsync --delete empty/ .`): an existing file, or one whose
+      // existing directory is removed. No docs grant lifts it.
+      for (const target of targets) {
+        for (const protectedPath of target.forms) {
+          if (!forms(root).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) continue;
+          if (existsSync(protectedPath) || existsSync(dirname(protectedPath))) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (removing ${root})`);
+        }
+      }
       const found = docsInside(root);
       if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
       else if (found.length > 0 && !covered(found.map((rel) => join(root, rel)), targetKnown)) block(join(root, found[0]));
@@ -3260,9 +3268,11 @@ function findSelection(rest, ctx, action) {
       if (!directory) continue;
       /** @type {string[]} */
       const links = [];
-      const found = docsInside(path, follow, links);
+      // Following links, any entry can be guard configuration reached through a linked directory, so every one is visited.
+      const all = follow ? /** @type {string[]} */ ([]) : null;
+      const found = docsInside(path, follow, links, all);
       if (found === null) { result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`; continue; }
-      for (const rel of [...found, ...links]) visit(join(path, rel), root);
+      for (const rel of new Set([...found, ...links, ...(all ?? [])])) visit(join(path, rel), root);
       // Guard files below a starting point are visited by their own names.
       for (const target of targets) {
         if (target.directory) continue;
