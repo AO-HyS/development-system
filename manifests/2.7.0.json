@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.72.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "c484586aecf85ea79ce6dae3c48f4d77143b869af8dfac41707ab4bfdb1ba2af",
+      "sha256": "00c86cb613e2c8c2d2a308ba9ddec8199d2a2e173fa4b1f8461aa3863f534dc1",
       "expectedMirrorOf": null
     },
     {

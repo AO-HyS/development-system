@@ -1845,9 +1845,10 @@ function pathspecSelects(spec, file) {
 /**
  * The tracked files with a protected name below a directory, relative to it, from the index and, when given, a revision;
  * null when Git cannot list them (no repository, an unknown revision, a slow or oversized listing).
- * @param {string} directory @param {string | null} revision @returns {string[] | null}
+ * `extra` also keeps other tracked files (guard configuration). @param {string} directory @param {string | null} revision
+ * @param {(file: string) => boolean} [extra] @returns {string[] | null}
  */
-function trackedDocs(directory, revision) {
+function trackedDocs(directory, revision, extra = (/** @type {string} */ _file) => false) {
   const program = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].map((each) => join(each, "git")).find((candidate) => existsSync(candidate));
   if (!program) return null;
   /** @type {string[]} */
@@ -1862,7 +1863,7 @@ function trackedDocs(directory, revision) {
     // A first operand that names no revision is a path, already among the pathspecs.
     if (args[0] === "ls-tree" && result.status === 128 && !result.error) continue;
     if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
-    found.push(...result.stdout.split("\0").filter((file) => file !== "" && docsName(basename(file))));
+    found.push(...result.stdout.split("\0").filter((file) => file !== "" && (docsName(basename(file)) || extra(file))));
   }
   return [...new Set(found)];
 }
@@ -1882,6 +1883,20 @@ function trackedDocs(directory, revision) {
  */
 function checkDocsEffect(word, text, absolute, effect, ctx) {
   const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown}`); };
+  // Guard configuration a tree, patch, archive or Git restore writes is blocked like a direct write; no docs grant lifts it.
+  const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+  const guard = (/** @type {string} */ path, /** @type {string} */ shown) => {
+    const hit = protectedMatch(path, "write", targets);
+    if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit} (${shown})`);
+  };
+  /** Guard configuration below a directory whose contents the guard cannot list. @param {string} root @param {string} shown */
+  const guardBelow = (root, shown) => {
+    for (const target of targets) {
+      for (const protectedPath of target.forms) {
+        if (forms(root).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`))) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (${shown})`);
+      }
+    }
+  };
   const shownWord = (/** @type {Word} */ each) => each.value.replaceAll(UNKNOWN, "$…");
   const covered = (/** @type {string[]} */ files, /** @type {boolean} */ operands) => operands && files.every((file) => grantedDocsWrite(file));
   const targetKnown = grantable(word, text, ctx);
@@ -1905,7 +1920,10 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     }
     const sourceText = effect.source.value.replaceAll(UNKNOWN, "x");
     for (const root of roots) {
-      const found = docsInside(root, effect.follow);
+      /** @type {string[]} */
+      const all = [];
+      const found = docsInside(root, effect.follow, null, all);
+      if (found !== null) for (const rel of all) guard(join(absolute, rel), `${join(root, rel)} -> ${join(absolute, rel)}`);
       if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or a broken or unreadable link" : ""})`);
       else if (found.length > 0 && !covered(found.map((rel) => join(absolute, rel)), targetKnown && grantable(effect.source, sourceText, ctx))) {
         block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
@@ -1925,6 +1943,7 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
       const members = patch && patchMembers(patch, ctx);
       if (!members) {
         if (!wholeDirectory) block(`${shown} (a patch the guard cannot read) -> ${root}`);
+        guardBelow(root, `${shown}, a patch the guard cannot read`);
         continue;
       }
       const patchKnown = !patch?.word || grantable(patch.word, patch.word.value, ctx);
@@ -1933,6 +1952,7 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
         const parts = member.split("/").filter((part) => part !== "" && part !== ".");
         for (let k = 0; k < parts.length; k++) {
           const target = resolve(root, parts.slice(k).join("/"));
+          guard(target, `${shown}: ${member}`);
           const real = canonicalPath(target);
           const hit = docsName(parts.at(-1) ?? "") ? target : docsName(basename(real)) ? real : null;
           if (hit && !covered([hit], targetKnown && patchKnown)) block(`${shown}: ${member} -> ${hit}`);
@@ -1941,11 +1961,13 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     }
     if (effect.pathspecs) {
       const { specs, revision } = effect.pathspecs;
-      const tracked = trackedDocs(root, revision);
+      const tracked = trackedDocs(root, revision, (file) => protectedMatch(join(root, file), "write", targets) !== null);
       if (tracked === null) {
         if (!wholeDirectory) block(`${root} (Git paths the guard cannot list)`);
+        guardBelow(root, "Git paths the guard cannot list");
         return;
       }
+      for (const file of tracked) if (specs.some((spec) => pathspecSelects(spec, file))) guard(join(root, file), "restored by Git");
       const hit = tracked.find((file) => specs.some((spec) => pathspecSelects(spec, file)));
       if (hit && !covered([join(root, hit)], targetKnown && specs.every((spec) => spec !== null))) block(`${join(root, hit)} (restored by Git)`);
     }
@@ -1965,14 +1987,17 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     if (existing.length > 0 && !wholeDirectory) block(`${join(root, existing[0])} (archive or remote contents into a directory that holds it)`);
     if (effect.archives === undefined) {
       if (insideRepository(root) && !wholeDirectory) block(`${root} (remote contents the guard cannot read)`);
+      if (!ctx.codeString) guardBelow(root, "remote contents the guard cannot read");
       return;
     }
     if (effect.archives === null || effect.archives.length === 0) {
       if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${root} (an archive from stdin or an operand the guard cannot read)`);
+      if (!ctx.codeString) guardBelow(root, "an archive the guard cannot read");
       return;
     }
     if (effect.renames) {
       if (!wholeDirectory) block(`${root} (an extraction that renames members)`);
+      guardBelow(root, "an extraction that renames members");
       return;
     }
     for (const archive of effect.archives) {
@@ -1980,8 +2005,10 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
       const members = archiveMembers(archive, ctx);
       if (members === null) {
         if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${shown} (an archive the guard cannot list) -> ${root}`);
+        if (!ctx.codeString) guardBelow(root, `${shown}, an archive the guard cannot list`);
         continue;
       }
+      for (const member of members) guard(join(root, member.replace(/[\\/]+$/u, "")), `${shown}: ${member}`);
       const hits = members.filter((member) => docsName(member.replace(/[\\/]+$/u, "").split(/[\\/]/u).pop() ?? ""));
       const archiveKnown = archive.word !== null && grantable(archive.word, archive.word.value, ctx);
       if (hits.length > 0 && !covered(hits.map((member) => join(root, member)), targetKnown && archiveKnown)) {
@@ -2912,6 +2939,17 @@ function checkoutPathspecs(args) {
   return { specs, revision };
 }
 
+/** The index of a `find` primary outside -exec/-ok bodies, or -1. @param {Word[]} rest @param {string} primary */
+function findActionIndex(rest, primary) {
+  for (let i = 0; i < rest.length; i++) {
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
+      while (i + 1 < rest.length && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
+      i++;
+    } else if (rest[i].value === primary) return i;
+  }
+  return -1;
+}
+
 /** How many selected protected files `find -exec` checks one by one before standing in a protected name for the rest. */
 const FIND_FILLS = 64;
 
@@ -3041,12 +3079,39 @@ function findSelection(rest, ctx, action) {
  * never granted. @param {Word[]} rest @param {Context} ctx
  */
 function checkFindDelete(rest, ctx) {
-  const { docs, guard, unknown } = findSelection(rest, ctx, rest.findIndex((word) => word.value === "-delete"));
+  const { docs, guard, unknown } = findSelection(rest, ctx, findActionIndex(rest, "-delete"));
   if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
   const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
   if (unknown !== null) block(unknown);
   const hit = docs.find(({ file, root }) => !(grantable(root, root.value, ctx) && grantedDocsWrite(file)));
   if (hit) block(hit.file);
+}
+
+/**
+ * Blocks a symbolic link whose text names guard configuration or a directory at or above it, project targets included.
+ * @param {Word} word @param {Context} ctx
+ */
+function checkLinkSource(word, ctx) {
+  if (word.value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(word.value))) return;
+  const candidates = forms(resolve(ctx.cwd ?? ctx.scope, word.value));
+  for (const target of [...protectedTargets, ...projectTargets(ctx.scope)]) {
+    for (const protectedPath of target.forms) {
+      if (candidates.some((candidate) => candidate === protectedPath || protectedPath.startsWith(`${candidate}${sep}`) || (target.directory && candidate.startsWith(`${protectedPath}${sep}`)))) {
+        throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${target.entry} (a link to ${word.value})`);
+      }
+    }
+  }
+}
+
+/**
+ * The backup an in-place edit (`sed -i`, `perl -i`, `ruby -i`) writes: the file name plus the suffix, or the suffix with `*`
+ * replaced by the file's name (in the file's directory unless the suffix holds a `/`). @param {Word} word @param {string} suffix
+ * @returns {Word}
+ */
+function backupWord(word, suffix) {
+  const base = word.value.slice(word.value.lastIndexOf("/") + 1), folder = word.value.slice(0, word.value.lastIndexOf("/") + 1);
+  const backup = !suffix.includes("*") ? `${word.value}${suffix}` : suffix.includes("/") ? suffix.replaceAll("*", base) : `${folder}${suffix.replaceAll("*", base)}`;
+  return { ...word, value: backup, raw: backup };
 }
 
 /**
@@ -3108,9 +3173,10 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         sources.forEach((word) => add(word, "delete"));
         if (symbolic) {
           pairs.forEach(({ target, source }) => {
-            if (isAbsolute(source.value)) return;
-            const linked = `${target.value.slice(0, target.value.lastIndexOf("/") + 1)}${source.value}`;
-            add({ ...source, value: linked, raw: linked }, "delete");
+            const linked = isAbsolute(source.value) ? source : { ...source, value: `${target.value.slice(0, target.value.lastIndexOf("/") + 1)}${source.value}` };
+            if (linked !== source) add({ ...linked, raw: linked.value }, "delete");
+            // A link to a directory at or above project guard configuration (`.codex`, `.`) writes it through the link.
+            for (const word of [source, linked]) checkLinkSource(word, ctx);
           });
         }
       }
@@ -3152,7 +3218,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (word.literal && word.value.startsWith("-") && word.value.length > 1) continue;
         files.push(word);
       }
-      (code ? files : files.slice(1)).forEach((word) => add(word, "write"));
+      // `-i` takes the rest of its switch as a backup suffix (`-i.bak`, `-pi.orig`); each backup is written too.
+      const suffix = rest.find((word) => word.literal && /^-[0-9aclnpstuwTUWX]*i/u.test(word.value))?.value.replace(/^-[0-9aclnpstuwTUWX]*i/u, "") ?? "";
+      (code ? files : files.slice(1)).forEach((word) => {
+        add(word, "write");
+        if (suffix) add(backupWord(word, suffix), "write");
+      });
       break;
     }
     case "curl": {
@@ -3334,9 +3405,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
           // The backup is the file name plus the suffix, or the suffix with `*` replaced by the file's name.
           for (const suffix of sed.suffixes) {
             if (!suffix) continue;
-            const base = word.value.slice(word.value.lastIndexOf("/") + 1), folder = word.value.slice(0, word.value.lastIndexOf("/") + 1);
-            const backup = !suffix.includes("*") ? `${word.value}${suffix}` : suffix.includes("/") ? suffix.replaceAll("*", base) : `${folder}${suffix.replaceAll("*", base)}`;
-            add({ ...word, value: backup, raw: backup }, "write");
+            add(backupWord(word, suffix), "write");
           }
         });
       }
@@ -4078,41 +4147,52 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
         // A word that adds text to `{}` (`{}.json`, `{}/hooks.json`) builds a new path from each file find visits: every file
         // the action selects is walked (within the docs walk bounds), and each one whose built path is protected is checked in
         // place of `{}`. An unknown starting point or a larger tree fails closed.
-        if (!dir && nested.some((word) => word.value.includes("{}") && word.value !== "{}") && !readOnlyCommands.has(commandName(nested[0].value))) {
+        if (!dir && nested.some((word) => word.value.includes("{}") && word.value !== "{}")) {
           const unknownBuild = () => new Block("docs-config-write", `${structural["docs-config-write"]} Target: a path built from {} that the guard cannot list`);
+          // Whether the command writes a word built from `{}` (`cp x {}.json`, `sort -o {}.json`), read from its targets.
+          const marker = "\u0001";
+          const probe = nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", marker)) : word);
+          const probeName = commandName(probe[0].value), probeRest = probe.slice(1);
+          const writes = !readOnlyCommands.has(probeName)
+            || commandTargets(probeName, probeRest, ctx, probeName === "sed" ? analyzeSed(probeRest) : null, { redirects: [], stdinPiped: false }).some(({ word }) => word.value.includes(marker));
           const parsed = findRoots(rest);
-          if (selection.unknown !== null || parsed === null) throw unknownBuild();
+          if (writes && (selection.unknown !== null || parsed === null)) throw unknownBuild();
+          if (parsed !== null && selection.unknown === null) {
           const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
           const built = nested.filter((word) => word.value.includes("{}") && word.value !== "{}");
           for (const root of parsed.roots) {
             const paths = operandPaths(root, ctx, true);
-            if (paths === null) throw unknownBuild();
+            if (paths === null) { if (writes) throw unknownBuild(); continue; }
             for (const path of paths) {
-              const visited = [path];
+              // find passes each file as its starting point's text followed by the path below it (`hooks`, `dir/x`).
+              const start = root.glob ? (isAbsolute(root.value) ? path : relative(ctx.cwd ?? ctx.scope, path) || ".") : root.value;
+              /** @type {{ path: string, shown: string }[]} */
+              const visited = [{ path, shown: start }];
               /** @type {string[]} */
               const all = [];
               let directory = false;
               try { directory = statSync(path).isDirectory(); } catch { /* missing: only the starting point */ }
-              if (directory && docsInside(path, parsed.follow, null, all) === null) throw unknownBuild();
-              visited.push(...all.map((rel) => join(path, rel)));
-              for (const file of visited) {
+              if (directory && docsInside(path, parsed.follow, null, all) === null) { if (writes) throw unknownBuild(); continue; }
+              visited.push(...all.map((rel) => ({ path: join(path, rel), shown: start.endsWith("/") ? `${start}${rel}` : `${start}/${rel}` })));
+              for (const { path: file, shown } of visited) {
                 if (!selection.selected(file)) continue;
                 const reaches = built.some((word) => {
-                  const absolute = resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", file));
+                  const absolute = resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", shown));
                   return docsName(basename(absolute)) || docsName(basename(canonicalPath(absolute))) || protectedMatch(absolute, "write", targets) !== null;
                 });
                 if (!reaches) continue;
                 if (variants.length > FIND_FILLS) throw unknownBuild();
-                variants.push(nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", file)) : word));
+                variants.push(nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", shown)) : word));
               }
             }
+          }
           }
         }
       }
       for (const argv of variants) evaluateArgv(argv, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
       i = end;
     }
-    if (rest.some((word) => word.value === "-delete")) checkFindDelete(rest, ctx);
+    if (findActionIndex(rest, "-delete") >= 0) checkFindDelete(rest, ctx);
   }
   if (name === "rg" && rest.some((word) => /^--pre(?:=|$)/u.test(word.value))) throw new Block("read-command-execution");
   if (name === "git") {
