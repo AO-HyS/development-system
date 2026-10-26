@@ -1460,6 +1460,12 @@ function linkedPath(base, text) {
 /** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx @param {TreeEffect} [effect] */
 function checkTarget(word, kind, ctx, effect) {
   if (!word || !word.value) return;
+  // `link/..` names the directory above the link's target: every check (trees, globs, docs names) reads that path.
+  if (word.value.split("/").includes("..") && !word.value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(word.value))) {
+    const base = ctx.cwd ?? ctx.scope;
+    const linked = linkedPath(base, word.value);
+    if (linked !== resolve(base, word.value) && canonicalPath(linked) !== canonicalPath(resolve(base, word.value))) word = { ...word, value: linked, raw: linked };
+  }
   // A brace expansion marks the word unknown just before its `{`; the glob check reads the braces instead.
   const text = word.value.replaceAll(`${UNKNOWN}{`, "{").replaceAll(UNKNOWN, "x");
   const absolute = resolve(ctx.cwd ?? ctx.scope, text);
@@ -1734,10 +1740,15 @@ function operandPaths(word, ctx, lexical = false) {
   const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
   if (!value || value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(value)) || looseGlob(word, value) !== null) return null;
   const base = ctx.cwd ?? ctx.scope;
-  if (!word.glob) return [lexical ? resolve(base, value) : canonicalPath(resolve(base, value))];
+  // `link/..` is read from the link's target directory (also kept as written for a lexical reader such as find's names).
+  const dots = value.split("/").includes("..");
+  if (!word.glob) {
+    const path = lexical ? resolve(base, value) : canonicalPath(resolve(base, value));
+    return dots ? [...new Set([path, lexical ? linkedPath(base, value) : canonicalPath(linkedPath(base, value))])] : [path];
+  }
   const directory = value.slice(0, value.lastIndexOf("/") + 1), name = value.slice(value.lastIndexOf("/") + 1);
   if (!name || /[*?[\]{}()]/u.test(directory)) return null;
-  const parent = resolve(base, directory || ".");
+  const parent = dots ? linkedPath(base, directory || ".") : resolve(base, directory || ".");
   if (!/[*?[(^#~]/u.test(name)) {
     const names = braceNames(name, 256);
     return names && names.map((each) => lexical ? join(parent, each) : canonicalPath(join(parent, each)));
@@ -3480,23 +3491,35 @@ function commandTargets(name, rest, ctx, sed, stdin) {
     }
     case "curl": {
       const writes = new Set(["--output", "--dump-header", "--cookie-jar", "--trace", "--trace-ascii", "--stderr", "--etag-save", "--hsts", "--alt-svc"]);
+      // --output-dir puts -o and -O files in that directory.
+      /** @type {Word | null} */
+      let outputDir = null;
+      for (let i = 0; i < rest.length; i++) {
+        if (rest[i].value === "--output-dir" && rest[i + 1]) outputDir = rest[++i];
+        else if (rest[i].value.startsWith("--output-dir=")) outputDir = { ...rest[i], value: rest[i].value.slice(13), raw: rest[i].value.slice(13) };
+      }
+      const out = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind) => add(outputDir && !isAbsolute(word.value)
+        ? { ...word, value: `${outputDir.value}/${word.value}`, raw: `${outputDir.value}/${word.value}`, literal: outputDir.literal && word.literal } : word, kind);
       for (let i = 0; i < rest.length; i++) {
         const word = rest[i];
         const value = word.value;
         if (!word.literal || !value.startsWith("-") || value === "-") continue;
         if (value.startsWith("--")) {
           const option = value.split("=")[0];
-          if (writes.has(option)) add(value.includes("=") ? optionValue(value) : rest[++i] ?? literalWord(""), "write");
-          else if (option === "--remote-name" || option === "--remote-name-all") remoteNames(rest, add);
+          if (option === "--output") out(value.includes("=") ? optionValue(value) : rest[++i] ?? literalWord(""), "write");
+          else if (writes.has(option)) add(value.includes("=") ? optionValue(value) : rest[++i] ?? literalWord(""), "write");
+          else if (option === "--output-dir" && !value.includes("=")) i++;
+          else if (option === "--remote-name" || option === "--remote-name-all") remoteNames(rest, out);
           continue;
         }
         // In a cluster like -sSLo the first option that takes a value uses the rest of the word or the next word.
         for (let k = 1; k < value.length; k++) {
-          if (value[k] === "O") { remoteNames(rest, add); continue; }
+          if (value[k] === "O") { remoteNames(rest, out); continue; }
           if (!"oDcHdXuAebFTKmwxrCEYyztUPQ".includes(value[k])) continue;
           const attached = value.slice(k + 1);
           const target = attached ? literalWord(attached) : rest[++i];
-          if ("oDc".includes(value[k]) && target) add(target, "write");
+          if (value[k] === "o" && target) out(target, "write");
+          else if ("Dc".includes(value[k]) && target) add(target, "write");
           break;
         }
       }
@@ -3673,8 +3696,15 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const subArgs = rest.slice(git.subIndex + 1);
       // `-n`/`--dry-run` only lists what git mv or git rm would do.
       const optionEnd = subArgs.findIndex((word) => word.value === "--");
-      const preview = (sub === "mv" || sub === "rm") && subArgs.slice(0, optionEnd < 0 ? subArgs.length : optionEnd)
-        .some((word) => word.literal && (word.value === "--dry-run" || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)));
+      // The last of -n/--dry-run and --no-dry-run wins.
+      let preview = false;
+      if (sub === "mv" || sub === "rm") {
+        for (const word of subArgs.slice(0, optionEnd < 0 ? subArgs.length : optionEnd)) {
+          if (!word.literal) continue;
+          if (word.value === "--dry-run" || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)) preview = true;
+          else if (word.value === "--no-dry-run") preview = false;
+        }
+      }
       if (sub === "mv" && !preview) {
         const { sources, pairs } = copyTargets(subArgs, ctx, new Set());
         pairs.forEach(({ target, source }) => add(target, "write", { source }));
@@ -3814,7 +3844,8 @@ const EXEC_VARIABLES = new Set(["GIT_PAGER", "PAGER", "MANPAGER", "GIT_EDITOR", 
 /** @param {string} name @param {Word} word @param {Context} ctx */
 function checkExecVariable(name, word, ctx) {
   checkSubscriptCode(word.value);
-  recordWriterVariable(name, word);
+  // `NAME+=value` (plain is false) appends to a value the guard may not know.
+  recordWriterVariable(name, word.plain === false ? null : word);
   if (!EXEC_VARIABLES.has(name)) return;
   if (!word.literal) throw new Block("shell-dynamic-command", `${name} names a program that will be executed; it must be literal.`);
   // BASH_ENV and ENV name a startup file the shell sources, not command text.
@@ -4551,8 +4582,17 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   const filled = (/** @type {string} */ text, /** @type {boolean} */ literal) => rest.map((word) => word.value.includes(/** @type {string} */ (replace))
     ? { ...literalWord(word.value.replaceAll(/** @type {string} */ (replace), text)), literal } : word);
   const variants = !viaXargs ? [rest] : replace !== null ? [filled("AGENTS.md", true), filled(UNKNOWN, false)] : [[...rest, literalWord("AGENTS.md")]];
+  // git -C runs in that directory (each -C read from the one before); the protected project stays the same.
+  let targetCtx = ctx;
+  if (name === "git") {
+    const { subIndex } = parseGit(rest);
+    for (let k = 0; k < subIndex; k++) {
+      if (rest[k].value !== "-C" || !rest[k + 1]) continue;
+      targetCtx = { ...targetCtx, cwd: chdirTarget(rest[++k], targetCtx) };
+    }
+  }
   for (const operands of variants) {
-    for (const { word, kind, effect } of commandTargets(name, operands, ctx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
+    for (const { word, kind, effect } of commandTargets(name, operands, targetCtx, viaXargs && sed ? analyzeSed(operands) : sed, { redirects, stdinPiped })) checkTarget(word, kind, targetCtx, effect);
   }
   if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
