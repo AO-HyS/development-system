@@ -234,8 +234,18 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     const appComments = comments.filter((comment) => isCodexApp(comment.user)).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id);
     const summaries = summaryStates(appComments);
     // A receipt is the app's own "Reviewed commit" comment when a review ends without inline findings.
-    const receipts = appComments.filter((comment) => String(comment.body).includes("codex-review-receipt:v1"))
-      .map((comment) => /Reviewed commit:?\**:?\s*`([0-9a-f]{7,40})`/.exec(String(comment.body))?.[1]).filter((sha) => typeof sha === "string");
+    const receiptEntries = appComments.filter((comment) => String(comment.body).includes("codex-review-receipt:v1"))
+      .map((comment) => ({ sha: /Reviewed commit:?\**:?\s*`([0-9a-f]{7,40})`/.exec(String(comment.body))?.[1], at: Date.parse(comment.created_at) }))
+      .filter((entry) => typeof entry.sha === "string");
+    const receipts = receiptEntries.map((entry) => entry.sha);
+    /** The one commit Codex completed a review or receipt for in (from, to); "" when none or ambiguous. */
+    const reviewedBetween = (/** @type {number} */ from, /** @type {number} */ to) => {
+      const shas = new Set([
+        ...reviews.filter((review) => { const at = Date.parse(review.submitted_at); return at > from && at < to; }).map((review) => String(review.commit_id)),
+        ...receiptEntries.filter((entry) => entry.at > from && entry.at < to).map((entry) => /** @type {string} */ (entry.sha)),
+      ]);
+      return shas.size === 1 ? [...shas][0] : "";
+    };
     const validReview = (/** @type {string} */ sha) => sha !== "" && (reviews.some((review) => review.commit_id === sha)
       || receipts.some((cited) => cites(sha, /** @type {string} */ (cited)))
       || summaries.some((summary) => cites(sha, summary.sha) && /completed/i.test(summary.status)));
@@ -247,9 +257,10 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     const published = comments.filter((comment) => comment.user?.type === "User" && REQUEST.test(String(comment.body)))
       .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)
       .map((comment, index, all) => {
-        const sha = new RegExp(`${REQUEST_MARKER} sha=([0-9a-f]{40})`).exec(String(comment.body))?.[1] ?? "";
         const at = Date.parse(comment.created_at);
         const next = index + 1 < all.length ? Date.parse(all[index + 1].created_at) : Infinity;
+        // A hand-typed request carries no marker: it takes the one commit Codex reviewed before the next request.
+        const sha = new RegExp(`${REQUEST_MARKER} sha=([0-9a-f]{40})`).exec(String(comment.body))?.[1] ?? reviewedBetween(at, next);
         const after = replies.filter((reply) => Date.parse(reply.created_at) > at);
         const first = after[0];
         // A terminal app reply ends this request only if it names the request's SHA or is the first app reply to it.

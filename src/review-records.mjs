@@ -8,7 +8,7 @@
 // file can never pass as approval. A record states what a reviewer or the coordinator concluded; it never authorizes a
 // merge by itself.
 import { randomUUID } from "node:crypto";
-import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from "node:fs";
+import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { parsePrReference } from "./evidence.mjs";
@@ -76,10 +76,40 @@ function pidAlive(pid) {
 }
 
 /**
+ * Removes the dead lock at `path` only while holding `<path>.recover`, so recoverers never race each other and the
+ * canonical path is never detached from a live owner. True when this call removed it or it was already gone; false
+ * while another recovery runs. A recovery guard left by a dead process fails closed for the operator.
+ * @param {string} path @param {string} raw the dead lock content observed
+ */
+function removeDeadLock(path, raw) {
+  const guard = `${path}.recover`;
+  let fd;
+  try { fd = openSync(guard, "wx", 0o600); } catch (error) {
+    if (/** @type {NodeJS.ErrnoException} */ (error).code !== "EEXIST") throw error;
+    let owner;
+    let mtimeMs = Date.now();
+    try { owner = parseLock(readFileSync(guard, "utf8")); mtimeMs = statSync(guard).mtimeMs; } catch { return false; }
+    const dead = owner ? owner.hostname === hostname() && !pidAlive(owner.pid) : Date.now() - mtimeMs > MALFORMED_LOCK_MS;
+    if (dead) throw new Error(`${guard} was left by a recovery that died; remove it once no run uses ${path}`);
+    return false;
+  }
+  try {
+    writeSync(fd, JSON.stringify({ pid: process.pid, hostname: hostname(), createdAt: new Date().toISOString(), token: randomUUID() }));
+    let current;
+    try { current = readFileSync(path, "utf8"); } catch { return true; } // already released
+    if (lockToken(current) === lockToken(raw)) unlinkSync(path);
+    return true;
+  } finally {
+    closeSync(fd);
+    unlinkSync(guard);
+  }
+}
+
+/**
  * Runs `work` while holding an exclusive lock file (created with `wx`) whose JSON content names the owner
  * {pid, hostname, createdAt, token}. Only a lock of this host whose pid is gone (or malformed content older than
  * 10 minutes) is recovered; a live or foreign owner is retried for `waitMs`, then the call fails closed without
- * running `work`. Recovery renames the dead lock aside and removes it only if it still carries the observed token.
+ * running `work`. Recovery removes the dead lock under a separate recovery guard, only if it still carries the observed token.
  * @template T @param {string} path @param {() => T} work @param {{waitMs?: number}} [options] @returns {T}
  */
 export function withFileLock(path, work, { waitMs = 5_000 } = {}) {
@@ -96,13 +126,7 @@ export function withFileLock(path, work, { waitMs = 5_000 } = {}) {
       try { raw = readFileSync(path, "utf8"); mtimeMs = statSync(path).mtimeMs; } catch { continue; } // released between open and read
       const owner = parseLock(raw);
       const dead = owner ? owner.hostname === hostname() && !pidAlive(owner.pid) : Date.now() - mtimeMs > MALFORMED_LOCK_MS;
-      if (dead) {
-        const aside = `${path}.stale-${randomUUID()}`;
-        try { renameSync(path, aside); } catch { continue; } // someone else recovered or released it
-        if (lockToken(readFileSync(aside, "utf8")) !== lockToken(raw)) throw new Error(`${path} changed owner during recovery; the lock it replaced was left at ${aside} for the operator`);
-        unlinkSync(aside);
-        continue;
-      }
+      if (dead && removeDeadLock(path, raw)) continue;
       if (Date.now() >= deadline) throw new Error(`${path} is held by a live or foreign run; retry when it finishes, or remove the lock file if its owner is gone`);
       pause(50);
     }
