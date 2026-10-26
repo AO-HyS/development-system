@@ -109,18 +109,20 @@ let catRedefined = false;
 /**
  * SIMPLE_BACKUP_SUFFIX values the command sets (`SIMPLE_BACKUP_SUFFIX=.md cp -b`, `env …`, `export …`), and whether one of
  * them cannot be read, so `-b` backups use them as well as the environment's; and the option variables it sets for tar and
- * unzip (TAR_OPTIONS, UNZIP, UNZIPOPT), whose options the guard does not read.
- * @type {{ values: string[], unknown: boolean, options: Set<string> }}
+ * unzip (TAR_OPTIONS, UNZIP, UNZIPOPT), whose options the guard does not read; and the files GIT_CONFIG,
+ * GIT_CONFIG_GLOBAL and GIT_CONFIG_SYSTEM name for `git config` (null when unreadable).
+ * @type {{ values: string[], unknown: boolean, options: Set<string>, git: Map<string, Word | null> }}
  */
-let backupEnv = { values: [], unknown: false, options: new Set() };
+let backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
 
 /** Variables whose value changes what a writer the guard inspects writes. */
-const WRITER_VARIABLES = new Set(["SIMPLE_BACKUP_SUFFIX", "TAR_OPTIONS", "UNZIP", "UNZIPOPT"]);
+const WRITER_VARIABLES = new Set(["SIMPLE_BACKUP_SUFFIX", "TAR_OPTIONS", "UNZIP", "UNZIPOPT", "GIT_CONFIG", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM"]);
 
 /** Record a writer variable the command sets; a null word is a value the guard cannot read. @param {string} name @param {Word | null} word */
 function recordWriterVariable(name, word) {
   if (!WRITER_VARIABLES.has(name)) return;
-  if (name !== "SIMPLE_BACKUP_SUFFIX") backupEnv.options.add(name);
+  if (name.startsWith("GIT_CONFIG")) backupEnv.git.set(name, word && word.literal ? word : null);
+  else if (name !== "SIMPLE_BACKUP_SUFFIX") backupEnv.options.add(name);
   else if (word && word.literal) backupEnv.values.push(word.value);
   else backupEnv.unknown = true;
 }
@@ -2629,7 +2631,7 @@ function awkIsPureRead(rest) {
 }
 
 /** @param {Word[]} rest @param {Set<string>} withValue */
-function operandsOf(rest, withValue, targetLetter = false) {
+function operandsOf(rest, withValue, targetLetter = false, targetOption = true) {
   /** @type {Word[]} */
   const operands = [];
   /** @type {Word | null} */
@@ -2640,7 +2642,7 @@ function operandsOf(rest, withValue, targetLetter = false) {
     const word = rest[i];
     const value = word.value;
     if (!optionsDone && value === "--") { optionsDone = true; i++; continue; }
-    if (!optionsDone && (value === "-t" || value === "--target-directory")) { targetDirectory = rest[i + 1] ?? null; i += 2; continue; }
+    if (!optionsDone && targetOption && (value === "-t" || value === "--target-directory")) { targetDirectory = rest[i + 1] ?? null; i += 2; continue; }
     if (!optionsDone && targetLetter && word.literal && /^-[A-Za-z]/u.test(value)) {
       // A short cluster (`-rt.codex`, `-t.codex`): -t takes the rest of the word or the next one; another value option ends it.
       let step = 1;
@@ -2655,7 +2657,7 @@ function operandsOf(rest, withValue, targetLetter = false) {
       i += step;
       continue;
     }
-    if (!optionsDone && value.startsWith("--target-directory=")) { targetDirectory = literalWord(value.slice(19)); i++; continue; }
+    if (!optionsDone && targetOption && value.startsWith("--target-directory=")) { targetDirectory = literalWord(value.slice(19)); i++; continue; }
     if (!optionsDone && withValue.has(value)) { i += 2; continue; }
     if (!optionsDone && value.startsWith("-") && value.length > 1 && word.literal) { i++; continue; }
     operands.push(word);
@@ -2699,12 +2701,13 @@ function longOption(rest, names) {
  * cp -R, rsync), and so does any directory source with `contents` (ditto). A `remote` source (rsync `host:path`) is not
  * expanded here: the remote shell expands it.
  * @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue
- * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean }} [options] `targetLetter` reads `-t` in
+ * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean, targetOption?: boolean }} [options]
+ * `targetOption` reads `-t`/`--target-directory` as the destination (not rsync, where `-t` keeps times); `targetLetter` reads `-t` in
  * short clusters and with an attached value (GNU cp, mv, install, ln).
  * @returns {{ sources: Word[], pairs: { target: Word, source: Word }[] }}
  */
-function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false } = {}) {
-  const { operands, targetDirectory } = operandsOf(rest, withValue, targetLetter);
+function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false, targetOption = true } = {}) {
+  const { operands, targetDirectory } = operandsOf(rest, withValue, targetLetter, targetOption);
   /** @type {Word[]} */
   const sources = targetDirectory ? operands : operands.slice(0, -1);
   const destination = targetDirectory ?? operands[operands.length - 1];
@@ -3390,7 +3393,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         add(destination, "tree", { unknownContents: true, archives: operands.slice(0, -1).map((word) => ({ word, format })) });
         break;
       }
-      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote, targetLetter: name !== "rsync" && name !== "ditto" });
+      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote, targetLetter: name !== "rsync" && name !== "ditto", targetOption: name !== "rsync" });
       const recursive = name === "rsync" || name === "ditto"
         || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
       // cp -L/-H and rsync -L/-k (and their long forms) copy what symlinks below the source point to; ditto does not.
@@ -3404,12 +3407,34 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
       if (backupDir && pairs.length > 0) {
-        // The replaced destination files move under --backup-dir (relative to the destination) at the same paths.
-        const { operands, targetDirectory } = operandsOf(rest, withValue);
-        const destination = targetDirectory ?? operands.at(-1);
+        // A replaced file moves under --backup-dir, which is relative to the directory the files land in, at the same path.
+        const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
         if (destination && !remote(destination)) {
-          const value = isAbsolute(backupDir.value) ? backupDir.value : `${destination.value.replace(/\/+$/u, "")}/${backupDir.value}`;
-          add({ ...backupDir, value, raw: value, literal: backupDir.literal && destination.literal }, "tree", { source: destination });
+          const trim = (/** @type {string} */ text) => text.replace(/\/+$/u, "") || "/";
+          let into = destination.value.endsWith("/");
+          if (!into && !destination.value.includes(UNKNOWN) && (ctx.cwd !== null || isAbsolute(destination.value))) {
+            try { into = statSync(resolve(ctx.cwd ?? ctx.scope, destination.value)).isDirectory(); } catch { into = false; }
+          }
+          const backupWordFor = (/** @type {string} */ directory, /** @type {string} */ path) => {
+            const root = isAbsolute(backupDir.value) ? trim(backupDir.value) : `${trim(directory)}/${backupDir.value.replace(/\/+$/u, "")}`;
+            const value = path ? `${root}/${path}` : root;
+            return { ...backupDir, value, raw: value, literal: backupDir.literal && destination.literal };
+          };
+          pairs.forEach(({ target, source }) => {
+            if (target.value !== destination.value) {
+              // dest/name: the old dest/name tree.
+              const word = backupWordFor(destination.value, basename(target.value));
+              add(word, "write");
+              add(word, "tree", { source: target });
+            } else if (into || /\/\.?$/u.test(source.value)) {
+              // Contents copied into the destination directory: the old contents.
+              add(backupWordFor(destination.value, ""), "tree", { source: destination });
+            } else {
+              // A file replaced: dirname(dest)/backup-dir/basename(dest).
+              const slash = destination.value.lastIndexOf("/");
+              add(backupWordFor(slash < 0 ? "." : destination.value.slice(0, slash) || "/", basename(destination.value)), "write");
+            }
+          });
         }
       }
       if (name === "ln") {
@@ -3428,7 +3453,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       }
       if (name === "rsync" && sources.length > 0) {
         // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
-        const { operands, targetDirectory } = operandsOf(rest, withValue);
+        const { operands, targetDirectory } = operandsOf(rest, withValue, false, name !== "rsync");
         const destination = targetDirectory ?? operands.at(-1);
         if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) add(destination, "delete", { remove: true, recursive: true });
         if (rest.some((word) => word.literal && word.value === "--remove-source-files")) sources.forEach((word) => { if (!remote(word)) add(word, "delete", { remove: true, recursive: true }); });
@@ -3790,7 +3815,9 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (!report) add(root, "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
       }
       if (sub === "config") {
-        // A setting change (set, --add, --unset, sections, --edit) rewrites the --file it names.
+        // A setting change (set, --add, --unset, sections, --edit) rewrites the --file it names, or the file GIT_CONFIG
+        // (GIT_CONFIG_GLOBAL with --global, GIT_CONFIG_SYSTEM with --system) names.
+        const subArgs = gitConfigArgs(rest.slice(git.subIndex + 1));
         const reads = subArgs.some((word) => /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|list)|-l)$/u.test(word.value));
         const verb = subArgs.find((word) => !word.value.startsWith("-"));
         const changes = !reads && (gitConfigAssignment(subArgs) !== null
@@ -3801,6 +3828,15 @@ function commandTargets(name, rest, ctx, sed, stdin) {
           if ((value === "-f" || value === "--file") && subArgs[i + 1]) add(subArgs[++i], "write");
           else if (value.startsWith("--file=")) add({ ...subArgs[i], value: value.slice(7), raw: value.slice(7) }, "write");
           else if (/^-f./u.test(value)) add({ ...subArgs[i], value: value.slice(2), raw: value.slice(2) }, "write");
+        }
+        const scoped = (/** @type {string} */ option) => subArgs.some((word) => word.value === option);
+        const file = subArgs.some((word) => /^(?:-f|--file(?:=|$))/u.test(word.value));
+        const variable = file || scoped("--local") || scoped("--worktree") ? null
+          : scoped("--global") ? "GIT_CONFIG_GLOBAL" : scoped("--system") ? "GIT_CONFIG_SYSTEM" : "GIT_CONFIG";
+        if (changes && variable) {
+          const set = backupEnv.git.has(variable) ? backupEnv.git.get(variable) : process.env[variable] ? literalWord(process.env[variable] ?? "") : undefined;
+          if (set === null) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: a git config file from ${variable} the guard cannot read`);
+          if (set) add(set, "write");
         }
       }
       if (sub === "checkout") {
@@ -4368,6 +4404,28 @@ function evaluateRunner(name, rest, ctx) {
   }
 }
 
+/** git config's long options; git accepts any unambiguous prefix of one (`--fil` for `--file`). */
+const GIT_CONFIG_OPTIONS = ["--global", "--system", "--local", "--worktree", "--file", "--blob", "--get", "--get-all", "--get-regexp",
+  "--get-urlmatch", "--replace-all", "--add", "--unset", "--unset-all", "--rename-section", "--remove-section", "--list", "--fixed-value",
+  "--edit", "--get-color", "--get-colorbool", "--type", "--no-type", "--bool", "--int", "--bool-or-int", "--path", "--expiry-date", "--null",
+  "--name-only", "--includes", "--no-includes", "--show-origin", "--show-scope", "--default", "--comment", "--value", "--all", "--regexp",
+  "--url", "--append", "--show-names"];
+
+/** git config arguments with abbreviated long options spelled out. @param {Word[]} subArgs @returns {Word[]} */
+function gitConfigArgs(subArgs) {
+  const end = subArgs.findIndex((word) => word.value === "--");
+  return subArgs.map((word, i) => {
+    if ((end >= 0 && i >= end) || !word.literal || !word.value.startsWith("--") || word.value === "--") return word;
+    const at = word.value.indexOf("=");
+    const option = at < 0 ? word.value : word.value.slice(0, at);
+    if (GIT_CONFIG_OPTIONS.includes(option)) return word;
+    const matches = GIT_CONFIG_OPTIONS.filter((candidate) => candidate.startsWith(option));
+    if (matches.length !== 1) return word;
+    const value = `${matches[0]}${at < 0 ? "" : word.value.slice(at)}`;
+    return { ...word, value, raw: value };
+  });
+}
+
 /**
  * `git config [scope options] [set] <key> <value>` stores a setting that later git runs execute (aliases, pagers,
  * editors, helpers). Returns the stored key=value word, or null when the invocation does not set a value.
@@ -4375,6 +4433,7 @@ function evaluateRunner(name, rest, ctx) {
  * @returns {Word | null}
  */
 function gitConfigAssignment(subArgs) {
+  subArgs = gitConfigArgs(subArgs);
   const withValue = new Set(["-f", "--file", "--blob", "--type", "--default", "--comment", "--value"]);
   const reading = /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|unset|unset-all|list|edit|rename-section|remove-section|show-origin|show-scope)|-l|-e)$/u;
   /** @type {Word[]} */
@@ -4867,7 +4926,7 @@ function evaluateCommandNow(command, options) {
   if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return { allowed: false, ruleId: "guard-timeout", reason: TOO_LARGE_REASON };
   const scope = options.scope ?? process.cwd();
   catRedefined = false;
-  backupEnv = { values: [], unknown: false, options: new Set() };
+  backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
   dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
   try {
     for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
