@@ -1736,7 +1736,7 @@ function insideRepository(directory) {
  * - `pathspecs`: Git pathspecs a command restores from the index or a revision (`git checkout --ours`, `git checkout <rev> <path>`),
  *   matched against the tracked files with a protected name; `revision` also lists that revision's files.
  * @typedef {{ word: Word | null, text: string | null }} PatchOperand
- * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null } }} TreeEffect
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean, strips?: boolean, patches?: (PatchOperand | null)[], pathspecs?: { specs: (string | null)[], revision: string | null } }} TreeEffect
  */
 
 /** How many members an archive listing may hold, and how long it may take, before the guard fails closed. */
@@ -2008,7 +2008,11 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
         if (!ctx.codeString) guardBelow(root, `${shown}, an archive the guard cannot list`);
         continue;
       }
-      for (const member of members) guard(join(root, member.replace(/[\\/]+$/u, "")), `${shown}: ${member}`);
+      for (const member of members) {
+        // Dropping leading directories (`--strip-components`, `unzip -j`) can land a member at any suffix of its name.
+        const parts = member.split(/[\\/]/u).filter((part) => part !== "" && part !== ".");
+        for (let k = 0; k < (effect.strips ? parts.length : Math.min(parts.length, 1)); k++) guard(join(root, ...parts.slice(k)), `${shown}: ${member}`);
+      }
       const hits = members.filter((member) => docsName(member.replace(/[\\/]+$/u, "").split(/[\\/]/u).pop() ?? ""));
       const archiveKnown = archive.word !== null && grantable(archive.word, archive.word.value, ctx);
       if (hits.length > 0 && !covered(hits.map((member) => join(root, member)), targetKnown && archiveKnown)) {
@@ -2686,14 +2690,15 @@ function unzipArchive(rest) {
  * device, or the option words cannot be read for sure (another value-taking letter before `f` in one cluster), and
  * whether member names are rewritten (bsdtar `-s`, GNU `--transform`/`--xform`). bsdtar's value-taking letters are used for
  * `tar` on macOS and `bsdtar`, GNU tar's elsewhere.
- * @param {string} name @param {Word[]} rest @returns {{ archive: Word | null, renames: boolean }}
+ * `strips` is set by `--strip-components`/`--strip`, which drop leading member directories.
+ * @param {string} name @param {Word[]} rest @returns {{ archive: Word | null, renames: boolean, strips: boolean }}
  */
 function tarArchive(name, rest) {
   const bsd = name === "bsdtar" || (name === "tar" && process.platform === "darwin");
   const valueLetters = bsd ? "bCfIsTX" : "bCfFgHIKLNTVX";
   /** @type {Word | null} */
   let archive = null;
-  let unsure = false, renames = false;
+  let unsure = false, renames = false, strips = false;
   const end = rest.findIndex((word) => word.value === "--");
   const options = end < 0 ? rest.length : end;
   for (let i = 0; i < options; i++) {
@@ -2714,6 +2719,7 @@ function tarArchive(name, rest) {
     if (value.startsWith("--")) {
       const option = value.split("=")[0];
       if (option === "--transform" || option === "--xform") renames = true;
+      if (option === "--strip-components" || option === "--strip") strips = true;
       if (option === "--file") archive = value.includes("=") ? literalWord(value.slice(7)) : rest[++i] ?? null;
       else if (!value.includes("=") && ["--directory", "--files-from", "--exclude-from", "--blocking-factor", "--transform", "--xform", "--use-compress-program", "--format", "--options", "--exclude", "--strip-components", "--newer", "--newer-mtime", "--owner", "--group", "--mode", "--include", "--uname", "--gname", "--uid", "--gid"].includes(option)) i++;
       continue;
@@ -2729,7 +2735,7 @@ function tarArchive(name, rest) {
       break;
     }
   }
-  return { archive: unsure ? null : archive, renames };
+  return { archive: unsure ? null : archive, renames, strips };
 }
 
 /**
@@ -2939,12 +2945,21 @@ function checkoutPathspecs(args) {
   return { specs, revision };
 }
 
+/**
+ * The index of the word that ends a `find -exec`/`-ok` action starting at `start`: `;`, or `+` right after `{}` (a `+`
+ * elsewhere is an argument), or the end of the words. @param {Word[]} rest @param {number} start @param {number} [limit]
+ */
+function execEnd(rest, start, limit = rest.length) {
+  let end = start + 1;
+  while (end < limit && rest[end].value !== ";" && !(rest[end].value === "+" && rest[end - 1].value === "{}" && end - 1 > start)) end++;
+  return end;
+}
+
 /** The index of a `find` primary outside -exec/-ok bodies, or -1. @param {Word[]} rest @param {string} primary */
 function findActionIndex(rest, primary) {
   for (let i = 0; i < rest.length; i++) {
     if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
-      while (i + 1 < rest.length && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
-      i++;
+      i = execEnd(rest, i);
     } else if (rest[i].value === primary) return i;
   }
   return -1;
@@ -3019,8 +3034,7 @@ function findSelection(rest, ctx, action) {
   for (let i = start; i < action; i++) {
     const value = rest[i].value;
     if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) {
-      while (i + 1 < action && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
-      i++;
+      i = execEnd(rest, i, action);
     } else if (value === "-name" || value === "-iname") {
       const pattern = rest[++i];
       if (!pattern?.literal) { plain = false; continue; }
@@ -3088,6 +3102,42 @@ function checkFindDelete(rest, ctx) {
 }
 
 /**
+ * The backup suffixes a `cp`, `mv` or `install` writes next to each destination: `-S`/`--suffix` (GNU), BSD `install -B`,
+ * or with `-b`/`--backup` alone the default `~` and SIMPLE_BACKUP_SUFFIX. Empty when no backup is made.
+ * @param {Word[]} rest @param {string} name @returns {string[]}
+ */
+function backupSuffixes(rest, name) {
+  /** @type {string[]} */
+  const suffixes = [];
+  let backup = false;
+  for (let i = 0; i < rest.length; i++) {
+    const { value } = rest[i];
+    if (value === "--") break;
+    if (value === "--suffix" || value === "-S" || (name === "install" && value === "-B")) {
+      if (name === "install" && value === "-S" && process.platform === "darwin") continue;
+      if (rest[i + 1]) suffixes.push(rest[++i].value);
+      backup = true;
+    } else if (value.startsWith("--suffix=")) { suffixes.push(value.slice(9)); backup = true; }
+    else if (/^--backup(?:=|$)/u.test(value)) backup = true;
+    else if (/^-[A-Za-z]+$/u.test(value)) {
+      for (let k = 1; k < value.length; k++) {
+        if (value[k] === "b") backup = true;
+        if (value[k] === "S" || (name === "install" && value[k] === "B")) {
+          if (!(name === "install" && value[k] === "S" && process.platform === "darwin")) {
+            suffixes.push(k < value.length - 1 ? value.slice(k + 1) : rest[++i]?.value ?? "");
+            backup = true;
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (!backup) return [];
+  if (suffixes.length === 0) suffixes.push("~", process.env.SIMPLE_BACKUP_SUFFIX ?? "~");
+  return [...new Set(suffixes.filter(Boolean))];
+}
+
+/**
  * Blocks a symbolic link whose text names guard configuration or a directory at or above it, project targets included.
  * @param {Word} word @param {Context} ctx
  */
@@ -3129,8 +3179,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       // -fprint, -fprint0, -fprintf and -fls write their output to the next word.
       for (let i = 0; i < rest.length; i++) {
         if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
-          while (i + 1 < rest.length && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
-          i++;
+          i = execEnd(rest, i);
         } else if (/^-f(?:print0?|printf|ls)$/u.test(rest[i].value) && rest[i + 1]) add(rest[++i], "write");
       }
       break;
@@ -3138,7 +3187,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
       break;
     case "cp": case "install": case "ln": case "rsync": case "ditto": {
-      const withValue = new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]);
+      const withValue = new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group", ...(name === "install" ? ["-B"] : [])]);
       // rsync reads `host:path` and `rsync://` operands as remote; ditto -x extracts an archive.
       const remote = (/** @type {Word} */ word) => name === "rsync" && /^(?:rsync:\/\/|[^/]*:)/u.test(word.value);
       const extracts = name === "ditto" && rest.some((word) => word.literal && /^-[A-Za-z]*x/u.test(word.value));
@@ -3161,8 +3210,10 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       // cp -L/-H and rsync -L/-k (and their long forms) copy what symlinks below the source point to; ditto does not.
       const follow = name === "cp" ? ["L", "H"].some((letter) => shortLetters(rest, "St").has(letter)) || longOption(rest, ["--dereference"])
         : name === "rsync" && (rsyncLetters.has("L") || rsyncLetters.has("k") || longOption(rest, ["--copy-links", "--copy-dirlinks", "--copy-unsafe-links"]));
+      const backups = backupSuffixes(rest, name);
       pairs.forEach(({ target, source }) => {
         add(target, "write");
+        for (const suffix of backups) add(backupWord(target, suffix), "write");
         if (!recursive) return;
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
@@ -3202,27 +3253,41 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if ((value === "-C" || value === "--directory" || (name === "unzip" && value === "-d")) && rest[i + 1]) directory = rest[++i];
         else if (value.startsWith("--directory=")) directory = optionValue(value);
       }
-      const { archive, renames } = name === "unzip" ? { archive: unzipArchive(rest), renames: false } : tarArchive(name, rest);
-      add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: name === "unzip" ? "zip" : "tar" }] : null, renames });
+      // unzip -j drops member directories.
+      const { archive, renames, strips } = name === "unzip"
+        ? { archive: unzipArchive(rest), renames: false, strips: rest.some((word) => word.literal && /^-[A-Za-z]*j/u.test(word.value)) } : tarArchive(name, rest);
+      add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: name === "unzip" ? "zip" : "tar" }] : null, renames, strips });
       break;
     }
     case "perl": case "ruby": {
-      if (!rest.some((word) => word.literal && /^-[0-9aclnpstuwTUWX]*i/u.test(word.value))) break;
-      let code = false;
+      // Switch clusters: `-i` takes the rest of its switch as a backup suffix (`-pi.orig`), `-e`/`-E` the rest or the next
+      // word as the program, and value switches (`-I`, `-M`, `-0`, `-l`, …) the rest of the word. Every suffix given counts.
+      let inPlace = false, code = false;
+      /** @type {string[]} */
+      const suffixes = [];
       /** @type {Word[]} */
       const files = [];
       for (let i = 0; i < rest.length; i++) {
         const word = rest[i];
-        if (word.literal && word.value === "--") { files.push(...rest.slice(i + 1)); break; }
-        if (word.literal && /^-[A-Za-z]*[eE]$/u.test(word.value)) { code = true; i++; continue; }
-        if (word.literal && word.value.startsWith("-") && word.value.length > 1) continue;
+        const value = word.value;
+        if (word.literal && value === "--") { files.push(...rest.slice(i + 1)); break; }
+        if (word.literal && /^--in-?place(?:=|$)/u.test(value)) { inPlace = true; if (value.includes("=")) suffixes.push(value.slice(value.indexOf("=") + 1)); continue; }
+        if (word.literal && value.startsWith("--")) continue;
+        if (word.literal && value.startsWith("-") && value.length > 1) {
+          for (let k = 1; k < value.length; k++) {
+            const letter = value[k];
+            if (letter === "i") { inPlace = true; suffixes.push(value.slice(k + 1)); break; }
+            if (letter === "e" || letter === "E") { code = true; if (k === value.length - 1) i++; break; }
+            if ("IMmxCdDF0lrKTWUEXy".includes(letter) && letter !== "E") break;
+          }
+          continue;
+        }
         files.push(word);
       }
-      // `-i` takes the rest of its switch as a backup suffix (`-i.bak`, `-pi.orig`); each backup is written too.
-      const suffix = rest.find((word) => word.literal && /^-[0-9aclnpstuwTUWX]*i/u.test(word.value))?.value.replace(/^-[0-9aclnpstuwTUWX]*i/u, "") ?? "";
+      if (!inPlace) break;
       (code ? files : files.slice(1)).forEach((word) => {
         add(word, "write");
-        if (suffix) add(backupWord(word, suffix), "write");
+        for (const suffix of suffixes) if (suffix) add(backupWord(word, suffix), "write");
       });
       break;
     }
@@ -3326,7 +3391,11 @@ function commandTargets(name, rest, ctx, sed, stdin) {
     }
     case "mv": {
       const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]));
-      pairs.forEach(({ target, source }) => add(target, "write", { source }));
+      const backups = backupSuffixes(rest, name);
+      pairs.forEach(({ target, source }) => {
+        add(target, "write", { source });
+        for (const suffix of backups) add(backupWord(target, suffix), "write");
+      });
       sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       break;
     }
@@ -3429,14 +3498,19 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         /** @type {Word[]} */
         const files = [];
         let resume = false;
+        /** @type {Word} */
+        let root = literalWord(".");
         for (let i = 0; i < subArgs.length; i++) {
           const value = subArgs[i].value;
-          if (["--directory", "--exclude", "--include", "-C", "--whitespace", "--build-fake-ancestor", "--patch-format", "--resolvemsg", "--exec"].includes(value)) i++;
+          // --directory puts every patched path below that directory.
+          if (value === "--directory" && subArgs[i + 1]) { root = subArgs[++i]; continue; }
+          if (value.startsWith("--directory=")) { root = { ...subArgs[i], value: value.slice(12), raw: value.slice(12) }; continue; }
+          if (["--exclude", "--include", "-C", "--whitespace", "--build-fake-ancestor", "--patch-format", "--resolvemsg", "--exec"].includes(value)) i++;
           else if (/^--(?:continue|resolved|skip|abort|quit|retry)$/u.test(value) || value === "-r") resume = true;
           else if (!value.startsWith("-")) files.push(subArgs[i]);
         }
-        // The names are checked under the working directory; a protected file name counts wherever --directory puts it.
-        if (!report) add(literalWord("."), "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
+        // The names are checked under the working directory or --directory; a protected file name counts wherever it lands.
+        if (!report) add(root, "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
       }
       if (sub === "checkout") {
         const pathspecs = checkoutPathspecs(subArgs);
@@ -4128,8 +4202,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   if (name === "find") {
     for (let i = 0; i < rest.length; i++) {
       if (!["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) continue;
-      let end = i + 1;
-      while (end < rest.length && rest[end].value !== ";" && rest[end].value !== "+") end++;
+      const end = execEnd(rest, i);
       // -execdir and -okdir run in each match's directory, which the guard cannot know.
       const dir = rest[i].value.endsWith("dir");
       // `{}` stands for each selected file: unknown text (so `{}/hooks.json` still counts) and every protected file the action
@@ -4157,7 +4230,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
             || commandTargets(probeName, probeRest, ctx, probeName === "sed" ? analyzeSed(probeRest) : null, { redirects: [], stdinPiped: false }).some(({ word }) => word.value.includes(marker));
           const parsed = findRoots(rest);
           if (writes && (selection.unknown !== null || parsed === null)) throw unknownBuild();
-          if (parsed !== null && selection.unknown === null) {
+          if (writes && parsed !== null && selection.unknown === null) {
           const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
           const built = nested.filter((word) => word.value.includes("{}") && word.value !== "{}");
           for (const root of parsed.roots) {
