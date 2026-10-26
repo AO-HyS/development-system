@@ -2,32 +2,37 @@
 // The review gate for one PR head: Codex (the chatgpt-codex-connector GitHub app), Sol review records
 // (`src/review-records.mjs`) and, for a PR into develop, behavioral evidence (`src/evidence.mjs`). Codex reviews only
 // when a PR is opened, marked ready, or asked with "@codex review", so later commits go unreviewed unless someone asks
-// again. `--request` asks for the current head while fewer than two requests are published; concurrent duplicates are
-// deleted on GitHub, earliest kept. `mergeReady` combines every gate and `--gate` records the merge pass the command
-// guard requires for `gh pr merge --match-head-commit <head>`. Output always carries estado, Codex n/2, Sol n/max,
-// evidencia and exactly one siguiente.
+// again. `--request` asks for the current head while fewer than two requests are published; it holds a local per-PR
+// lock and re-reads GitHub inside it before posting, and never deletes a published request. `mergeReady` combines
+// every gate and `--gate` records the merge pass the command guard requires for `gh pr merge --match-head-commit
+// <head>`. Output always carries estado, Codex n/2, Sol n/max, evidencia and exactly one siguiente.
 //
 // Contract (plan 1.3), first match wins:
 //   valid review of a SHA   a Codex app review with that commit_id and a real body (`Codex Review|Reviewed commit`), or a
 //                           Codex app receipt or summary comment on this PR citing that SHA as completed
 //   blocking finding        an unresolved Codex thread (always), or a resolved one without a human (User) reply
-//   request state           answered (valid review of its SHA) > failed-terminal (a later app comment reports usage limit,
-//                           quota, not enabled, no access or an error) > running (summary shows its SHA running) >
-//                           unknown (older than 6 h) > requested; `pending` = no request and no review for the head;
-//                           unknown is never approval and never returns budget
-//   budget                  every published request by the viewer counts, retries and surviving duplicates included;
-//                           with 2 published nothing is posted and siguiente is "decide el dueño" unless satisfied
+//   request state           answered (valid review of its SHA) > failed-terminal (an app comment after the request names a
+//                           terminal cause: usage limit, quota, not enabled, no access, couldn't/unable to review; and it
+//                           cites the request's SHA or is the first app reply before the next request) > running (summary
+//                           shows its SHA running) > unknown (older than 6 h) > requested; `pending` = no request and no
+//                           review for the head; unknown is never approval, never returns budget, never retries itself
+//   budget                  per PR: every "@codex review" comment by a human (User) account counts, marked or typed by
+//                           hand, retries included; with 2 published nothing is posted and siguiente is "decide el
+//                           dueño" unless satisfied
 //   budget-spent            2 published, the last answered by a valid review, no blocking finding
-//   coverage (Codex, Sol)   each commit after the reviewed head cites `fixes: <id>` of that review and touches only those
-//                           findings' paths (at most 20 commits; any API error fails closed), and a `fix-only` coverage
-//                           record runs from the reviewed head to the current head; out-of-scope or missing -> uncovered
-//   mergeReady              Codex ok (no-findings, or budget-spent and covered) AND no blocking finding AND Sol ok
-//                           (exemption, or last round non-blocking/none on the head or covered) AND develop evidence
+//   coverage (Codex, Sol)   each commit after the reviewed head cites `fixes: <id>` of that review (Codex: only threads
+//                           the review of that head opened) and touches only those findings' paths (at most 20 commits;
+//                           any API error fails closed), and a `fix-only` coverage record runs from the reviewed head to
+//                           the current head; out-of-scope or missing -> uncovered
+//   Sol                     records invalid or contradictory -> invalid; an exemption counts only for its exact head;
+//                           approval needs the last round's result to be none or non-blocking, on the head or covered
+//   mergeReady              Codex ok (no-findings, or budget-spent and covered) AND no blocking finding AND Sol ok AND
+//                           develop evidence
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { ACCEPTED_EVIDENCE, evaluateEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
-import { readReviewRecords } from "./review-records.mjs";
+import { readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -36,7 +41,10 @@ const REQUEST_MARKER = "ds-codex-review-request";
 const BUDGET = 2;
 const UNKNOWN_HOURS = 6;
 const MAX_COVERAGE_COMMITS = 20;
-const FAILURE = /usage limit|quota|not enabled|no access|\berror\b/i;
+// Only causes that end the request; a bare "error" is ambiguous and leaves it requested/unknown.
+const TERMINAL = /usage limit|quota|not enabled|no access|couldn['’]?t review|could not review|unable to review/i;
+const REQUEST = /^\s*@codex\s+review\b/i;
+const REQUEST_LOCK_WAIT_MS = 20_000;
 const RUNNING = /running|progress|queued/i;
 const OWNER_DECIDES = "decide el dueño";
 const OUT_OF_SCOPE = "cambio fuera de alcance: sácalo a otro PR o decide el dueño";
@@ -66,9 +74,13 @@ function gh(args) {
 /** @param {string} path @returns {any[]} */
 const ghList = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
 
-const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId author{__typename login}body}}}}}}}`;
+const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId author{__typename login}body originalCommit{oid}pullRequestReview{commit{oid}}}}}}}}}`;
 
-/** Every review thread whose first comment is from the Codex app; fails closed if a thread's comments are truncated. */
+/**
+ * Every review thread whose first comment is from the Codex app, with `origin`: the commit its review read (the
+ * review's commit, else the comment's original commit), or "" when GitHub does not say. Fails closed if a thread's
+ * comments are truncated.
+ */
 function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /** @type {number} */ number) {
   /** @type {any[]} */
   const threads = [];
@@ -79,7 +91,10 @@ function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /
     const page = JSON.parse(gh(args)).data.repository.pullRequest.reviewThreads;
     for (const thread of page.nodes) {
       if (thread.comments.pageInfo.hasNextPage) throw new Error(`A review thread on ${thread.path} has more than 100 comments; refusing to report a partial state`);
-      if (isCodexActor(thread.comments.nodes[0]?.author)) threads.push(thread);
+      const first = thread.comments.nodes[0];
+      if (!isCodexActor(first?.author)) continue;
+      const origin = String(first.pullRequestReview?.commit?.oid ?? first.originalCommit?.oid ?? "");
+      threads.push({ ...thread, origin: /^[0-9a-f]{40}$/.test(origin) ? origin : "" });
     }
     if (!page.pageInfo.hasNextPage) return threads;
     after = page.pageInfo.endCursor;
@@ -191,27 +206,9 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
   const head = String(pull.head.sha);
-  // Only a real Codex review counts: a reply inside a review thread also creates an empty
-  // review on the head, which must not mark the head as reviewed.
-  const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user) && /Codex Review|Reviewed commit/.test(String(review.body)));
-  const read = () => ghList(`${base}/issues/${number}/comments`);
-  // Request markers count only on comments the authenticated account posted as a real request;
-  // anyone else can paste the marker text.
-  const viewer = String(JSON.parse(gh(["api", "user"])).login);
-  const isRequest = (/** @type {any} */ comment) => comment.user?.login === viewer && String(comment.body).startsWith("@codex review") && String(comment.body).includes(REQUEST_MARKER);
-  const ownRequest = (/** @type {any} */ comment) => isRequest(comment) && String(comment.body).includes(`${REQUEST_MARKER} sha=${head}`);
-  const comments = read();
-  const appComments = comments.filter((comment) => isCodexApp(comment.user));
-  const summaries = summaryStates(appComments);
-  // A receipt is the app's own "Reviewed commit" comment when a review ends without inline findings.
-  const receipts = appComments.filter((comment) => String(comment.body).includes("codex-review-receipt:v1"))
-    .map((comment) => /Reviewed commit:?\**:?\s*`([0-9a-f]{7,40})`/.exec(String(comment.body))?.[1]).filter((sha) => typeof sha === "string");
-  const validReview = (/** @type {string} */ sha) => sha !== "" && (reviews.some((review) => review.commit_id === sha)
-    || receipts.some((cited) => cites(sha, /** @type {string} */ (cited)))
-    || summaries.some((summary) => cites(sha, summary.sha) && /completed/i.test(summary.status)));
   const threads = codexThreads(owner, repo, number);
-  /** @type {Finding[]} */
-  const codexFindings = threads.map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)] }));
+  /** @type {(Finding & {origin: string})[]} */
+  const codexFindings = threads.map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)], origin: String(thread.origin) }));
   const open = threads.filter((thread) => !thread.isResolved).map((thread) => ({
     id: `codex:${thread.comments.nodes[0].databaseId}`,
     path: thread.path,
@@ -224,80 +221,121 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const silentlyResolved = threads.filter((thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => comment.author?.__typename === "User"));
   const resolvedWithoutReply = silentlyResolved.length;
   const blockingIds = [...open.map((finding) => finding.id), ...silentlyResolved.map((thread) => `codex:${thread.comments.nodes[0].databaseId}`)];
-  const headReviewed = validReview(head);
-  // Every published request, oldest first, with its own state. A failure counts only between that request and the next.
-  const now = Date.now();
-  const published = comments.filter(isRequest).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)
-    .map((comment, index, all) => {
-      const sha = /sha=([0-9a-f]{40})/.exec(String(comment.body))?.[1] ?? "";
-      const at = Date.parse(comment.created_at);
-      const next = index + 1 < all.length ? Date.parse(all[index + 1].created_at) : Infinity;
-      /** @type {"answered" | "failed-terminal" | "running" | "unknown" | "requested"} */
-      let state;
-      if (validReview(sha)) state = "answered";
-      else if (appComments.some((reply) => { const t = Date.parse(reply.created_at); const body = String(reply.body); return t > at && t < next && !body.includes("codex-pull-request-review-summary") && !body.includes("codex-review-receipt:v1") && FAILURE.test(body); })) state = "failed-terminal";
-      else if (sha && summaries.some((summary) => cites(sha, summary.sha) && RUNNING.test(summary.status))) state = "running";
-      else if (now - at > UNKNOWN_HOURS * 3_600_000) state = "unknown";
-      else state = "requested";
-      return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
-    });
-  const headRequest = published.filter((entry) => entry.sha === head).at(-1);
-  /** @type {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} */
-  let headState = "pending";
-  if (headReviewed) headState = "answered";
-  else if (headRequest) headState = headRequest.state;
-  else if (summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))) headState = "running";
-  const last = published.at(-1);
-  const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
-  /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
-  let state;
-  if (headReviewed) state = blockingIds.length > 0 ? "findings" : "no-findings";
-  else if (budgetSpent) state = "budget-spent";
-  else if (headState === "running") state = "running";
-  else if (headState === "failed-terminal") state = "unavailable";
-  else state = "pending";
+  /** One read of Codex reviews and PR comments and everything derived from it; `--request` repeats it under its lock. */
+  const observe = () => {
+    // Only a real Codex review counts: a reply inside a review thread also creates an empty
+    // review on the head, which must not mark the head as reviewed.
+    const reviews = ghList(`${base}/pulls/${number}/reviews`).filter((review) => isCodexApp(review.user) && /Codex Review|Reviewed commit/.test(String(review.body)));
+    const comments = ghList(`${base}/issues/${number}/comments`);
+    const appComments = comments.filter((comment) => isCodexApp(comment.user)).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id);
+    const summaries = summaryStates(appComments);
+    // A receipt is the app's own "Reviewed commit" comment when a review ends without inline findings.
+    const receipts = appComments.filter((comment) => String(comment.body).includes("codex-review-receipt:v1"))
+      .map((comment) => /Reviewed commit:?\**:?\s*`([0-9a-f]{7,40})`/.exec(String(comment.body))?.[1]).filter((sha) => typeof sha === "string");
+    const validReview = (/** @type {string} */ sha) => sha !== "" && (reviews.some((review) => review.commit_id === sha)
+      || receipts.some((cited) => cites(sha, /** @type {string} */ (cited)))
+      || summaries.some((summary) => cites(sha, summary.sha) && /completed/i.test(summary.status)));
+    const headReviewed = validReview(head);
+    // The budget is per PR: every "@codex review" a human account posted counts, marked by this CLI or typed by hand,
+    // whoever posted it. Bots (the app included) never count.
+    const replies = appComments.filter((reply) => !String(reply.body).includes("codex-pull-request-review-summary"));
+    const now = Date.now();
+    const published = comments.filter((comment) => comment.user?.type === "User" && REQUEST.test(String(comment.body)))
+      .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at) || a.id - b.id)
+      .map((comment, index, all) => {
+        const sha = new RegExp(`${REQUEST_MARKER} sha=([0-9a-f]{40})`).exec(String(comment.body))?.[1] ?? "";
+        const at = Date.parse(comment.created_at);
+        const next = index + 1 < all.length ? Date.parse(all[index + 1].created_at) : Infinity;
+        const after = replies.filter((reply) => Date.parse(reply.created_at) > at);
+        const first = after[0];
+        // A terminal app reply ends this request only if it names the request's SHA or is the first app reply to it.
+        const terminal = after.some((reply) => {
+          const body = String(reply.body);
+          if (body.includes("codex-review-receipt:v1") || !TERMINAL.test(body)) return false;
+          const namesSha = sha !== "" && [...body.matchAll(/\b[0-9a-f]{7,40}\b/g)].some((match) => cites(sha, match[0]));
+          return namesSha || (reply === first && Date.parse(reply.created_at) < next);
+        });
+        /** @type {"answered" | "failed-terminal" | "running" | "unknown" | "requested"} */
+        let state;
+        if (validReview(sha)) state = "answered";
+        else if (terminal) state = "failed-terminal";
+        else if (sha && summaries.some((summary) => cites(sha, summary.sha) && RUNNING.test(summary.status))) state = "running";
+        else if (now - at > UNKNOWN_HOURS * 3_600_000) state = "unknown";
+        else state = "requested";
+        return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
+      });
+    const headRequest = published.filter((entry) => entry.sha === head).at(-1);
+    /** @type {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} */
+    let headState = "pending";
+    if (headReviewed) headState = "answered";
+    else if (headRequest) headState = headRequest.state;
+    else if (summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))) headState = "running";
+    const last = published.at(-1);
+    const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
+    /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
+    let state;
+    if (headReviewed) state = blockingIds.length > 0 ? "findings" : "no-findings";
+    else if (budgetSpent) state = "budget-spent";
+    else if (headState === "running") state = "running";
+    else if (headState === "failed-terminal") state = "unavailable";
+    else state = "pending";
+    return { reviews, published, headReviewed, headState, last, budgetSpent, state };
+  };
   let requestStatus = "not-requested";
-  if (request) {
-    if (headReviewed || budgetSpent) requestStatus = `skipped-${state}`;
+  /** @returns {string} */
+  const decide = (/** @type {ReturnType<typeof observe>} */ view) => {
+    if (view.headReviewed || view.budgetSpent) return `skipped-${view.state}`;
     // Review budget: never post past two published requests; the owner decides.
-    else if (published.length >= BUDGET) requestStatus = "budget-exhausted";
-    else if (headState === "requested") requestStatus = "already-requested-for-head";
-    else if (headState === "running") requestStatus = "skipped-running";
-    else {
-      // pending, failed-terminal or unknown after this fresh read: the post consumes one request. Then settle
-      // concurrent duplicates on GitHub itself: of the requests for this head posted now, every one but the
-      // earliest is deleted, so exactly one remains. No local lock to strand.
-      const before = new Set(comments.filter(ownRequest).map((comment) => comment.id));
-      const posted = JSON.parse(gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]));
-      const fresh = read().filter(ownRequest).filter((comment) => !before.has(comment.id)).sort((a, b) => a.id - b.id);
-      if (fresh.length > 0 && fresh[0].id !== posted.id) {
-        gh(["api", "-X", "DELETE", `${base}/issues/comments/${posted.id}`]);
-        requestStatus = "already-requested-for-head";
-      } else requestStatus = "requested";
-      published.push({ id: Number(posted.id), sha: head, createdAt: String(posted.created_at), state: "requested" });
-      headState = "requested";
-    }
-  }
-  // Sol: rounds, exemption and coverage records written by the coordinator; unreadable records fail closed.
+    if (view.published.length >= BUDGET) return "budget-exhausted";
+    if (view.headState === "requested") return "already-requested-for-head";
+    if (view.headState === "running") return "skipped-running";
+    return "";
+  };
+  const view = !request ? observe() : withFileLock(requestLockPath(home, prKey), () => {
+    // pending, failed-terminal or unknown on a fresh read taken under the lock: the post consumes one request. The lock
+    // keeps a concurrent run from posting too; a published request is never deleted, so it always counts.
+    const fresh = observe();
+    requestStatus = decide(fresh);
+    if (requestStatus) return fresh;
+    const posted = JSON.parse(gh(["api", `${base}/issues/${number}/comments`, "-f", `body=@codex review\n\n<!-- ${REQUEST_MARKER} sha=${head} -->`]));
+    requestStatus = "requested";
+    fresh.published.push({ id: Number(posted.id), sha: head, createdAt: String(posted.created_at), state: "requested" });
+    fresh.headState = "requested";
+    return fresh;
+  }, { waitMs: REQUEST_LOCK_WAIT_MS });
+  const { reviews, published, headReviewed, last, budgetSpent, state } = view;
+  const headState = view.headState;
+  // Coverage after budget-spent admits only the threads the review of that head opened.
+  const reviewedHead = budgetSpent && last ? last.sha : headReviewed ? head : "";
+  const originUnknown = codexFindings.some((finding) => finding.origin === "");
+  const admissibleFindings = originUnknown ? [] : codexFindings.filter((finding) => reviewedHead !== "" && finding.origin === reviewedHead);
+  // Sol: rounds, exemption and coverage records written by the coordinator; invalid or contradictory records fail closed.
   /** @type {import("./review-records.mjs").ReviewRecord[]} */
   let records = [];
   let recordsError = "";
   try { records = readReviewRecords(home, prKey); } catch (error) { recordsError = error instanceof Error ? error.message : String(error); }
   const rounds = /** @type {import("./review-records.mjs").RoundRecord[]} */ (records.filter((record) => record.type === "round"));
-  const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.find((record) => record.type === "exemption"));
+  // A later exemption replaces an earlier one; it counts only for the exact head it names.
+  const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
   const solMax = rounds[0]?.result === "blocking" ? 2 : 1;
   const lastRound = rounds.at(-1);
   /** @type {Coverage | null} */
   let codexCoverage = null;
-  if (budgetSpent && last) codexCoverage = coverage({ base, from: last.sha, to: head, findings: codexFindings, records });
+  if (budgetSpent && last) {
+    codexCoverage = originUnknown
+      ? { from: last.sha, to: head, covered: false, error: true, filtersPass: false, reason: "GitHub did not report which commit a Codex thread reviewed", commits: [] }
+      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, records });
+  }
   /** @type {Coverage | null} */
   let solCoverage = null;
-  /** @type {"unknown" | "exempt" | "missing" | "blocking" | "approved" | "covered" | "not-covered"} */
+  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered"} */
   let solState;
-  if (recordsError || (exemption && rounds.length)) solState = "unknown";
-  else if (exemption) solState = "exempt";
+  if (recordsError || (exemption && rounds.length)) solState = "invalid";
+  else if (exemption) solState = exemption.head === head ? "exempt" : "exemption-stale";
   else if (!lastRound) solState = "missing";
   else if (lastRound.result === "blocking") solState = "blocking";
+  // Approval needs an explicit none or non-blocking result; anything else is invalid.
+  else if (lastRound.result !== "none" && lastRound.result !== "non-blocking") solState = "invalid";
   else if (lastRound.head === head) solState = "approved";
   else {
     solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, records });
@@ -318,7 +356,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
-  const contradictory = solState === "unknown" || codexCoverage?.error === true || solCoverage?.error === true;
+  const contradictory = solState === "invalid" || codexCoverage?.error === true || solCoverage?.error === true;
   const estado = contradictory ? "unknown" : headState;
   let mergeGate = null;
   if (gate) {
@@ -336,7 +374,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   else if (!ok && (headState === "requested" || headState === "running")) siguiente = `espera la revisión de Codex del head ${short}; vuelve a correr pr-review-status sin --request`;
   else if (!ok && published.length >= BUDGET) siguiente = OWNER_DECIDES;
   else if (!ok) siguiente = `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;
-  else if (solState === "unknown") siguiente = `registros de Sol ilegibles o en conflicto${recordsError ? ` (${recordsError})` : ""}: decide el dueño`;
+  else if (solState === "invalid") siguiente = "registros de Sol inválidos: decide el dueño";
+  else if (solState === "exemption-stale") siguiente = `la exención de Sol es del head ${exemption?.head.slice(0, 12)}, no del ${short}: si sigue aplicando regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si no, decide el dueño`;
   else if (solState === "missing") siguiente = `pide la revisión full de Sol 6.1 High del head ${short} y regístrala: development-system review record --pr ${prKey} --reviewer sol --head ${head} --scope full --result <blocking|non-blocking|none> --thread <hilo>`;
   else if (solState === "blocking") siguiente = rounds.length >= 2 ? OWNER_DECIDES : `corrige los hallazgos bloqueantes de Sol y pide la ronda fix-diff; regístrala con development-system review record --scope fix-diff`;
   else if (solState === "not-covered") siguiente = solCoverage?.error ? RETRY_READ : OUT_OF_SCOPE;
@@ -364,6 +403,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     openFindings: open,
     resolvedWithoutReply,
     codexFindings,
+    codexAdmissible: { head: reviewedHead, ids: admissibleFindings.map((finding) => finding.id), ...(originUnknown ? { error: "GitHub did not report which commit a Codex thread reviewed" } : {}) },
     codexRequests: published,
     ...(codexCoverage ? { codexCoverage } : {}),
     solReview: { state: solState, rounds: rounds.length, max: solMax, ...(exemption ? { exemption } : {}), ...(lastRound ? { lastRound } : {}), ...(solCoverage ? { coverage: solCoverage } : {}), ...(recordsError ? { error: recordsError } : {}) },
@@ -379,7 +419,9 @@ export function formatPrReviewStatus(result) {
   if (result.reviewedCommits.length) lines.push(`Reviewed commits: ${result.reviewedCommits.join(", ")}`);
   for (const finding of result.openFindings) lines.push(`- open${finding.outdated ? " (outdated)" : ""} ${finding.id}: ${finding.path}: ${finding.finding}`);
   if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply; resolving is not a fix.`);
-  if (result.codexFindings.length) lines.push(`Codex finding ids: ${result.codexFindings.map((finding) => `${finding.id} (${finding.paths.join("+")})`).join(", ")}`);
+  if (result.codexFindings.length) lines.push(`Codex finding ids: ${result.codexFindings.map((finding) => `${finding.id} (${finding.paths.join("+")} @ ${finding.origin.slice(0, 12) || "?"})`).join(", ")}`);
+  const admissible = result.codexAdmissible;
+  if (admissible.head || admissible.error) lines.push(`Codex ids admissible for coverage${admissible.head ? ` at ${admissible.head.slice(0, 12)}` : ""}: ${admissible.error ?? (admissible.ids.join(", ") || "none")}`);
   for (const entry of result.codexRequests) lines.push(`- request ${entry.createdAt} sha ${entry.sha.slice(0, 12) || "?"}: ${entry.state}`);
   /** @param {string} label @param {Coverage | undefined} cover */
   const coverageLines = (label, cover) => {

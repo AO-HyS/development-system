@@ -1620,7 +1620,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.7.0/skills/internal/grill-with-docs",
           "destination": ".agents/skills/grill-with-docs",
-          "folderSha256": "be81e4f48a9b8cf5be4e7e0cb35b5292ed9bac38928b8039e6ee9efeb755b680",
+          "folderSha256": "c42de0c6fb7c3f75d1dad0a1e9c11ab59cecf7c96c6ab36240ffe16afe6e5639",
           "expectedMirrorOf": null
         },
         {
@@ -1628,7 +1628,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.7.0/skills/internal/grill-with-docs",
           "destination": ".claude/skills/grill-with-docs",
-          "folderSha256": "be81e4f48a9b8cf5be4e7e0cb35b5292ed9bac38928b8039e6ee9efeb755b680",
+          "folderSha256": "c42de0c6fb7c3f75d1dad0a1e9c11ab59cecf7c96c6ab36240ffe16afe6e5639",
           "expectedMirrorOf": "grill-with-docs.codex",
           "install": "symlink"
         }
@@ -2182,7 +2182,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.7.0/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "a1f6c672e5952b9b6845bb0d26878ffc4cc7709fb9dc18efd07f532410c42a18",
+          "folderSha256": "63c612e7b7a381fe44e6334b8636f3293baf622cd2f7d79cb02326cd571ccfa6",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -2193,7 +2193,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.7.0/skills/internal/global-agent-guardrails",
           "destination": ".claude/skills/global-agent-guardrails",
-          "folderSha256": "a1f6c672e5952b9b6845bb0d26878ffc4cc7709fb9dc18efd07f532410c42a18",
+          "folderSha256": "63c612e7b7a381fe44e6334b8636f3293baf622cd2f7d79cb02326cd571ccfa6",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],

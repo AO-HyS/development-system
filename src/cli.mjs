@@ -359,6 +359,40 @@ const EVIDENCE_USAGE = "--pr <ref> --verified-sha <sha> (--deployed-sha <sha> --
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json]";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
 
+const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
+/** Governance subcommands and usage; the dispatcher rejects any subcommand absent here. */
+/** @type {[string, string][]} */
+const GOVERNANCE_TABLE = [
+  ["begin", GOVERNANCE_INPUT],
+  ["preflight", GOVERNANCE_INPUT],
+  ["classify", GOVERNANCE_INPUT],
+  ["prepare", `--boundary <id> ${GOVERNANCE_INPUT}`],
+  ["status", "[--home <abs dir>] [--run <id>] [--json]"],
+  ["advance", GOVERNANCE_INPUT],
+  ["confirm-effort", GOVERNANCE_INPUT],
+  ["close", GOVERNANCE_INPUT],
+  ["recover", `--run <id> ${GOVERNANCE_INPUT}`],
+  ["recover-host-attempt", `--run <id> ${GOVERNANCE_INPUT}`],
+  ["execute", GOVERNANCE_INPUT],
+  ["help", "[<command>] [--home <abs dir>] [--json]"],
+  ["schema", "[<command>] [--home <abs dir>] [--json]"],
+  ["examples", "[<command>] [--home <abs dir>] [--json]"],
+].map(([name, usage]) => [`governance ${name}`, usage]);
+
+const BROWSER_POOL_INPUT = "--input <file> [--home <dir>] [--json]";
+/** Browser-pool operations and usage; the dispatcher rejects any operation absent here. */
+/** @type {[string, string][]} */
+const BROWSER_POOL_TABLE = [
+  ["inventory", "[--home <dir>] [--json]"],
+  ["status", "[--home <dir>] [--json]"],
+  ["register", BROWSER_POOL_INPUT],
+  ["unregister", BROWSER_POOL_INPUT],
+  ["acquire", BROWSER_POOL_INPUT],
+  ["release", BROWSER_POOL_INPUT],
+  ["quarantine", BROWSER_POOL_INPUT],
+  ["reconcile", BROWSER_POOL_INPUT],
+].map(([name, usage]) => [`browser-pool ${name}`, usage]);
+
 /** Single registry of command paths and usage lines; drives `commands` and `--help`. Nested commands list each leaf path. */
 /** @type {[string, string][]} */
 const COMMAND_TABLE = [
@@ -371,7 +405,7 @@ const COMMAND_TABLE = [
   ["audit", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
   ["validate", `[--version <x.y.z>] ${COMMON_OPTIONS}`],
   ["rollback", COMMON_OPTIONS],
-  ["governance", "<subcommand> [options]"],
+  ...GOVERNANCE_TABLE,
   ["governance-hooks-enable", COMMON_OPTIONS],
   ["governance-hooks-audit", COMMON_OPTIONS],
   ["governance-hooks-rollback", COMMON_OPTIONS],
@@ -405,7 +439,7 @@ const COMMAND_TABLE = [
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
   ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
-  ["browser-pool", "<subcommand> [options]"],
+  ...BROWSER_POOL_TABLE,
   ["commands", "[--json]"],
   ["validate-repository", `[--root <dir>] ${COMMON_OPTIONS}`],
   ["audit-repository", `[--repository <dir>] ${COMMON_OPTIONS}`],
@@ -450,7 +484,7 @@ const COMMAND_TABLE = [
 ];
 
 /** Command groups whose leaf subcommands are listed individually, so `mistake --help` still resolves. */
-const COMMAND_GROUPS = ["mistake", "friction", "evidence", "review"];
+const COMMAND_GROUPS = ["mistake", "friction", "evidence", "review", "governance", "browser-pool"];
 
 function topLevelUsage() {
   const names = [...new Set(COMMAND_TABLE.map(([path]) => path.split(" ")[0]))];
@@ -511,9 +545,17 @@ export async function run(argv) {
   return runCommand(argv);
 }
 
+/** The command table is the dispatcher's accepted subcommand list for grouped commands. @param {string[]} argv */
+function rejectUnlistedSubcommand(argv) {
+  const sub = argv[1];
+  if (sub === undefined || sub.startsWith("-")) return;
+  if (!COMMAND_TABLE.some(([path]) => path === `${argv[0]} ${sub}`)) throw new Error(`Unknown ${argv[0]} subcommand: ${sub}`);
+}
+
 /** @param {string[]} argv */
 async function runCommand(argv) {
   if (argv[0] === "browser-pool") {
+    rejectUnlistedSubcommand(argv);
     const { runBrowserPool } = await import("../runtime/native-browser/cli.mjs");
     return runBrowserPool(argv.slice(1));
   }
@@ -688,6 +730,7 @@ async function runCommand(argv) {
     return { result, output: json ? JSON.stringify(result) : formatMistake(result), json };
   }
   if (argv[0] === "governance") {
+    rejectUnlistedSubcommand(argv);
     const { runGovernance } = await import("../runtime/jev-governance/cli.mjs");
     return runGovernance(argv.slice(1));
   }

@@ -1422,8 +1422,8 @@ function looseGlob(word, text) {
   return `${text.slice(0, first)}${region.includes("/") ? `${ANY_TEXT}/**/${ANY_TEXT}` : ANY_TEXT}${text.slice(last + 1)}`;
 }
 
-/** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx */
-function checkTarget(word, kind, ctx) {
+/** @param {Word} word @param {"write" | "delete" | "tree"} kind @param {Context} ctx @param {TreeEffect} [effect] */
+function checkTarget(word, kind, ctx, effect) {
   if (!word || !word.value) return;
   // A brace expansion marks the word unknown just before its `{`; the glob check reads the braces instead.
   const text = word.value.replaceAll(`${UNKNOWN}{`, "{").replaceAll(UNKNOWN, "x");
@@ -1438,6 +1438,7 @@ function checkTarget(word, kind, ctx) {
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   const docs = docsTarget(word, absolute, kind, ctx);
   if (docs && !(grantable(word, text, ctx) && grantedDocsWrite(absolute))) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${docs}`);
+  if (effect) checkDocsEffect(word, text, absolute, effect, ctx);
   if (kind === "delete") return;
   if (temporaryTarget(word, text, ctx)) throw new Block("tmp-write", `${structural["tmp-write"]} Target: ${text}`);
   if (kind !== "write") return;
@@ -1495,12 +1496,12 @@ function braceNames(text, limit) {
 /**
  * The protected agent-instruction or lint file a write, rename or delete reaches, or null: the target's own name (lexical,
  * after symlinks, or any name its glob can expand to) and, for a delete or rename source, a protected file directly inside
- * the directory. A name with an expansion in it is unknown and not matched, like the guard's other path checks; a
- * recursive copy or extraction into a directory and a recursive delete reaching deeper than one level are not followed.
+ * the directory. A name with an expansion in it is unknown and not matched, like the guard's other path checks; the trees a
+ * recursive copy, move, delete or extraction reaches are read by `checkDocsEffect`. Trailing `/` and `/.` name the directory.
  * @param {Word} word @param {string} absolute @param {"write" | "delete" | "tree"} kind @param {Context} ctx
  */
 function docsTarget(word, absolute, kind, ctx) {
-  const value = word.value.replaceAll(`${UNKNOWN}{`, "{");
+  const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
   const name = value.slice(value.lastIndexOf("/") + 1);
   if (!name || name.includes(UNKNOWN)) return null;
   if (word.glob) {
@@ -1537,6 +1538,143 @@ function docsTarget(word, absolute, kind, ctx) {
     const inside = readdirSync(real).find(docsName);
     return inside ? join(real, inside) : null;
   } catch { return null; }
+}
+
+/** `docs/`, `docs/.` and `docs//` name the directory `docs`; a lone `/` stays. @param {string} value */
+function trimDirectorySuffix(value) {
+  return value.replace(/(?<=.)(?:\/\.?)+$/u, "");
+}
+
+/** How far `docsInside` reads a tree before failing closed. */
+const DOCS_WALK_DEPTH = 8;
+const DOCS_WALK_ENTRIES = 5000;
+
+/**
+ * Protected names at any depth below a directory (relative paths), read without following symlinks below it; [] for a
+ * missing path or a file, and null when the tree is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES
+ * entries or cannot be read, so the caller fails closed. @param {string} directory @returns {string[] | null}
+ */
+function docsInside(directory) {
+  try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
+  /** @type {string[]} */
+  const found = [];
+  /** @type {{ path: string, rel: string, depth: number }[]} */
+  const pending = [{ path: directory, rel: "", depth: 0 }];
+  let entries = 0;
+  while (pending.length > 0) {
+    checkDeadline();
+    const { path, rel, depth } = /** @type {{ path: string, rel: string, depth: number }} */ (pending.pop());
+    if (depth > DOCS_WALK_DEPTH) return null;
+    let dirents;
+    try { dirents = readdirSync(path, { withFileTypes: true, encoding: "utf8" }); } catch { return null; }
+    for (const entry of dirents) {
+      if (++entries > DOCS_WALK_ENTRIES) return null;
+      const child = rel ? join(rel, entry.name) : entry.name;
+      if (docsName(entry.name)) found.push(child);
+      if (entry.isDirectory()) pending.push({ path: join(path, entry.name), rel: child, depth: depth + 1 });
+    }
+  }
+  return found;
+}
+
+/**
+ * The paths a source or removal operand names, canonical: the literal path, or the existing entries a glob in its last
+ * segment matches in a known directory (read broadly, like protected-path globs). Null when the operand cannot be known:
+ * an expansion, a relative path under an unknown directory, a patterned directory, quoted glob text or an oversized
+ * directory. @param {Word} word @param {Context} ctx @returns {string[] | null}
+ */
+function operandPaths(word, ctx) {
+  const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
+  if (!value || value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(value)) || looseGlob(word, value) !== null) return null;
+  const base = ctx.cwd ?? ctx.scope;
+  if (!word.glob) return [canonicalPath(resolve(base, value))];
+  const directory = value.slice(0, value.lastIndexOf("/") + 1), name = value.slice(value.lastIndexOf("/") + 1);
+  if (!name || /[*?[\]{}()]/u.test(directory)) return null;
+  const parent = resolve(base, directory || ".");
+  if (!/[*?[(^#~]/u.test(name)) {
+    const names = braceNames(name, 256);
+    return names && names.map((each) => canonicalPath(join(parent, each)));
+  }
+  /** @type {string[]} */
+  let entries;
+  try { entries = readdirSync(parent, { encoding: "utf8" }); } catch { return []; }
+  if (entries.length > DOCS_WALK_ENTRIES) return null;
+  const segments = broadGlob(name).map((form) => globSegment(fold(form)));
+  return entries.filter((entry) => segments.some((segment) => typeof segment === "string" ? segment === fold(entry) : globMatch(segment, fold(entry))))
+    .map((entry) => canonicalPath(join(parent, entry)));
+}
+
+/** Whether a directory is inside a Git working tree (a `.git` entry in it or an ancestor). @param {string} directory */
+function insideRepository(directory) {
+  for (let current = directory; ; current = dirname(current)) {
+    if (existsSync(join(current, ".git"))) return true;
+    if (current === dirname(current)) return false;
+  }
+}
+
+/**
+ * What a recursive operation does below its target, beyond the target's own name:
+ * - `remove`: the target directory goes away with everything in it (rm, trash, mv and git mv sources, git rm, rsync --delete);
+ *   `recursive` says whether an unknown operand could be a directory tree;
+ * - `source`: a recursive copy or move writes the tree of `source` at the target;
+ * - `unknownContents`: an archive or remote source writes contents the guard cannot read into the target directory.
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, unknownContents?: boolean }} TreeEffect
+ */
+
+/**
+ * Blocks `docs-config-write` when a recursive operation reaches a protected name at any depth, unless every affected
+ * protected file is known and inside a valid docs grant (the operands themselves fully known, as `grantable` requires).
+ * Unknown operands, unexpandable globs and trees past the walk bound fail closed. Archive or remote contents are unknown,
+ * so extracting into a directory that already holds a protected name or into a Git working tree is blocked unless a grant
+ * covers that whole directory; elsewhere it passes, since a protected name the archive itself brings cannot be read.
+ * In interpreter code strings only literal operands count, like the guard's other name checks there.
+ * @param {Word} word @param {string} text @param {string} absolute @param {TreeEffect} effect @param {Context} ctx
+ */
+function checkDocsEffect(word, text, absolute, effect, ctx) {
+  const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown}`); };
+  const shownWord = (/** @type {Word} */ each) => each.value.replaceAll(UNKNOWN, "$…");
+  const covered = (/** @type {string[]} */ files, /** @type {boolean} */ operands) => operands && files.every((file) => grantedDocsWrite(file));
+  const targetKnown = grantable(word, text, ctx);
+  if (effect.remove) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null) {
+      if (effect.recursive && !ctx.codeString) block(`${shownWord(word)} (a tree the guard cannot read)`);
+      return;
+    }
+    for (const root of roots) {
+      const found = docsInside(root);
+      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+      else if (found.length > 0 && !covered(found.map((rel) => join(root, rel)), targetKnown)) block(join(root, found[0]));
+    }
+  }
+  if (effect.source) {
+    const roots = operandPaths(effect.source, ctx);
+    if (roots === null) {
+      if (!ctx.codeString) block(`${shownWord(effect.source)} (a source tree the guard cannot read)`);
+      return;
+    }
+    const sourceText = effect.source.value.replaceAll(UNKNOWN, "x");
+    for (const root of roots) {
+      const found = docsInside(root);
+      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+      else if (found.length > 0 && !covered(found.map((rel) => join(absolute, rel)), targetKnown && grantable(effect.source, sourceText, ctx))) {
+        block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
+      }
+    }
+  }
+  if (effect.unknownContents) {
+    const roots = operandPaths(word, ctx);
+    if (roots === null || roots.length !== 1) {
+      if (!ctx.codeString) block(`${shownWord(word)} (archive or remote contents into an unknown directory)`);
+      return;
+    }
+    const [root] = roots;
+    const found = docsInside(root);
+    if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+    else if ((found.length > 0 || insideRepository(root)) && !covered([...found.map((rel) => join(root, rel)), join(root, "AGENTS.md")], targetKnown)) {
+      block(`${found.length > 0 ? join(root, found[0]) : root} (archive or remote contents the guard cannot read)`);
+    }
+  }
 }
 
 /** Shared temporary directories, physically resolved; evidence and helper files belong in ~/.development-system/private. */
@@ -2288,9 +2426,9 @@ function editorScript(script, ed, typed, editor, ctx) {
  * @param {ReturnType<typeof analyzeSed> | null} sed @param {{ redirects: Redirect[], stdinPiped: boolean }} stdin
  */
 function commandTargets(name, rest, ctx, sed, stdin) {
-  /** @type {{word: Word, kind: "write" | "delete" | "tree"}[]} */
+  /** @type {{word: Word, kind: "write" | "delete" | "tree", effect?: TreeEffect}[]} */
   const targets = [];
-  const add = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind) => targets.push({ word, kind });
+  const add = (/** @type {Word} */ word, /** @type {"write" | "delete" | "tree"} */ kind, /** @type {TreeEffect | undefined} */ effect = undefined) => targets.push({ word, kind, effect });
   /** @param {string} value */
   const optionValue = (value) => literalWord(value.slice(value.indexOf("=") + 1));
   switch (name) {
@@ -2298,10 +2436,25 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
       break;
     case "cp": case "install": case "ln": case "rsync": case "ditto": {
-      const { targets: written } = copyTargets(rest, ctx, new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]));
+      const { sources, targets: written } = copyTargets(rest, ctx, new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]));
       const recursive = name === "rsync" || name === "ditto"
         || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
-      written.forEach((word) => { add(word, "write"); if (recursive) add(word, "tree"); });
+      // rsync reads `host:path` and `rsync://` operands as remote; ditto -x extracts an archive.
+      const remote = (/** @type {Word} */ word) => name === "rsync" && /^(?:rsync:\/\/|[^/]*:)/u.test(word.value);
+      const extracts = name === "ditto" && rest.some((word) => word.literal && /^-[A-Za-z]*x/u.test(word.value));
+      written.forEach((word, i) => {
+        add(word, "write");
+        if (!recursive) return;
+        const source = sources[i];
+        add(word, "tree", remote(word) ? undefined : extracts || (source && remote(source)) ? { unknownContents: true } : source ? { source } : undefined);
+      });
+      if (name === "rsync" && sources.length > 0) {
+        // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
+        const { operands, targetDirectory } = operandsOf(rest, new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]));
+        const destination = targetDirectory ?? operands.at(-1);
+        if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) add(destination, "delete", { remove: true, recursive: true });
+        if (rest.some((word) => word.literal && word.value === "--remove-source-files")) sources.forEach((word) => { if (!remote(word)) add(word, "delete", { remove: true, recursive: true }); });
+      }
       break;
     }
     case "tar": case "bsdtar": case "gtar": case "unzip": {
@@ -2317,7 +2470,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if ((value === "-C" || value === "--directory" || (name === "unzip" && value === "-d")) && rest[i + 1]) directory = rest[++i];
         else if (value.startsWith("--directory=")) directory = optionValue(value);
       }
-      add(directory, "tree");
+      add(directory, "tree", { unknownContents: true });
       break;
     }
     case "perl": case "ruby": {
@@ -2397,8 +2550,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
     }
     case "mv": {
       const { sources, targets: written } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]));
-      written.forEach((word) => add(word, "write"));
-      sources.forEach((word) => add(word, "delete"));
+      written.forEach((word, i) => add(word, "write", sources[i] ? { source: sources[i] } : undefined));
+      sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       break;
     }
     case "touch": case "truncate":
@@ -2451,9 +2604,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         .filter((word) => !word.value.startsWith("+")).forEach((word) => add(word, "write"));
       break;
     }
-    case "rm": case "unlink": case "rmdir": case "trash": case "srm":
-      operandsOf(rest, new Set()).operands.forEach((word) => add(word, "delete"));
+    case "rm": case "unlink": case "rmdir": case "trash": case "srm": {
+      // trash moves whole directories; rm and srm reach a tree only with -r/-R.
+      const recursive = name === "trash" || ((name === "rm" || name === "srm") && rest.some((word) => word.literal && (/^-[A-Za-z]*[rR]/u.test(word.value) || word.value === "--recursive")));
+      operandsOf(rest, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
       break;
+    }
     case "sort": {
       for (let i = 0; i < rest.length; i++) {
         const value = rest[i].value;
@@ -2476,10 +2632,13 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const subArgs = rest.slice(git.subIndex + 1);
       if (sub === "mv") {
         const { sources, targets: written } = copyTargets(subArgs, ctx, new Set());
-        written.forEach((word) => add(word, "write"));
-        sources.forEach((word) => add(word, "delete"));
+        written.forEach((word, i) => add(word, "write", sources[i] ? { source: sources[i] } : undefined));
+        sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       }
-      if (sub === "rm") operandsOf(subArgs, new Set()).operands.forEach((word) => add(word, "delete"));
+      if (sub === "rm") {
+        const recursive = subArgs.some((word) => word.literal && /^-[A-Za-z]*r/u.test(word.value));
+        operandsOf(subArgs, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
+      }
       for (let i = 0; i < subArgs.length; i++) {
         const value = subArgs[i].value;
         if (value === "--output" && subArgs[i + 1]) add(subArgs[i + 1], "write");
@@ -3215,7 +3374,7 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     if (unsafe) throw new Block("sensitive-dynamic-argument", "xargs appends arguments from standard input to a destructive-capable command; put them after a literal -- separator.");
   }
 
-  for (const { word, kind } of commandTargets(name, rest, ctx, sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx);
+  for (const { word, kind, effect } of commandTargets(name, rest, ctx, sed, { redirects, stdinPiped })) checkTarget(word, kind, ctx, effect);
   if (!pureRead) scanNestedCommands(name, rest, redirects, ctx, stdinPiped);
   scanInterpreterCode(name, rest, redirects, ctx, { stdinPiped, lenient: nested, appended });
 

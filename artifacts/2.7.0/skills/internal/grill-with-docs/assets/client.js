@@ -154,8 +154,8 @@ function signature(d){return JSON.stringify([d.answers.map(a=>[a.id,a.choice,a.n
     // A draft older than the last submission is superseded by it and stays read-only.
     const current=stored.data&&stored.baseSubmission===serverRevision;
     if(!current){draftRevision=Math.max(draftRevision,stored.revision);if(meaningful(collect())&&dirty)scheduleDraft();else sync('saved','Sin borrador pendiente; el servidor está al día.');return;}
-    if(edited){draftRevision=stored.revision;return;}
-    if(!meaningful(collect())){hydrate(stored.data);draftRevision=stored.revision;dirty=true;storeDraft();sync('saved','Borrador recuperado del servidor (borrador '+draftRevision+').');return;}
+    // Typing before this load finished: adopt the server revision only for identical content; otherwise autosave stays suspended behind the recovery choice.
+    if(!edited&&!meaningful(collect())){hydrate(stored.data);draftRevision=stored.revision;dirty=true;storeDraft();sync('saved','Borrador recuperado del servidor (borrador '+draftRevision+').');return;}
     if(signature(collect())===signature(normalize(stored.data))){draftRevision=stored.revision;sync('saved','Guardado en el servidor (borrador '+draftRevision+').');return;}
     sync('conflict','El borrador de este navegador y el del servidor difieren. Elige qué versión conservar.');offerRecovery({kind:'draft',revision:stored.revision,data:stored.data});
   }catch{sync('offline','Sin conexión con el servidor. Lo escrito solo está en este navegador: expórtalo si vas a cerrar el túnel o cambiar de host.');draftStatus.textContent='La sesión local no está disponible. El borrador y la descarga siguen funcionando.';}

@@ -2,15 +2,20 @@
 // Sol review rounds, exemptions and coverage verdicts for one PR, appended as JSONL under
 // <home>/.development-system/private/reviews/<owner>/<repo>/<number>.jsonl. The coordinator writes them
 // (`review record`, `review coverage`); `pr-review-status` reads them for `mergeReady`. Budget: the first Sol
-// round is `full`; a second, `fix-diff`, only after a blocking first round; a third is refused. A record states
-// what a reviewer or the coordinator concluded; it never authorizes a merge by itself.
-import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+// round is `full`; a second, `fix-diff`, only after a blocking first round; a third is refused. An exemption binds
+// one head and replaces any earlier exemption; rounds and exemptions never mix. Every read validates each record and
+// the whole sequence, and every write checks and appends under an exclusive per-PR lock, so a hand-edited or racing
+// file can never pass as approval. A record states what a reviewer or the coordinator concluded; it never authorizes a
+// merge by itself.
+import { appendFileSync, chmodSync, closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { parsePrReference } from "./evidence.mjs";
 
 const SHA = /^[0-9a-f]{40}$/;
 const NAME = /^[A-Za-z0-9_.-]+$/;
 const FINDING_ID = /^[A-Za-z0-9_.-]+$/;
+// Coverage also names Codex thread ids (`codex:<comment id>`).
+const COVERAGE_ID = /^[A-Za-z0-9_.:-]+$/;
 const SCOPES = ["full", "fix-diff"];
 const RESULTS = ["blocking", "non-blocking", "none"];
 const EXEMPTIONS = ["docs-only", "low-risk"];
@@ -42,6 +47,49 @@ function locate(home, pr) {
   return { key: reference.key, file: resolve(home, ".development-system/private/reviews", reference.owner, reference.repo, `${reference.number}.jsonl`) };
 }
 
+/** The lock that serializes `pr-review-status --request` for one PR. @param {string} home @param {string} pr */
+export function requestLockPath(home, pr) {
+  return locate(home, pr).file.replace(/\.jsonl$/, ".request.lock");
+}
+
+const LOCK_STALE_MS = 30_000;
+/** @param {number} ms */
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/**
+ * Runs `work` while holding an exclusive lock file (created with `wx`). A lock older than 30 s is stale and taken
+ * over; a live one is retried for `waitMs`, then the call fails closed without running `work`.
+ * @template T @param {string} path @param {() => T} work @param {{waitMs?: number}} [options] @returns {T}
+ */
+export function withFileLock(path, work, { waitMs = 5_000 } = {}) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  const deadline = Date.now() + waitMs;
+  /** @type {number | undefined} */
+  let fd;
+  while (fd === undefined) {
+    try { fd = openSync(path, "wx", 0o600); } catch (error) {
+      if (/** @type {NodeJS.ErrnoException} */ (error).code !== "EEXIST") throw error;
+      let held;
+      try { held = statSync(path); } catch { continue; } // released between open and stat
+      if (Date.now() - held.mtimeMs > LOCK_STALE_MS) {
+        // Remove only the stale file just inspected, never one a new holder created meanwhile.
+        try { if (statSync(path).ino === held.ino) unlinkSync(path); } catch { /* already gone */ }
+        continue;
+      }
+      if (Date.now() >= deadline) throw new Error(`${path} is held by another run; retry when it finishes`);
+      pause(50);
+    }
+  }
+  const mine = fstatSync(fd).ino;
+  try {
+    writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
+    return work();
+  } finally {
+    closeSync(fd);
+    try { if (statSync(path).ino === mine) unlinkSync(path); } catch { /* taken over as stale */ }
+  }
+}
+
 /** "<id>:<path>[+<path>...]" -> {id, paths}. @param {string} value @returns {Finding} */
 export function parseFinding(value) {
   const at = value.indexOf(":");
@@ -58,21 +106,88 @@ function append(file, record) {
   chmodSync(file, 0o600);
 }
 
+/** @param {unknown} value */
+const isDate = (value) => typeof value === "string" && !Number.isNaN(Date.parse(value));
+/** Exactly these keys, no more, no fewer. @param {any} value @param {string[]} keys */
+const hasKeys = (value, keys) => typeof value === "object" && value !== null && !Array.isArray(value) && Object.keys(value).sort().join() === [...keys].sort().join();
+/** @param {any} value */
+const isFinding = (value) => hasKeys(value, ["id", "paths"]) && typeof value.id === "string" && FINDING_ID.test(value.id) && Array.isArray(value.paths) && value.paths.length > 0
+  && value.paths.every((/** @type {unknown} */ path) => typeof path === "string" && path !== "" && path.trim() === path && !path.includes(".."));
+
 /**
- * Every record for one PR, oldest first. Fails closed: a malformed line or a record for another PR throws, so a
- * damaged file can never hide a blocking round.
+ * The first schema problem of one record, or "" when it is a complete record for `key`.
+ * @param {any} record @param {string} key @returns {string}
+ */
+function recordProblem(record, key) {
+  if (record?.pr !== key) return `is not a review record for ${key}`;
+  if (record.type === "round") {
+    if (!hasKeys(record, ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"])) return "round has missing or unknown fields";
+    if (record.reviewer !== "sol") return "round reviewer is not sol";
+    if (record.round !== 1 && record.round !== 2) return "round number is not 1 or 2";
+    if (typeof record.head !== "string" || !SHA.test(record.head)) return "round head is not a 40-hex SHA";
+    if (!SCOPES.includes(record.scope)) return "round scope is not full or fix-diff";
+    if (!RESULTS.includes(record.result)) return "round result is not blocking, non-blocking or none";
+    if (!text(record.thread)) return "round has no thread";
+    if (!Array.isArray(record.findings) || !record.findings.every(isFinding)) return "round findings are not {id, paths[]}";
+    if (new Set(record.findings.map((/** @type {Finding} */ finding) => finding.id)).size !== record.findings.length) return "round finding ids repeat";
+  } else if (record.type === "exemption") {
+    if (!hasKeys(record, ["type", "pr", "reviewer", "head", "exempt", "reason", "recordedAt"])) return "exemption has missing or unknown fields";
+    if (record.reviewer !== "sol") return "exemption reviewer is not sol";
+    if (typeof record.head !== "string" || !SHA.test(record.head)) return "exemption head is not a 40-hex SHA";
+    if (!EXEMPTIONS.includes(record.exempt)) return "exemption is not docs-only or low-risk";
+    if (!text(record.reason)) return "exemption has no reason";
+  } else if (record.type === "coverage") {
+    if (!hasKeys(record, ["type", "pr", "from", "to", "findings", "verdict", "note", "recordedAt"])) return "coverage has missing or unknown fields";
+    if (typeof record.from !== "string" || typeof record.to !== "string" || !SHA.test(record.from) || !SHA.test(record.to) || record.from === record.to) return "coverage from/to are not two distinct 40-hex SHAs";
+    if (!Array.isArray(record.findings) || !record.findings.every((/** @type {unknown} */ id) => typeof id === "string" && COVERAGE_ID.test(id))) return "coverage findings are not finding ids";
+    if (!VERDICTS.includes(record.verdict)) return "coverage verdict is not fix-only or out-of-scope";
+    if (record.verdict === "fix-only" && record.findings.length === 0) return "fix-only coverage names no findings";
+    if (!text(record.note)) return "coverage has no note";
+  } else return "has an unknown record type";
+  return isDate(record.recordedAt) ? "" : "has no valid recordedAt";
+}
+
+/**
+ * The first sequence problem, or "": round 1 full; round 2 only fix-diff after a blocking round 1; never a third;
+ * rounds and exemptions never mix (a later exemption replaces an earlier one).
+ * @param {ReviewRecord[]} records @returns {string}
+ */
+function sequenceProblem(records) {
+  const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
+  if (rounds.length && records.some((record) => record.type === "exemption")) return "has both Sol rounds and an exemption";
+  if (rounds.length > 2) return "has more than two Sol rounds";
+  if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
+  if (rounds[0] && rounds[0].scope !== "full") return "has a first Sol round that is not full";
+  if (rounds[1] && (rounds[0].result !== "blocking" || rounds[1].scope !== "fix-diff")) return "has a second Sol round that is not a fix-diff after a blocking first round";
+  return "";
+}
+
+/**
+ * Every record for one PR, oldest first. Fails closed: a malformed line, an incomplete or foreign record, or an
+ * impossible round sequence throws, so a damaged or hand-edited file can never hide a blocking round or fake approval.
  * @param {string} home @param {string} pr @returns {ReviewRecord[]}
  */
 export function readReviewRecords(home, pr) {
   const { key, file } = locate(home, pr);
   if (!existsSync(file)) return [];
-  return readFileSync(file, "utf8").split("\n").filter((line) => line.trim()).map((line, index) => {
+  const records = readFileSync(file, "utf8").split("\n").filter((line) => line.trim()).map((line, index) => {
     /** @type {any} */
     let record;
     try { record = JSON.parse(line); } catch { throw new Error(`${file}:${index + 1} is not valid JSON`); }
-    if (record?.pr !== key || !["round", "exemption", "coverage"].includes(record?.type)) throw new Error(`${file}:${index + 1} is not a review record for ${key}`);
+    const problem = recordProblem(record, key);
+    if (problem) throw new Error(`${file}:${index + 1} ${problem}`);
     return /** @type {ReviewRecord} */ (record);
   });
+  const problem = sequenceProblem(records);
+  if (problem) throw new Error(`${file} ${problem}`);
+  return records;
+}
+
+/** Appends `record` only if it and the whole sequence read under the lock stay valid. @param {string} home @param {string} key @param {string} file @param {ReviewRecord} record */
+function appendChecked(home, key, file, record) {
+  const problem = recordProblem(record, key) || sequenceProblem([...readReviewRecords(home, key), record]);
+  if (problem) throw new Error(`refusing to record: ${key} ${problem}`);
+  append(file, record);
 }
 
 /**
@@ -83,34 +198,41 @@ export function recordReview({ home, pr, reviewer, head, scope, result, thread, 
   const { key, file } = locate(home, pr);
   if (reviewer !== "sol") throw new Error("review record supports only --reviewer sol");
   if (!head || !SHA.test(head)) throw new Error("review record needs --head <40-hex SHA the reviewer read>");
-  const existing = readReviewRecords(home, key);
-  const rounds = /** @type {RoundRecord[]} */ (existing.filter((record) => record.type === "round"));
-  if (existing.some((record) => record.type === "exemption")) throw new Error(`${key} already has a Sol exemption; it replaces every round`);
-  const recordedAt = new Date().toISOString();
   if (exempt !== undefined) {
     if (!EXEMPTIONS.includes(exempt)) throw new Error("--exempt must be docs-only or low-risk");
     if (!text(reason)) throw new Error("--exempt needs --reason");
-    if (rounds.length) throw new Error(`${key} already has ${rounds.length} Sol round(s); an exemption only replaces a round that never ran`);
-    /** @type {ExemptionRecord} */
-    const record = { type: "exemption", pr: key, reviewer: "sol", head, exempt: /** @type {ExemptionRecord["exempt"]} */ (exempt), reason: /** @type {string} */ (text(reason)), recordedAt };
-    append(file, record);
-    return { ok: true, operation: "review-record", path: file, record };
+  } else {
+    if (!scope || !SCOPES.includes(scope)) throw new Error("--scope must be full or fix-diff");
+    if (!result || !RESULTS.includes(result)) throw new Error("--result must be blocking, non-blocking or none");
+    if (!text(thread)) throw new Error("review record needs --thread <reviewer thread reference>");
   }
-  if (!scope || !SCOPES.includes(scope)) throw new Error("--scope must be full or fix-diff");
-  if (!result || !RESULTS.includes(result)) throw new Error("--result must be blocking, non-blocking or none");
-  if (!text(thread)) throw new Error("review record needs --thread <reviewer thread reference>");
-  // Operator budget: one full round; a fix-diff second round only after a blocking first; never a third.
-  if (rounds.length >= 2) throw new Error(`${key} already has two Sol rounds; a third needs the operator`);
-  if (rounds.length === 0 && scope !== "full") throw new Error("the first Sol round must be --scope full");
-  if (rounds.length === 1 && rounds[0].result !== "blocking") throw new Error(`a second Sol round needs a blocking first round (first was ${rounds[0].result})`);
-  if (rounds.length === 1 && scope !== "fix-diff") throw new Error("the second Sol round must be --scope fix-diff");
   const parsed = list(findings).map(parseFinding);
   const ids = parsed.map((finding) => finding.id);
   if (new Set(ids).size !== ids.length) throw new Error("finding ids must be unique");
-  /** @type {RoundRecord} */
-  const record = { type: "round", pr: key, reviewer: "sol", round: rounds.length + 1, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: /** @type {RoundRecord["result"]} */ (result), thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt };
-  append(file, record);
-  return { ok: true, operation: "review-record", path: file, record };
+  // Check and append under one lock, re-reading inside it, so two concurrent records cannot both pass the budget.
+  return withFileLock(`${file}.lock`, () => {
+    const existing = readReviewRecords(home, key);
+    const rounds = /** @type {RoundRecord[]} */ (existing.filter((record) => record.type === "round"));
+    const recordedAt = new Date().toISOString();
+    if (exempt !== undefined) {
+      if (rounds.length) throw new Error(`${key} already has ${rounds.length} Sol round(s); an exemption only replaces a round that never ran`);
+      // An exemption binds its own head and replaces any earlier exemption.
+      /** @type {ExemptionRecord} */
+      const record = { type: "exemption", pr: key, reviewer: "sol", head, exempt: /** @type {ExemptionRecord["exempt"]} */ (exempt), reason: /** @type {string} */ (text(reason)), recordedAt };
+      appendChecked(home, key, file, record);
+      return { ok: true, operation: "review-record", path: file, record };
+    }
+    if (existing.some((record) => record.type === "exemption")) throw new Error(`${key} has a Sol exemption; rounds and exemptions do not mix (record a new exemption for this head or ask the owner)`);
+    // Operator budget: one full round; a fix-diff second round only after a blocking first; never a third.
+    if (rounds.length >= 2) throw new Error(`${key} already has two Sol rounds; a third needs the operator`);
+    if (rounds.length === 0 && scope !== "full") throw new Error("the first Sol round must be --scope full");
+    if (rounds.length === 1 && rounds[0].result !== "blocking") throw new Error(`a second Sol round needs a blocking first round (first was ${rounds[0].result})`);
+    if (rounds.length === 1 && scope !== "fix-diff") throw new Error("the second Sol round must be --scope fix-diff");
+    /** @type {RoundRecord} */
+    const record = { type: "round", pr: key, reviewer: "sol", round: rounds.length + 1, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: /** @type {RoundRecord["result"]} */ (result), thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt };
+    appendChecked(home, key, file, record);
+    return { ok: true, operation: "review-record", path: file, record };
+  });
 }
 
 /**
@@ -126,10 +248,13 @@ export function recordCoverage({ home, pr, from, to, findings, verdict, note }) 
   if (!text(note)) throw new Error("review coverage needs --note <why>");
   const ids = list(findings);
   if (verdict === "fix-only" && ids.length === 0) throw new Error("--verdict fix-only needs --findings <id,...> the commits fix");
-  /** @type {CoverageRecord} */
-  const record = { type: "coverage", pr: key, from, to, findings: ids, verdict: /** @type {CoverageRecord["verdict"]} */ (verdict), note: /** @type {string} */ (text(note)), recordedAt: new Date().toISOString() };
-  append(file, record);
-  return { ok: true, operation: "review-coverage", path: file, record };
+  if (!ids.every((id) => COVERAGE_ID.test(id))) throw new Error("--findings must be finding ids");
+  return withFileLock(`${file}.lock`, () => {
+    /** @type {CoverageRecord} */
+    const record = { type: "coverage", pr: key, from, to, findings: ids, verdict: /** @type {CoverageRecord["verdict"]} */ (verdict), note: /** @type {string} */ (text(note)), recordedAt: new Date().toISOString() };
+    appendChecked(home, key, file, record);
+    return { ok: true, operation: "review-coverage", path: file, record };
+  });
 }
 
 /** @param {ReturnType<typeof recordReview> | ReturnType<typeof recordCoverage>} result */
