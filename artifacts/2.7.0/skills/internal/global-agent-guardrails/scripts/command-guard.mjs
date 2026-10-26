@@ -2730,7 +2730,8 @@ function copyTargets(rest, ctx, withValue, { contents = false, remote = () => fa
   };
   const pairs = items.map(({ word, slash }) => {
     if (!directory || slash || (contents && isDirectory(word))) return { target: destination, source: word };
-    const target = literalWord(join(destination.value, basename(word.value)));
+    // Joined as text, so a destination such as `link/..` keeps its components for the link-aware check.
+    const target = literalWord(`${destination.value.replace(/\/+$/u, "")}/${basename(word.value)}`);
     if (word.glob) target.glob = true;
     if (word.glob || word.fromGlob) target.fromGlob = true;
     return { target, source: word };
@@ -3490,6 +3491,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       break;
     }
     case "curl": {
+      // --next (`-:`) starts another transfer whose options, --output-dir included, are read on their own.
+      const next = rest.findIndex((word) => word.literal && (word.value === "--next" || word.value === "-:"));
+      if (next >= 0) {
+        targets.push(...commandTargets(name, rest.slice(0, next), ctx, sed, stdin), ...commandTargets(name, rest.slice(next + 1), ctx, sed, stdin));
+        break;
+      }
       const writes = new Set(["--output", "--dump-header", "--cookie-jar", "--trace", "--trace-ascii", "--stderr", "--etag-save", "--hsts", "--alt-svc"]);
       // --output-dir puts -o and -O files in that directory.
       /** @type {Word | null} */
@@ -3701,8 +3708,9 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       if (sub === "mv" || sub === "rm") {
         for (const word of subArgs.slice(0, optionEnd < 0 ? subArgs.length : optionEnd)) {
           if (!word.literal) continue;
-          if (word.value === "--dry-run" || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)) preview = true;
-          else if (word.value === "--no-dry-run") preview = false;
+          // Git accepts any unambiguous prefix (`--dry`, `--no-dry`).
+          if ((word.value.length >= 3 && "--dry-run".startsWith(word.value)) || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)) preview = true;
+          else if (word.value.length >= 6 && "--no-dry-run".startsWith(word.value)) preview = false;
         }
       }
       if (sub === "mv" && !preview) {
