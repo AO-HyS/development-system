@@ -1191,7 +1191,7 @@ function protectedGlob(absolute, text, kind, targets) {
         for (let start = 0; start < (absolute === null ? path.length : 1); start++) globOutcomes(pattern, 0, path, start, outcomes, seen);
         if (outcomes.has("exact") || (target.directory && outcomes.has("inside"))) return target.entry;
         if (kind === "tree" && outcomes.has(target.project ? "parent" : "ancestor")) return target.entry;
-        if (kind === "delete" && !target.project && outcomes.has("ancestor")) return target.entry;
+        if (kind === "delete" && outcomes.has(target.project ? "parent" : "ancestor")) return target.entry;
       }
     }
   }
@@ -1475,8 +1475,10 @@ function checkTarget(word, kind, ctx, effect) {
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   // find -execdir runs in each match's directory, where a relative name can be a link to any protected file.
   if (ctx.execdir && !isAbsolute(text)) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${text} (relative to an unknown -execdir directory)`);
-  const docs = docsTarget(word, absolute, kind, ctx);
-  if (docs && !(grantable(word, text, ctx) && grantedDocsWrite(absolute))) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${docs}`);
+  // `link/../notes.txt` opens the file next to the link's target, which can be (or link to) a docs file.
+  const docs = docsTarget(word, absolute, kind, ctx)
+    ?? (physical !== null && docsName(basename(physical)) ? `${text} (${physical})` : null);
+  if (docs && !(grantable(word, text, ctx) && grantedDocsWrite(absolute) && (physical === null || grantedDocsWrite(physical)))) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${docs}`);
   if (effect) checkDocsEffect(word, text, absolute, effect, ctx);
   if (kind === "delete") return;
   if (temporaryTarget(word, text, ctx)) throw new Block("tmp-write", `${structural["tmp-write"]} Target: ${text}`);
@@ -3669,12 +3671,16 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const git = parseGit(rest);
       const sub = git.sub?.value;
       const subArgs = rest.slice(git.subIndex + 1);
-      if (sub === "mv") {
+      // `-n`/`--dry-run` only lists what git mv or git rm would do.
+      const optionEnd = subArgs.findIndex((word) => word.value === "--");
+      const preview = (sub === "mv" || sub === "rm") && subArgs.slice(0, optionEnd < 0 ? subArgs.length : optionEnd)
+        .some((word) => word.literal && (word.value === "--dry-run" || /^-[A-Za-z]*n[A-Za-z]*$/u.test(word.value)));
+      if (sub === "mv" && !preview) {
         const { sources, pairs } = copyTargets(subArgs, ctx, new Set());
         pairs.forEach(({ target, source }) => add(target, "write", { source }));
         sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       }
-      if (sub === "rm") {
+      if (sub === "rm" && !preview) {
         const recursive = subArgs.some((word) => word.literal && /^-[A-Za-z]*r/u.test(word.value));
         operandsOf(subArgs, new Set()).operands.forEach((word) => add(word, "delete", { remove: true, recursive }));
       }
@@ -4349,19 +4355,28 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     // assignment sets one the guard cannot read. Format and data arguments are text.
     const declares = ["export", "declare", "typeset", "local", "readonly", "integer", "float"].includes(name);
     const unreadable = (/** @type {string} */ named) => { if (WRITER_VARIABLES.has(named)) recordWriterVariable(named, null); };
+    // A name the guard cannot read (`printf -v "$slot"`) may be any of them.
+    const anyUnreadable = () => { for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null); };
+    const named = (/** @type {Word | undefined} */ word) => { if (word && !word.literal) anyUnreadable(); else unreadable(word?.value ?? ""); };
     for (let k = 0; k < rest.length; k++) {
       const word = rest[k];
-      const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(word.value);
+      const assignment = /^([A-Za-z_][A-Za-z0-9_]*)(\+?)=/u.exec(word.value);
       if (declares) {
-        if (assignment && word.literal) recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
-        else if (!word.literal && word.value.includes("=")) for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null);
+        // `NAME+=value` appends to a value the guard may not know; `declare -n ref=NAME` makes later `ref=` assign NAME.
+        if (assignment && word.literal && !assignment[2] && !WRITER_VARIABLES.has(word.value.slice(assignment[0].length))) {
+          recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
+        } else if (assignment && word.literal) {
+          unreadable(assignment[1]);
+          unreadable(word.value.slice(assignment[0].length));
+        } else if (!word.literal && word.value.includes("=")) anyUnreadable();
       } else if (name === "printf" || name === "print") {
-        if (word.value === "--") break;
-        if (word.value === "-v") unreadable(rest[++k]?.value ?? "");
-        else if (word.value.startsWith("-v")) unreadable(word.value.slice(2));
+        // Options end at `--` or the format; later words are data.
+        if (word.value === "--" || !word.value.startsWith("-")) break;
+        if (word.value === "-v") named(rest[++k]);
+        else if (word.value.startsWith("-v")) named({ ...word, value: word.value.slice(2) });
       } else if (name === "let") {
         if (assignment) unreadable(assignment[1]);
-      } else if (["read", "mapfile", "readarray", "vared", "getopts"].includes(name)) unreadable(word.value);
+      } else if (["read", "mapfile", "readarray", "vared", "getopts"].includes(name)) named(word);
     }
     const source = name === "read" || name === "mapfile" || name === "readarray" ? stdinSource(redirects) : null;
     if (source?.heredoc) checkSubscriptCode(source.heredoc.body);
@@ -4726,6 +4741,9 @@ function checkMergeGate(rest) {
 function chdirTarget(word, ctx) {
   if (!word.literal || word.value === "-" || (ctx.cwd === null && !isAbsolute(word.value))) return null;
   const target = resolve(ctx.cwd ?? ctx.scope, word.value);
+  // `link/..` is the link's parent for a logical `cd` and its target's parent for `cd -P`, `env -C` and `sudo -D`: when
+  // the two differ the directory is unknown.
+  if (word.value.split("/").includes("..") && canonicalPath(linkedPath(ctx.cwd ?? ctx.scope, word.value)) !== canonicalPath(target)) return null;
   return existsSync(target) ? target : null;
 }
 
