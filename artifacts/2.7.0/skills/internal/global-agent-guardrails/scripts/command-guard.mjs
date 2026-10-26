@@ -3098,6 +3098,15 @@ function findActionIndex(rest, primary) {
 const FIND_FILLS = 64;
 
 /** Commands whose written files commandTargets reads from their words (sed only with -i, cp only its destination). */
+/** rsync options whose value is the next word (or the rest of a short cluster). */
+const RSYNC_VALUE_OPTIONS = new Set(["-e", "-B", "-f", "-M", "-T", "-@", "--rsh", "--block-size", "--filter", "--remote-option", "--temp-dir",
+  "--modify-window", "--info", "--debug", "--stderr", "--backup-dir", "--suffix", "--rsync-path", "--max-delete", "--max-size", "--min-size",
+  "--max-alloc", "--partial-dir", "--usermap", "--groupmap", "--chown", "--timeout", "--contimeout", "--compare-dest", "--copy-dest",
+  "--link-dest", "--compress-choice", "--zc", "--compress-level", "--zl", "--skip-compress", "--exclude", "--exclude-from", "--include",
+  "--include-from", "--files-from", "--address", "--port", "--sockopts", "--out-format", "--log-file", "--log-file-format",
+  "--password-file", "--bwlimit", "--stop-after", "--stop-at", "--time-limit", "--write-batch", "--only-write-batch", "--read-batch",
+  "--protocol", "--iconv", "--checksum-choice", "--cc", "--checksum-seed", "--chmod", "--outbuf", "--early-input", "--copy-as"]);
+
 const TARGETED_COMMANDS = new Set(["tee", "sponge", "cp", "install", "ln", "rsync", "ditto", "tar", "bsdtar", "gtar", "unzip", "perl", "ruby", "curl", "wget", "patch", "chmod", "chown", "chgrp", "chflags", "mv", "touch", "truncate", "rm", "unlink", "rmdir", "trash", "srm", "sort", "dd", "sed"]);
 
 /**
@@ -3245,7 +3254,7 @@ function backupSuffixes(rest, name) {
   for (let i = 0; i < rest.length; i++) {
     const { value } = rest[i];
     if (value === "--") break;
-    if (value === "--suffix" || value === "-S" || (name === "install" && value === "-B")) {
+    if (value === "--suffix" || (value === "-S" && name !== "rsync") || (name === "install" && value === "-B")) {
       if (name === "install" && value === "-S" && process.platform === "darwin") continue;
       if (rest[i + 1]) suffixes.push(rest[++i].value);
       backup = true;
@@ -3253,11 +3262,12 @@ function backupSuffixes(rest, name) {
     else if (/^--backup(?:=|$)/u.test(value)) backup = true;
     else if (/^-[A-Za-z]/u.test(value) && !value.startsWith("--")) {
       // A cluster's value letter takes the rest of the word (`-bS.md`, `-B.config.js`); other value letters end the scan.
-      const valueLetters = name === "install" ? "mogfMTNhDlt" : "t";
+      // rsync's -S is --sparse; its value letters are e, B, f, M, T and @.
+      const valueLetters = name === "install" ? "mogfMTNhDlt" : name === "rsync" ? "eBfMT@" : "t";
       for (let k = 1; k < value.length; k++) {
         if (value[k] === "b") backup = true;
         if (valueLetters.includes(value[k]) && !(value[k] === "D" && process.platform !== "darwin")) break;
-        if (value[k] === "S" || (name === "install" && value[k] === "B")) {
+        if ((value[k] === "S" && name !== "rsync") || (name === "install" && value[k] === "B")) {
           if (!(name === "install" && value[k] === "S" && process.platform === "darwin")) {
             suffixes.push(k < value.length - 1 ? value.slice(k + 1) : rest[++i]?.value ?? "");
             backup = true;
@@ -3325,8 +3335,34 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
       break;
     case "cp": case "install": case "ln": case "rsync": case "ditto": {
-      const withValue = new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group",
+      // rsync takes the next word as the value of these options even when it starts with `-` (`--exclude -n`).
+      const withValue = name === "rsync" ? RSYNC_VALUE_OPTIONS : new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group",
         ...(name === "install" ? ["-B", "-M", ...(process.platform === "darwin" ? ["-D", "-f", "-h", "-l", "-N", "-T"] : [])] : [])]);
+      /** @type {Word | null} */
+      let backupDir = null;
+      if (name === "rsync") {
+        // --log-file and --write-batch write a file (the batch also writes `<file>.sh`); --backup-dir receives the backups.
+        for (let i = 0; i < rest.length && rest[i].value !== "--"; i++) {
+          const option = rest[i].value.split("=")[0];
+          const value = rest[i].value.includes("=") ? { ...rest[i], value: rest[i].value.slice(option.length + 1), raw: rest[i].value.slice(option.length + 1) } : null;
+          if (!["--log-file", "--write-batch", "--only-write-batch", "--backup-dir"].includes(option)) continue;
+          const target = value ?? rest[++i];
+          if (!target) continue;
+          if (option === "--backup-dir") backupDir = target;
+          else add(target, "write");
+          if (option.endsWith("write-batch")) add({ ...target, value: `${target.value}.sh`, raw: `${target.value}.sh` }, "write");
+        }
+        // Option values are not options or operands: `--exclude -n` is read as `--exclude=-n`, not a dry run.
+        const words = rest;
+        rest = [];
+        for (let i = 0; i < words.length; i++) {
+          const word = words[i];
+          if (word.literal && word.value.startsWith("--") && RSYNC_VALUE_OPTIONS.has(word.value) && words[i + 1]) {
+            const value = words[++i];
+            rest.push({ ...value, value: `${word.value}=${value.value}`, raw: `${word.value}=${value.raw}` });
+          } else rest.push(word);
+        }
+      }
       // BSD install -M writes a metadata log.
       if (name === "install") {
         for (let i = 0; i < rest.length && rest[i].value !== "--"; i++) {
@@ -3367,6 +3403,15 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (!recursive) return;
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
+      if (backupDir && pairs.length > 0) {
+        // The replaced destination files move under --backup-dir (relative to the destination) at the same paths.
+        const { operands, targetDirectory } = operandsOf(rest, withValue);
+        const destination = targetDirectory ?? operands.at(-1);
+        if (destination && !remote(destination)) {
+          const value = isAbsolute(backupDir.value) ? backupDir.value : `${destination.value.replace(/\/+$/u, "")}/${backupDir.value}`;
+          add({ ...backupDir, value, raw: value, literal: backupDir.literal && destination.literal }, "tree", { source: destination });
+        }
+      }
       if (name === "ln") {
         // A hard link to a protected file, or a symbolic link to one or to a directory above one, is another name to write it
         // through; a symbolic link's text is read from the link's directory too.
@@ -3743,6 +3788,20 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
         // The names are checked under the working directory or --directory; a protected file name counts wherever it lands.
         if (!report) add(root, "tree", { patches: resume ? [null] : files.length > 0 ? files.map((word) => ({ word, text: null })) : [diffOperand(null, stdin)] });
+      }
+      if (sub === "config") {
+        // A setting change (set, --add, --unset, sections, --edit) rewrites the --file it names.
+        const reads = subArgs.some((word) => /^(?:--(?:get|get-all|get-regexp|get-urlmatch|get-color|get-colorbool|list)|-l)$/u.test(word.value));
+        const verb = subArgs.find((word) => !word.value.startsWith("-"));
+        const changes = !reads && (gitConfigAssignment(subArgs) !== null
+          || subArgs.some((word) => /^(?:--(?:unset|unset-all|rename-section|remove-section|edit)|-e)$/u.test(word.value))
+          || (verb?.literal === true && ["set", "unset", "rename-section", "remove-section", "edit"].includes(verb.value)));
+        for (let i = 0; changes && i < subArgs.length && subArgs[i].value !== "--"; i++) {
+          const value = subArgs[i].value;
+          if ((value === "-f" || value === "--file") && subArgs[i + 1]) add(subArgs[++i], "write");
+          else if (value.startsWith("--file=")) add({ ...subArgs[i], value: value.slice(7), raw: value.slice(7) }, "write");
+          else if (/^-f./u.test(value)) add({ ...subArgs[i], value: value.slice(2), raw: value.slice(2) }, "write");
+        }
       }
       if (sub === "checkout") {
         const pathspecs = checkoutPathspecs(subArgs);
