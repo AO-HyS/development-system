@@ -7,7 +7,9 @@
 // the whole sequence, and every write checks and appends under an exclusive per-PR lock, so a hand-edited or racing
 // file can never pass as approval. A record states what a reviewer or the coordinator concluded; it never authorizes a
 // merge by itself.
-import { appendFileSync, chmodSync, closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { parsePrReference } from "./evidence.mjs";
 
@@ -52,41 +54,65 @@ export function requestLockPath(home, pr) {
   return locate(home, pr).file.replace(/\.jsonl$/, ".request.lock");
 }
 
-const LOCK_STALE_MS = 30_000;
+const MALFORMED_LOCK_MS = 600_000;
 /** @param {number} ms */
 const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 
+/** @param {string} raw @returns {{pid: number, hostname: string, token: string} | undefined} */
+function parseLock(raw) {
+  try {
+    const lock = JSON.parse(raw);
+    if (Number.isInteger(lock?.pid) && lock.pid > 0 && text(lock.hostname) && text(lock.token)) return lock;
+  } catch { /* malformed */ }
+  return undefined;
+}
+
+/** The lock's identity: its token when the content parses, else the raw text. @param {string} raw */
+const lockToken = (raw) => parseLock(raw)?.token ?? raw;
+
+/** True unless the process is certainly gone: EPERM and any other error count as alive. @param {number} pid */
+function pidAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch (error) { return /** @type {NodeJS.ErrnoException} */ (error).code !== "ESRCH"; }
+}
+
 /**
- * Runs `work` while holding an exclusive lock file (created with `wx`). A lock older than 30 s is stale and taken
- * over; a live one is retried for `waitMs`, then the call fails closed without running `work`.
+ * Runs `work` while holding an exclusive lock file (created with `wx`) whose JSON content names the owner
+ * {pid, hostname, createdAt, token}. Only a lock of this host whose pid is gone (or malformed content older than
+ * 10 minutes) is recovered; a live or foreign owner is retried for `waitMs`, then the call fails closed without
+ * running `work`. Recovery renames the dead lock aside and removes it only if it still carries the observed token.
  * @template T @param {string} path @param {() => T} work @param {{waitMs?: number}} [options] @returns {T}
  */
 export function withFileLock(path, work, { waitMs = 5_000 } = {}) {
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const deadline = Date.now() + waitMs;
+  const token = randomUUID();
   /** @type {number | undefined} */
   let fd;
   while (fd === undefined) {
     try { fd = openSync(path, "wx", 0o600); } catch (error) {
       if (/** @type {NodeJS.ErrnoException} */ (error).code !== "EEXIST") throw error;
-      let held;
-      try { held = statSync(path); } catch { continue; } // released between open and stat
-      if (Date.now() - held.mtimeMs > LOCK_STALE_MS) {
-        // Remove only the stale file just inspected, never one a new holder created meanwhile.
-        try { if (statSync(path).ino === held.ino) unlinkSync(path); } catch { /* already gone */ }
+      let raw;
+      let mtimeMs;
+      try { raw = readFileSync(path, "utf8"); mtimeMs = statSync(path).mtimeMs; } catch { continue; } // released between open and read
+      const owner = parseLock(raw);
+      const dead = owner ? owner.hostname === hostname() && !pidAlive(owner.pid) : Date.now() - mtimeMs > MALFORMED_LOCK_MS;
+      if (dead) {
+        const aside = `${path}.stale-${randomUUID()}`;
+        try { renameSync(path, aside); } catch { continue; } // someone else recovered or released it
+        if (lockToken(readFileSync(aside, "utf8")) !== lockToken(raw)) throw new Error(`${path} changed owner during recovery; the lock it replaced was left at ${aside} for the operator`);
+        unlinkSync(aside);
         continue;
       }
-      if (Date.now() >= deadline) throw new Error(`${path} is held by another run; retry when it finishes`);
+      if (Date.now() >= deadline) throw new Error(`${path} is held by a live or foreign run; retry when it finishes, or remove the lock file if its owner is gone`);
       pause(50);
     }
   }
-  const mine = fstatSync(fd).ino;
   try {
-    writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
+    writeSync(fd, JSON.stringify({ pid: process.pid, hostname: hostname(), createdAt: new Date().toISOString(), token }));
     return work();
   } finally {
     closeSync(fd);
-    try { if (statSync(path).ino === mine) unlinkSync(path); } catch { /* taken over as stale */ }
+    try { if (parseLock(readFileSync(path, "utf8"))?.token === token) unlinkSync(path); } catch { /* already gone */ }
   }
 }
 

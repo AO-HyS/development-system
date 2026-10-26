@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { posix } from "node:path";
@@ -69,7 +70,7 @@ class Block extends Error {
 class ParseError extends Error {}
 
 /**
- * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean }} Word
+ * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean, fromGlob?: boolean }} Word
  * @typedef {{ op: string, fd: string, target: Word | null, heredoc: any }} Redirect
  * @typedef {{ cwd: string | null, scope: string, depth: number, aliases?: Map<string, Word[] | null>, lenient?: boolean, cdpath?: boolean, substituted?: boolean, codeString?: boolean }} Context
  */
@@ -1509,6 +1510,11 @@ function docsTarget(word, absolute, kind, ctx) {
     // protected name in them counts, since the program can write files itself anyway.
     if (ctx.codeString) return null;
     const shown = value.replaceAll(UNKNOWN, "$…");
+    // A copy destination named by a source glob the guard could not expand: any usual spelling the glob can make counts.
+    if (word.fromGlob) {
+      const segments = broadGlob(name).map((form) => globSegment(fold(form)));
+      return docsSamples.some((/** @type {string} */ sample) => segments.some((segment) => typeof segment === "string" ? segment === fold(sample) : globMatch(segment, fold(sample)))) ? shown : null;
+    }
     // Brace expansion makes its names whether or not they exist: expand it exactly.
     if (!/[*?[(^#~]/u.test(name)) {
       const names = braceNames(name, 256);
@@ -1550,16 +1556,24 @@ const DOCS_WALK_DEPTH = 8;
 const DOCS_WALK_ENTRIES = 5000;
 
 /**
- * Protected names at any depth below a directory (relative paths), read without following symlinks below it; [] for a
- * missing path or a file, and null when the tree is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES
- * entries or cannot be read, so the caller fails closed. @param {string} directory @returns {string[] | null}
+ * Protected names at any depth below a directory (relative paths); [] for a missing path or a file, and null when the tree
+ * is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES entries or cannot be read, so the caller fails
+ * closed. Any entry with a protected name counts, a symlink included. Symlinks below the directory are not followed unless
+ * `follow` is set (a copy that dereferences links: `cp -L`, `rsync -L`); then a link to a directory is walked within the
+ * same bounds, a directory already walked (by real path) is skipped, and a broken or unreadable link fails closed.
+ * @param {string} directory @param {boolean} [follow] @returns {string[] | null}
  */
-function docsInside(directory) {
+function docsInside(directory, follow = false) {
   try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
   /** @type {string[]} */
   const found = [];
   /** @type {{ path: string, rel: string, depth: number }[]} */
   const pending = [{ path: directory, rel: "", depth: 0 }];
+  /** Real paths of the directories queued so far, so a followed link cycle ends. */
+  const seen = new Set();
+  if (follow) {
+    try { seen.add(realpathSync(directory)); } catch { return null; }
+  }
   let entries = 0;
   while (pending.length > 0) {
     checkDeadline();
@@ -1570,8 +1584,20 @@ function docsInside(directory) {
     for (const entry of dirents) {
       if (++entries > DOCS_WALK_ENTRIES) return null;
       const child = rel ? join(rel, entry.name) : entry.name;
+      const full = join(path, entry.name);
       if (docsName(entry.name)) found.push(child);
-      if (entry.isDirectory()) pending.push({ path: join(path, entry.name), rel: child, depth: depth + 1 });
+      if (entry.isDirectory()) {
+        if (follow) {
+          try { seen.add(realpathSync(full)); } catch { return null; }
+        }
+        pending.push({ path: full, rel: child, depth: depth + 1 });
+      } else if (follow && entry.isSymbolicLink()) {
+        let real;
+        try { real = realpathSync(full); if (!statSync(real).isDirectory()) continue; } catch { return null; }
+        if (seen.has(real)) continue;
+        seen.add(real);
+        pending.push({ path: real, rel: child, depth: depth + 1 });
+      }
     }
   }
   return found;
@@ -1616,17 +1642,57 @@ function insideRepository(directory) {
  * What a recursive operation does below its target, beyond the target's own name:
  * - `remove`: the target directory goes away with everything in it (rm, trash, mv and git mv sources, git rm, rsync --delete);
  *   `recursive` says whether an unknown operand could be a directory tree;
- * - `source`: a recursive copy or move writes the tree of `source` at the target;
- * - `unknownContents`: an archive or remote source writes contents the guard cannot read into the target directory.
- * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, unknownContents?: boolean }} TreeEffect
+ * - `source`: a recursive copy or move writes the tree of `source` at the target; `follow` says the copy dereferences
+ *   symlinks below it (`cp -L`/`-H`, `rsync -L`/`-k`/`--copy-links`/`--copy-dirlinks`/`--copy-unsafe-links`);
+ * - `unknownContents`: an archive or remote source writes contents into the target directory. `archives` lists the archive
+ *   operands with the format the tool reads (null when the archive is stdin, a default device or an operand the guard cannot
+ *   name); without `archives` the contents come from a remote host and cannot be read.
+ * @typedef {{ word: Word | null, format: "zip" | "tar" }} ArchiveOperand
+ * @typedef {{ remove?: boolean, recursive?: boolean, source?: Word, follow?: boolean, unknownContents?: boolean, archives?: ArchiveOperand[] | null, renames?: boolean }} TreeEffect
  */
+
+/** How many members an archive listing may hold, and how long it may take, before the guard fails closed. */
+const ARCHIVE_MEMBERS = 20000;
+const ARCHIVE_LIST_MS = 3000;
+
+/**
+ * The member names of a literal, readable archive file, listed by the system tool (`unzip -Z1` for zip, `tar -tf` for
+ * the tar family and ditto's CPIO), or null when the operand is not a single known file (stdin, a variable, a glob), no
+ * system lister exists, or the listing fails, times out or exceeds ARCHIVE_MEMBERS. unzip also finds `name.zip` for `name`.
+ * @param {ArchiveOperand} archive @param {Context} ctx @returns {string[] | null}
+ */
+function archiveMembers(archive, ctx) {
+  const { word, format } = archive;
+  if (!word || word.glob || word.value === "-" || word.value === "") return null;
+  const paths = operandPaths(word, ctx);
+  if (paths === null || paths.length !== 1) return null;
+  let [path] = paths;
+  if (format === "zip" && !existsSync(path) && existsSync(`${path}.zip`)) path = `${path}.zip`;
+  try { if (!statSync(path).isFile()) return null; } catch { return null; }
+  const tool = format === "zip" ? "unzip" : "tar";
+  const program = ["/usr/bin", "/bin"].map((directory) => join(directory, tool)).find((candidate) => existsSync(candidate));
+  if (!program) return null;
+  checkDeadline();
+  const timeout = Math.max(1, Math.min(ARCHIVE_LIST_MS, deadline - Date.now()));
+  const result = spawnSync(program, [format === "zip" ? "-Z1" : "-tf", path], {
+    encoding: "utf8", timeout, maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"], env: { PATH: "/usr/bin:/bin" },
+  });
+  checkDeadline();
+  if (result.error || result.status !== 0 || typeof result.stdout !== "string") return null;
+  const members = result.stdout.split("\n").filter((line) => line !== "");
+  return members.length > ARCHIVE_MEMBERS ? null : members;
+}
 
 /**
  * Blocks `docs-config-write` when a recursive operation reaches a protected name at any depth, unless every affected
  * protected file is known and inside a valid docs grant (the operands themselves fully known, as `grantable` requires).
- * Unknown operands, unexpandable globs and trees past the walk bound fail closed. Archive or remote contents are unknown,
- * so extracting into a directory that already holds a protected name or into a Git working tree is blocked unless a grant
- * covers that whole directory; elsewhere it passes, since a protected name the archive itself brings cannot be read.
+ * Unknown operands, unexpandable globs and trees past the walk bound fail closed. An archive is listed: a member with a
+ * protected name is blocked unless a grant covers it at the target, and an archive the guard cannot list (stdin, a variable
+ * or glob, an unknown format, a failed, slow or oversized listing) or a renaming extraction (`tar -s`, `--transform`) is
+ * blocked wherever it lands unless a grant covers the whole directory. Remote contents are unknown, so an rsync from a host
+ * into a Git working tree is blocked unless a grant covers the whole directory. Extracting or syncing into a directory that
+ * already holds a protected name at any depth is blocked the same way. In interpreter code strings an unlistable archive
+ * is blocked only inside a Git working tree, as before archives were listed.
  * In interpreter code strings only literal operands count, like the guard's other name checks there.
  * @param {Word} word @param {string} text @param {string} absolute @param {TreeEffect} effect @param {Context} ctx
  */
@@ -1655,8 +1721,8 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     }
     const sourceText = effect.source.value.replaceAll(UNKNOWN, "x");
     for (const root of roots) {
-      const found = docsInside(root);
-      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
+      const found = docsInside(root, effect.follow);
+      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or a broken or unreadable link" : ""})`);
       else if (found.length > 0 && !covered(found.map((rel) => join(absolute, rel)), targetKnown && grantable(effect.source, sourceText, ctx))) {
         block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
       }
@@ -1671,8 +1737,33 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     const [root] = roots;
     const found = docsInside(root);
     if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`);
-    else if ((found.length > 0 || insideRepository(root)) && !covered([...found.map((rel) => join(root, rel)), join(root, "AGENTS.md")], targetKnown)) {
-      block(`${found.length > 0 ? join(root, found[0]) : root} (archive or remote contents the guard cannot read)`);
+    const existing = /** @type {string[]} */ (found);
+    const wholeDirectory = covered([...existing.map((rel) => join(root, rel)), join(root, "AGENTS.md")], targetKnown);
+    if (existing.length > 0 && !wholeDirectory) block(`${join(root, existing[0])} (archive or remote contents into a directory that holds it)`);
+    if (effect.archives === undefined) {
+      if (insideRepository(root) && !wholeDirectory) block(`${root} (remote contents the guard cannot read)`);
+      return;
+    }
+    if (effect.archives === null || effect.archives.length === 0) {
+      if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${root} (an archive from stdin or an operand the guard cannot read)`);
+      return;
+    }
+    if (effect.renames) {
+      if (!wholeDirectory) block(`${root} (an extraction that renames members)`);
+      return;
+    }
+    for (const archive of effect.archives) {
+      const shown = archive.word ? shownWord(archive.word) : "stdin";
+      const members = archiveMembers(archive, ctx);
+      if (members === null) {
+        if (!wholeDirectory && (!ctx.codeString || insideRepository(root))) block(`${shown} (an archive the guard cannot list) -> ${root}`);
+        continue;
+      }
+      const hits = members.filter((member) => docsName(member.replace(/[\\/]+$/u, "").split(/[\\/]/u).pop() ?? ""));
+      const archiveKnown = archive.word !== null && grantable(archive.word, archive.word.value, ctx);
+      if (hits.length > 0 && !covered(hits.map((member) => join(root, member)), targetKnown && archiveKnown)) {
+        block(`${shown}: ${hits[0]} -> ${join(root, hits[0])}`);
+      }
     }
   }
 }
@@ -1734,12 +1825,12 @@ let grantsEnabled = true;
 let cwdMoved = false;
 /**
  * A grant covers only a fully known target: no expansion, glob or `..` segment (a symlink before
- * `..` moves the real destination), and a relative target only from the harness working directory,
- * since a `cd` in the command may have crossed a symlink.
+ * `..` moves the real destination), no name a glob in another operand selected (`fromGlob`), and a
+ * relative target only from the harness working directory, since a `cd` in the command may have crossed a symlink.
  * @param {Word} word @param {string} text @param {Context} ctx
  */
 function grantable(word, text, ctx) {
-  return grantsEnabled && !ctx.substituted && !word.tracked && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
+  return grantsEnabled && !ctx.substituted && !word.tracked && !word.fromGlob && !word.value.includes(UNKNOWN) && !word.glob && !text.split("/").includes("..")
     && (isAbsolute(text) || (!cwdMoved && ctx.cwd === ctx.scope));
 }
 /** Whether a valid, unexpired operator grant holds this target after symlinks resolve. @param {string} absolute */
@@ -2248,22 +2339,138 @@ function operandsOf(rest, withValue) {
   return { operands, targetDirectory };
 }
 
-/** @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue */
-function copyTargets(rest, ctx, withValue) {
+/**
+ * The short option letters of literal option words before `--` (`-avn` gives a, v, n). A letter in `valueLetters` takes
+ * the rest of its word or the next word as its value, so letters after it are not options.
+ * @param {Word[]} rest @param {string} valueLetters @returns {Set<string>}
+ */
+function shortLetters(rest, valueLetters) {
+  /** @type {Set<string>} */
+  const letters = new Set();
+  for (let i = 0; i < rest.length; i++) {
+    const { value, literal } = rest[i];
+    if (value === "--") break;
+    if (!literal || !value.startsWith("-") || value.startsWith("--") || value.length < 2) continue;
+    for (let k = 1; k < value.length; k++) {
+      letters.add(value[k]);
+      if (valueLetters.includes(value[k])) { if (k === value.length - 1) i++; break; }
+    }
+  }
+  return letters;
+}
+
+/** Whether a literal option word before `--` is one of `names`. @param {Word[]} rest @param {string[]} names */
+function longOption(rest, names) {
+  const end = rest.findIndex((word) => word.value === "--");
+  return (end < 0 ? rest : rest.slice(0, end)).some((word) => word.literal && names.includes(word.value.split("=")[0]));
+}
+
+/**
+ * What a copy or move writes: one pair per name it creates, with the operand that name's tree comes from. A glob source
+ * copies each existing entry it selects under that entry's own name, so every selected entry is a pair of its own whose
+ * source is the entry's literal path and whose names are marked `fromGlob` (never granted); a glob the guard cannot
+ * expand keeps its pattern as the destination name, which `docsTarget` reads by spelling, and itself as the source, on
+ * which `checkDocsEffect` fails closed. `src/` and `src/.` copy the directory's contents into the destination itself (BSD
+ * cp -R, rsync), and so does any directory source with `contents` (ditto). A `remote` source (rsync `host:path`) is not
+ * expanded here: the remote shell expands it.
+ * @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue
+ * @param {{ contents?: boolean, remote?: (word: Word) => boolean }} [options]
+ * @returns {{ sources: Word[], pairs: { target: Word, source: Word }[] }}
+ */
+function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false } = {}) {
   const { operands, targetDirectory } = operandsOf(rest, withValue);
   /** @type {Word[]} */
   const sources = targetDirectory ? operands : operands.slice(0, -1);
   const destination = targetDirectory ?? operands[operands.length - 1];
-  if (!destination || sources.length === 0) return { sources, targets: [] };
-  let directory = Boolean(targetDirectory) || destination.value.endsWith("/") || sources.length > 1;
+  if (!destination || sources.length === 0) return { sources, pairs: [] };
+  const base = ctx.cwd ?? ctx.scope;
+  /** @type {{ word: Word, slash: boolean }[]} */
+  const items = sources.flatMap((source) => {
+    const slash = /\/\.?$/u.test(source.value);
+    const paths = source.glob && !remote(source) ? operandPaths(source, ctx) : null;
+    if (paths === null) return [{ word: source, slash }];
+    return paths.map((path) => ({ word: { ...literalWord(path), fromGlob: true }, slash }));
+  });
+  if (items.length === 0) return { sources, pairs: [] };
+  let directory = Boolean(targetDirectory) || destination.value.endsWith("/") || items.length > 1;
   if (!directory && destination.literal) {
-    try { directory = statSync(resolve(ctx.cwd ?? ctx.scope, destination.value)).isDirectory(); } catch { directory = false; }
+    try { directory = statSync(resolve(base, destination.value)).isDirectory(); } catch { directory = false; }
   }
-  // `src/` and `src/.` copy the directory's contents into the destination itself (BSD cp -R, rsync).
-  const targets = directory
-    ? sources.map((source) => /\/\.?$/u.test(source.value) ? destination : literalWord(join(destination.value, basename(source.value))))
-    : [destination];
-  return { sources, targets };
+  /** @param {Word} word */
+  const isDirectory = (word) => {
+    if (word.value.includes(UNKNOWN) || word.glob || (ctx.cwd === null && !isAbsolute(word.value))) return false;
+    try { return statSync(resolve(base, word.value)).isDirectory(); } catch { return false; }
+  };
+  const pairs = items.map(({ word, slash }) => {
+    if (!directory || slash || (contents && isDirectory(word))) return { target: destination, source: word };
+    const target = literalWord(join(destination.value, basename(word.value)));
+    if (word.glob) target.glob = true;
+    if (word.glob || word.fromGlob) target.fromGlob = true;
+    return { target, source: word };
+  });
+  return { sources, pairs };
+}
+
+/** The archive operand of unzip: its first operand that is not an option or the value of -d or -P. @param {Word[]} rest */
+function unzipArchive(rest) {
+  for (let i = 0; i < rest.length; i++) {
+    const word = rest[i];
+    if (word.literal && (word.value === "-d" || word.value === "-P")) { i++; continue; }
+    if (word.literal && word.value.startsWith("-") && word.value.length > 1) continue;
+    return word;
+  }
+  return null;
+}
+
+/**
+ * The archive a tar extraction reads (its -f, `--file` or old-style `f` value), or null when it reads stdin or a default
+ * device, or the option words cannot be read for sure (another value-taking letter before `f` in one cluster), and
+ * whether member names are rewritten (bsdtar `-s`, GNU `--transform`/`--xform`). bsdtar's value-taking letters are used for
+ * `tar` on macOS and `bsdtar`, GNU tar's elsewhere.
+ * @param {string} name @param {Word[]} rest @returns {{ archive: Word | null, renames: boolean }}
+ */
+function tarArchive(name, rest) {
+  const bsd = name === "bsdtar" || (name === "tar" && process.platform === "darwin");
+  const valueLetters = bsd ? "bCfIsTX" : "bCfFgHIKLNTVX";
+  /** @type {Word | null} */
+  let archive = null;
+  let unsure = false, renames = false;
+  const end = rest.findIndex((word) => word.value === "--");
+  const options = end < 0 ? rest.length : end;
+  for (let i = 0; i < options; i++) {
+    const { value, literal } = rest[i];
+    if (!literal) continue;
+    if (i === 0 && /^[A-Za-z]+$/u.test(value)) {
+      // Old-style bundle (`xvf a.tar`): each value-taking letter takes the next word, in order.
+      let next = 1;
+      for (const letter of value) {
+        if (letter === "s" && bsd) renames = true;
+        if (!valueLetters.includes(letter)) continue;
+        const taken = rest[next++] ?? null;
+        if (letter === "f") archive = taken;
+      }
+      i = next - 1;
+      continue;
+    }
+    if (value.startsWith("--")) {
+      const option = value.split("=")[0];
+      if (option === "--transform" || option === "--xform") renames = true;
+      if (option === "--file") archive = value.includes("=") ? literalWord(value.slice(7)) : rest[++i] ?? null;
+      else if (!value.includes("=") && ["--directory", "--files-from", "--exclude-from", "--blocking-factor", "--transform", "--xform", "--use-compress-program", "--format", "--options", "--exclude", "--strip-components", "--newer", "--newer-mtime", "--owner", "--group", "--mode", "--include", "--uname", "--gname", "--uid", "--gid"].includes(option)) i++;
+      continue;
+    }
+    if (!value.startsWith("-") || value.length < 2) continue;
+    for (let k = 1; k < value.length; k++) {
+      const letter = value[k];
+      if (letter === "s" && bsd) renames = true;
+      if (!valueLetters.includes(letter)) continue;
+      const taken = k < value.length - 1 ? literalWord(value.slice(k + 1)) : rest[++i] ?? null;
+      if (letter === "f") archive = taken;
+      else if (value.slice(k + 1).includes("f")) unsure = true;
+      break;
+    }
+  }
+  return { archive: unsure ? null : archive, renames };
 }
 
 /**
@@ -2436,21 +2643,37 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
       break;
     case "cp": case "install": case "ln": case "rsync": case "ditto": {
-      const { sources, targets: written } = copyTargets(rest, ctx, new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]));
-      const recursive = name === "rsync" || name === "ditto"
-        || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
+      const withValue = new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]);
       // rsync reads `host:path` and `rsync://` operands as remote; ditto -x extracts an archive.
       const remote = (/** @type {Word} */ word) => name === "rsync" && /^(?:rsync:\/\/|[^/]*:)/u.test(word.value);
       const extracts = name === "ditto" && rest.some((word) => word.literal && /^-[A-Za-z]*x/u.test(word.value));
-      written.forEach((word, i) => {
-        add(word, "write");
+      // rsync -n/--dry-run only reports what it would transfer or delete.
+      const rsyncLetters = name === "rsync" ? shortLetters(rest, "eBfMT@") : new Set();
+      if (name === "rsync" && (rsyncLetters.has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"])) break;
+      if (extracts) {
+        // ditto -x [-k] archive ... destination: each archive (CPIO, or zip with -k; `-` is stdin) lands in the destination.
+        const { operands } = operandsOf(rest, withValue);
+        const destination = operands.at(-1);
+        if (!destination) break;
+        const format = rest.some((word) => word.literal && /^-[A-Za-z]*k/u.test(word.value)) ? "zip" : "tar";
+        add(destination, "write");
+        add(destination, "tree", { unknownContents: true, archives: operands.slice(0, -1).map((word) => ({ word, format })) });
+        break;
+      }
+      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote });
+      const recursive = name === "rsync" || name === "ditto"
+        || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
+      // cp -L/-H and rsync -L/-k (and their long forms) copy what symlinks below the source point to; ditto does not.
+      const follow = name === "cp" ? ["L", "H"].some((letter) => shortLetters(rest, "St").has(letter)) || longOption(rest, ["--dereference"])
+        : name === "rsync" && (rsyncLetters.has("L") || rsyncLetters.has("k") || longOption(rest, ["--copy-links", "--copy-dirlinks", "--copy-unsafe-links"]));
+      pairs.forEach(({ target, source }) => {
+        add(target, "write");
         if (!recursive) return;
-        const source = sources[i];
-        add(word, "tree", remote(word) ? undefined : extracts || (source && remote(source)) ? { unknownContents: true } : source ? { source } : undefined);
+        add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
       if (name === "rsync" && sources.length > 0) {
         // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
-        const { operands, targetDirectory } = operandsOf(rest, new Set(["-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"]));
+        const { operands, targetDirectory } = operandsOf(rest, withValue);
         const destination = targetDirectory ?? operands.at(-1);
         if (destination && !remote(destination) && rest.some((word) => word.literal && /^--del(?:ete(?:-[a-z]+)?)?$/u.test(word.value))) add(destination, "delete", { remove: true, recursive: true });
         if (rest.some((word) => word.literal && word.value === "--remove-source-files")) sources.forEach((word) => { if (!remote(word)) add(word, "delete", { remove: true, recursive: true }); });
@@ -2470,7 +2693,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if ((value === "-C" || value === "--directory" || (name === "unzip" && value === "-d")) && rest[i + 1]) directory = rest[++i];
         else if (value.startsWith("--directory=")) directory = optionValue(value);
       }
-      add(directory, "tree", { unknownContents: true });
+      const { archive, renames } = name === "unzip" ? { archive: unzipArchive(rest), renames: false } : tarArchive(name, rest);
+      add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: name === "unzip" ? "zip" : "tar" }] : null, renames });
       break;
     }
     case "perl": case "ruby": {
@@ -2549,8 +2773,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       break;
     }
     case "mv": {
-      const { sources, targets: written } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]));
-      written.forEach((word, i) => add(word, "write", sources[i] ? { source: sources[i] } : undefined));
+      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]));
+      pairs.forEach(({ target, source }) => add(target, "write", { source }));
       sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       break;
     }
@@ -2631,8 +2855,8 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       const sub = git.sub?.value;
       const subArgs = rest.slice(git.subIndex + 1);
       if (sub === "mv") {
-        const { sources, targets: written } = copyTargets(subArgs, ctx, new Set());
-        written.forEach((word, i) => add(word, "write", sources[i] ? { source: sources[i] } : undefined));
+        const { sources, pairs } = copyTargets(subArgs, ctx, new Set());
+        pairs.forEach(({ target, source }) => add(target, "write", { source }));
         sources.forEach((word) => add(word, "delete", { remove: true, recursive: true }));
       }
       if (sub === "rm") {
