@@ -1686,7 +1686,8 @@ const DOCS_WALK_ENTRIES = 5000;
  * is deeper than DOCS_WALK_DEPTH levels, holds more than DOCS_WALK_ENTRIES entries or cannot be read, so the caller fails
  * closed. Any entry with a protected name counts, a symlink included. Symlinks below the directory are not followed unless
  * `follow` is set (a copy that dereferences links: `cp -L`, `rsync -L`); then a link to a directory is walked within the
- * same bounds, a directory already walked (by real path) is skipped, and a broken or unreadable link fails closed. Other
+ * same bounds under its own name (another name for a directory already walked is walked again), a link back to one of its
+ * own ancestors (by real path) is skipped, and a broken or unreadable link fails closed. Other
  * symlinks are added to `links`, and every entry to `all`, when given. @param {string} directory @param {boolean} [follow]
  * @param {string[] | null} [links] @param {string[] | null} [all] @returns {string[] | null}
  */
@@ -1694,17 +1695,16 @@ function docsInside(directory, follow = false, links = /** @type {string[] | nul
   try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
   /** @type {string[]} */
   const found = [];
-  /** @type {{ path: string, rel: string, depth: number }[]} */
-  const pending = [{ path: directory, rel: "", depth: 0 }];
-  /** Real paths of the directories queued so far, so a followed link cycle ends. */
-  const seen = new Set();
+  /** `chain` holds the real paths of an entry's ancestors, so a followed link cycle ends. */
+  /** @type {{ path: string, rel: string, depth: number, chain: Set<string> }[]} */
+  const pending = [{ path: directory, rel: "", depth: 0, chain: new Set() }];
   if (follow) {
-    try { seen.add(realpathSync(directory)); } catch { return null; }
+    try { pending[0].chain.add(realpathSync(directory)); } catch { return null; }
   }
   let entries = 0;
   while (pending.length > 0) {
     checkDeadline();
-    const { path, rel, depth } = /** @type {{ path: string, rel: string, depth: number }} */ (pending.pop());
+    const { path, rel, depth, chain } = /** @type {{ path: string, rel: string, depth: number, chain: Set<string> }} */ (pending.pop());
     if (depth > DOCS_WALK_DEPTH) return null;
     let dirents;
     try { dirents = readdirSync(path, { withFileTypes: true, encoding: "utf8" }); } catch { return null; }
@@ -1716,16 +1716,16 @@ function docsInside(directory, follow = false, links = /** @type {string[] | nul
       if (docsName(entry.name)) found.push(child);
       else if (links && entry.isSymbolicLink()) links.push(child);
       if (entry.isDirectory()) {
+        let next = chain;
         if (follow) {
-          try { seen.add(realpathSync(full)); } catch { return null; }
+          try { next = new Set(chain).add(realpathSync(full)); } catch { return null; }
         }
-        pending.push({ path: full, rel: child, depth: depth + 1 });
+        pending.push({ path: full, rel: child, depth: depth + 1, chain: next });
       } else if (follow && entry.isSymbolicLink()) {
         let real;
         try { real = realpathSync(full); if (!statSync(real).isDirectory()) continue; } catch { return null; }
-        if (seen.has(real)) continue;
-        seen.add(real);
-        pending.push({ path: real, rel: child, depth: depth + 1 });
+        if (chain.has(real)) continue;
+        pending.push({ path: real, rel: child, depth: depth + 1, chain: new Set(chain).add(real) });
       }
     }
   }
@@ -3419,6 +3419,13 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             const word = { ...source, value, raw: value, literal: source.literal && destination.literal };
             add(word, "write");
             add(word, "tree", { source, follow });
+            if (backupDir) {
+              // Its backup keeps the same path under --backup-dir.
+              const root = isAbsolute(backupDir.value) ? backupDir.value.replace(/\/+$/u, "") : `${destination.value.replace(/\/+$/u, "") || "."}/${backupDir.value.replace(/\/+$/u, "")}`;
+              const backup = { ...backupDir, value: `${root}/${path}`, raw: `${root}/${path}`, literal: backupDir.literal && source.literal && destination.literal };
+              add(backup, "write");
+              add(backup, "tree", { source, follow });
+            }
           }
         }
       }
@@ -3443,10 +3450,10 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             if (target.value !== destination.value) {
               const word = backupWordFor(destination.value, basename(target.value));
               add(word, "write");
-              add(word, "tree", { source });
+              add(word, "tree", { source, follow });
               if (deletes) add(word, "tree", { source: target });
             } else if (into || /\/\.?$/u.test(source.value)) {
-              add(backupWordFor(destination.value, ""), "tree", { source });
+              add(backupWordFor(destination.value, ""), "tree", { source, follow });
               if (deletes) add(backupWordFor(destination.value, ""), "tree", { source: destination });
             } else {
               // A file replaced: dirname(dest)/backup-dir/basename(dest).
