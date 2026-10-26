@@ -3089,18 +3089,24 @@ function execEnd(rest, start, limit = rest.length) {
 
 /** The index of a `find` primary outside -exec/-ok bodies, or -1. @param {Word[]} rest @param {string} primary */
 function findActionIndex(rest, primary) {
+  return findActionIndexes(rest, primary)[0] ?? -1;
+}
+
+/** Every index of a `find` primary outside -exec/-ok bodies. @param {Word[]} rest @param {string} primary @returns {number[]} */
+function findActionIndexes(rest, primary) {
+  /** @type {number[]} */
+  const found = [];
   for (let i = 0; i < rest.length; i++) {
     if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
       i = execEnd(rest, i);
-    } else if (rest[i].value === primary) return i;
+    } else if (rest[i].value === primary) found.push(i);
   }
-  return -1;
+  return found;
 }
 
 /** How many selected protected files `find -exec` checks one by one before standing in a protected name for the rest. */
 const FIND_FILLS = 64;
 
-/** Commands whose written files commandTargets reads from their words (sed only with -i, cp only its destination). */
 /** Project guard file names a backup suffix could complete (`settings` + `.json`); the write check decides where they count. */
 const BACKUP_GUARD_NAMES = new Set(["settings.json", "settings.local.json", "hooks.json", "config.toml", "config"]);
 
@@ -3113,6 +3119,7 @@ const RSYNC_VALUE_OPTIONS = new Set(["-e", "-B", "-f", "-M", "-T", "-@", "--rsh"
   "--password-file", "--bwlimit", "--stop-after", "--stop-at", "--time-limit", "--write-batch", "--only-write-batch", "--read-batch",
   "--protocol", "--iconv", "--checksum-choice", "--cc", "--checksum-seed", "--chmod", "--outbuf", "--early-input", "--copy-as"]);
 
+/** Commands whose written files commandTargets reads from their words (sed only with -i, cp only its destination). */
 const TARGETED_COMMANDS = new Set(["tee", "sponge", "cp", "install", "ln", "rsync", "ditto", "tar", "bsdtar", "gtar", "unzip", "perl", "ruby", "curl", "wget", "patch", "chmod", "chown", "chgrp", "chflags", "mv", "touch", "truncate", "rm", "unlink", "rmdir", "trash", "srm", "sort", "dd", "sed"]);
 
 /**
@@ -3180,7 +3187,18 @@ function findSelection(rest, ctx, action) {
   /** @type {{ letters: string[], dereference: boolean }[]} */
   const types = [];
   let plain = true;
+  // An action after a top-level `-o` runs only for entries its own branch selects (`A -delete -o B -delete`).
+  let from = start;
+  let depth = 0;
   for (let i = start; i < action; i++) {
+    const value = rest[i].value;
+    if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) i = execEnd(rest, i, action);
+    else if (value === "(") depth++;
+    else if (value === ")") depth--;
+    else if (depth === 0 && (value === "-o" || value === "-or")) from = i + 1;
+  }
+  if (depth !== 0) from = start;
+  for (let i = from; i < action; i++) {
     const value = rest[i].value;
     if (["-exec", "-execdir", "-ok", "-okdir"].includes(value)) {
       i = execEnd(rest, i, action);
@@ -3262,7 +3280,13 @@ function findSelection(rest, ctx, action) {
  * never granted. @param {Word[]} rest @param {Context} ctx
  */
 function checkFindDelete(rest, ctx) {
-  const { docs, guard, unknown } = findSelection(rest, ctx, findActionIndex(rest, "-delete"));
+  // Each -delete removes what the tests before it select (`-name '*.txt' -delete -o -name AGENTS.md -delete`).
+  for (const action of findActionIndexes(rest, "-delete")) checkFindDeleteAt(rest, ctx, action);
+}
+
+/** @param {Word[]} rest @param {Context} ctx @param {number} action */
+function checkFindDeleteAt(rest, ctx, action) {
+  const { docs, guard, unknown } = findSelection(rest, ctx, action);
   if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
   const block = (/** @type {string} */ shown) => { throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: ${shown} (find -delete)`); };
   if (unknown !== null) block(unknown);
@@ -3392,8 +3416,9 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
         // --read-batch replays a recorded transfer into the destination: its files are unknown.
         if (longOption(rest, ["--read-batch"])) {
+          const dryRun = (shortLetters(rest, "eBfMT@").has("n") || longOption(rest, ["--dry-run"])) && !longOption(rest, ["--no-dry-run", "--no-n"]);
           const destination = operandsOf(rest, withValue, false, false).operands.at(-1);
-          add(destination ?? literalWord("."), "tree", { unknownContents: true });
+          if (!dryRun) add(destination ?? literalWord("."), "tree", { unknownContents: true });
           break;
         }
       }
@@ -3454,7 +3479,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         for (const rel of all) {
           for (const suffix of named) {
             const backupName = `${basename(rel)}${suffix}`;
-            if (!docsName(backupName) && !BACKUP_GUARD_NAMES.has(backupName)) continue;
+            if (!docsName(backupName) && !BACKUP_GUARD_NAMES.has(fold(backupName))) continue;
             const value = `${base.value.replace(/\/+$/u, "")}/${rel}${suffix}`;
             add({ ...base, value, raw: value }, "write");
           }
