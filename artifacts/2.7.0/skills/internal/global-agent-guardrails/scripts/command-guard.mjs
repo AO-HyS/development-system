@@ -1641,10 +1641,10 @@ const DOCS_WALK_ENTRIES = 5000;
  * closed. Any entry with a protected name counts, a symlink included. Symlinks below the directory are not followed unless
  * `follow` is set (a copy that dereferences links: `cp -L`, `rsync -L`); then a link to a directory is walked within the
  * same bounds, a directory already walked (by real path) is skipped, and a broken or unreadable link fails closed. Other
- * symlinks are added to `links` when given. @param {string} directory @param {boolean} [follow] @param {string[] | null} [links]
- * @returns {string[] | null}
+ * symlinks are added to `links`, and every entry to `all`, when given. @param {string} directory @param {boolean} [follow]
+ * @param {string[] | null} [links] @param {string[] | null} [all] @returns {string[] | null}
  */
-function docsInside(directory, follow = false, links = /** @type {string[] | null} */ (null)) {
+function docsInside(directory, follow = false, links = /** @type {string[] | null} */ (null), all = /** @type {string[] | null} */ (null)) {
   try { if (!statSync(directory).isDirectory()) return []; } catch { return []; }
   /** @type {string[]} */
   const found = [];
@@ -1666,6 +1666,7 @@ function docsInside(directory, follow = false, links = /** @type {string[] | nul
       if (++entries > DOCS_WALK_ENTRIES) return null;
       const child = rel ? join(rel, entry.name) : entry.name;
       const full = join(path, entry.name);
+      all?.push(child);
       if (docsName(entry.name)) found.push(child);
       else if (links && entry.isSymbolicLink()) links.push(child);
       if (entry.isDirectory()) {
@@ -2468,7 +2469,7 @@ function scanSed(script) {
 
 /** @param {Word[]} rest */
 function analyzeSed(rest) {
-  const info = { inPlace: false, exec: false, /** @type {Word[]} */ writes: [], /** @type {Word[]} */ files: [], uncertain: false };
+  const info = { inPlace: false, exec: false, /** @type {Word[]} */ writes: [], /** @type {Word[]} */ files: [], uncertain: false, /** @type {string[]} */ suffixes: [] };
   /** @type {(Word | undefined)[]} */
   const scripts = [];
   let scriptGiven = false;
@@ -2479,7 +2480,12 @@ function analyzeSed(rest) {
     const word = rest[i];
     const value = word.value;
     if (value === "--") { operands.push(...rest.slice(i + 1)); break; }
-    if (value === "--in-place" || value.startsWith("--in-place=")) { info.inPlace = true; i++; continue; }
+    if (value === "--in-place" || value.startsWith("--in-place=")) {
+      info.inPlace = true;
+      if (value.includes("=")) info.suffixes.push(value.slice(11));
+      i++;
+      continue;
+    }
     if (value === "--expression") { scripts.push(rest[i + 1]); scriptGiven = true; i += 2; continue; }
     if (value.startsWith("--expression=")) { scripts.push(literalWord(value.slice(13))); scriptGiven = true; i++; continue; }
     if (value === "--file" || value.startsWith("--file=")) { info.uncertain = true; scriptGiven = true; i += value.includes("=") ? 1 : 2; continue; }
@@ -2489,8 +2495,11 @@ function analyzeSed(rest) {
         const flag = value[j];
         if (flag === "i") {
           info.inPlace = true;
-          if (j === value.length - 1) {
+          // GNU takes a backup suffix attached (`-i.bak`); BSD takes the next word, whatever it is, so both readings count.
+          if (j < value.length - 1) info.suffixes.push(value.slice(j + 1));
+          else {
             const next = rest[i + 1];
+            if (next) info.suffixes.push(next.value);
             if (next && next.literal && (next.value === "" || /^\.[\w.-]*$/u.test(next.value))) i++;
           }
           break;
@@ -2957,12 +2966,14 @@ function findRoots(rest) {
  * not filter it), plus guard configuration at, inside, below or linked from a starting point. `unknown` names a starting
  * point, option or tree the guard cannot read, so the caller fails closed.
  * @param {Word[]} rest @param {Context} ctx @param {number} action
- * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null }}
+ * `selected` tells whether the tests before the action pass a path.
+ * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null, selected: (file: string) => boolean }}
  */
 function findSelection(rest, ctx, action) {
-  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null) };
+  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null), selected: (/** @type {string} */ _file) => true };
   const parsed = findRoots(rest);
   if (parsed === null) { result.unknown = "find options"; return result; }
+  result.selected = (file) => selected(file);
   const { roots, start, follow } = parsed;
   /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
   const names = [];
@@ -3051,7 +3062,12 @@ function commandTargets(name, rest, ctx, sed, stdin) {
   switch (name) {
     case "find":
       // -fprint, -fprint0, -fprintf and -fls write their output to the next word.
-      rest.forEach((word, i) => { if (/^-f(?:print0?|printf|ls)$/u.test(word.value) && rest[i + 1]) add(rest[i + 1], "write"); });
+      for (let i = 0; i < rest.length; i++) {
+        if (["-exec", "-execdir", "-ok", "-okdir"].includes(rest[i].value)) {
+          while (i + 1 < rest.length && rest[i + 1].value !== ";" && rest[i + 1].value !== "+") i++;
+          i++;
+        } else if (/^-f(?:print0?|printf|ls)$/u.test(rest[i].value) && rest[i + 1]) add(rest[++i], "write");
+      }
       break;
     case "tee": case "sponge":
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
@@ -3085,6 +3101,19 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         if (!recursive) return;
         add(target, "tree", remote(target) ? undefined : remote(source) ? { unknownContents: true } : { source, follow });
       });
+      if (name === "ln") {
+        // A hard link to a protected file, or a symbolic link to one or to a directory above one, is another name to write it
+        // through; a symbolic link's text is read from the link's directory too.
+        const symbolic = shortLetters(rest, "St").has("s") || longOption(rest, ["--symbolic"]);
+        sources.forEach((word) => add(word, "delete"));
+        if (symbolic) {
+          pairs.forEach(({ target, source }) => {
+            if (isAbsolute(source.value)) return;
+            const linked = `${target.value.slice(0, target.value.lastIndexOf("/") + 1)}${source.value}`;
+            add({ ...source, value: linked, raw: linked }, "delete");
+          });
+        }
+      }
       if (name === "rsync" && sources.length > 0) {
         // --delete (and its variants) removes destination files the source lacks; --remove-source-files removes the sources.
         const { operands, targetDirectory } = operandsOf(rest, withValue);
@@ -3299,7 +3328,18 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       rest.filter((word) => word.value.startsWith("of=")).forEach((word) => add({ ...word, value: word.value.slice(3) }, "write"));
       break;
     case "sed":
-      if (sed?.inPlace) sed.files.forEach((word) => add(word, "write"));
+      if (sed?.inPlace) {
+        sed.files.forEach((word) => {
+          add(word, "write");
+          // The backup is the file name plus the suffix, or the suffix with `*` replaced by the file's name.
+          for (const suffix of sed.suffixes) {
+            if (!suffix) continue;
+            const base = word.value.slice(word.value.lastIndexOf("/") + 1), folder = word.value.slice(0, word.value.lastIndexOf("/") + 1);
+            const backup = !suffix.includes("*") ? `${word.value}${suffix}` : suffix.includes("/") ? suffix.replaceAll("*", base) : `${folder}${suffix.replaceAll("*", base)}`;
+            add({ ...word, value: backup, raw: backup }, "write");
+          }
+        });
+      }
       sed?.writes.forEach((word) => add(word, "write"));
       break;
     case "git": {
@@ -4035,6 +4075,39 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
         const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : [])];
         variants = fills.map((fill) => nested.map((word) => word.value.includes("{}")
           ? literalWord(word.value.replaceAll("{}", dir && fill !== UNKNOWN ? `./${basename(fill)}` : fill)) : word));
+        // A word that adds text to `{}` (`{}.json`, `{}/hooks.json`) builds a new path from each file find visits: every file
+        // the action selects is walked (within the docs walk bounds), and each one whose built path is protected is checked in
+        // place of `{}`. An unknown starting point or a larger tree fails closed.
+        if (!dir && nested.some((word) => word.value.includes("{}") && word.value !== "{}") && !readOnlyCommands.has(commandName(nested[0].value))) {
+          const unknownBuild = () => new Block("docs-config-write", `${structural["docs-config-write"]} Target: a path built from {} that the guard cannot list`);
+          const parsed = findRoots(rest);
+          if (selection.unknown !== null || parsed === null) throw unknownBuild();
+          const targets = [...protectedTargets, ...projectTargets(ctx.scope)];
+          const built = nested.filter((word) => word.value.includes("{}") && word.value !== "{}");
+          for (const root of parsed.roots) {
+            const paths = operandPaths(root, ctx, true);
+            if (paths === null) throw unknownBuild();
+            for (const path of paths) {
+              const visited = [path];
+              /** @type {string[]} */
+              const all = [];
+              let directory = false;
+              try { directory = statSync(path).isDirectory(); } catch { /* missing: only the starting point */ }
+              if (directory && docsInside(path, parsed.follow, null, all) === null) throw unknownBuild();
+              visited.push(...all.map((rel) => join(path, rel)));
+              for (const file of visited) {
+                if (!selection.selected(file)) continue;
+                const reaches = built.some((word) => {
+                  const absolute = resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", file));
+                  return docsName(basename(absolute)) || docsName(basename(canonicalPath(absolute))) || protectedMatch(absolute, "write", targets) !== null;
+                });
+                if (!reaches) continue;
+                if (variants.length > FIND_FILLS) throw unknownBuild();
+                variants.push(nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", file)) : word));
+              }
+            }
+          }
+        }
       }
       for (const argv of variants) evaluateArgv(argv, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
       i = end;
