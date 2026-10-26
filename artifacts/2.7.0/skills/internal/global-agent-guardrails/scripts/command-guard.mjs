@@ -1695,7 +1695,7 @@ function operandPaths(word, ctx, lexical = false) {
   const value = trimDirectorySuffix(word.value.replaceAll(`${UNKNOWN}{`, "{"));
   if (!value || value.includes(UNKNOWN) || (ctx.cwd === null && !isAbsolute(value)) || looseGlob(word, value) !== null) return null;
   const base = ctx.cwd ?? ctx.scope;
-  if (!word.glob) return [canonicalPath(resolve(base, value))];
+  if (!word.glob) return [lexical ? resolve(base, value) : canonicalPath(resolve(base, value))];
   const directory = value.slice(0, value.lastIndexOf("/") + 1), name = value.slice(value.lastIndexOf("/") + 1);
   if (!name || /[*?[\]{}()]/u.test(directory)) return null;
   const parent = resolve(base, directory || ".");
@@ -2903,6 +2903,9 @@ function checkoutPathspecs(args) {
   return { specs, revision };
 }
 
+/** How many selected protected files `find -exec` checks one by one before standing in a protected name for the rest. */
+const FIND_FILLS = 64;
+
 /**
  * `find`'s starting points, where its expression begins, and whether it follows links: `-H`/`-L`/`-P` and BSD `-E`/`-X`/`-d`/
  * `-s`/`-x` options, BSD `-f path` roots, GNU `-D`/`-O` options and `--`. Null when an option before the roots is unknown.
@@ -2912,25 +2915,39 @@ function findRoots(rest) {
   /** @type {Word[]} */
   const roots = [];
   let follow = false;
+  let dot = false;
   let i = 0;
   for (; i < rest.length; i++) {
     const value = rest[i].value;
     if (value === "--") { i++; break; }
-    if (value === "-f") { if (!rest[i + 1]) return null; roots.push(rest[++i]); continue; }
-    if (/^-f./u.test(value)) { roots.push(literalWord(value.slice(2))); continue; }
     if (value === "-D") { i++; continue; }
     if (/^-(?:D.|O\d*)$/u.test(value)) continue;
-    if (/^-[HLPEXdsx]+$/u.test(value)) {
-      for (const letter of value.slice(1)) if (letter === "L") follow = true; else if (letter === "P" || letter === "H") follow = false;
+    // BSD reads options with getopt: clusters of -H -L -P -E -X -d -s -x, and -f taking the rest of the word or the next
+    // word as a starting point (`-Xf path`, `-fpath`).
+    const cluster = /^-([HLPEXdsx]*)(?:f(.*))?$/u.exec(value);
+    if (cluster && value.length > 1) {
+      for (const letter of cluster[1]) if (letter === "L") follow = true; else if (letter === "P" || letter === "H") follow = false;
+      if (cluster[2] === undefined) continue;
+      if (cluster[2]) {
+        roots.push({ ...rest[i], value: cluster[2], raw: cluster[2] });
+        // GNU reads `-follow`, `-false` or `-fls` as a test, so `.` is searched too.
+        dot = true;
+      } else {
+        if (!rest[i + 1]) return null;
+        roots.push(rest[++i]);
+      }
       continue;
     }
+    // A one-letter option the guard does not know could take a starting point as its value.
+    if (/^-[A-Za-z]$/u.test(value)) return null;
     break;
   }
   // GNU find starts its expression at the first `-` word, `(` or `!`; an option-looking word right after `--` is still a root.
   let next = i;
   while (next < rest.length && !/^[-(!]/u.test(rest[next].value)) next++;
   roots.push(...rest.slice(i, next));
-  return { roots: roots.length > 0 ? roots : [literalWord(".")], start: next, follow };
+  if (dot || roots.length === 0) roots.push(literalWord("."));
+  return { roots, start: next, follow };
 }
 
 /**
@@ -3032,6 +3049,10 @@ function commandTargets(name, rest, ctx, sed, stdin) {
   /** @param {string} value */
   const optionValue = (value) => literalWord(value.slice(value.indexOf("=") + 1));
   switch (name) {
+    case "find":
+      // -fprint, -fprint0, -fprintf and -fls write their output to the next word.
+      rest.forEach((word, i) => { if (/^-f(?:print0?|printf|ls)$/u.test(word.value) && rest[i + 1]) add(rest[i + 1], "write"); });
+      break;
     case "tee": case "sponge":
       operandsOf(rest, new Set(["--output-error"])).operands.forEach((word) => add(word, "write"));
       break;
@@ -4002,15 +4023,20 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
       while (end < rest.length && rest[end].value !== ";" && rest[end].value !== "+") end++;
       // -execdir and -okdir run in each match's directory, which the guard cannot know.
       const dir = rest[i].value.endsWith("dir");
-      // `{}` stands for each selected file: a protected one it selects (or a protected name when the selection is unknown)
-      // is checked in its place, so a writer or deleter there blocks while a reader stays allowed.
-      let nested = rest.slice(i + 1, end);
+      // `{}` stands for each selected file: unknown text (so `{}/hooks.json` still counts) and every protected file the action
+      // selects (a protected name when the selection is unknown or too large) are each checked in its place, so a writer or
+      // deleter there blocks while a reader stays allowed.
+      const nested = rest.slice(i + 1, end);
+      if (nested[0]?.value.includes("{}")) throw new Block("dynamic-command-name");
+      let variants = [nested];
       if (nested.some((word) => word.value.includes("{}"))) {
         const selection = findSelection(rest, ctx, i);
-        const fill = selection.unknown !== null ? "AGENTS.md" : selection.guard[0] ?? selection.docs[0]?.file ?? null;
-        if (fill !== null) nested = nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", dir ? `./${basename(fill)}` : fill)) : word);
+        const files = [...new Set([...selection.guard, ...selection.docs.map(({ file }) => file)])];
+        const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : [])];
+        variants = fills.map((fill) => nested.map((word) => word.value.includes("{}")
+          ? literalWord(word.value.replaceAll("{}", dir && fill !== UNKNOWN ? `./${basename(fill)}` : fill)) : word));
       }
-      evaluateArgv(nested, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
+      for (const argv of variants) evaluateArgv(argv, [], dir ? { ...ctx, cwd: null, execdir: true } : ctx, false, true);
       i = end;
     }
     if (rest.some((word) => word.value === "-delete")) checkFindDelete(rest, ctx);
