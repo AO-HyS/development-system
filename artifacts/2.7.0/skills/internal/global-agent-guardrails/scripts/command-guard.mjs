@@ -107,11 +107,23 @@ function checkSubscriptCode(value) {
 /** Set per command: the command changes what `cat` runs (function, alias, hash, enable, PATH), so its output is not known. */
 let catRedefined = false;
 /**
- * SIMPLE_BACKUP_SUFFIX values the command text sets (`SIMPLE_BACKUP_SUFFIX=.md cp -b`, `env …`, `export …`), and whether
- * one of them cannot be read, so `-b` backups use them as well as the environment's.
- * @type {{ values: string[], unknown: boolean }}
+ * SIMPLE_BACKUP_SUFFIX values the command sets (`SIMPLE_BACKUP_SUFFIX=.md cp -b`, `env …`, `export …`), and whether one of
+ * them cannot be read, so `-b` backups use them as well as the environment's; and the option variables it sets for tar and
+ * unzip (TAR_OPTIONS, UNZIP, UNZIPOPT), whose options the guard does not read.
+ * @type {{ values: string[], unknown: boolean, options: Set<string> }}
  */
-let backupEnv = { values: [], unknown: false };
+let backupEnv = { values: [], unknown: false, options: new Set() };
+
+/** Variables whose value changes what a writer the guard inspects writes. */
+const WRITER_VARIABLES = new Set(["SIMPLE_BACKUP_SUFFIX", "TAR_OPTIONS", "UNZIP", "UNZIPOPT"]);
+
+/** Record a writer variable the command sets; a null word is a value the guard cannot read. @param {string} name @param {Word | null} word */
+function recordWriterVariable(name, word) {
+  if (!WRITER_VARIABLES.has(name)) return;
+  if (name !== "SIMPLE_BACKUP_SUFFIX") backupEnv.options.add(name);
+  else if (word && word.literal) backupEnv.values.push(word.value);
+  else backupEnv.unknown = true;
+}
 /** Set by the parser when it reads such a change; parseScript then parses again with catRedefined. */
 let catTouched = false;
 
@@ -2586,7 +2598,7 @@ function awkIsPureRead(rest) {
 }
 
 /** @param {Word[]} rest @param {Set<string>} withValue */
-function operandsOf(rest, withValue) {
+function operandsOf(rest, withValue, targetLetter = false) {
   /** @type {Word[]} */
   const operands = [];
   /** @type {Word | null} */
@@ -2598,6 +2610,20 @@ function operandsOf(rest, withValue) {
     const value = word.value;
     if (!optionsDone && value === "--") { optionsDone = true; i++; continue; }
     if (!optionsDone && (value === "-t" || value === "--target-directory")) { targetDirectory = rest[i + 1] ?? null; i += 2; continue; }
+    if (!optionsDone && targetLetter && word.literal && /^-[A-Za-z]/u.test(value)) {
+      // A short cluster (`-rt.codex`, `-t.codex`): -t takes the rest of the word or the next one; another value option ends it.
+      let step = 1;
+      for (let k = 1; k < value.length; k++) {
+        if (value[k] === "t") {
+          if (k < value.length - 1) targetDirectory = { ...word, value: value.slice(k + 1), raw: value.slice(k + 1) };
+          else { targetDirectory = rest[i + 1] ?? null; step = 2; }
+          break;
+        }
+        if (withValue.has(`-${value[k]}`)) { if (k === value.length - 1) step = 2; break; }
+      }
+      i += step;
+      continue;
+    }
     if (!optionsDone && value.startsWith("--target-directory=")) { targetDirectory = literalWord(value.slice(19)); i++; continue; }
     if (!optionsDone && withValue.has(value)) { i += 2; continue; }
     if (!optionsDone && value.startsWith("-") && value.length > 1 && word.literal) { i++; continue; }
@@ -2642,11 +2668,12 @@ function longOption(rest, names) {
  * cp -R, rsync), and so does any directory source with `contents` (ditto). A `remote` source (rsync `host:path`) is not
  * expanded here: the remote shell expands it.
  * @param {Word[]} rest @param {Context} ctx @param {Set<string>} withValue
- * @param {{ contents?: boolean, remote?: (word: Word) => boolean }} [options]
+ * @param {{ contents?: boolean, remote?: (word: Word) => boolean, targetLetter?: boolean }} [options] `targetLetter` reads `-t` in
+ * short clusters and with an attached value (GNU cp, mv, install, ln).
  * @returns {{ sources: Word[], pairs: { target: Word, source: Word }[] }}
  */
-function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false } = {}) {
-  const { operands, targetDirectory } = operandsOf(rest, withValue);
+function copyTargets(rest, ctx, withValue, { contents = false, remote = () => false, targetLetter = false } = {}) {
+  const { operands, targetDirectory } = operandsOf(rest, withValue, targetLetter);
   /** @type {Word[]} */
   const sources = targetDirectory ? operands : operands.slice(0, -1);
   const destination = targetDirectory ?? operands[operands.length - 1];
@@ -2698,11 +2725,15 @@ function unzipArchive(rest) {
       continue;
     }
     // Option letters cluster (`-qod dir`); -d (the extraction directory) and -P take the rest of the word or the next one,
-    // and -x the remaining member names.
+    // and -x the member names up to the next option. A `-` inside a cluster (`-l-l`, `--v`) negates the letters after it, so
+    // those letters are not recorded.
+    let negated = false;
     for (let k = 1; k < word.value.length; k++) {
       const letter = word.value[k];
-      letters.add(letter);
-      if (letter === "x") { i = rest.length; break; }
+      if (letter === "-") { negated = true; continue; }
+      if (!negated) letters.add(letter);
+      else letters.add(`-${letter}`);
+      if (letter === "x") { while (i + 1 < rest.length && !rest[i + 1].value.startsWith("-")) i++; break; }
       if (letter !== "d" && letter !== "P") continue;
       const taken = k < word.value.length - 1 ? { ...word, value: word.value.slice(k + 1), raw: word.value.slice(k + 1) } : rest[++i];
       if (letter === "d" && taken) directory = taken;
@@ -2720,7 +2751,8 @@ function unzipArchive(rest) {
  * `strips` is set by `--strip-components`/`--strip`, which drop leading member directories.
  * `letters` holds the mode and option letters (long options as their letters) and `directory` the -C/--directory/--cd value.
  * @param {string} name @param {Word[]} rest
- * @returns {{ archive: Word | null, renames: boolean, strips: boolean, letters: Set<string>, directory: Word }}
+ * `operands` are the member names given on the command line.
+ * @returns {{ archive: Word | null, renames: boolean, strips: boolean, letters: Set<string>, directory: Word, operands: Word[] }}
  */
 function tarArchive(name, rest) {
   const bsd = name === "bsdtar" || (name === "tar" && process.platform === "darwin");
@@ -2731,13 +2763,20 @@ function tarArchive(name, rest) {
   let directory = literalWord(".");
   /** @type {Set<string>} The mode and option letters given, long options read as theirs. */
   const letters = new Set();
-  const longLetters = /** @type {Record<string, string>} */ ({ "--extract": "x", "--get": "x", "--create": "c", "--append": "r", "--update": "u", "--concatenate": "A", "--catenate": "A", "--delete": "D", "--to-stdout": "O", "--list": "t" });
+  const longLetters = /** @type {Record<string, string>} */ ({ "--extract": "x", "--get": "x", "--create": "c", "--append": "r", "--update": "u", "--concatenate": "A", "--catenate": "A", "--delete": "D", "--to-stdout": "O", "--list": "t", "--absolute-names": "P" });
   let unsure = false, renames = false, strips = false;
+  /** @type {Word[]} Member names given on the command line (the files a create mode reads). */
+  const operands = [];
+  // Each -C/--cd/--directory is read from the directory the previous one set.
+  const enter = (/** @type {Word} */ taken) => {
+    directory = directory.value === "." || isAbsolute(taken.value) ? taken
+      : { ...taken, value: `${directory.value}/${taken.value}`, raw: `${directory.value}/${taken.value}`, literal: directory.literal && taken.literal };
+  };
   const end = rest.findIndex((word) => word.value === "--");
   const options = end < 0 ? rest.length : end;
   for (let i = 0; i < options; i++) {
     const { value, literal } = rest[i];
-    if (!literal) continue;
+    if (!literal) { operands.push(rest[i]); continue; }
     if (i === 0 && /^[A-Za-z]+$/u.test(value)) {
       // Old-style bundle (`xvf a.tar`): each value-taking letter takes the next word, in order.
       let next = 1;
@@ -2747,7 +2786,7 @@ function tarArchive(name, rest) {
         if (!valueLetters.includes(letter)) continue;
         const taken = rest[next++] ?? null;
         if (letter === "f") archive = taken;
-        if (letter === "C" && taken) directory = taken;
+        if (letter === "C" && taken) enter(taken);
       }
       i = next - 1;
       continue;
@@ -2755,9 +2794,10 @@ function tarArchive(name, rest) {
     if (value.startsWith("--")) {
       const option = value.split("=")[0];
       if (longLetters[option]) letters.add(longLetters[option]);
+      if (option === "--files-from") letters.add("T");
       if (option === "--directory" || option === "--cd") {
         const taken = value.includes("=") ? { ...rest[i], value: value.slice(value.indexOf("=") + 1), raw: value.slice(value.indexOf("=") + 1) } : rest[++i];
-        if (taken) directory = taken;
+        if (taken) enter(taken);
         continue;
       }
       if (option === "--transform" || option === "--xform") renames = true;
@@ -2766,7 +2806,7 @@ function tarArchive(name, rest) {
       else if (!value.includes("=") && ["--directory", "--files-from", "--exclude-from", "--blocking-factor", "--transform", "--xform", "--use-compress-program", "--format", "--options", "--exclude", "--strip-components", "--newer", "--newer-mtime", "--owner", "--group", "--mode", "--include", "--uname", "--gname", "--uid", "--gid"].includes(option)) i++;
       continue;
     }
-    if (!value.startsWith("-") || value.length < 2) continue;
+    if (!value.startsWith("-") || value.length < 2) { operands.push(rest[i]); continue; }
     for (let k = 1; k < value.length; k++) {
       const letter = value[k];
       letters.add(letter);
@@ -2774,12 +2814,13 @@ function tarArchive(name, rest) {
       if (!valueLetters.includes(letter)) continue;
       const taken = k < value.length - 1 ? literalWord(value.slice(k + 1)) : rest[++i] ?? null;
       if (letter === "f") archive = taken;
-      if (letter === "C" && taken) directory = taken;
+      if (letter === "C" && taken) enter(taken);
       else if (value.slice(k + 1).includes("f")) unsure = true;
       break;
     }
   }
-  return { archive: unsure ? null : archive, renames, strips, letters, directory };
+  if (end >= 0) operands.push(...rest.slice(end + 1));
+  return { archive: unsure ? null : archive, renames, strips, letters, directory, operands };
 }
 
 /**
@@ -3269,7 +3310,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         add(destination, "tree", { unknownContents: true, archives: operands.slice(0, -1).map((word) => ({ word, format })) });
         break;
       }
-      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote });
+      const { sources, pairs } = copyTargets(rest, ctx, withValue, { contents: name === "ditto", remote, targetLetter: name !== "rsync" && name !== "ditto" });
       const recursive = name === "rsync" || name === "ditto"
         || (name === "cp" && rest.some((word) => word.literal && (/^-[A-Za-z]*[Rra]/u.test(word.value) || word.value === "--recursive" || word.value === "--archive")));
       // cp -L/-H and rsync -L/-k (and their long forms) copy what symlinks below the source point to; ditto does not.
@@ -3309,15 +3350,35 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       // Extraction writes whatever the archive holds under -C/-d or the working directory; creating, appending or updating
       // writes the -f archive. Listing, testing and extracting to stdout (`tar -xO`, `unzip -l/-p/-t/-v/-c/-z/-Z`) read.
       if (name === "unzip") {
+        if (backupEnv.options.has("UNZIP") || backupEnv.options.has("UNZIPOPT") || process.env.UNZIP || process.env.UNZIPOPT) {
+          throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: unzip options from UNZIP or UNZIPOPT that the guard cannot read`);
+        }
         const { archive, directory, letters } = unzipArchive(rest);
-        if (["l", "p", "t", "v", "c", "z", "Z"].some((letter) => letters.has(letter))) break;
+        // A negated letter (`-l-l`) may cancel a listing mode, so listing passes only when no letter is negated.
+        const negates = [...letters].some((letter) => letter.startsWith("-"));
+        if (!negates && ["l", "p", "t", "v", "c", "z", "Z"].some((letter) => letters.has(letter))) break;
         // unzip -j drops member directories.
         add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: "zip" }] : null, renames: false, strips: letters.has("j") });
         break;
       }
-      const { archive, renames, strips, letters, directory } = tarArchive(name, rest);
-      if (["c", "r", "u", "A", "D"].some((letter) => letters.has(letter)) && archive && archive.value !== "-") add(archive, "write");
+      if (backupEnv.options.has("TAR_OPTIONS") || process.env.TAR_OPTIONS) {
+        throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: tar options from TAR_OPTIONS that the guard cannot read`);
+      }
+      const { archive, renames, strips, letters, directory, operands } = tarArchive(name, rest);
+      const creates = ["c", "r", "u", "A", "D"].some((letter) => letters.has(letter));
+      if (creates && archive && archive.value !== "-") add(archive, "write");
+      if (creates && rest.some((word) => word.value === "--remove-files")) {
+        // GNU --remove-files deletes each file it archived, read from the -C directory.
+        if (letters.has("T")) throw new Block("docs-config-write", `${structural["docs-config-write"]} Target: files --remove-files deletes from a list the guard does not read`);
+        for (const word of operands) {
+          const source = directory.value === "." || isAbsolute(word.value) ? word
+            : { ...word, value: `${directory.value}/${word.value}`, raw: `${directory.value}/${word.value}`, literal: directory.literal && word.literal };
+          add(source, "delete", { remove: true, recursive: true });
+        }
+      }
       if (!letters.has("x") || letters.has("O")) break;
+      // -P keeps absolute member names, which land outside the extraction directory.
+      if (letters.has("P")) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: a tar extraction that keeps absolute member names (-P)`);
       add(directory, "tree", { unknownContents: true, archives: archive ? [{ word: archive, format: "tar" }] : null, renames, strips });
       break;
     }
@@ -3330,8 +3391,13 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       /** @type {Word | null} */
       let chdir = null;
       const perl = name === "perl";
-      const restLetters = perl ? "MmxDFCV" : "xF";
-      const nextLetters = perl ? "eEI" : "eCIrE";
+      let syntaxOnly = false;
+      const restLetters = perl ? "MmxDFCV" : "F";
+      const nextLetters = perl ? "eEI" : "eCXIrE";
+      // ruby -C and -X move to a directory before the files are opened, as does -x with a directory attached.
+      const enter = (/** @type {Word} */ taken) => {
+        chdir = chdir && !isAbsolute(taken.value) ? { ...taken, value: `${chdir.value}/${taken.value}`, literal: chdir.literal && taken.literal } : taken;
+      };
       const digitLetters = perl ? "0l" : "0lWT";
       /** @type {string[]} */
       const suffixes = [];
@@ -3350,9 +3416,15 @@ function commandTargets(name, rest, ctx, sed, stdin) {
             if (nextLetters.includes(letter)) {
               if (letter === "e" || (perl && letter === "E")) code = true;
               const taken = k < value.length - 1 ? { ...word, value: value.slice(k + 1), raw: value.slice(k + 1) } : rest[++i];
-              if (letter === "C" && taken) chdir = chdir && !isAbsolute(taken.value) ? { ...taken, value: `${chdir.value}/${taken.value}`, literal: chdir.literal && taken.literal } : taken;
+              if (!perl && (letter === "C" || letter === "X") && taken) enter(taken);
               break;
             }
+            if (!perl && letter === "x") {
+              if (k < value.length - 1) enter({ ...word, value: value.slice(k + 1), raw: value.slice(k + 1) });
+              break;
+            }
+            // -c only checks the program's syntax.
+            if (letter === "c") syntaxOnly = true;
             if (restLetters.includes(letter)) break;
             if (perl && letter === "d" && /^[:=]/u.test(value.slice(k + 1))) break;
             if (!perl && letter === "W" && value[k + 1] === ":") break;
@@ -3366,7 +3438,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
         }
         files.push(word);
       }
-      if (!inPlace) break;
+      if (!inPlace || syntaxOnly) break;
       (code ? files : files.slice(1)).forEach((file) => {
         const word = chdir && !isAbsolute(file.value) ? { ...file, value: `${chdir.value}/${file.value}`, raw: `${chdir.value}/${file.value}`, literal: chdir.literal && file.literal } : file;
         add(word, "write");
@@ -3473,7 +3545,7 @@ function commandTargets(name, rest, ctx, sed, stdin) {
       break;
     }
     case "mv": {
-      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]));
+      const { sources, pairs } = copyTargets(rest, ctx, new Set(["-S", "--suffix"]), { targetLetter: true });
       const backups = backupSuffixes(rest, name);
       pairs.forEach(({ target, source }) => {
         add(target, "write", { source });
@@ -3706,6 +3778,7 @@ const EXEC_VARIABLES = new Set(["GIT_PAGER", "PAGER", "MANPAGER", "GIT_EDITOR", 
 /** @param {string} name @param {Word} word @param {Context} ctx */
 function checkExecVariable(name, word, ctx) {
   checkSubscriptCode(word.value);
+  recordWriterVariable(name, word);
   if (!EXEC_VARIABLES.has(name)) return;
   if (!word.literal) throw new Block("shell-dynamic-command", `${name} names a program that will be executed; it must be literal.`);
   // BASH_ENV and ENV name a startup file the shell sources, not command text.
@@ -4242,6 +4315,18 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   evaluateRunner(name, rest, ctx);
   if (NAME_BUILTINS.has(name)) {
     for (const word of rest) checkSubscriptCode(word.value);
+    // `export NAME=value` sets a writer variable; `read NAME`, `printf -v NAME` or a built assignment sets one the guard
+    // cannot read.
+    const declares = ["export", "declare", "typeset", "local", "readonly", "integer", "float"].includes(name);
+    for (const word of rest) {
+      const assignment = /^([A-Za-z_][A-Za-z0-9_]*)=/u.exec(word.value);
+      if (declares && assignment && word.literal) recordWriterVariable(assignment[1], { ...word, value: word.value.slice(assignment[0].length) });
+      else if (!word.literal && word.value.includes("=")) for (const variable of WRITER_VARIABLES) recordWriterVariable(variable, null);
+      else if (!declares || assignment) {
+        const named = assignment ? assignment[1] : word.value;
+        if (WRITER_VARIABLES.has(named)) recordWriterVariable(named, null);
+      }
+    }
     const source = name === "read" || name === "mapfile" || name === "readarray" ? stdinSource(redirects) : null;
     if (source?.heredoc) checkSubscriptCode(source.heredoc.body);
     else if (source?.op === "<<<" && source.target) checkSubscriptCode(source.target.value);
@@ -4319,7 +4404,9 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
           const probeName = probe.length > 0 ? commandName(probe[0].value) : "", probeRest = probe.slice(1);
           // Readers and commands whose written files the guard reads from their words count only when a target is built from
           // `{}`; any other program (or one moved to another directory) may write it.
-          const writes = moved || probe.length === 0 || !(readOnlyCommands.has(probeName) || TARGETED_COMMANDS.has(probeName))
+          // A program whose targets the guard does not read is checked here directly: evaluating it again would not block.
+          const blind = moved || probe.length === 0 || !(readOnlyCommands.has(probeName) || TARGETED_COMMANDS.has(probeName));
+          const writes = blind
             || commandTargets(probeName, probeRest, ctx, probeName === "sed" ? analyzeSed(probeRest) : null, { redirects: [], stdinPiped: false }).some(({ word }) => word.value.includes(marker));
           const parsed = findRoots(rest);
           if (writes && (selection.unknown !== null || parsed === null)) throw unknownBuild();
@@ -4347,6 +4434,11 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
                   return docsName(basename(absolute)) || docsName(basename(canonicalPath(absolute))) || protectedMatch(absolute, "write", targets) !== null;
                 });
                 if (!reaches) continue;
+                if (blind) {
+                  const shownPath = built.find((word) => word.value.includes("{}"))?.value.replaceAll("{}", shown) ?? shown;
+                  const guarded = built.some((word) => protectedMatch(resolve(ctx.cwd ?? ctx.scope, word.value.replaceAll("{}", shown)), "write", targets) !== null);
+                  throw new Block(guarded ? "guard-config-write" : "docs-config-write", `${structural[guarded ? "guard-config-write" : "docs-config-write"]} Target: ${shownPath} (built from {} for a program the guard cannot read)`);
+                }
                 if (variants.length > FIND_FILLS) throw unknownBuild();
                 variants.push(nested.map((word) => word.value.includes("{}") ? literalWord(word.value.replaceAll("{}", shown)) : word));
               }
@@ -4614,13 +4706,7 @@ function evaluateCommandNow(command, options) {
   if (Buffer.byteLength(command, "utf8") > MAX_COMMAND_BYTES) return { allowed: false, ruleId: "guard-timeout", reason: TOO_LARGE_REASON };
   const scope = options.scope ?? process.cwd();
   catRedefined = false;
-  backupEnv = { values: [], unknown: false };
-  for (const match of command.matchAll(/SIMPLE_BACKUP_SUFFIX/gu)) {
-    const set = /^SIMPLE_BACKUP_SUFFIX=(?:'([^']*)'|"([^"$`\\]*)"|([^\s'"$`\\;|&()<>]*))(?=[\s;|&()<>]|$)/u.exec(command.slice(match.index));
-    // A readable assignment adds its value; any other use but an expansion (`read`, an unreadable value) leaves it unknown.
-    if (set) backupEnv.values.push(set[1] ?? set[2] ?? set[3] ?? "");
-    else if (!/\$\{?$/u.test(command.slice(0, match.index))) backupEnv.unknown = true;
-  }
+  backupEnv = { values: [], unknown: false, options: new Set() };
   dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
   try {
     for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
