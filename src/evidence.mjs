@@ -143,9 +143,11 @@ export function isNonFunctionalChange(file) {
  */
 export function requiredPlatforms(prFiles) {
   const required = new Set();
-  for (const file of prFiles ?? []) {
-    if (!/(^|\/)mobile\//.test(file.filename) || file.filename.endsWith(".md")) continue;
-    const name = basename(file.filename);
+  // A rename counts at both paths: moving a file out of the mobile app still changes the app.
+  const paths = (prFiles ?? []).flatMap((file) => [file.filename, ...(file.status === "renamed" && file.previous_filename ? [file.previous_filename] : [])]);
+  for (const path of paths) {
+    if (!/(^|\/)mobile\//.test(path) || path.endsWith(".md")) continue;
+    const name = basename(path);
     if (/\.ios\./.test(name)) required.add("ios");
     else if (/\.android\./.test(name)) required.add("android");
     else { required.add("ios"); required.add("android"); }
@@ -176,6 +178,8 @@ export function evaluateEvidence({ receipts, head, prBody = "", changedFiles, pr
   }
   if (receipt.status === "failed") return { ...base, state: /** @type {EvidenceState} */ ("failed"), reason: receipt.problems.join("; ") };
   if (receipt.status === "incomplete") return { ...base, state: /** @type {EvidenceState} */ ("incomplete"), reason: receipt.problems.join("; ") };
+  // null means GitHub could not list the PR's files: platform coverage cannot be checked, so the receipt does not pass.
+  if (prFiles === null) return { ...base, state: /** @type {EvidenceState} */ ("incomplete"), reason: "the PR's files could not be listed completely, so mobile platform coverage cannot be checked" };
   const uncovered = requiredPlatforms(prFiles).filter((platform) => !receipt.platforms?.includes(platform));
   if (uncovered.length) return { ...base, state: /** @type {EvidenceState} */ ("incomplete"), reason: `mobile files changed but the receipt does not cover ${uncovered.join(" and ")}: run the change there and record --platforms ${requiredPlatforms(prFiles).join(",")}` };
   const passing = /** @type {EvidenceState} */ (receipt.status === "nonvisual" ? "nonvisual" : "ok");
