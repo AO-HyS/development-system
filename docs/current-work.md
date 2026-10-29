@@ -1,3 +1,32 @@
+# Current work — Terra 6.1 fast vs Sol 6.1 High benchmark (2026-10-29)
+
+Branch `feat/ds-280-terra-benchmark` from develop 60ff36e, thread 48c433b5.
+Accepted plan (cross-review with Sol, 4 rounds, SIN BLOQUEANTES):
+`~/.development-system/private/cross-review/terra-benchmark-20261029/plan-v4.md` (sha256 f7497969…1541).
+Owner approved execution on 2026-10-29 («si ya se pusieron de acuerdo, adelante»): budget 24 sessions
+(ceiling 30, 20 min each), direct-browser route for NutriPlan testing, synthetic writes with functional cleanup,
+Planeta Aula for computer use. Fast tier is requested as T3 `serviceTier: priority`.
+Private evidence: `~/.development-system/private/terra-benchmark-20261029/`.
+Deliverable: `docs/model-screen-2026-10-29.md` + document report. Owner approved 2.8.0 and asked to fix the recorder and test video again («Adelante, corrige lo que tienes que corregir y luego vuelve a testear»).
+Progress:
+- [x] Packets and private oracles frozen (`packets-oracles.sha256`; video packet refrozen before any counted run; exploration order in `exploration-order.json`)
+- [x] Terra smokes (web, simulator, recording) OK at 17:21Z, requested tier priority, child-observed tier unknown
+- [x] Blockers fixed by the parent (owner: «debes ser capaz de correr sin mi intervención»), 2 earlier preparation failures do not count:
+  - browser route changed to the headless `agent-browser` CLI (T3 preview snapshots time out while hidden); Chromium installed with `agent-browser install`; packets rewritten (old ones in `packets/superseded/`), hashes refrozen; recording is fixed at 1280×720 by agent-browser (deviation from 1440×900);
+  - stale device session closed; Planeta `apps/mobile/.env.local` swapped to preview (backup `prep/planeta-mobile.env.local.backup`, sha 2981887e…; **restore at the end**); bundle verified preview-only and MOBILE1 login shows the preview note;
+  - parent helpers: `prep/materialize.sh <run> <type>`, `prep/pa-login.sh`, `prep/pa-logout.sh`, `prep/np-login.sh <session> NUTRI|ASSISTANT`, probes `prep/np-probe.sh`, `prep/pa-probe.py`.
+- [x] Exploration (9 runs, all pass; finalists video low, testing high, CU low) and confirmation S-T-T-S (12 runs); results in `runs/log.jsonl`
+- [x] Blind video critiques (2 Opus sessions, `critique/`)
+- [x] Cleanup: 7 NutriPlan patients soft-deleted (0 live); 7 Planeta notes retained as synthetic residue; Planeta `.env.local` restored (sha matches); Metro and dashboard stopped
+- [x] Deliverable `docs/model-screen-2026-10-29.md`: testing → Terra high, CU → Terra low, video → keep Sol
+- [x] Owner approval for 2.8.0
+- [x] Recorder fixed: agent-browser upgraded 0.15.1 → 0.41.0 (records the active tab at the viewport, keeps the page after stop, contact sheet); `prep/np-login.sh` moved to label/role locators with a hydration wait; video packet v3 (sha f8b54e20…; v2 in `packets/superseded/`)
+- [x] Video rerun: exploration low 86 s, high 97 s, medium 67 s, all pass (critique `critique/exploration-r2/`), finalist medium; confirmation S 168 s, T 70 s, T 102 s (T3 restart cut the logout), S 230 s, all pass (critique `critique/confirmation-r2/`); video → Terra medium fast. Dashboard stopped, no open agent-browser sessions
+- [x] 2.8.0 source: roster (computer-use route, Codex browser-qa/computer-use-runner, `primaryComputerUse`, `policy.review.computerUse`, host texts), `config/global-instructions.md`, `codex-review.mjs` (computer-use profile + `service_tier`), `rosterModel` carries a priority tier, `scripts/build-release-280.mjs`, artifacts/2.8.0, manifest 2.8.0; release:prepare, roster:check, roles:check, typecheck, check-no-tests pass
+- [ ] Isolated-HOME install of 2.8.0 (needs a clean commit), PR to develop, Codex review, evidence record
+
+---
+
 # Current work — weekly learning controls (2.6.1 installed globally)
 
 2026-10-25, develop f1c8ae1 (no branch yet), thread f051c9c7: audit of 2.6.2 plus a
