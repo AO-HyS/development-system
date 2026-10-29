@@ -41,7 +41,7 @@ Contract 1.40.0 supersedes the field-notebook report presentation with the appro
 
 ## Repository preparation correction
 
-Repository adapter generation is retired. Read product AGENTS.md, README and task-relevant docs; no replacement index is required. The paired skill catalog is 0.72.0.
+Repository adapter generation is retired. Read product AGENTS.md, README and task-relevant docs; no replacement index is required. The paired skill catalog is 0.73.0.
 
 ## Automated tests and evidence
 
@@ -68,7 +68,7 @@ Place the Headroom provider overrides after the app-server subcommand. Codex app
 
 ## Claude Code harness
 
-Claude Code is a native harness. Catalog 0.72.0 links every catalogued skill into .claude/skills from its installed copy. ~/.claude/CLAUDE.md is an operator link to the shared ~/.codex/AGENTS.md, which carries a short Claude Code host section. The destructive-command guard covers Codex hooks and Claude Code user settings. Headroom per-invocation launch is available for Claude Code. Plugins, MCP servers and other Claude settings remain operator configuration outside this manifest. File installation does not prove discovery, loading or behavioral influence.
+Claude Code is a native harness. Catalog 0.73.0 links every catalogued skill into .claude/skills from its installed copy. ~/.claude/CLAUDE.md is an operator link to the shared ~/.codex/AGENTS.md, which carries a short Claude Code host section. The destructive-command guard covers Codex hooks and Claude Code user settings. Headroom per-invocation launch is available for Claude Code. Plugins, MCP servers and other Claude settings remain operator configuration outside this manifest. File installation does not prove discovery, loading or behavioral influence.
 
 ## Authorized Claude Code account recovery (1.39.0)
 
@@ -102,11 +102,11 @@ Use the global development-system installation for agent work, reports and skill
 
 ## Active release and maintenance
 
-Historical release narratives are superseded; consult immutable contract 1.41.0 for history. The current skill catalog is 0.72.0. Use the installed report helper with passed/failed/not reached and Verification scope in Detail. Keep stable review task IDs, complete receipt validation for declared fallback and one source writer per surface. Record correction root causes with development-system mistake add; repeated incidents propose a code or guard control. The steward records collection separately from recommendation resolution, deduplicates repository plus stable changeId across revisions, and admits at most one useful reviewed PR per repository only with an explicit clean revision and no active writer. Use one scheduler; preserve private history. No automatic merge, release, deployment, product writes, automated tests or evals.
+Historical release narratives are superseded; consult immutable contract 1.41.0 for history. The current skill catalog is 0.73.0. Use the installed report helper with passed/failed/not reached and Verification scope in Detail. Keep stable review task IDs, complete receipt validation for declared fallback and one source writer per surface. Record correction root causes with development-system mistake add; repeated incidents propose a code or guard control. The steward records collection separately from recommendation resolution, deduplicates repository plus stable changeId across revisions, and admits at most one useful reviewed PR per repository only with an explicit clean revision and no active writer. Use one scheduler; preserve private history. No automatic merge, release, deployment, product writes, automated tests or evals.
 
 ## 2.8.0: Terra 6.1 fast for computer use, browser testing and video
 
-Contract 2.8.0 (catalog 0.72.0) applies the model screen of 2026-10-29. Computer use and simulator QA request `gpt-6.1-terra` low with service tier `priority` (fast), browser app testing requests Terra high fast and video recording requests Terra medium fast; Sol 6.1 High keeps plan, diff, backend and security review. The Codex `browser-qa` and `computer-use-runner` profiles, the roster computer-use route, the T3 primary computer-use profile and `codex-review --computer-use` (`policy.review.computerUse`, passed to Codex as `service_tier`) carry the new routing. The screen is preliminary (two confirmation runs per option); requested tier is not observed identity. Installation and live host adoption are separate evidence.
+Contract 2.8.0 (catalog 0.73.0) applies the model screen of 2026-10-29. Computer use and simulator QA request `gpt-6.1-terra` low with service tier `priority` (fast), browser app testing requests Terra high fast and video recording requests Terra medium fast; Sol 6.1 High keeps plan, diff, backend and security review. The Codex `browser-qa` and `computer-use-runner` profiles, the roster computer-use route, the T3 primary computer-use profile and `codex-review --computer-use` (`policy.review.computerUse`, passed to Codex as `service_tier`) carry the new routing, as do the roster-guard diagnostic and the flow-implement, development-steward and working-backwards skill copies. The screen is preliminary (two confirmation runs per option); requested tier is not observed identity. Installation and live host adoption are separate evidence.
 
 ## Generated host role profiles
 

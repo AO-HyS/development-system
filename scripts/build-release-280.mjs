@@ -9,10 +9,9 @@ import { checkRolePolicyOutputs, renderHostInstructions } from '../src/role-poli
 import { checkActiveToolingDocs } from './check-active-tooling-docs.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-// The skill catalog is unchanged: 2.8.0 only moves model routing.
-const version = '2.8.0', previous = '2.7.0', catalogVersion = '0.72.0', previousCatalog = '0.72.0', prefix = `artifacts/${version}`;
-/** @type {string[]} */
-const updatedSkills = [];
+const version = '2.8.0', previous = '2.7.0', catalogVersion = '0.73.0', previousCatalog = '0.72.0', prefix = `artifacts/${version}`;
+// Skills whose computer-use routing text changes get a new copy under this version.
+const updatedSkills = ['flow-implement', 'development-steward', 'working-backwards'];
 /** @type {Record<string, {repository:string, commit:string, version:string, path:string, license:string}>} */
 const updatedExternal = {};
 // Codex role profiles whose model routing changes in this version (hand-written under the prefix).
@@ -68,7 +67,7 @@ const hostProfiles = () => ['shared', 'codex', 'claude'].map(host => renderHostI
 
 const releaseNote = `## ${version}: Terra 6.1 fast for computer use, browser testing and video
 
-Contract ${version} (catalog ${catalogVersion}) applies the model screen of 2026-10-29. Computer use and simulator QA request \`gpt-6.1-terra\` low with service tier \`priority\` (fast), browser app testing requests Terra high fast and video recording requests Terra medium fast; Sol 6.1 High keeps plan, diff, backend and security review. The Codex \`browser-qa\` and \`computer-use-runner\` profiles, the roster computer-use route, the T3 primary computer-use profile and \`codex-review --computer-use\` (\`policy.review.computerUse\`, passed to Codex as \`service_tier\`) carry the new routing. The screen is preliminary (two confirmation runs per option); requested tier is not observed identity. Installation and live host adoption are separate evidence.
+Contract ${version} (catalog ${catalogVersion}) applies the model screen of 2026-10-29. Computer use and simulator QA request \`gpt-6.1-terra\` low with service tier \`priority\` (fast), browser app testing requests Terra high fast and video recording requests Terra medium fast; Sol 6.1 High keeps plan, diff, backend and security review. The Codex \`browser-qa\` and \`computer-use-runner\` profiles, the roster computer-use route, the T3 primary computer-use profile and \`codex-review --computer-use\` (\`policy.review.computerUse\`, passed to Codex as \`service_tier\`) carry the new routing, as do the roster-guard diagnostic and the flow-implement, development-steward and working-backwards skill copies. The screen is preliminary (two confirmation runs per option); requested tier is not observed identity. Installation and live host adoption are separate evidence.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);
@@ -113,7 +112,7 @@ for (const [name, upstream] of Object.entries(updatedExternal)) {
 
 const errors = await validateSkillCatalog(catalog, root);
 if (errors.length) throw new Error(errors.join('; '));
-if (catalogVersion !== previousCatalog) await output(`catalog/${catalogVersion}.json`, JSON.stringify(catalog, null, 2) + '\n');
+if (String(catalogVersion) !== String(previousCatalog)) await output(`catalog/${catalogVersion}.json`, JSON.stringify(catalog, null, 2) + '\n');
 
 manifest.contractVersion = version;
 for (const artifact of manifest.artifacts) {
@@ -127,6 +126,10 @@ for (const artifact of manifest.artifacts) {
   if (name === 'claude-orchestration-codex-review-mjs') {
     artifact.sourcePath = `${prefix}/runtime/claude-orchestration/codex-review.mjs`;
     await output(artifact.sourcePath, await bytes('claude/orchestration/codex-review.mjs'));
+  }
+  if (name === 'claude-orchestration-roster-guard-mjs') {
+    artifact.sourcePath = `${prefix}/runtime/claude-orchestration/roster-guard.mjs`;
+    await output(artifact.sourcePath, await bytes('claude/orchestration/roster-guard.mjs'));
   }
   if (name === 'claude-agent-visual-reviewer') {
     artifact.sourcePath = `${prefix}/claude/agents/visual-reviewer.md`;

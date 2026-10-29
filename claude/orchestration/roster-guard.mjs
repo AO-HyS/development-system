@@ -3,7 +3,7 @@
 // paths (one path token per entry) and a finish line and never share a path with an
 // active writer. Normal dispatch disables automatic Jev classification/tier calls;
 // the parent can use the separate advisory CLI at an unresolved decision.
-// Sol reviews and computer use retain receipt-bound native fallback. A fresh
+// Sol reviews and Terra computer use retain receipt-bound native fallback. A fresh
 // primary Opus visual critic needs no fallback envelope, never source ownership.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
 // image-free. PostToolUse Agent and SubagentStop: ledger with the observed model and
@@ -420,7 +420,7 @@ async function agentCall() {
       allow(null, { ...entry, jev: 'skipped', why: 'fresh independent primary visual critique' });
     }
     const fallbackReason = prompt.match(/^\s*Codex fallback:\s*(\S.*)$/m)?.[1]?.slice(0, 300) ?? null;
-    if (role.family === 'browser' && !fallbackLine) deny(`${type} is a fallback: computer use (changing dashboards or tools, testing the real app) runs on Sol 6.1 High through node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --computer-use --packet <file> --root <repo>, with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use browser-qa only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`, { ...entry, blockedBy: 'codex-computer-use' });
+    if (role.family === 'browser' && !fallbackLine) deny(`${type} is a fallback: computer use (changing dashboards or tools, testing the real app) runs on Terra 6.1 Low fast through node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --computer-use --packet <file> --root <repo>, with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use browser-qa only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`, { ...entry, blockedBy: 'codex-computer-use' });
     if (['review', 'visual'].includes(role.family) && !fallbackEnvelope) deny(`${type} is a fallback: reviews run on Sol 6.1 High through codex-review. ${launch}`, { ...entry, blockedBy: 'codex-review' });
     // An accepted fallback skips the Jev tier and route gate: the parent already declared why.
     if (['review', 'visual', 'browser'].includes(role.family)) {

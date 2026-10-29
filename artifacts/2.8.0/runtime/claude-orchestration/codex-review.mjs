@@ -234,8 +234,8 @@ const claimRefusal = claimOutDir();
 if (claimRefusal) refuse(claimRefusal);
 // Computer use runs on its own profile (policy.review.computerUse); reviews keep the review model.
 const USE = mode === 'computer-use' ? REVIEW.computerUse ?? {} : {};
-const requested = { model: USE.model ?? REVIEW.model ?? 'gpt-6.1-sol', effort: USE.effort ?? REVIEW.effort ?? 'high', serviceTier: USE.serviceTier ?? null };
-if (requested.serviceTier !== null && !['default', 'priority'].includes(requested.serviceTier)) refuse('review.computerUse.serviceTier must be default or priority');
+const requested = { model: USE.model ?? REVIEW.model ?? 'gpt-6.1-sol', effort: USE.effort ?? REVIEW.effort ?? 'high', ...(USE.serviceTier ? { serviceTier: USE.serviceTier } : {}) };
+if (requested.serviceTier !== undefined && !['default', 'priority'].includes(requested.serviceTier)) refuse('review.computerUse.serviceTier must be default or priority');
 const marker = path.join(pendingDir, `${runId}.json`);
 const removeMarker = () => { try { fs.rmSync(marker, { force: true }); } catch { /* best effort */ } };
 

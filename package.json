@@ -25,7 +25,7 @@
     "roster:check": "node ./scripts/validate-agent-roster.mjs",
     "reader:browser": "node ./scripts/verify-technical-reader-browser.mjs",
     "implement-preview": "./bin/development-system implement-preview",
-    "skills:audit": "./bin/development-system audit-skills --version 0.72.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
+    "skills:audit": "./bin/development-system audit-skills --version 0.73.0 --evidence \"$HOME/.development-system/private/reports/skills-live-latest.json\"",
     "skills:probe": "node ./scripts/probe-harness-skills.mjs",
     "skills:sync": "./bin/development-system setup",
     "smoke:repositories": "node ./scripts/smoke-repository-audits.mjs",

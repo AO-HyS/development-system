@@ -4,7 +4,7 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.8.0**, shared skill catalog **0.72.0**. This
+Current source candidate: **2.8.0**, shared skill catalog **0.73.0**. This
 candidate moves computer use and simulator QA to Terra 6.1 Low fast, browser
 app testing to Terra 6.1 High fast and video recording to Terra 6.1 Medium
 fast, following the [model screen of 2026-10-29](docs/model-screen-2026-10-29.md);
@@ -90,8 +90,8 @@ Haiku 5.5 Medium is the operator-selected preference for bounded research and
 exact/mechanical writing. Protected native Claude roles pin claude-haiku-5-5;
 Sonnet retains general implementation. Planning crosses families: an OpenAI
 parent uses an Opus 5.5 plan and fresh Sol 6.1 High review; an Anthropic parent
-uses a Sol 6.1 High plan and fresh Opus 5.5 review. Sol retains technical review
-and computer use. Existing threads reread at the next safe turn before delegation;
+uses a Sol 6.1 High plan and fresh Opus 5.5 review. Sol retains technical review;
+computer use, browser testing and video run on Terra 6.1 fast. Existing threads reread at the next safe turn before delegation;
 see [model routing](docs/model-routing.md). T3 readers may use
 Haiku; T3 source writers remain unadmitted. Update the complete shared package
 once per computer; product deployments are not required. Existing Codex-only
