@@ -10,13 +10,14 @@ import { basename, dirname, resolve } from "node:path";
 const SHA = /^[0-9a-f]{40}$/;
 const SHORT_SHA = /^[0-9a-f]{7,40}$/;
 const FLOWS = /** @type {const} */ (["allowed", "denied", "effects"]);
+const PLATFORMS = /** @type {const} */ (["ios", "android", "web"]);
 // A merge pass is valid for two hours; GitHub refuses it anyway once the head moves (`--match-head-commit`).
 const GATE_HOURS = 2;
 
 /**
  * @typedef {"pass" | "fail"} FlowResult
  * @typedef {"ok" | "failed" | "incomplete" | "missing" | "stale" | "waived" | "nonvisual" | "nonfunctional"} EvidenceState
- * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
+ * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], platforms?: string[], exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  */
 
@@ -43,9 +44,9 @@ const text = (value) => (typeof value === "string" && value.trim() ? value.trim(
 /**
  * Writes one receipt. Its status is decided here from what the run observed, not from what the caller hopes:
  * a deployed revision that differs from the verified head, or any failed flow, makes it `failed`.
- * @param {{home: string, pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, captures?: string[], exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} options
+ * @param {{home: string, pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, captures?: string[], platforms?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} options
  */
-export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment, account, role, allowed, denied, effects, captures = [], exception, reason, checks, ownerWaiver }) {
+export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment, account, role, allowed, denied, effects, captures = [], platforms, exception, reason, checks, ownerWaiver }) {
   if (!pr) throw new Error("evidence record needs --pr <owner/repo#number | PR URL>");
   const reference = parsePrReference(pr);
   if (!verifiedSha || !SHA.test(verifiedSha)) throw new Error("evidence record needs --verified-sha <40-hex head SHA the run verified>");
@@ -58,6 +59,9 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
     if (value !== "pass" && value !== "fail") throw new Error(`--${name} must be pass or fail`);
     flows[/** @type {"allowed" | "denied" | "effects"} */ (name)] = value;
   }
+  const covered = platforms === undefined ? undefined : [...new Set(platforms.split(",").map((name) => name.trim().toLowerCase()).filter(Boolean))];
+  const unknown = covered?.filter((name) => !PLATFORMS.includes(/** @type {typeof PLATFORMS[number]} */ (name)));
+  if (covered && (!covered.length || unknown?.length)) throw new Error(`--platforms takes a comma list of ${PLATFORMS.join(", ")}`);
   const waiver = text(ownerWaiver);
   if (exception !== undefined && exception !== "nonvisual") throw new Error("--exception supports only nonvisual");
   if (exception && (!text(reason) || !text(checks))) throw new Error("--exception nonvisual needs --reason and --checks naming the real checks that ran");
@@ -80,7 +84,7 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
   const receipt = {
     pr: reference.key, verifiedSha, ...(deployedSha ? { deployedSha: deployedSha.toLowerCase() } : {}),
     ...(text(environment) ? { environment: text(environment) } : {}), ...(text(account) ? { account: text(account) } : {}), ...(text(role) ? { role: text(role) } : {}),
-    flows, captures: captures.map((path) => resolve(path)),
+    flows, captures: captures.map((path) => resolve(path)), ...(covered ? { platforms: covered } : {}),
     ...(exception ? { exception: { kind: "nonvisual", reason: /** @type {string} */ (text(reason)), checks: /** @type {string} */ (text(checks)) } } : {}),
     ...(waiver ? { ownerWaiver: waiver } : {}),
     status, problems, recordedAt: new Date().toISOString(),
@@ -132,6 +136,24 @@ export function isNonFunctionalChange(file) {
 }
 
 /**
+ * Native platforms a PR's mobile files need a run on. A mobile app is any `mobile/` directory (`apps/mobile/` included);
+ * a `.ios.` or `.android.` file needs only its platform, every other mobile file needs both: a screen checked on one
+ * platform has shipped broken on the other.
+ * @param {ChangedFile[] | null | undefined} prFiles @returns {string[]}
+ */
+export function requiredPlatforms(prFiles) {
+  const required = new Set();
+  for (const file of prFiles ?? []) {
+    if (!/(^|\/)mobile\//.test(file.filename) || file.filename.endsWith(".md")) continue;
+    const name = basename(file.filename);
+    if (/\.ios\./.test(name)) required.add("ios");
+    else if (/\.android\./.test(name)) required.add("android");
+    else { required.add("ios"); required.add("android"); }
+  }
+  return ["ios", "android"].filter((platform) => required.has(platform));
+}
+
+/**
  * `behavioralEvidence` for one PR head from its latest receipt. Pure: the caller supplies the PR body and, when the head
  * moved after the receipt, the files changed between the verified SHA and the head (null when GitHub could not list
  * them completely).
@@ -154,6 +176,8 @@ export function evaluateEvidence({ receipts, head, prBody = "", changedFiles, pr
   }
   if (receipt.status === "failed") return { ...base, state: /** @type {EvidenceState} */ ("failed"), reason: receipt.problems.join("; ") };
   if (receipt.status === "incomplete") return { ...base, state: /** @type {EvidenceState} */ ("incomplete"), reason: receipt.problems.join("; ") };
+  const uncovered = requiredPlatforms(prFiles).filter((platform) => !receipt.platforms?.includes(platform));
+  if (uncovered.length) return { ...base, state: /** @type {EvidenceState} */ ("incomplete"), reason: `mobile files changed but the receipt does not cover ${uncovered.join(" and ")}: run the change there and record --platforms ${requiredPlatforms(prFiles).join(",")}` };
   const passing = /** @type {EvidenceState} */ (receipt.status === "nonvisual" ? "nonvisual" : "ok");
   if (receipt.verifiedSha === head) return { ...base, state: passing, reason: receipt.status === "nonvisual" ? `nonvisual: ${receipt.exception?.reason}` : "verified head is the current head" };
   if (!changedFiles) return { ...base, state: /** @type {EvidenceState} */ ("stale"), reason: "head changed after the receipt and the diff could not be listed completely" };
