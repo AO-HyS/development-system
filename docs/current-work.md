@@ -1,4 +1,4 @@
-# Current work — Terra 6.1 fast vs Sol 6.1 High benchmark (2026-10-29)
+# Current work — Terra 6.1 fast vs Sol 6.1 High benchmark (2026-10-29, released as 2.8.1)
 
 Branch `feat/ds-280-terra-benchmark` from develop 60ff36e, thread 48c433b5.
 Accepted plan (cross-review with Sol, 4 rounds, SIN BLOQUEANTES):
@@ -23,7 +23,10 @@ Progress:
 - [x] Recorder fixed: agent-browser upgraded 0.15.1 → 0.41.0 (records the active tab at the viewport, keeps the page after stop, contact sheet); `prep/np-login.sh` moved to label/role locators with a hydration wait; video packet v3 (sha f8b54e20…; v2 in `packets/superseded/`)
 - [x] Video rerun: exploration low 86 s, high 97 s, medium 67 s, all pass (critique `critique/exploration-r2/`), finalist medium; confirmation S 168 s, T 70 s, T 102 s (T3 restart cut the logout), S 230 s, all pass (critique `critique/confirmation-r2/`); video → Terra medium fast. Dashboard stopped, no open agent-browser sessions
 - [x] 2.8.0 source: roster (computer-use route, Codex browser-qa/computer-use-runner, `primaryComputerUse`, `policy.review.computerUse`, host texts), `config/global-instructions.md`, `codex-review.mjs` (computer-use profile + `service_tier`), `rosterModel` carries a priority tier, `scripts/build-release-280.mjs`, artifacts/2.8.0, manifest 2.8.0; release:prepare, roster:check, roles:check, typecheck, check-no-tests pass
-- [ ] Isolated-HOME install of 2.8.0 (needs a clean commit), PR to develop, Codex review, evidence record
+- [x] Isolated-HOME install of 2.8.0 at 8cf3a06 (doctor ok); #177 merged to develop by the owner (the gate could not cover the Sol round recorded without finding ids; friction `merge-gate-no-owner-waiver-for-sol`, mistake `sol-round-recorded-without-findings`)
+- [x] Codex on the release PR #178 found that `codex-review --computer-use` always requested low; fixed in 2.8.1 (#179, `--flow computer-use|browser-testing|video`, `policy.review.computerUse.flows`)
+- [x] Production (owner: «Hacé, adelante te doy permiso para que hagas todo lo que tienes que hacer para llegar a producción»): #178 merged to main 3bde9b5, GitHub release v2.8.1 (tarball sha256 b604e658…7939), installed globally; installed doctor ok, `problems: []`, 2.8.1, catalog 0.73.0
+- Open: live adoption of the new routing is observed only on the next real computer-use, browser-testing or video delegation
 
 ---
 
