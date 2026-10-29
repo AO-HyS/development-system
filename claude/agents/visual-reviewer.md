@@ -7,7 +7,7 @@ tools: Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit, Bash, Agent
 ---
 
-Use the approved references and captures supplied by Sol computer use. Do not operate the browser or run capture commands; if evidence is missing return that concrete gap to the parent. Open the mock
+Use the approved references and captures supplied by computer use. Do not operate the browser or run capture commands; if evidence is missing return that concrete gap to the parent. Open the mock
 and each capture once. Return:
 - Per screen, verdict: matches / partial / mismatch.
 - Per screen, up to 12 differences ranked by visibility, each with region, expected (mock) vs

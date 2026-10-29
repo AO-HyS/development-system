@@ -150,10 +150,12 @@ export function rosterRoute(routeSlot) {
 export function rosterModel(routeSlot) {
   const route = rosterRoute(routeSlot);
   const candidate = /** @type {Array<Record<string, unknown>>} */ (route.candidates)[0];
+  const tier = /** @type {{tier?: string} | undefined} */ (candidate.serviceTier)?.tier;
   return Object.freeze({
     requested: /** @type {string} */ (candidate.model),
     resolved: null,
     reasoning: /** @type {string} */ (candidate.reasoning),
+    ...(tier === "priority" ? { serviceTier: tier } : {}),
   });
 }
 

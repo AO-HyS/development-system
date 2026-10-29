@@ -232,7 +232,10 @@ function claimOutDir() {
 }
 const claimRefusal = claimOutDir();
 if (claimRefusal) refuse(claimRefusal);
-const requested = { model: REVIEW.model ?? 'gpt-6.1-sol', effort: REVIEW.effort ?? 'high' };
+// Computer use runs on its own profile (policy.review.computerUse); reviews keep the review model.
+const USE = mode === 'computer-use' ? REVIEW.computerUse ?? {} : {};
+const requested = { model: USE.model ?? REVIEW.model ?? 'gpt-6.1-sol', effort: USE.effort ?? REVIEW.effort ?? 'high', ...(USE.serviceTier ? { serviceTier: USE.serviceTier } : {}) };
+if (requested.serviceTier !== undefined && !['default', 'priority'].includes(requested.serviceTier)) refuse('review.computerUse.serviceTier must be default or priority');
 const marker = path.join(pendingDir, `${runId}.json`);
 const removeMarker = () => { try { fs.rmSync(marker, { force: true }); } catch { /* best effort */ } };
 
@@ -340,7 +343,8 @@ try {
     const env = { ...process.env, CODEX_HOME: account.home };
     delete env.OPENAI_API_KEY;
     delete env.CODEX_API_KEY;
-    const codexArgs = ['exec', '-m', requested.model, '-c', `model_reasoning_effort="${requested.effort}"`, '-s', 'read-only', '-C', root,
+    const codexArgs = ['exec', '-m', requested.model, '-c', `model_reasoning_effort="${requested.effort}"`,
+      ...(requested.serviceTier ? ['-c', `service_tier="${requested.serviceTier}"`] : []), '-s', 'read-only', '-C', root,
       '--skip-git-repo-check', '--json', '-o', paths['findings.md'], ...args.images.flatMap((image) => ['-i', image]), '-'];
     try {
       exitCode = await new Promise((resolve) => {

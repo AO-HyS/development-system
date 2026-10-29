@@ -1,0 +1,81 @@
+{
+  "topic": {
+    "id": "orchestrator_audit_goals",
+    "label": "Metas de la auditoría del orquestador"
+  },
+  "settledContext": [
+    "La auditoría cubrirá el último mes en los repos principales y Opportunity OS.",
+    "El resultado importa más que contar subagentes o llamadas a herramientas."
+  ],
+  "decisions": [
+    {
+      "id": "success_metric",
+      "header": "Éxito",
+      "question": "¿Qué señal principal debe definir que el orquestador funciona bien?",
+      "options": [
+        {
+          "label": "Entrega verificada",
+          "impact": "Equilibra velocidad, resultado aceptado y costo de corrección",
+          "example": "una tarea es mejor si llega a evidencia verde en 20 minutos que si produce un diff en cinco y requiere tres reparaciones",
+          "recommended": true
+        },
+        {
+          "label": "Primer diff",
+          "impact": "Premia la velocidad inicial aunque el resultado todavía pueda fallar",
+          "example": "se mide el tiempo hasta el primer cambio de código sin contar revisiones posteriores"
+        },
+        {
+          "label": "Máxima certeza",
+          "impact": "Prioriza cobertura y revisión aun cuando aumente mucho el tiempo",
+          "example": "toda tarea usa varias revisiones y suites completas antes de mostrar resultados"
+        }
+      ]
+    },
+    {
+      "id": "comparison_baseline",
+      "header": "Comparación",
+      "question": "¿Contra qué debemos comparar el comportamiento observado?",
+      "options": [
+        {
+          "label": "Historial comparable",
+          "impact": "Usa ejecuciones reales de complejidad y superficie similares sin repetir tu trabajo",
+          "example": "se comparan correcciones de formularios React entre repos con gates equivalentes",
+          "recommended": true
+        },
+        {
+          "label": "Benchmark pareado",
+          "impact": "Da mayor control causal pero duplica ejecuciones seleccionadas",
+          "example": "la misma tarea se corre una vez secuencial y otra con multiagentes"
+        },
+        {
+          "label": "Sin baseline",
+          "impact": "Entrega hallazgos rápido pero no puede demostrar ahorro",
+          "example": "solo se reportan tiempos, esperas, errores y resultados del último mes"
+        }
+      ]
+    },
+    {
+      "id": "review_cadence",
+      "header": "Cadencia",
+      "question": "¿Cómo debería mantenerse útil la revisión después del diagnóstico inicial?",
+      "options": [
+        {
+          "label": "Semanal automática",
+          "impact": "Detecta drift sin depender de que recuerdes lanzar la revisión",
+          "example": "cada lunes aparece un reporte corto con una sola acción prioritaria por repo",
+          "recommended": true
+        },
+        {
+          "label": "Después de releases",
+          "impact": "Reduce ruido pero detecta problemas solo cuando ya terminó una entrega",
+          "example": "el reporte se genera al cerrar cada Release Train"
+        },
+        {
+          "label": "Solo manual",
+          "impact": "Evita automatización pero depende por completo de una invocación humana",
+          "example": "la revisión corre únicamente cuando dices que quieres auditar el orquestador"
+        }
+      ]
+    }
+  ]
+}
