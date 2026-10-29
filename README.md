@@ -4,11 +4,13 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.8.0**, shared skill catalog **0.73.0**. This
+Current source candidate: **2.8.1**, shared skill catalog **0.73.0**. This
 candidate moves computer use and simulator QA to Terra 6.1 Low fast, browser
 app testing to Terra 6.1 High fast and video recording to Terra 6.1 Medium
 fast, following the [model screen of 2026-10-29](docs/model-screen-2026-10-29.md);
-Sol 6.1 High keeps plan, diff, backend and security review. 2.7.0 implemented
+Sol 6.1 High keeps plan, diff, backend and security review; 2.8.1 lets
+`codex-review.mjs --computer-use --flow browser-testing|video` request those
+efforts on the Claude Code path. 2.7.0 implemented
 plan v5 (stop gate, `pr-review-status` gate contract, `allow-docs`, durable
 grill drafts, `--help` everywhere, Impeccable 4.7.0). Earlier weekly learning
 controls are described in
