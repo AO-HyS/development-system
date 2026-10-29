@@ -373,7 +373,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const behavioralEvidence = evaluateEvidence({
     receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""),
     changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(base, latest.verifiedSha, head) : undefined,
-    prFiles: latest ? undefined : pullFiles(base, number, Number(pull.changed_files)),
+    // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
+    prFiles: pullFiles(base, number, Number(pull.changed_files)),
   });
   // Evidence is a develop-merge gate; main, releases and production wait for the owner regardless.
   const evidenceRequired = baseRef === "develop";

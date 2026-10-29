@@ -19,6 +19,11 @@ plan (cross-reviewed, plan-r3) and asked for controls in code before rules.
   missing, ok, failed, incomplete, stale, waived and nonvisual. An owner waiver
   («pásatela») counts only when quoted verbatim in the PR body. Prose-only
   documentation changes need no receipt.
+  A PR that changes files under a `mobile/` directory also needs the receipt
+  to name its platforms (`--platforms ios,android`); otherwise it is
+  incomplete. A `.ios.` or `.android.` file needs only its own platform, and
+  Markdown needs none. The mistake `mobile-shipped-without-android-check`
+  happened twice before this became code (2026-10-29).
 - Merge gate: `pr-review-status <pr> --gate` writes a two-hour gate for the
   head when evidence, review and Codex are clean. Guard policy 2.2.0 refuses
   `gh pr merge` without `--match-head-commit` and a passing gate for that head,

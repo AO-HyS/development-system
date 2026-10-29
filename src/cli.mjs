@@ -295,7 +295,7 @@ function parseEvidenceArguments(argv) {
   /** @type {{home: string, json: boolean, captures: string[], [key: string]: unknown}} */
   const options = { home: homedir(), json: false, captures: [] };
   /** @type {Record<string, string>} */
-  const valueFlags = { "--home": "home", "--pr": "pr", "--verified-sha": "verifiedSha", "--deployed-sha": "deployedSha", "--environment": "environment", "--account": "account", "--role": "role", "--allowed": "allowed", "--denied": "denied", "--effects": "effects", "--exception": "exception", "--reason": "reason", "--checks": "checks", "--owner-waiver": "ownerWaiver" };
+  const valueFlags = { "--home": "home", "--pr": "pr", "--verified-sha": "verifiedSha", "--deployed-sha": "deployedSha", "--environment": "environment", "--account": "account", "--role": "role", "--allowed": "allowed", "--denied": "denied", "--effects": "effects", "--exception": "exception", "--reason": "reason", "--checks": "checks", "--owner-waiver": "ownerWaiver", "--platforms": "platforms" };
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--json") { options.json = true; continue; }
@@ -310,7 +310,7 @@ function parseEvidenceArguments(argv) {
     options[key] = value;
     index += 1;
   }
-  return /** @type {{home: string, json: boolean, captures: string[], pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} */ (options);
+  return /** @type {{home: string, json: boolean, captures: string[], pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string, platforms?: string}} */ (options);
 }
 
 /** @param {Record<string, unknown>} result */
@@ -355,7 +355,7 @@ function parseThreadHealthArguments(argv) {
   return options;
 }
 
-const EVIDENCE_USAGE = "--pr <ref> --verified-sha <sha> (--deployed-sha <sha> --environment <url> --allowed pass|fail --denied pass|fail --effects pass|fail | --exception nonvisual --reason <text> --checks <text> | --owner-waiver <owner's exact words>) [--account <a>] [--role <r>] [--capture <path>]... [--home <dir>] [--json]";
+const EVIDENCE_USAGE = "--pr <ref> --verified-sha <sha> (--deployed-sha <sha> --environment <url> --allowed pass|fail --denied pass|fail --effects pass|fail | --exception nonvisual --reason <text> --checks <text> | --owner-waiver <owner's exact words>) [--platforms ios,android,web] [--account <a>] [--role <r>] [--capture <path>]... [--home <dir>] [--json]";
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json]";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
 
