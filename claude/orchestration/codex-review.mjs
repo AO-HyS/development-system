@@ -1,7 +1,7 @@
 // Codex review wrapper (operator-level, private).
 // Runs one independent review with sequential local-profile availability recovery on Sol 6.1 High through `codex exec` in a read-only sandbox.
 // The coordinator launches it with Bash run_in_background: true and is woken when it exits.
-// Usage: node codex-review.mjs --accounts | [--computer-use] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]...
+// Usage: node codex-review.mjs --accounts | [--computer-use [--flow computer-use|browser-testing|video]] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]...
 // A review packet needs an Objective line and a `Task-Id: <slug>` line; rounds are keyed on
 // (Task-Id, root), so rewording the objective does not reset them. A round counts only when it
 // completes: Codex exits 0 and findings.md ends with `Verdict: merge` or `Verdict: do not merge`
@@ -10,6 +10,8 @@
 // line. A later round gets the latest complete round's findings (hash-checked) in its prompt
 // and in previous-findings.md. --computer-use runs the packet as a Codex Computer Use operator:
 // Task-Id optional, no rounds, at most policy.review.maxComputerUse live runs (one screen).
+// --flow picks the computer-use profile: computer-use (default, also simulator QA), browser-testing or video;
+// policy.review.computerUse.flows overrides the effort per flow.
 // The live-run caps (maxParallel reviews) are checked and reserved under an ownership-aware
 // lock (pending/.lock), so simultaneous launches cannot both pass. --out (or the default
 // runs/<runId>) is claimed atomically: it must be new or empty, and an exclusive .claim file
@@ -45,6 +47,8 @@ function refuse(message) {
   process.exit(2);
 }
 
+const FLOWS = ['computer-use', 'browser-testing', 'video'];
+
 function parseArgs(argv) {
   const args = { images: [], computerUse: false };
   for (let i = 0; i < argv.length; i += 1) {
@@ -52,7 +56,7 @@ function parseArgs(argv) {
     if (flag === '--accounts') { args.accounts = true; continue; }
     if (flag === '--computer-use') { args.computerUse = true; continue; }
     const value = argv[i + 1];
-    if (!['--packet', '--root', '--out', '--image', '--browser-request'].includes(flag)) refuse(`unknown argument ${flag}. Usage: node codex-review.mjs --accounts | [--computer-use] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]... [--browser-request <file>]`);
+    if (!['--packet', '--root', '--out', '--image', '--browser-request', '--flow'].includes(flag)) refuse(`unknown argument ${flag}. Usage: node codex-review.mjs --accounts | [--computer-use [--flow computer-use|browser-testing|video]] --packet <file> [--root <dir>] [--out <dir>] [--image <file>]... [--browser-request <file>]`);
     if (value === undefined || value.startsWith('--')) refuse(`${flag} needs a value`);
     if (flag === '--image') args.images.push(path.resolve(value));
     else args[flag.slice(2)] = value;
@@ -60,6 +64,8 @@ function parseArgs(argv) {
   }
   if (!args.packet && !args.accounts) refuse('--packet <file> is required');
   if (args['browser-request'] && (!args.computerUse || args.accounts)) refuse('--browser-request requires --computer-use with a task packet');
+  if (args.flow !== undefined && (!args.computerUse || args.accounts)) refuse('--flow requires --computer-use with a task packet');
+  if (args.flow !== undefined && !FLOWS.includes(args.flow)) refuse(`--flow must be one of ${FLOWS.join(', ')}`);
   return args;
 }
 
@@ -232,7 +238,11 @@ function claimOutDir() {
 }
 const claimRefusal = claimOutDir();
 if (claimRefusal) refuse(claimRefusal);
-const requested = { model: REVIEW.model ?? 'gpt-6.1-sol', effort: REVIEW.effort ?? 'high' };
+// Computer use runs on its own profile (policy.review.computerUse, effort per --flow); reviews keep the review model.
+const flow = mode === 'computer-use' ? args.flow ?? 'computer-use' : null;
+const USE = mode === 'computer-use' ? { ...(REVIEW.computerUse ?? {}), ...(REVIEW.computerUse?.flows?.[flow] ?? {}) } : {};
+const requested = { model: USE.model ?? REVIEW.model ?? 'gpt-6.1-sol', effort: USE.effort ?? REVIEW.effort ?? 'high', ...(USE.serviceTier ? { serviceTier: USE.serviceTier } : {}), ...(flow ? { flow } : {}) };
+if (requested.serviceTier !== undefined && !['default', 'priority'].includes(requested.serviceTier)) refuse('review.computerUse.serviceTier must be default or priority');
 const marker = path.join(pendingDir, `${runId}.json`);
 const removeMarker = () => { try { fs.rmSync(marker, { force: true }); } catch { /* best effort */ } };
 
@@ -340,7 +350,8 @@ try {
     const env = { ...process.env, CODEX_HOME: account.home };
     delete env.OPENAI_API_KEY;
     delete env.CODEX_API_KEY;
-    const codexArgs = ['exec', '-m', requested.model, '-c', `model_reasoning_effort="${requested.effort}"`, '-s', 'read-only', '-C', root,
+    const codexArgs = ['exec', '-m', requested.model, '-c', `model_reasoning_effort="${requested.effort}"`,
+      ...(requested.serviceTier ? ['-c', `service_tier="${requested.serviceTier}"`] : []), '-s', 'read-only', '-C', root,
       '--skip-git-repo-check', '--json', '-o', paths['findings.md'], ...args.images.flatMap((image) => ['-i', image]), '-'];
     try {
       exitCode = await new Promise((resolve) => {

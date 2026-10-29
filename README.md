@@ -4,14 +4,16 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.7.0**, shared skill catalog **0.72.0**. This
-candidate implements plan v5: the stop gate no longer prompts for a handoff in
-long threads, `pr-review-status` follows the written review-gate contract
-(`review record`, `review coverage`, one next step), the guard blocks agent
-edits to `AGENTS.md`, `CLAUDE.md` and lint config without an operator
-`allow-docs` grant, grill drafts survive restarts, every command answers
-`--help`, and Impeccable is 4.7.0 with a two-pass polish cap. Earlier
-weekly learning controls are described in
+Current source candidate: **2.8.1**, shared skill catalog **0.73.0**. This
+candidate moves computer use and simulator QA to Terra 6.1 Low fast, browser
+app testing to Terra 6.1 High fast and video recording to Terra 6.1 Medium
+fast, following the [model screen of 2026-10-29](docs/model-screen-2026-10-29.md);
+Sol 6.1 High keeps plan, diff, backend and security review; 2.8.1 lets
+`codex-review.mjs --computer-use --flow browser-testing|video` request those
+efforts on the Claude Code path. 2.7.0 implemented
+plan v5 (stop gate, `pr-review-status` gate contract, `allow-docs`, durable
+grill drafts, `--help` everywhere, Impeccable 4.7.0). Earlier weekly learning
+controls are described in
 [ADR 0073](docs/adr/0073-weekly-learning-controls.md).
 
 The candidate is not a claim of publication or global installation. Browser
@@ -90,8 +92,8 @@ Haiku 5.5 Medium is the operator-selected preference for bounded research and
 exact/mechanical writing. Protected native Claude roles pin claude-haiku-5-5;
 Sonnet retains general implementation. Planning crosses families: an OpenAI
 parent uses an Opus 5.5 plan and fresh Sol 6.1 High review; an Anthropic parent
-uses a Sol 6.1 High plan and fresh Opus 5.5 review. Sol retains technical review
-and computer use. Existing threads reread at the next safe turn before delegation;
+uses a Sol 6.1 High plan and fresh Opus 5.5 review. Sol retains technical review;
+computer use, browser testing and video run on Terra 6.1 fast. Existing threads reread at the next safe turn before delegation;
 see [model routing](docs/model-routing.md). T3 readers may use
 Haiku; T3 source writers remain unadmitted. Update the complete shared package
 once per computer; product deployments are not required. Existing Codex-only

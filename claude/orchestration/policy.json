@@ -207,6 +207,19 @@
     "effort": "high",
     "maxParallel": 5,
     "maxComputerUse": 1,
+    "computerUse": {
+      "model": "gpt-6.1-terra",
+      "effort": "low",
+      "serviceTier": "priority",
+      "flows": {
+        "browser-testing": {
+          "effort": "high"
+        },
+        "video": {
+          "effort": "medium"
+        }
+      }
+    },
     "roundsWithoutRationale": 3,
     "stateDir": "~/.development-system/private/runs/codex-review",
     "accountHomes": null,
