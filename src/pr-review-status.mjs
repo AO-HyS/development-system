@@ -247,6 +247,9 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
     else if (!fixes.some((id) => own.has(id))) commit.problem = "cites only the other reviewer's findings";
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
+    // Only a verified clean base merge may skip its side parents; any other merge brings in history this walk never
+    // inspects, so it fails closed instead of being covered by the merge commit's own fixes lines.
+    if (!commit.problem && parents.length > 1) commit.problem = `a merge that is not a verified clean base merge (${merge.reason ?? "side history not from the base"}); its side-parent commits are unreviewed`;
     if (commit.problem) filtersPass = false;
     commits.push(commit);
     sha = parents[0];
