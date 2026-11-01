@@ -3,9 +3,10 @@
 // ledger (<reviews>/<owner>/<repo>/<n>.jsonl) and its owner voids (<n>.voids.jsonl), and the 2.9.0 review brake. The
 // brake counts Sol rounds per branch lineage, not per PR: a lineage is owner/repo + head repository + head ref, and its
 // PRs are the unmerged PRs with that head created after the latest merged one (a merge ends a lineage). Slots, approvals,
-// reservations and releases live in a lineage sidecar <reviews>/<owner>/<repo>/branches/<hash>.jsonl. Slot 1 is full;
-// slot 2 is fix-diff after a blocking round; slot 3 and later also need an unused owner approval bound to (lineage,
-// slot, scope). A round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a
+// reservations and releases live in a head sidecar <reviews>/<owner>/<repo>/branches/<hash>.jsonl shared by every
+// lineage of that head; only entries of the current lineage's PRs count, older ones are history. Slot 1 is full;
+// slot 2 is fix-diff after a blocking round; slot 3 and later also need an unused owner approval bound to (PR, slot,
+// scope). A round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a
 // coordinator calling the CLI) goes through the same brake. Every GitHub read that the brake depends on fails closed.
 // A void annuls one ledger line (even a malformed or fake one) but restores no budget.
 import { createHash, randomUUID } from "node:crypto";
@@ -520,11 +521,17 @@ export function readSidecar(lineage) {
 /**
  * Everything the brake decides from: sidecar entries, every lineage PR's non-voided rounds, and slots used =
  * non-released reservations + legacy round rows (pre-2.9.0, no reservation; voided ones still count: a void restores
- * no budget). A round row binds the live reservation of its PR with the same slot.
+ * no budget). Only the entries of the current lineage members count: the sidecar is shared by every lineage of the same
+ * head (one file per owner/repo + head repository + head ref), so reservations and approvals of PRs outside the current
+ * membership (a merged predecessor and the PRs of its lineage) are history, never pending, never unused, never a used
+ * slot; a lineage after a merge starts at slot 1. A round row binds the live reservation of its PR with the same slot.
  * @param {string} home @param {Lineage} lineage
  */
 export function lineageState(home, lineage) {
-  const { approvals, reservations, releases } = readSidecar(lineage);
+  const { approvals: allApprovals, reservations: allReservations, releases } = readSidecar(lineage);
+  const members = new Set(lineage.prs.map((entry) => entry.key));
+  const reservations = allReservations.filter((reservation) => members.has(reservation.pr));
+  const approvals = allApprovals.filter((approval) => members.has(approval.pr));
   const released = new Set(releases.map((release) => release.reservationId));
   const live = reservations.filter((reservation) => !released.has(reservation.id));
   const prs = lineage.prs.map((entry) => {
@@ -535,12 +542,21 @@ export function lineageState(home, lineage) {
   });
   /** @param {Reservation} reservation */
   const roundOf = (reservation) => prs.find((entry) => entry.key === reservation.pr)?.rounds.find((round) => slotOf(round) === reservation.slot);
-  /** @param {Reservation} reservation */
-  const everBound = (reservation) => Boolean(prs.find((entry) => entry.key === reservation.pr)?.raw.some((row) => slotOf(row.record) === reservation.slot));
+  /**
+   * Any round row (voided or not) of the reservation's own PR ledger with its slot, read from that ledger whether or
+   * not the PR is still a lineage member.
+   * @param {Reservation} reservation
+   */
+  const everBound = (reservation) => {
+    const { file } = locate(home, reservation.pr);
+    const voided = new Set(readVoids(home, reservation.pr).map((record) => record.lineHash));
+    return rawRounds(file, voided).some((row) => slotOf(row.record) === reservation.slot);
+  };
   const legacy = prs.flatMap((entry) => entry.raw.filter((row) => !live.some((reservation) => reservation.pr === entry.key && reservation.slot === slotOf(row.record))).map((row) => ({ pr: entry.key, ...row })));
   const pending = live.filter((reservation) => !roundOf(reservation)).sort((a, b) => a.slot - b.slot);
   const slotsUsed = live.length + legacy.length;
-  const used = new Set(reservations.flatMap((reservation) => (reservation.approvalId ? [reservation.approvalId] : [])));
+  // An approval is used once any reservation (of any lineage in the sidecar) names it.
+  const used = new Set(allReservations.flatMap((reservation) => (reservation.approvalId ? [reservation.approvalId] : [])));
   const approvalsUnused = approvals.filter((approval) => !used.has(approval.id));
   const recorded = prs.flatMap((entry) => entry.rounds.map((round) => ({ pr: entry.key, round })))
     .sort((a, b) => Date.parse(a.round.recordedAt) - Date.parse(b.round.recordedAt) || slotOf(a.round) - slotOf(b.round));
@@ -548,7 +564,7 @@ export function lineageState(home, lineage) {
   // A legacy last round (no reservation) has a local round number but no known lineage slot.
   const lastBound = last && live.some((reservation) => reservation.pr === last.pr && reservation.slot === slotOf(last.round));
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced") } : undefined;
-  return { lineage, approvals, reservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
+  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
 }
 
 /** The gate's view of a lineage. @param {ReturnType<typeof lineageState>} state */
@@ -559,7 +575,7 @@ export function lineageSummary(state) {
     slotsUsed: state.slotsUsed,
     budget: BUDGET,
     nextSlot: state.nextSlot,
-    approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, slot: approval.slot, scope: approval.scope })),
+    approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, pr: approval.pr, slot: approval.slot, scope: approval.scope })),
     pending: state.pending.map((reservation) => ({ id: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope })),
     ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced } } : {}),
   };
@@ -581,8 +597,11 @@ function verifyRedesign(value, cwd) {
 const numberOf = (key) => Number(key.slice(key.lastIndexOf("#") + 1));
 
 /**
- * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey: a retry gets the
- * same reservation. Refused while another slot of the lineage is reserved but unrecorded, past the budget without an
+ * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
+ * is unrecorded: a retry gets the same reservation; once that slot has a recorded round the key is spent and the call
+ * refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
+ * (the Codex wrapper keeps a launch claim per reservation). Past the budget only an unused owner approval recorded
+ * for this same PR counts. Refused while another slot of the lineage is reserved but unrecorded, past the budget without an
  * unused owner approval for that slot and scope, after a non-blocking round, or after a fix-induced blocker without a
  * verified redesign. `dryRun` validates the same way and writes nothing.
  * @param {{home: string, pr?: string, scope?: string, requestKey?: string, packetHash?: string, approvalId?: string, redesign?: string, dryRun?: boolean, cwd?: string}} options
@@ -598,6 +617,7 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     const existing = state.live.find((reservation) => reservation.requestKey === requestKey);
     if (existing) {
       if (existing.pr !== lineage.key || existing.scope !== scope) throw new Error(`request key ${requestKey} already reserved slot ${existing.slot} (${existing.scope}) for ${existing.pr}; use a new key for a different round`);
+      if (state.roundOf(existing)) throw new Error(`request key ${requestKey} reserved slot ${existing.slot} (reservation ${existing.id}) and slot ${existing.slot} already recorded its round; reserve the next slot with a new request key (a new Task-Id or packet)`);
       return { ok: true, operation: "review-reserve", reused: true, path: lineage.file, reservation: existing, lineage: lineageSummary(state), ...(dryRun ? { dryRun: true } : {}) };
     }
     const waiting = state.pending[0];
@@ -615,10 +635,12 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     /** @type {Approval | undefined} */
     let approval;
     if (slot >= 3) {
-      const candidates = state.approvalsUnused.filter((candidate) => candidate.slot === slot);
+      // The owner's words authorize one PR: an approval recorded for another PR of the lineage never transfers.
+      const candidates = state.approvalsUnused.filter((candidate) => candidate.slot === slot && candidate.pr === lineage.key);
       approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates.length === 1 ? candidates[0] : undefined;
       if (!approval) {
-        const why = approvalId ? `approval ${approvalId} is not an unused approval for slot ${slot} of this lineage` : candidates.length > 1 ? `${candidates.length} unused approvals exist for slot ${slot}; name one with --approval-id` : `slot ${slot} is past the lineage budget (${BUDGET}) and has no unused owner approval`;
+        const elsewhere = state.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr !== lineage.key && (!approvalId || candidate.id === approvalId));
+        const why = elsewhere ? `approval ${elsewhere.id} for slot ${slot} was recorded for ${elsewhere.pr}, not ${lineage.key}; an approval does not transfer to another PR` : approvalId ? `approval ${approvalId} is not an unused approval for slot ${slot} of ${lineage.key}` : candidates.length > 1 ? `${candidates.length} unused approvals exist for slot ${slot}; name one with --approval-id` : `slot ${slot} is past the lineage budget (${BUDGET}) and has no unused owner approval`;
         throw new Error(`${why}: decide el dueño; record the owner's words with development-system review approve --pr ${lineage.key} --slot ${slot} --scope fix-diff --quote "<owner's exact words citing #${lineage.number} and round ${slot}>"`);
       }
       if (approval.scope !== scope) throw new Error(`approval ${approval.id} for slot ${slot} is --scope ${approval.scope}, not ${scope}`);
@@ -639,8 +661,8 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
 }
 
 /**
- * Records the owner's approval of one lineage slot past the budget, quoted verbatim. The quote must cite `#<n>` of a
- * lineage PR and the slot number (`3`, `R3`, `ronda 3`, `round 3`). One approval allows at most one reservation.
+ * Records the owner's approval of one lineage slot past the budget for the PR named by --pr, quoted verbatim. The
+ * quote must cite `#<n>` of that PR (not another PR of the lineage) and the slot number (`3`, `R3`, `ronda 3`, `round 3`). One approval allows at most one reservation.
  * @param {{home: string, pr?: string, slot?: string | number, scope?: string, quote?: string, sourceRef?: string, dryRun?: boolean}} options
  */
 export function approveReview({ home, pr, slot, scope = "fix-diff", quote, sourceRef, dryRun = false }) {
@@ -651,12 +673,12 @@ export function approveReview({ home, pr, slot, scope = "fix-diff", quote, sourc
   if (!words) throw new Error("review approve needs --quote <the owner's exact words>");
   if (sourceRef !== undefined && !text(sourceRef)) throw new Error("--source-ref needs a value");
   const lineage = resolveLineage({ pr, home });
-  if (!quotesPr(words, lineage.prs.map((entry) => entry.number))) throw new Error(`--quote must cite a PR of this lineage as #<n> (${lineage.prs.map((entry) => `#${entry.number}`).join(", ")})`);
+  if (!quotesPr(words, [lineage.number])) throw new Error(`--quote must cite the approved PR as #${lineage.number}; an approval binds one PR, and words naming another PR of the lineage do not approve ${lineage.key}`);
   if (!quotesSlot(words, number)) throw new Error(`--quote must name the round as ${number}, R${number}, ronda ${number} or round ${number}`);
   const work = () => {
     const state = lineageState(home, lineage);
     if (number <= state.slotsUsed) throw new Error(`slot ${number} of this lineage is already used (${state.slotsUsed} used)`);
-    const twin = state.approvalsUnused.find((approval) => approval.slot === number);
+    const twin = state.approvalsUnused.find((approval) => approval.slot === number && approval.pr === lineage.key);
     if (twin) throw new Error(`an unused approval for slot ${number} already exists (${twin.id}, ${twin.scope})`);
     /** @type {Approval} */
     const approval = { type: "approval", id: randomUUID(), lineage: lineage.id, pr: lineage.key, slot: number, scope: /** @type {Approval["scope"]} */ (scope), quote: words, ...(sourceRef ? { sourceRef: /** @type {string} */ (text(sourceRef)) } : {}), recordedAt: new Date().toISOString() };
@@ -680,7 +702,11 @@ export function releaseReservation({ home, pr, reservationId, reason, quote }) {
   return withFileLock(`${lineage.file}.lock`, () => {
     const state = lineageState(home, lineage);
     const reservation = state.reservations.find((candidate) => candidate.id === reservationId);
-    if (!reservation) throw new Error(`no reservation ${reservationId} in this lineage`);
+    if (!reservation) {
+      const history = state.allReservations.find((candidate) => candidate.id === reservationId);
+      if (history) throw new Error(`reservation ${reservationId} belongs to ${history.pr}, which is not a PR of the current lineage of ${lineage.key} (a merge ended its lineage); it is history and holds no slot`);
+      throw new Error(`no reservation ${reservationId} in this lineage`);
+    }
     if (!state.live.includes(reservation)) throw new Error(`reservation ${reservationId} is already released`);
     if (state.everBound(reservation)) throw new Error(`reservation ${reservationId} (slot ${reservation.slot}) has a recorded round; a void restores no budget, so it cannot be released`);
     /** @type {Release} */

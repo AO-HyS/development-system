@@ -20,15 +20,17 @@
 //                           hand, retries included; with 2 published nothing is posted and siguiente is "decide el
 //                           dueño" unless satisfied
 //   budget-spent            2 published, the last answered by a valid review, no blocking finding
-//   coverage (Codex, Sol)   each commit after the reviewed head cites `fixes: <id>` of that review (Codex: only threads
-//                           the review of that head opened) and touches only those findings' paths (at most 20 commits;
-//                           any API error fails closed), and a `fix-only` coverage record runs from the reviewed head to
-//                           the current head; out-of-scope or missing -> uncovered.
-//                           Codex budget-spent coverage also accepts (2.9.0): (a) a non-voided none/non-blocking Sol
-//                           round recorded at exactly the current head that is full, or fix-diff with `from` an
-//                           ancestor-or-equal of the Codex-reviewed head; (b) per commit, a clean base merge: exactly 2
-//                           parents, the second an ancestor-or-equal of the base branch, and `git merge-tree
-//                           --write-tree p1 p2` (local checkout) equal to its tree; missing objects -> uncovered
+//   coverage (Codex, Sol)   one routine walks the first-parent chain from the current head back to the reviewed head
+//                           (at most 20 first-parent commits; any API error fails closed). A clean base merge is covered:
+//                           exactly 2 parents, the second an ancestor-or-equal of the base branch, and `git merge-tree
+//                           --write-tree p1 p2` (local checkout) equal to its tree; the base history it imports is not a
+//                           PR commit; missing objects -> uncovered. Every other first-parent commit cites `fixes: <id>`
+//                           of that review (Codex: only threads the review of that head opened) and touches only those
+//                           findings' paths, and a `fix-only` coverage record runs from the reviewed head to the current
+//                           head; out-of-scope or missing -> uncovered. Only clean base merges -> covered, no record.
+//                           Codex budget-spent coverage also accepts (2.9.0) a non-voided none/non-blocking Sol round
+//                           recorded at exactly the current head that is full, or fix-diff with `from` an
+//                           ancestor-or-equal of the Codex-reviewed head
 //   Sol                     records invalid or contradictory -> invalid; an exemption counts only for its exact head;
 //                           approval needs the last round's result to be none or non-blocking, on the head or covered
 //   lineage (2.9.0)         Sol rounds count per branch lineage (review-state.mjs); siguiente names the reservation,
@@ -163,10 +165,10 @@ function ancestorOrEqual(base, ancestor, descendant) {
 }
 
 /**
- * Whether one compared commit is a clean merge of the base branch: exactly 2 parents, the second an ancestor-or-equal
+ * Whether one first-parent commit (GitHub commit detail) is a clean merge of the base branch: exactly 2 parents, the second an ancestor-or-equal
  * of `baseRef` (GitHub compare), and `git merge-tree --write-tree p1 p2` in the local checkout yields the commit's
  * tree. Missing local objects or another repository leave it unproven, with the reason.
- * @param {string} base @param {any} entry a commit of the compare API @param {string} baseRef
+ * @param {string} base @param {any} entry a commit as GitHub's commits API reports it @param {string} baseRef
  * @returns {{merge: boolean, clean?: boolean, error?: boolean, reason?: string}}
  */
 function cleanBaseMerge(base, entry, baseRef) {
@@ -191,11 +193,15 @@ function cleanBaseMerge(base, entry, baseRef) {
 }
 
 /**
- * The single coverage rule for Codex (budget-spent) and Sol: commits from the reviewed head to the current head.
- * A commit may co-cite the other reviewer's findings (`peers`) when one fix answers both, but it must cite at least
- * one finding of this review and touch only the cited findings' paths. With `baseRef` (Codex), a clean merge of that
- * base branch is covered on its own; commits after Codex's head that are only clean base merges need no record.
- * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef?: string}} input @returns {Coverage}
+ * The single coverage rule for Codex (budget-spent) and Sol: the PR's own commits from the reviewed head to the current
+ * head. It walks the first-parent chain from the current head back to the reviewed head (at most 20 first-parent
+ * commits). A first-parent commit that is a verified clean merge of `baseRef` is covered, and the base history it
+ * imports through its second parent is not a PR commit, so it needs no `fixes:` line. Every other first-parent commit
+ * may co-cite the other reviewer's findings (`peers`) when one fix answers both, but it must cite at least one finding
+ * of this review and touch only the cited findings' paths; those commits then need a fix-only coverage record. An
+ * interval made only of clean base merges needs no record. Anything GitHub or the local checkout cannot prove leaves the
+ * interval uncovered with the reason.
+ * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string}} input @returns {Coverage}
  */
 function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
   /** @type {CoveredCommit[]} */
@@ -206,33 +212,30 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
   let compare;
   try { compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`])); } catch { return uncovered(`GitHub could not compare ${from.slice(0, 12)}...${to.slice(0, 12)}`, true); }
   if (compare.status !== "ahead") return uncovered(`the head is ${compare.status} of the reviewed head ${from.slice(0, 12)}, not ahead`);
-  const total = Number(compare.total_commits);
-  if (!(total > 0) || total > MAX_COVERAGE_COMMITS) return uncovered(`${total} commits after the reviewed head (limit ${MAX_COVERAGE_COMMITS})`);
-  if (!Array.isArray(compare.commits) || compare.commits.length !== total) return uncovered("GitHub listed the commits after the reviewed head partially", true);
   const own = new Set(findings.map((finding) => finding.id));
   const known = new Map([...peers, ...findings].map((finding) => [finding.id, finding.paths]));
   let filtersPass = true;
   let baseMerges = 0;
-  for (const entry of compare.commits) {
-    const sha = String(entry.sha);
-    const message = String(entry.commit?.message ?? "");
-    /** @type {ReturnType<typeof cleanBaseMerge> | undefined} */
-    let merge;
-    if (baseRef !== undefined) {
-      merge = cleanBaseMerge(base, entry, baseRef);
-      if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
-      if (merge.clean) {
-        commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
-        baseMerges += 1;
-        continue;
-      }
-    }
-    const fixes = [...message.matchAll(/^fixes:\s*(.+)$/gim)].flatMap((match) => match[1].split(/[\s,]+/)).filter(Boolean);
+  let sha = to;
+  while (sha !== from) {
+    if (commits.length >= MAX_COVERAGE_COMMITS) return { ...uncovered(`more than ${MAX_COVERAGE_COMMITS} first-parent commits after the reviewed head, or the first-parent chain from ${to.slice(0, 12)} does not reach ${from.slice(0, 12)}`), commits };
     /** @type {any} */
     let detail;
-    try { detail = JSON.parse(gh(["api", `${base}/commits/${sha}`])); } catch { return uncovered(`GitHub could not list the files of ${sha.slice(0, 12)}`, true); }
+    try { detail = JSON.parse(gh(["api", `${base}/commits/${sha}`])); } catch { return { ...uncovered(`GitHub could not read commit ${sha.slice(0, 12)}`, true), commits }; }
+    const parents = Array.isArray(detail.parents) ? detail.parents.map((/** @type {any} */ parent) => String(parent?.sha ?? "")) : [];
+    if (String(detail.sha) !== sha || parents.length === 0 || !parents.every((/** @type {string} */ parent) => /^[0-9a-f]{40}$/.test(parent))) return { ...uncovered(`GitHub did not report the parents of ${sha.slice(0, 12)}`, true), commits };
+    const message = String(detail.commit?.message ?? "");
+    const merge = cleanBaseMerge(base, detail, baseRef);
+    if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
+    if (merge.clean) {
+      commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
+      baseMerges += 1;
+      sha = parents[0];
+      continue;
+    }
+    const fixes = [...message.matchAll(/^fixes:\s*(.+)$/gim)].flatMap((match) => match[1].split(/[\s,]+/)).filter(Boolean);
     const files = Array.isArray(detail.files) ? detail.files : [];
-    if (files.length >= 300) return uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true);
+    if (files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
     const names = files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
     const allowed = new Set(fixes.flatMap((id) => known.get(id) ?? []));
     const unknown = fixes.filter((id) => !known.has(id));
@@ -243,10 +246,12 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
     else if (unknown.length) commit.problem = `cites ids that are not findings of that review: ${unknown.join(", ")}`;
     else if (!fixes.some((id) => own.has(id))) commit.problem = "cites only the other reviewer's findings";
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
-    if (commit.problem && merge?.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
+    if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
     if (commit.problem) filtersPass = false;
     commits.push(commit);
+    sha = parents[0];
   }
+  if (commits.length === 0) return uncovered("no commits after the reviewed head");
   if (!filtersPass) return { ...uncovered("a commit after the reviewed head is not a cited fix of its findings"), commits };
   if (baseMerges === commits.length) return { from, to, covered: true, error: false, filtersPass, reason: `only clean merges of ${baseRef} after the reviewed head`, commits };
   const forHead = records.filter((record) => record.type === "coverage" && record.to === to);
@@ -294,7 +299,8 @@ function solNextStep({ lineage, lineageError, prKey, head, number }) {
   const last = lineage.lastRound;
   if (!last || last.result !== "blocking") return `${OWNER_DECIDES}: la última ronda de Sol del linaje (${last ? `${last.pr}, ${last.result}` : "ninguna registrada"}) no es bloqueante y el freno no admite otra ronda para este PR`;
   const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras exactas del dueño con #${number} y ronda ${slot}>"`;
-  const approval = lineage.approvalsUnused.find((candidate) => candidate.slot === slot);
+  // An owner approval binds the PR it was recorded for; another lineage PR's approval does not apply here.
+  const approval = lineage.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr === prKey.toLowerCase());
   if (last.fixInduced) return `la ronda de Sol de ${last.pr} (${last.slot ? `ranura ${last.slot}` : `ronda local ${last.round}`}) tiene un hallazgo bloqueante fix-induced: rediseña la corrección antes de otra ronda y resérvala con --redesign <ruta>#<sha256 de sus bytes> (línea "Redesign:" del paquete)${slot > BUDGET && !approval ? `; la ranura ${slot} además necesita la aprobación del dueño: ${approve}` : ""}`;
   if (slot === 2) return `corrige los hallazgos bloqueantes de Sol y pide la ronda fix-diff: ${reserve("fix-diff")}; regístrala con ${record("fix-diff")}`;
   if (approval) return `el dueño aprobó la ranura ${slot} (${approval.scope}): ${reserve(approval.scope, ` --approval-id ${approval.id}`)}; regístrala con ${record(approval.scope)}`;
@@ -464,7 +470,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   else if (lastRound.head === head) solState = "approved";
   else {
     // Co-cited Codex ids only need to exist: any Codex finding with a known origin, not just the latest reviewed head's.
-    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records });
+    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
   const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
@@ -568,7 +574,7 @@ export function formatPrReviewStatus(result) {
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);
   else {
     lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; Sol slots used ${lineage.slotsUsed}/${lineage.budget}${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
-    for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope})`);
+    for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope}) of ${approval.pr}`);
     for (const reservation of lineage.pending) lines.push(`  - reserved, unrecorded: slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`);
   }
   if (result.request !== "not-requested") lines.push(`Request: ${result.request}.`);

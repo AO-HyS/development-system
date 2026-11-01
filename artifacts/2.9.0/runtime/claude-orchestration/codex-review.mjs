@@ -10,6 +10,10 @@
 // line. A packet with a `PR: owner/repo#N` line (and `Review scope: full|fix-diff`, optional `Review approval: <id>`
 // and `Redesign: <path>#<sha256>`) instead reserves the next Sol slot of the PR's branch lineage through the installed
 // Development System CLI (review brake, 2.9.0; request key Task-Id + packet sha256); a refusal exits 2 before launch.
+// Launch ownership of a reservation is single-use: launches/<reservationId>.json is created exclusively before the run
+// claims anything else. A repeated invocation of a completed launch prints the existing receipt and launches nothing;
+// an active, failed, cancelled or uncertain launch refuses until it is reconciled (record the round, or release the
+// reservation with the owner's words). A refusal before the launch removes its own claim.
 // A later round gets the latest complete round's findings (hash-checked) in its prompt
 // and in previous-findings.md. --computer-use runs the packet as a Codex Computer Use operator:
 // Task-Id optional, no rounds, at most policy.review.maxComputerUse live runs (one screen).
@@ -45,7 +49,14 @@ const PREVIOUS_CAP = 40000;
 const LOCK_WAIT_MS = 10000;
 const OWNERLESS_STALE_MS = 5000;
 
+// The launch claim of this run's PR reservation, once created: {file, runId, launched}.
+let launchClaim = null;
+
 function refuse(message) {
+  // A refusal before the launch gives the reservation's launch back; a claim another run owns is never touched.
+  if (launchClaim && !launchClaim.launched) {
+    try { if (JSON.parse(fs.readFileSync(launchClaim.file, 'utf8'))?.runId === launchClaim.runId) fs.rmSync(launchClaim.file, { force: true }); } catch { /* left for reconciliation */ }
+  }
   process.stderr.write(`codex-review: ${message}\n`);
   process.exit(2);
 }
@@ -277,6 +288,45 @@ function claimOutDir() {
     return `--out ${outDir} is not a usable directory (${error?.code ?? error})`;
   }
 }
+// Launch ownership of a PR reservation (single-use; see the header). Created before the output directory and the caps.
+const launchesDir = path.join(stateDir, 'launches');
+function updateClaim(fields) {
+  const current = JSON.parse(fs.readFileSync(launchClaim.file, 'utf8'));
+  if (current?.runId !== launchClaim.runId) throw new Error(`launch claim ${launchClaim.file} belongs to run ${current?.runId}`);
+  const tmp = `${launchClaim.file}.${runId}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify({ ...current, ...fields, updatedAt: new Date().toISOString() })}\n`, { mode: 0o600 });
+  fs.renameSync(tmp, launchClaim.file);
+}
+if (reservation) {
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(String(reservation.id))) refuse(`review brake returned an unusable reservation id ${JSON.stringify(reservation.id)}`);
+  const file = path.join(launchesDir, `${reservation.id}.json`);
+  const number = String(reservation.pr).slice(String(reservation.pr).lastIndexOf('#') + 1);
+  const reconcile = `reconcile it before another launch: if the review ran, record its round (development-system review record --pr ${reservation.pr} --reviewer sol --head <sha> --scope ${reservation.scope} --result <...> --thread <...>); if it never ran, release the reservation with the owner's words (development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason <why> --quote "<owner's words citing #${number}>") and reserve again with a new packet`;
+  try {
+    fs.mkdirSync(launchesDir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(file, `${JSON.stringify({ reservationId: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope, taskId, runId, outDir, receiptPath: path.join(outDir, 'receipt.json'), status: 'claimed', pid: process.pid, at: new Date().toISOString() })}\n`, { flag: 'wx', mode: 0o600 });
+    launchClaim = { file, runId, launched: false };
+  } catch (error) {
+    if (error?.code !== 'EEXIST') refuse(`cannot claim the launch of reservation ${reservation.id} in ${launchesDir} (${error?.code ?? error})`);
+    let existing = null;
+    try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* unreadable claim */ }
+    if (existing?.status === 'completed') {
+      let receipt = null;
+      try { receipt = JSON.parse(fs.readFileSync(String(existing.receiptPath), 'utf8')); } catch { /* moved or unreadable */ }
+      if (!receipt) refuse(`reservation ${reservation.id} (slot ${reservation.slot} of ${reservation.pr}) already completed run ${existing.runId}, but its receipt ${existing.receiptPath} is unreadable; ${reconcile}`);
+      // Synchronous write: the process exits right after.
+      fs.writeSync(1, `${JSON.stringify({ ...receipt, launchReused: { reservationId: reservation.id, runId: existing.runId, receiptPath: existing.receiptPath } })}\n`);
+      process.exit(0);
+    }
+    const active = existing && (existing.status === 'claimed' || existing.status === 'running') && alive(Number(existing.pid));
+    const state = !existing ? `with an unreadable claim ${file}`
+      : active ? `that is still active (run ${existing.runId}, pid ${existing.pid})`
+        : existing.status === 'claimed' || existing.status === 'running' ? `whose process ${existing.pid} is gone without finishing (run ${existing.runId}, uncertain)`
+          : `that ended ${existing.status} (run ${existing.runId}, receipt ${existing.receiptPath})`;
+    refuse(`reservation ${reservation.id} (slot ${reservation.slot} of ${reservation.pr}) already has a launch ${state}; one reservation launches one review, so nothing was started. ${active ? 'Wait for it to exit, then ' : 'To launch again, '}${reconcile}`);
+  }
+}
+
 const claimRefusal = claimOutDir();
 if (claimRefusal) refuse(claimRefusal);
 // Computer use runs on its own profile (policy.review.computerUse, effort per --flow); reviews keep the review model.
@@ -356,6 +406,11 @@ if (previous) {
   }
 }
 
+// From here the reservation's launch is spent: a later failure or cancellation leaves the claim for reconciliation.
+if (launchClaim) {
+  launchClaim.launched = true;
+  try { updateClaim({ status: 'running' }); } catch { /* stays claimed with this pid: still refuses a second launch */ }
+}
 const started = Date.now();
 let child = null;
 let cancelling = false;
@@ -464,5 +519,10 @@ const receipt = {
 };
 try { fs.writeFileSync(files['receipt.json'], `${JSON.stringify(receipt, null, 2)}\n`); }
 finally { removeMarker(); }
+// Only a complete round marks the launch completed; anything else stays for reconciliation (record or release).
+if (launchClaim) {
+  try { updateClaim({ status: outcome === 'review' ? 'completed' : cancelling ? 'cancelled' : eligible ? 'fallback-required' : 'failed', exitCode, finishedAt: new Date().toISOString() }); }
+  catch { /* the claim stays running with a dead pid: uncertain, refuses until reconciled */ }
+}
 process.stdout.write(`${JSON.stringify(receipt)}\n`);
 process.exitCode = exitCode;
