@@ -4,16 +4,18 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.8.1**, shared skill catalog **0.73.0**. This
-candidate moves computer use and simulator QA to Terra 6.1 Low fast, browser
-app testing to Terra 6.1 High fast and video recording to Terra 6.1 Medium
-fast, following the [model screen of 2026-10-29](docs/model-screen-2026-10-29.md);
-Sol 6.1 High keeps plan, diff, backend and security review; 2.8.1 lets
-`codex-review.mjs --computer-use --flow browser-testing|video` request those
-efforts on the Claude Code path. 2.7.0 implemented
-plan v5 (stop gate, `pr-review-status` gate contract, `allow-docs`, durable
-grill drafts, `--help` everywhere, Impeccable 4.7.0). Earlier weekly learning
-controls are described in
+Current source candidate: **2.9.0**, shared skill catalog **0.73.0**. This
+candidate puts a real brake on Sol PR reviews: the budget counts per branch
+lineage, `development-system review reserve|approve|void|release` manage
+slots and owner approvals bound to one round, the Claude hook reserves
+`delegate_task` review packets, later rounds default to a fix diff, new
+unrelated findings become follow-ups, a fix-induced blocker requires a redesign
+packet, and a clean base merge or a Sol round at the head covers post-Codex
+commits. Host instructions add child settling, the runtimeMode check and a
+parent rotation handoff; obsolete release builders were removed. 2.8.1 routed
+computer use and browser QA to Terra 6.1 fast per the
+[model screen of 2026-10-29](docs/model-screen-2026-10-29.md). Earlier weekly
+learning controls are described in
 [ADR 0073](docs/adr/0073-weekly-learning-controls.md).
 
 The candidate is not a claim of publication or global installation. Browser

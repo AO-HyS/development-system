@@ -7,7 +7,10 @@
 // completes: Codex exits 0 and findings.md ends with `Verdict: merge` or `Verdict: do not merge`
 // (rounds.jsonl). Any other ending is an attempt (attempts.jsonl) and does not count. From
 // policy.review.roundsWithoutRationale complete rounds on, a review needs a "Round rationale:"
-// line. A later round gets the latest complete round's findings (hash-checked) in its prompt
+// line. A packet with a `PR: owner/repo#N` line (and `Review scope: full|fix-diff`, optional `Review approval: <id>`
+// and `Redesign: <path>#<sha256>`) instead reserves the next Sol slot of the PR's branch lineage through the installed
+// Development System CLI (review brake, 2.9.0; request key Task-Id + packet sha256); a refusal exits 2 before launch.
+// A later round gets the latest complete round's findings (hash-checked) in its prompt
 // and in previous-findings.md. --computer-use runs the packet as a Codex Computer Use operator:
 // Task-Id optional, no rounds, at most policy.review.maxComputerUse live runs (one screen).
 // --flow picks the computer-use profile: computer-use (default, also simulator QA), browser-testing or video;
@@ -19,7 +22,7 @@
 // model and effort, the observed ones from the Codex session log ("unknown" if absent), and
 // the outcome ("review" = complete round, "attempt" = not counted).
 import { discoverAccounts, classifyAttempt } from './codex-accounts.mjs';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -203,16 +206,54 @@ const kind = mode;
 const taskId = packet.match(TASK_ID)?.[1]?.toLowerCase() ?? null;
 if (mode === 'review' && !taskId) refuse('the packet needs a `Task-Id: <slug>` line (lowercase letters, digits, . _ -, 3-80 chars); keep it across rewordings and rounds of the same task');
 
-// Rounds (review mode only): complete rounds of (taskId, root); legacy rows without taskId are ignored.
+// Review brake bridge: the installed Development System CLI (package root from HOME's shared-installation.json, never
+// PATH) reserves the PR's next lineage Sol slot. Returns the CLI's JSON answer or {ok:false, error}.
+function reviewReserve(args, cwd) {
+  let cli;
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.development-system/shared-installation.json'), 'utf8'));
+    const installed = String(state?.packageRoot ?? '');
+    cli = path.join(installed, 'bin/development-system.mjs');
+    if (!path.isAbsolute(installed) || !fs.existsSync(cli)) throw new Error(`${cli} is missing`);
+  } catch (error) {
+    return { ok: false, error: `no installed Development System CLI in ${path.join(os.homedir(), '.development-system/shared-installation.json')} (${String(error?.message ?? error).split('\n')[0]}); install it with development-system setup` };
+  }
+  try {
+    return JSON.parse(execFileSync(process.execPath, [cli, 'review', 'reserve', ...args, '--json'], { cwd, encoding: 'utf8', timeout: 60000, maxBuffer: 4 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }));
+  } catch (error) {
+    try { const answer = JSON.parse(String(error?.stdout ?? '')); if (answer && typeof answer === 'object') return answer; } catch { /* not JSON */ }
+    return { ok: false, error: `the installed CLI failed (${String(error?.message ?? error).split('\n')[0]})` };
+  }
+}
+const packetLine = (label) => packet.match(new RegExp(`^\\s*${label}:[ \\t]*(\\S.*?)\\s*$`, 'mi'))?.[1] ?? null;
+
+// Rounds (review mode only): complete rounds of (taskId, root); legacy rows without taskId are ignored. A PR packet
+// counts against its branch lineage through the review brake instead of this Task-Id counter.
 let round = null;
 let previous = null;
+let reservation = null;
 if (mode === 'review') {
   const complete = readJsonLines(roundsFile).filter((row) => row?.taskId === taskId && row?.root === root);
   round = complete.length + 1;
   previous = complete.at(-1) ?? null;
-  const roundRationale = /^\s*Round rationale:\s*\S/m.test(packet);
-  if (complete.length >= (REVIEW.roundsWithoutRationale ?? 3) && !roundRationale) {
-    refuse(`Round ${round} of task ${taskId}: ${complete.length} complete rounds already ran. A complete round is not approval; it only means a review returned a verdict. Add \`Round rationale: <open critical or high finding>\`, or record the remaining findings as documented gaps or next-version work.`);
+  const pr = packetLine('PR');
+  if (pr !== null) {
+    const scope = packetLine('Review scope');
+    const approval = packetLine('Review approval');
+    const redesign = packetLine('Redesign');
+    if (!/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) refuse(`the packet's PR line must be \`PR: owner/repo#N\` (got "${pr}")`);
+    if (scope !== 'full' && scope !== 'fix-diff') refuse('a PR review packet needs `Review scope: full` or `Review scope: fix-diff`');
+    const packetHash = sha256(packetBytes);
+    const answer = reviewReserve(['--pr', pr, '--scope', scope, '--request-key', `${taskId}:${packetHash}`, '--packet-hash', packetHash,
+      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : [])], root);
+    if (answer?.ok !== true || !answer.reservation) refuse(`review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`);
+    reservation = { id: answer.reservation.id, pr: answer.reservation.pr, slot: answer.reservation.slot, scope: answer.reservation.scope, reused: Boolean(answer.reused) };
+    round = reservation.slot;
+  } else {
+    const roundRationale = /^\s*Round rationale:\s*\S/m.test(packet);
+    if (complete.length >= (REVIEW.roundsWithoutRationale ?? 3) && !roundRationale) {
+      refuse(`Round ${round} of task ${taskId}: ${complete.length} complete rounds already ran. A complete round is not approval; it only means a review returned a verdict. Add \`Round rationale: <open critical or high finding>\`, or record the remaining findings as documented gaps or next-version work.`);
+    }
   }
 }
 
@@ -414,6 +455,7 @@ const receipt = {
   schemaVersion: 2, status: eligible ? 'fallback_required' : succeeded ? 'succeeded' : 'failed', reason, exitCode,
   root, packetPath: files['packet.md'], packetSha256, mode, taskId, outcome, verdict, requested, observed,
   accounts: inventory.accounts, skippedAccounts: inventory.skipped, attempts, findings: files['findings.md'], round,
+  ...(reservation ? { reservation } : {}),
   ...(recordError ? { recordError } : {}), seconds: Math.round((Date.now() - started) / 1000), runId,
   ...(browserAssignment ? { browserAssignment, browserLeaseState, browserEnforcement:'participating-launches-only; desktop-exclusive; no native confinement claim' } : {}),
   ...(eligible ? { fallback: { eligible: true, role: mode === 'computer-use' ? 'browser-qa' : args.images.length ? 'visual-reviewer' : 'reviewer',

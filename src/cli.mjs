@@ -434,7 +434,11 @@ const COMMAND_TABLE = [
   ["friction add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
   ["friction list", COMMON_OPTIONS],
   ["evidence record", EVIDENCE_USAGE],
-  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <id> [--finding <id>:<path>[+<path>]]... [--operator-approval <operator's exact words> (a full round past the second)] | --exempt docs-only|low-risk --reason <text> [--home <dir>] [--json]"],
+  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <t3-thread://...|thread:<id>|<uuid>|codex:<id>|claude:<id>|https://...> [--from <sha> (fix-diff)] [--finding <id>:<path>[+<path>][@prior|fix-induced|new[/security|authorization|data-loss|money|minors-privacy|consent]]]... | --exempt docs-only|low-risk --reason <text> [--dry-run] [--home <dir>] [--json] (a round needs the PR's oldest unrecorded reservation; --operator-approval was replaced by review approve)"],
+  ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--approval-id <id>] [--redesign <path>#<sha256>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol slot of the branch lineage before launch; slot 3+ needs an owner approval)"],
+  ["review approve", "--pr <ref> --slot <n>=3+ --scope fix-diff|full --quote <owner's exact words citing #<n> and the round> [--source-ref <ref>] [--home <dir>] [--json]"],
+  ["review void", "--pr <ref> --line-hash <sha256 of the ledger line> --reason <text> --quote <owner's words citing #<n>> [--home <dir>] [--json] (restores no budget)"],
+  ["review release", "--pr <ref> --reservation-id <id> --reason <text> --quote <owner's words citing #<n>> [--home <dir>] [--json] (only a reservation with no recorded round)"],
   ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
@@ -655,12 +659,21 @@ async function runCommand(argv) {
   }
   if (argv[0] === "review") {
     const subcommand = argv[1];
-    if (subcommand !== "record" && subcommand !== "coverage") throw new Error("Usage: development-system review <record|coverage> [options]");
+    /** @type {Record<string, Record<string, string>>} */
+    const flagsBySubcommand = {
+      record: { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--from": "from", "--operator-approval": "operatorApproval" },
+      coverage: { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" },
+      reserve: { "--home": "home", "--pr": "pr", "--scope": "scope", "--request-key": "requestKey", "--packet-hash": "packetHash", "--approval-id": "approvalId", "--redesign": "redesign" },
+      approve: { "--home": "home", "--pr": "pr", "--slot": "slot", "--scope": "scope", "--quote": "quote", "--source-ref": "sourceRef" },
+      void: { "--home": "home", "--pr": "pr", "--line-hash": "lineHash", "--reason": "reason", "--quote": "quote" },
+      release: { "--home": "home", "--pr": "pr", "--reservation-id": "reservationId", "--reason": "reason", "--quote": "quote" },
+    };
+    const valueFlags = subcommand !== undefined && Object.hasOwn(flagsBySubcommand, subcommand) ? flagsBySubcommand[subcommand] : undefined;
+    if (!valueFlags) throw new Error(`Usage: development-system review <${Object.keys(flagsBySubcommand).join("|")}> [options]`);
     const json = argv.includes("--json");
-    /** @type {Record<string, string>} */
-    const valueFlags = subcommand === "record"
-      ? { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--operator-approval": "operatorApproval" }
-      : { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" };
+    // --dry-run validates exactly like the real call (GitHub reads included) and writes nothing.
+    const dryRunAllowed = subcommand === "record" || subcommand === "reserve";
+    let dryRun = false;
     /** @type {Record<string, string>} */
     const values = {};
     /** @type {string[]} */
@@ -668,19 +681,31 @@ async function runCommand(argv) {
     for (let index = 2; index < argv.length; index += 1) {
       const arg = argv[index];
       if (arg === "--json") continue;
+      if (arg === "--dry-run" && dryRunAllowed) { dryRun = true; continue; }
       const isFinding = arg === "--finding" && subcommand === "record";
-      const key = valueFlags[arg];
+      const key = Object.hasOwn(valueFlags, arg) ? valueFlags[arg] : undefined;
       if (!key && !isFinding) throw new Error(`Unknown option for review ${subcommand}: ${arg}`);
       const value = argv[++index];
       if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${arg}`);
-      if (isFinding) findings.push(value); else values[key] = value;
+      if (isFinding || !key) findings.push(value); else values[key] = value;
     }
     const home = values.home ?? homedir();
     const reviews = await import("./review-records.mjs");
-    const result = subcommand === "record"
-      ? await reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, operatorApproval: values.operatorApproval })
-      : await reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
-    return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
+    if (subcommand === "record" && values.operatorApproval !== undefined) throw new Error(reviews.OPERATOR_APPROVAL_MOVED);
+    if (subcommand === "record" || subcommand === "coverage") {
+      const result = subcommand === "record"
+        ? reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, from: values.from, dryRun })
+        : reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
+      return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
+    }
+    const result = subcommand === "reserve"
+      ? reviews.reserveReview({ home, pr: values.pr, scope: values.scope, requestKey: values.requestKey, packetHash: values.packetHash, approvalId: values.approvalId, redesign: values.redesign, dryRun })
+      : subcommand === "approve"
+        ? reviews.approveReview({ home, pr: values.pr, slot: values.slot, scope: values.scope, quote: values.quote, sourceRef: values.sourceRef })
+        : subcommand === "void"
+          ? reviews.voidReviewLine({ home, pr: values.pr, lineHash: values.lineHash, reason: values.reason, quote: values.quote })
+          : reviews.releaseReservation({ home, pr: values.pr, reservationId: values.reservationId, reason: values.reason, quote: values.quote });
+    return { result, output: json ? JSON.stringify(result) : reviews.formatReviewState(result), json };
   }
   if (argv[0] === "check-primitives") {
     const json = argv.includes("--json");
