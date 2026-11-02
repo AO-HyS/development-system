@@ -13,7 +13,9 @@
 // read-only git commands, typechecks and jevgrep (`jg "<question>" <relative root>`).
 // CLI mode `writer-bash` (writer frontmatter hook): PreToolUse Bash denies git commands
 // that change the index, refs or worktree; the coordinator owns staging and commits.
-// Internal failures allow the call and are logged: the guard never breaks the host.
+// PreToolUse T3 delegate_task (review brake, 2.9.0): only role "review" or a `Review kind:` line is checked; kind pr
+// reserves the PR's next lineage Sol slot through the installed CLI and is denied on refusal or bridge error.
+// Internal failures allow the call and are logged: the guard never breaks the host (the review branch denies instead).
 import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -798,6 +800,64 @@ function gitPieceAllowed(piece) {
   if (sub === 'stash') return ['list', 'show'].includes(args[0]);
   return false;
 }
+// Review brake bridge: the installed Development System CLI decides every PR review reservation. Its package root
+// comes from HOME's shared-installation.json, never from PATH. Returns the CLI's JSON answer or {ok:false, error}.
+async function reviewReserve(args, cwd) {
+  let cli;
+  try {
+    const state = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.development-system/shared-installation.json'), 'utf8'));
+    const root = String(state?.packageRoot ?? '');
+    cli = path.join(root, 'bin/development-system.mjs');
+    if (!path.isAbsolute(root) || !fs.existsSync(cli)) throw new Error(`${cli} is missing`);
+  } catch (error) {
+    return { ok: false, error: `review brake: no installed Development System CLI in ${path.join(os.homedir(), '.development-system/shared-installation.json')} (${String(error?.message ?? error).split('\n')[0]}); install it with development-system setup` };
+  }
+  try {
+    const { stdout } = await promisify(execFile)(process.execPath, [cli, 'review', 'reserve', ...args, '--json'],
+      { cwd: cwd && fs.existsSync(cwd) ? cwd : os.homedir(), encoding: 'utf8', timeout: 15000, maxBuffer: 4 * 1024 * 1024 });
+    return JSON.parse(stdout);
+  } catch (error) {
+    try { const answer = JSON.parse(String(error?.stdout ?? '')); if (answer && typeof answer === 'object') return answer; } catch { /* not JSON */ }
+    return { ok: false, error: `review brake: the installed CLI failed (${String(error?.message ?? error).split('\n')[0]})` };
+  }
+}
+
+// PreToolUse T3 delegate_task. Only reviews are braked: role "review" or a `Review kind:` line. Kind plan/visual is
+// allowed and ledgered; kind pr reserves the next Sol slot of the PR's branch lineage through the installed CLI and is
+// denied on any refusal or bridge error. Every other delegate_task keeps today's behavior (exit 0, no output).
+async function delegateCall() {
+  const ti = input.tool_input ?? {};
+  const task = String(ti.task ?? '');
+  const line = (label) => new RegExp(`^\\s*(?:[-*]\\s+)?(?:\\*\\*)?${label}:(?:\\*\\*)?[ \\t]*(.*?)\\s*$`, 'im').exec(task)?.[1] ?? null;
+  const kind = line('Review kind');
+  if (ti.role !== 'review' && kind === null) return;
+  const entry = { tool: 'delegate_task', role: ti.role ?? null, reviewKind: kind, clientRequestId: ti.clientRequestId ?? null };
+  try {
+    if (!kind) deny('A review delegate_task needs a `Review kind: pr|plan|visual` line; a PR review also needs `PR: owner/repo#N` and `Review scope: full|fix-diff`.', { ...entry, blockedBy: 'review-kind' });
+    const normalized = kind.toLowerCase();
+    if (normalized === 'plan' || normalized === 'visual') allow(null, entry);
+    if (normalized !== 'pr') deny(`Review kind must be pr, plan or visual (got "${kind}").`, { ...entry, blockedBy: 'review-kind' });
+    const pr = line('PR');
+    const scope = line('Review scope');
+    const approval = line('Review approval');
+    const redesign = line('Redesign');
+    if (!pr || !/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) deny('A PR review delegate_task needs a `PR: owner/repo#N` line.', { ...entry, blockedBy: 'review-pr' });
+    if (scope !== 'full' && scope !== 'fix-diff') deny('A PR review delegate_task needs `Review scope: full` or `Review scope: fix-diff`.', { ...entry, pr, blockedBy: 'review-scope' });
+    const packetHash = crypto.createHash('sha256').update(task).digest('hex');
+    const requestKey = typeof ti.clientRequestId === 'string' && ti.clientRequestId.trim() ? ti.clientRequestId.trim() : packetHash;
+    const args = ['--pr', pr, '--scope', scope, '--request-key', requestKey, '--packet-hash', packetHash,
+      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : [])];
+    const answer = await reviewReserve(args, input.cwd);
+    const reservation = answer?.reservation;
+    if (answer?.ok !== true || !reservation) deny(`Review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`, { ...entry, pr, scope, blockedBy: 'review-brake' });
+    allow(`Review brake: ${answer.reused ? 'reused' : 'reserved'} lineage slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}. Record the round with development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ... once Sol answers.`,
+      { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) });
+  } catch (error) {
+    // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.
+    deny(`Review brake error: ${String(error?.message ?? error).split('\n')[0].slice(0, 300)}`, { ...entry, blockedBy: 'review-brake-error' });
+  }
+}
+
 function writerBash() {
   if (input.tool_name && input.tool_name !== 'Bash') process.exit(0);
   const command = String(input.tool_input?.command ?? '');
@@ -834,6 +894,7 @@ try {
     process.exit(0);
   }
   if (input.tool_name === 'Agent') await agentCall();
+  if (/^mcp__t3[-_]code__delegate_task$/.test(String(input.tool_name ?? '')) && input.hook_event_name !== 'PostToolUse') await delegateCall();
   if ((input.tool_name === 'Read' && IMAGE.test(String(input.tool_input?.file_path ?? ''))) || SCREENSHOT_TOOL.test(String(input.tool_name ?? ''))) imageCall();
   process.exit(0);
 } catch (error) {

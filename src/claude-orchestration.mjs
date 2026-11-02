@@ -21,7 +21,8 @@ const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_AUTO_COMPACT_WINDOW: "300000",
 });
 const managedEvents = /** @type {const} */ ([
-  { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*", timeout: 20, statusMessage: "Checking roster and image budget", target: "guard" },
+  // delegate_task reaches the guard so a T3 PR review reserves its lineage slot first (both MCP server spellings).
+  { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*|mcp__t3[-_]code__delegate_task", timeout: 20, statusMessage: "Checking roster, image budget and review brake", target: "guard" },
   { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined, target: "guard" },
   { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined, target: "guard" },
   { event: "Stop", matcher: undefined, timeout: 10, statusMessage: undefined, target: "stopGate" },
@@ -250,8 +251,12 @@ function parseState(contents) {
   return /** @type {{schema: 1, settings: {before: string | null, installed: string}, env: Record<string, {before: string | null, installed: string}>}} */ (state);
 }
 
-/** @param {string} home @param {string} guard @param {string} subagentType */
-function probe(home, guard, subagentType) {
+/**
+ * Runs the installed guard once on crafted PreToolUse input: an Agent dispatch of `subagentType`, or with `delegate`
+ * a T3 delegate_task carrying that task text and role.
+ * @param {string} home @param {string} guard @param {string} subagentType @param {{task: string, role?: string}} [delegate]
+ */
+function probe(home, guard, subagentType, delegate) {
   /** @type {NodeJS.ProcessEnv} */
   const env = { ...process.env, HOME: home };
   delete env.TYPESAFE_API_KEY;
@@ -259,9 +264,9 @@ function probe(home, guard, subagentType) {
   const input = JSON.stringify({
     session_id: "audit",
     hook_event_name: "PreToolUse",
-    tool_name: "Agent",
+    tool_name: delegate ? "mcp__t3-code__delegate_task" : "Agent",
     cwd: home,
-    tool_input: { subagent_type: subagentType, description: "audit probe", prompt: "audit probe" },
+    tool_input: delegate ? { task: delegate.task, ...(delegate.role ? { role: delegate.role } : {}) } : { subagent_type: subagentType, description: "audit probe", prompt: "audit probe" },
   });
   const result = spawnSync(process.execPath, [guard], { input, env, encoding: "utf8", timeout: 30000 });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
@@ -317,9 +322,15 @@ export async function auditClaudeOrchestration({ home }) {
   if ((await readOptional(managed.guard)) !== null) {
     const denied = probe(resolvedHome, managed.guard, "general-purpose");
     const allowed = probe(resolvedHome, managed.guard, "code-mapper");
-    probes.push(denied, allowed);
+    // The review brake on T3 delegate_task: a non-review task passes untouched (no output); a review without
+    // `Review kind:` is denied before any reservation, so neither probe reaches GitHub or a ledger.
+    const plainDelegate = probe(resolvedHome, managed.guard, "delegate_task:implementation", { task: "Objective: audit probe", role: "implementation" });
+    const reviewDelegate = probe(resolvedHome, managed.guard, "delegate_task:review", { task: "Objective: audit probe", role: "review" });
+    probes.push(denied, allowed, plainDelegate, reviewDelegate);
     if (!denied.denied) findings.push("Guard probe did not deny general-purpose");
     if (allowed.status !== 0 || allowed.denied) findings.push("Guard probe did not allow code-mapper");
+    if (plainDelegate.status !== 0 || plainDelegate.output.trim() !== "") findings.push("Guard probe did not pass a non-review delegate_task untouched");
+    if (!reviewDelegate.denied) findings.push("Guard probe did not deny a review delegate_task without Review kind (installed guard predates the review brake)");
     sideEffects.push(`Guard probes append ledger lines under ${managed.ledger}`);
   }
   const ok = findings.length === 0;
