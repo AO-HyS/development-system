@@ -1,14 +1,16 @@
 # Current work
 
-## 2.9.0 — review brake, stopping rules and cleanup (in progress)
+## 2.9.0 — review brake, stopping rules and cleanup (released)
 
-- Branch `feat/ds-290-review-brake`, base 703fa47 (develop, after the 2.8.1 production release).
+- Merged to develop in #182 (7bf71ee) and promoted to main in #183 (7656f27, same tree). Published as GitHub release v2.9.0 on 2026-11-02, tarball sha256 `d9c57c46…`.
 - Objective:
   - A. A real review brake per branch lineage, with approvals bound to one round and verified ledger records.
   - B. Fix-diff rounds, follow-ups for findings the diff did not cause, a redesign trigger, and coverage of later commits without closing and reopening a PR.
   - C. Settle finished children, check `runtimeMode` before the first `delegate_task`, a parent rotation handoff, pruning of old scripts and docs, and current docs with a drift check.
+- Installed globally from the verified package of 7bf71ee. Doctor is ok, and the brake blocked a malformed review `delegate_task` live. `update --version 2.9.0` from the release was checked in an isolated HOME.
+- Not yet observed: a real PR review reserving slots 1 and 2 and refusing a third, and the Codex-side brake.
+- Open from #182: Codex threads codex:4434873930 and codex:4434873933 are still unresolved on the merged head (Steward recommendation `ds-182-codex-threads-unresolved-at-merge`).
 - Plans: `~/.development-system/private/plans/ds-290/`.
-- Status: implementation in progress.
 
 ## Owner decisions still binding
 
