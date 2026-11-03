@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.10.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "6cf1ac70481ca5374162af865b2d7b2d751ef8cd4d504f597dbfbdb86fc8f9a5",
+      "sha256": "fe9047f13c75ad43135ac1c6fcf356af22eddd811ef7e29a6dfdbfc92c06906c",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.74.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "c35443dc085e645a3d834798461ffb4a57de7d6674eab3a9689bdb2444134366",
+      "sha256": "597652ad8e132eb484cbc8b4ffadd25ae71a859833bf7ab9d0d86b9e2c40819e",
       "expectedMirrorOf": null
     },
     {

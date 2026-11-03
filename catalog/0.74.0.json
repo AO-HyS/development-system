@@ -4902,7 +4902,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.10.0/skills/external/in-your-own-words",
           "destination": ".agents/skills/in-your-own-words",
-          "folderSha256": "5eb5b8df93a89d397de48e613b42a89ad54bae620a37d867f285219cca703dfb",
+          "folderSha256": "9b3c27b6d2e5722b93c17b24a29403de5beaad1f653e2753bd955949f1cd1ba8",
           "expectedMirrorOf": null
         },
         {
@@ -4910,7 +4910,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.10.0/skills/external/in-your-own-words",
           "destination": ".claude/skills/in-your-own-words",
-          "folderSha256": "5eb5b8df93a89d397de48e613b42a89ad54bae620a37d867f285219cca703dfb",
+          "folderSha256": "9b3c27b6d2e5722b93c17b24a29403de5beaad1f653e2753bd955949f1cd1ba8",
           "expectedMirrorOf": "in-your-own-words.codex",
           "install": "symlink"
         }

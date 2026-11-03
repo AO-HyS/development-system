@@ -1,37 +1,34 @@
 ---
 name: in-your-own-words
-description: "Mejora la petición (paso sharpen), explica el objetivo, el problema y cómo propones resolverlo; termina el turno y espera revisión. Usa /in-your-own-words o $in-your-own-words."
+description: "Explica lo que entendiste de la petición, propone cómo mejorarla (preguntas de sharpen) y arma el plan; termina el turno y espera revisión. Usa /in-your-own-words o $in-your-own-words."
 disable-model-invocation: true
 ---
 
-Cuando el usuario invoque esta skill, su mensaje ya es la petición. Antes de
-reformularla, hazla más profunda, no más grande (paso sharpen):
+Cuando el usuario invoque esta skill, su mensaje ya es la petición. Prepara una
+propuesta revisable en su idioma con tres partes, en este orden:
 
-1. Qué haría aquí un profesional de primer nivel en este campo que el usuario no
-   está pidiendo.
-2. De qué material crudo partiría (código, datos, registros, la fuente original)
-   en lugar de resúmenes ya digeridos.
-3. Qué métodos y herramientas concretas usaría.
-4. Qué evidencia, aparte del usuario o de ti, demostraría que el resultado es
-   correcto.
+1. **Lo que entendí.** Reformula la petición con tus propias palabras, sin
+   cambiarla todavía: qué quiere lograr, qué problema resuelve, qué ocurre
+   actualmente según el contexto disponible y cómo se reconocerá el resultado.
+   Distingue los hechos confirmados de tus supuestos.
+2. **Cómo mejorarla.** Sobre esa petición entendida, responde:
+   - Qué haría aquí un profesional de primer nivel en este campo que no se está
+     pidiendo.
+   - De qué material crudo partiría (código, datos, registros, la fuente
+     original) en lugar de resúmenes ya digeridos.
+   - Qué métodos y herramientas concretas usaría.
+   - Qué evidencia, aparte del usuario o de ti, demostraría que el resultado es
+     correcto.
 
-Incorpora a la propuesta lo que de verdad mejore el resultado y márcalo como
-mejora sugerida, separado de lo que el usuario pidió, para que pueda aceptarla o
-quitarla. No amplíes el alcance con trabajo que no sirve a su objetivo y deja
-abiertas las decisiones que son suyas.
-
-Después prepara una propuesta revisable en su idioma. Reformula lo entendido con tus propias
-palabras y distingue los hechos confirmados de tus supuestos.
-
-Incluye detalle suficiente para que pueda corregir tanto el objetivo como el
-método antes de empezar:
-
-- Qué quiere lograr y cómo se reconocerá el resultado esperado.
-- Qué problema resuelve y qué ocurre actualmente, según el contexto disponible.
-- Cómo propones hacerlo: alcance, partes afectadas y pasos concretos en orden,
-  con la razón de las decisiones principales. Explica cómo comprobarías el
-  resultado. Identifica los límites, supuestos o decisiones pendientes que
-  cambien el enfoque.
+   Con esas respuestas, lista las mejoras que de verdad sirven a su objetivo,
+   marcadas como sugeridas para que el usuario las acepte o las quite. No
+   amplíes el alcance con trabajo que no sirve a su objetivo ni decidas lo que es
+   suyo.
+3. **El plan.** Sobre la petición entendida y las mejoras sugeridas: alcance,
+   partes afectadas y pasos concretos en orden, con la razón de las decisiones
+   principales; cómo comprobarías el resultado; límites, supuestos o decisiones
+   pendientes que cambien el enfoque. Señala qué pasos dependen de una mejora
+   sugerida, para que quitarla no rompa el plan.
 
 Ajusta el detalle a la tarea: una explicación concreta y comprensible, sin
 inventar hechos ni convertirla en una especificación extensa. Puedes consultar

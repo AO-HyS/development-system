@@ -15,7 +15,8 @@ The routine brief restatement before autonomous work lives in the shared
 instructions. It does not invoke this explicit review-and-wait skill.
 
 Local adaptation in 2.10.0 (owner request of 2026-11-02): the explicit
-invocation first runs the four questions of pstack `sharpen`
-(cursor/plugins pstack/skills/sharpen, same author and license) to deepen the
-request, then presents the suggested improvements separately from what the
-owner asked, inside the same review-and-wait proposal.
+invocation answers in three ordered parts: what was understood (the request
+restated unchanged), how to improve it (the four questions of pstack `sharpen`,
+cursor/plugins pstack/skills/sharpen, same author and license, with improvements
+marked as suggestions), and the plan built on both. The review-and-wait pause is
+unchanged.
