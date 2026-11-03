@@ -8,7 +8,8 @@ Current source candidate: **2.10.0**, shared skill catalog **0.74.0**. This
 candidate adds shared checks: `development-system check-file-size` keeps changed
 source files under a token budget (an already large file may grow at most 1000
 bytes per change; per-repository `.file-size-budget.json`), and guard policy
-2.4.0 inspects GNU `parallel` like `xargs`. 2.9.0 put a real brake on Sol PR
+2.4.0 inspects GNU `parallel` like `xargs`; `development-system clean-cache`
+moves an allowlisted regenerable cache entry to the Trash. 2.9.0 put a real brake on Sol PR
 reviews: the budget counts per branch lineage and owner approvals bind one
 round. 2.8.1 routed computer use and browser QA to Terra 6.1 fast per the
 [model screen of 2026-10-29](docs/model-screen-2026-10-29.md). Earlier weekly
