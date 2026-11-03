@@ -20,7 +20,7 @@ const GATE_HOURS = 2;
 /**
  * @typedef {"pass" | "fail"} FlowResult
  * @typedef {"ok" | "failed" | "incomplete" | "missing" | "stale" | "waived" | "nonvisual" | "nonfunctional"} EvidenceState
- * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], platforms?: string[], tool?: string, quicke2e?: {run: string, runSha256: string, flows: string[]} | null, exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
+ * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], platforms?: string[], tool?: string, toolReason?: string, quicke2e?: {run: string, runSha256: string, flows: string[]} | null, exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  */
 
@@ -97,7 +97,7 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
     pr: reference.key, verifiedSha, ...(deployedSha ? { deployedSha: deployedSha.toLowerCase() } : {}),
     ...(text(environment) ? { environment: text(environment) } : {}), ...(text(account) ? { account: text(account) } : {}), ...(text(role) ? { role: text(role) } : {}),
     flows, captures: captures.map((path) => resolve(path)), ...(covered ? { platforms: covered } : {}),
-    ...(tool && !waiver && !exception ? { tool } : {}), ...(quicke2e ? { quicke2e } : {}),
+    ...(tool && !waiver && !exception ? { tool } : {}), ...(tool === "computer-use" && !waiver && !exception && text(reason) ? { toolReason: text(reason) } : {}), ...(quicke2e ? { quicke2e } : {}),
     ...(exception ? { exception: { kind: "nonvisual", reason: /** @type {string} */ (text(reason)), checks: /** @type {string} */ (text(checks)) } } : {}),
     ...(waiver ? { ownerWaiver: waiver } : {}),
     status, problems, recordedAt: new Date().toISOString(),

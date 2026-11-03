@@ -86,22 +86,38 @@ export function isBudgetedSource(file, config) {
   return config.include.length === 0 || config.include.some(glob => path.matchesGlob(file, glob));
 }
 
+/**
+ * Changed files with the path their baseline lives at: a rename or copy is sized against its source blob, so moving
+ * an oversized file without growing it passes. @param {string} output `git diff --name-status -z` output
+ * @returns {Map<string, string>} new path -> baseline path
+ */
+function changedPaths(output) {
+  const parts = output.split("\0");
+  /** @type {Map<string, string>} */
+  const changed = new Map();
+  for (let index = 0; index < parts.length - 1;) {
+    const status = parts[index];
+    if (!status) { index += 1; continue; }
+    if (/^[RC]/u.test(status)) { changed.set(parts[index + 2], parts[index + 1]); index += 3; }
+    else { changed.set(parts[index + 1], parts[index + 1]); index += 2; }
+  }
+  return changed;
+}
+
 /** @param {string} root @param {string|undefined} base */
 function candidates(root, base) {
   if (!base) {
-    return git(root, ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]).split("\0").filter(Boolean)
-      .map(file => ({ file, before: blobSize(root, `HEAD:${file}`), after: blobSize(root, `:${file}`) }));
+    return [...changedPaths(git(root, ["diff", "--cached", "--name-status", "--diff-filter=ACMR", "-z"]))]
+      .map(([file, from]) => ({ file, before: blobSize(root, `HEAD:${from}`), after: blobSize(root, `:${file}`) }));
   }
   const mergeBase = git(root, ["merge-base", base, "HEAD"]).trim();
+  const changed = changedPaths(git(root, ["diff", "--name-status", "--diff-filter=ACMR", "-z", mergeBase]));
   // Untracked files count too, so a local --base run sees new modules before they are committed.
-  const changed = new Set([
-    ...git(root, ["diff", "--name-only", "--diff-filter=ACMR", "-z", mergeBase]).split("\0"),
-    ...git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0"),
-  ].filter(Boolean));
+  for (const file of git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean)) if (!changed.has(file)) changed.set(file, file);
   return [...changed]
-    .map(file => {
+    .map(([file, from]) => {
       const absolute = path.join(root, file);
-      return { file, before: blobSize(root, `${mergeBase}:${file}`), after: existsSync(absolute) ? statSync(absolute).size : null };
+      return { file, before: blobSize(root, `${mergeBase}:${from}`), after: existsSync(absolute) ? statSync(absolute).size : null };
     });
 }
 

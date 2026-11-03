@@ -12,7 +12,7 @@
 // ~/.development-system/private/quicke2e-flows/, never in a repository, and no Playwright spec is emitted (operator decision 2026-10-13).
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -58,6 +58,12 @@ function jevRoute(home) {
   return { source: "", preload: "" };
 }
 
+/** Chromium lives with the pinned runtime, so an isolated HOME and the operator HOME use the browser that runtime installed. @param {string} home */
+export const browsersRoot = (home) => path.join(runtimeRoot(home), "browsers");
+
+/** Child environment: the selected HOME (the TypeSafe preload reads credentials from it) and the runtime's browsers. @param {string} home */
+const childEnv = (home) => ({ ...process.env, HOME: home, PLAYWRIGHT_BROWSERS_PATH: browsersRoot(home) });
+
 /** @param {string} home */
 export function quicke2eStatus(home) {
   const root = runtimeRoot(home);
@@ -68,6 +74,7 @@ export function quicke2eStatus(home) {
   const problems = [];
   if (quicke2e !== QUICKE2E_VERSION) problems.push(`QuickE2E ${quicke2e ?? "missing"}, expected ${QUICKE2E_VERSION}: run development-system quicke2e install`);
   if (!playwright || !atLeast(playwright, PLAYWRIGHT_MINIMUM)) problems.push(`Playwright ${playwright ?? "missing"} is below ${PLAYWRIGHT_MINIMUM} (Chrome sandbox fix): run development-system quicke2e install`);
+  if (!existsSync(browsersRoot(home)) || readdirSync(browsersRoot(home)).length === 0) problems.push(`no Chromium in ${browsersRoot(home)}: run development-system quicke2e install`);
   if (!route.source) problems.push(`no Jev access: jevgrep TypeSafe credentials with the installed preload (${typesafePreload(home)}), TYPESAFE_AI_API_KEY, or OPENROUTER_API_KEY (or use --engine local)`);
   return { ok: problems.length === 0, operation: "quicke2e-status", runtime: root, quicke2e, playwright, keySource: route.source || null, problems };
 }
@@ -77,8 +84,8 @@ export function installQuicke2e(home) {
   const root = runtimeRoot(home);
   mkdirSync(root, { recursive: true });
   if (!existsSync(path.join(root, "package.json"))) writeFileSync(path.join(root, "package.json"), `${JSON.stringify({ name: "ds-quicke2e-runtime", private: true }, null, 2)}\n`);
-  execFileSync("npm", ["install", "--prefix", root, "--no-audit", "--no-fund", "--save-exact", `quicke2e@${QUICKE2E_VERSION}`, `playwright@^${PLAYWRIGHT_MINIMUM}`], { stdio: "inherit" });
-  execFileSync(process.execPath, [path.join(root, "node_modules/playwright/cli.js"), "install", "chromium"], { stdio: "inherit" });
+  execFileSync("npm", ["install", "--prefix", root, "--no-audit", "--no-fund", "--save-exact", `quicke2e@${QUICKE2E_VERSION}`, `playwright@^${PLAYWRIGHT_MINIMUM}`], { stdio: "inherit", env: childEnv(home) });
+  execFileSync(process.execPath, [path.join(root, "node_modules/playwright/cli.js"), "install", "chromium"], { stdio: "inherit", env: childEnv(home) });
   return { ...quicke2eStatus(home), operation: "quicke2e-install" };
 }
 
@@ -98,7 +105,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   const [command, ...rest] = args;
   if (!["discover", "check", "run"].includes(command)) throw new Error("quicke2e takes install, status, or discover|check|run <args> [--repo <checkout>]");
   const status = quicke2eStatus(home);
-  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright"))) throw new Error(status.problems.join("; "));
+  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright") || problem.startsWith("no Chromium"))) throw new Error(status.problems.join("; "));
   const repoIndex = rest.indexOf("--repo");
   const repo = path.resolve(repoIndex >= 0 ? rest[repoIndex + 1] ?? "" : process.cwd());
   const passthrough = repoIndex >= 0 ? [...rest.slice(0, repoIndex), ...rest.slice(repoIndex + 2)] : rest;
@@ -128,7 +135,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   const child = spawnSync(process.execPath, [...(route.preload ? ["--import", route.preload] : []), bin, command, ...passthrough, ...extra], {
     cwd: repo, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"],
     // QuickE2E refuses to start without OPENROUTER_API_KEY; the preload replaces it with the TypeSafe key.
-    env: { ...process.env, ...(route.preload ? { OPENROUTER_API_KEY: "via-typesafe" } : {}) },
+    env: { ...childEnv(home), ...(route.preload ? { OPENROUTER_API_KEY: "via-typesafe" } : {}) },
   });
   const stdout = String(child.stdout ?? "");
   const exitCode = child.status ?? 1;
