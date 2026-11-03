@@ -42,16 +42,21 @@ const readVersion = (file) => { try { return String(JSON.parse(readFileSync(file
 
 /** The installed 2.3.0 preload that sends QuickE2E's Jev request to TypeSafe. @param {string} home */
 export const typesafePreload = (home) => path.join(home, ".codex/development-system/runtime/quicke2e/typesafe-jev.mjs");
+/** sha256 of that preload in manifests/2.3.0.json; it runs before QuickE2E, so any other content is refused. */
+export const TYPESAFE_PRELOAD_SHA256 = "67fadae53a7755f7387382a1580a0548189d4d053042b1af454803469082f254";
+/** @param {string} file */
+const preloadIntact = (file) => { try { return createHash("sha256").update(readFileSync(file)).digest("hex") === TYPESAFE_PRELOAD_SHA256; } catch { return false; } };
 
 /**
  * How QuickE2E reaches Jev: an OpenRouter key goes direct; otherwise the operator's prepaid TypeSafe key (jevgrep's
  * credentials or TYPESAFE_AI_API_KEY) through the installed preload, which reads the key itself.
- * @param {string} home @returns {{source: string, preload: string}}
+ * @param {string} home @returns {{source: string, preload: string, problem?: string}}
  */
 function jevRoute(home) {
   if (process.env.OPENROUTER_API_KEY) return { source: "OPENROUTER_API_KEY", preload: "" };
   const preload = typesafePreload(home);
   if (!existsSync(preload)) return { source: "", preload: "" };
+  if (!preloadIntact(preload)) return { source: "", preload: "", problem: `the TypeSafe preload ${preload} differs from the 2.3.0 manifest; reinstall Development System` };
   if (process.env.TYPESAFE_AI_API_KEY) return { source: "TYPESAFE_AI_API_KEY via the TypeSafe preload", preload };
   try {
     const credentials = JSON.parse(readFileSync(path.join(home, ".config/jevgrep/credentials.json"), "utf8"));
@@ -81,7 +86,8 @@ export function quicke2eStatus(home) {
   if (quicke2e === QUICKE2E_VERSION && packageDigest(path.join(root, "node_modules/quicke2e")) !== QUICKE2E_PACKAGE_SHA256) problems.push(`QuickE2E package files differ from the published ${QUICKE2E_VERSION}: run development-system quicke2e install after removing ${path.join(root, "node_modules/quicke2e")}`);
   if (!playwright || !atLeast(playwright, PLAYWRIGHT_MINIMUM)) problems.push(`Playwright ${playwright ?? "missing"} is below ${PLAYWRIGHT_MINIMUM} (Chrome sandbox fix): run development-system quicke2e install`);
   if (!existsSync(browsersRoot(home)) || readdirSync(browsersRoot(home)).length === 0) problems.push(`no Chromium in ${browsersRoot(home)}: run development-system quicke2e install`);
-  if (!route.source) problems.push(`no Jev access: jevgrep TypeSafe credentials with the installed preload (${typesafePreload(home)}), TYPESAFE_AI_API_KEY, or OPENROUTER_API_KEY (or use --engine local)`);
+  if (route.problem) problems.push(route.problem);
+  else if (!route.source) problems.push(`no Jev access: jevgrep TypeSafe credentials with the installed preload (${typesafePreload(home)}), TYPESAFE_AI_API_KEY, or OPENROUTER_API_KEY (or use --engine local)`);
   return { ok: problems.length === 0, operation: "quicke2e-status", runtime: root, quicke2e, playwright, keySource: route.source || null, problems };
 }
 
@@ -111,7 +117,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   const [command, ...rest] = args;
   if (!["discover", "check", "run"].includes(command)) throw new Error("quicke2e takes install, status, or discover|check|run <args> [--repo <checkout>]");
   const status = quicke2eStatus(home);
-  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright") || problem.startsWith("no Chromium") || problem.startsWith("QuickE2E package"))) throw new Error(status.problems.join("; "));
+  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright") || problem.startsWith("no Chromium") || problem.startsWith("QuickE2E package") || problem.startsWith("the TypeSafe preload"))) throw new Error(status.problems.join("; "));
   const repoIndex = rest.indexOf("--repo");
   const repo = path.resolve(repoIndex >= 0 ? rest[repoIndex + 1] ?? "" : process.cwd());
   const passthrough = repoIndex >= 0 ? [...rest.slice(0, repoIndex), ...rest.slice(repoIndex + 2)] : rest;
@@ -155,7 +161,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   let records = [];
   try { records = JSON.parse(stdout.trimEnd().split("\n").at(-1) ?? "[]"); } catch { records = []; }
   const body = {
-    quicke2e: QUICKE2E_VERSION, playwright: status.playwright, repo: top || repo, head, spec, specSha256, packageSha256: QUICKE2E_PACKAGE_SHA256,
+    quicke2e: QUICKE2E_VERSION, playwright: status.playwright, repo: top || repo, head, spec, specSha256, packageSha256: QUICKE2E_PACKAGE_SHA256, preloadSha256: route.preload ? TYPESAFE_PRELOAD_SHA256 : null,
     command: [command, ...passthrough, ...extra], exitCode, startedAt: now.toISOString(), wallMs: Date.now() - started,
     records: Array.isArray(records) ? records : [],
   };
@@ -202,6 +208,7 @@ export function verifyRunRecord(file, { home, verifiedSha, environment }) {
   const problems = [];
   if (runSha256 !== runDigest(body)) problems.push("QuickE2E run record was edited after the run (hash mismatch)");
   if (body.quicke2e !== QUICKE2E_VERSION || body.packageSha256 !== QUICKE2E_PACKAGE_SHA256 || !Array.isArray(body.command) || body.command[0] !== "run" || !String(body.command[1] ?? "").endsWith("flows.generated.mjs")) problems.push("QuickE2E run record was not produced by quicke2e run from declarative flows");
+  if (!("preloadSha256" in body) || (body.preloadSha256 !== null && body.preloadSha256 !== TYPESAFE_PRELOAD_SHA256)) problems.push("QuickE2E run record does not show the pinned TypeSafe preload");
   if (body.exitCode !== 0) problems.push(`QuickE2E exited with ${String(body.exitCode)}`);
   if (!Array.isArray(body.records) || body.records.length === 0) problems.push("QuickE2E run record has no flows");
   if (body.head !== verifiedSha) problems.push(`QuickE2E ran against checkout ${String(body.head || "unknown").slice(0, 12)}, not the verified head ${verifiedSha.slice(0, 12)}`);
