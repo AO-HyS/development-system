@@ -167,8 +167,12 @@ export function verifyRunRecord(file, verifiedSha) {
   return { problems, summary: { run: path.resolve(file), runSha256, flows: records.map((/** @type {any} */ record) => `${record.flow}:${record.passed === true ? "pass" : record.outcome ?? "fail"}`) } };
 }
 
-/** CLI entry. @param {string[]} args @param {string} [home] */
-export function runQuicke2eCommand(args, home = homedir()) {
+/** CLI entry; `--home <dir>` (before the QuickE2E arguments) selects another HOME. @param {string[]} rawArgs */
+export function runQuicke2eCommand(rawArgs) {
+  const homeAt = rawArgs.indexOf("--home");
+  if (homeAt >= 0 && !rawArgs[homeAt + 1]) throw new Error("--home needs a value");
+  const home = homeAt >= 0 ? path.resolve(rawArgs[homeAt + 1]) : homedir();
+  const args = homeAt >= 0 ? [...rawArgs.slice(0, homeAt), ...rawArgs.slice(homeAt + 2)] : rawArgs;
   if (args[0] === "install") { const result = installQuicke2e(home); return { result, output: `QuickE2E ${result.quicke2e}, Playwright ${result.playwright} in ${result.runtime}${result.problems.length ? `\n${result.problems.join("\n")}` : ""}` }; }
   if (args[0] === "status") { const result = quicke2eStatus(home); return { result, output: `QuickE2E ${result.quicke2e ?? "missing"}, Playwright ${result.playwright ?? "missing"}, Jev key ${result.keySource ?? "missing"}${result.problems.length ? `\n${result.problems.join("\n")}` : ""}` }; }
   return runQuicke2e({ home, args });
