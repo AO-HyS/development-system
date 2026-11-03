@@ -15,7 +15,7 @@ export const primaryRepositoryAllowlist = Object.freeze([
 const allowedIds = new Set(primaryRepositoryAllowlist.map((repository) => repository.id));
 const reviewedAreas = Object.freeze([
   "skills", "impeccable", "codex-security", "react", "tanstack", "shadcn", "convex",
-  "cloudflare", "expo-mobile", "posthog", "emil", "release-train",
+  "cloudflare", "expo-mobile", "posthog", "emil", "review-gate-machine", "release-train",
 ]);
 
 /** @param {unknown} value @returns {value is Record<string, unknown>} */

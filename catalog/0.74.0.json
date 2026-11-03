@@ -1883,7 +1883,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/development-steward",
           "destination": ".agents/skills/development-steward",
-          "folderSha256": "9c17e99662e7be3c8107fa1aa26fc3aad8ad8681ebaa2d8fd098f97cbd8ce37b",
+          "folderSha256": "5c714de82cd07f19cd3f2f38fafbd7080ab02d7797a2380518f47be5d751d085",
           "expectedMirrorOf": null
         },
         {
@@ -1891,7 +1891,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/development-steward",
           "destination": ".claude/skills/development-steward",
-          "folderSha256": "9c17e99662e7be3c8107fa1aa26fc3aad8ad8681ebaa2d8fd098f97cbd8ce37b",
+          "folderSha256": "5c714de82cd07f19cd3f2f38fafbd7080ab02d7797a2380518f47be5d751d085",
           "expectedMirrorOf": "development-steward.codex",
           "install": "symlink"
         }
@@ -1999,23 +1999,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.4.1/skills/internal/behavioral-evidence"
+        "path": "artifacts/2.10.0/skills/internal/behavioral-evidence"
       },
       "variants": [
         {
           "id": "behavioral-evidence.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.4.1/skills/internal/behavioral-evidence",
+          "sourceDirectory": "artifacts/2.10.0/skills/internal/behavioral-evidence",
           "destination": ".agents/skills/behavioral-evidence",
-          "folderSha256": "23bc313c4c8338f18c16688526ec287654de326ccbda234355f05d5680876da3",
+          "folderSha256": "a89c023069ec01c2172361e5db9bba8188ab425c2ab8aa114df85c2e22b57530",
           "expectedMirrorOf": null
         },
         {
           "id": "behavioral-evidence.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.4.1/skills/internal/behavioral-evidence",
+          "sourceDirectory": "artifacts/2.10.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
-          "folderSha256": "23bc313c4c8338f18c16688526ec287654de326ccbda234355f05d5680876da3",
+          "folderSha256": "a89c023069ec01c2172361e5db9bba8188ab425c2ab8aa114df85c2e22b57530",
           "expectedMirrorOf": "behavioral-evidence.codex",
           "install": "symlink"
         }
