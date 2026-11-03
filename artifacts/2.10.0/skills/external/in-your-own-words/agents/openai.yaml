@@ -1,0 +1,6 @@
+interface:
+  display_name: "in-your-own-words"
+  short_description: "Explica objetivo, problema y enfoque; espera mi revisión"
+  default_prompt: "Usa $in-your-own-words para explicar qué quiero lograr, qué problema resuelvo y cómo propones hacerlo, con pasos y verificación. Termina el turno y espera mi revisión antes de ejecutar."
+policy:
+  allow_implicit_invocation: false

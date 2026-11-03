@@ -10,11 +10,12 @@ import { checkActiveToolingDocs } from './check-active-tooling-docs.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const version = '2.10.0', previous = '2.9.0', catalogVersion = '0.74.0', previousCatalog = '0.73.0', prefix = `artifacts/${version}`;
-// The guard skill opens GNU parallel (policy 2.4.0).
+// The guard skill opens GNU parallel (policy 2.4.0); the Steward adds the weekly Emil and PostHog pass.
 /** @type {string[]} */
-const updatedSkills = ['global-agent-guardrails'];
-/** @type {Record<string, {repository:string, commit:string, version:string, path:string, license:string}>} */
-const updatedExternal = {};
+const updatedSkills = ['global-agent-guardrails', 'development-steward'];
+/** @type {Record<string, any>} */
+// in-your-own-words now runs the pstack sharpen questions before the proposal; provenance is unchanged.
+const updatedExternal = { 'in-your-own-words': (({ files, ...reference }) => reference)(JSON.parse(await readFile(resolve(root, 'artifacts/2.4.2/skills/external/in-your-own-words/upstream.json'), 'utf8'))) };
 // Codex role profiles whose model routing changes in this version (hand-written under the prefix).
 /** @type {string[]} */
 const updatedCodexAgents = [];
@@ -69,7 +70,7 @@ const hostProfiles = () => ['shared', 'codex', 'claude'].map(host => renderHostI
 
 const releaseNote = `## ${version}: shared checks
 
-Contract ${version} (catalog ${catalogVersion}) adds \`development-system check-file-size\`: a changed source file may not end over 5000 estimated tokens (bytes / 4), and a file already over may grow at most 1000 bytes per change. It checks staged changes by default and the working tree plus untracked files against the merge-base with \`--base <ref>\`; generated, vendored and build files are excluded, and a repository may set \`budgetTokens\`, \`growthBytes\`, \`include\` and \`exclude\` in \`.file-size-budget.json\` (unknown keys fail). Guard policy 2.4.0 opens GNU \`parallel\` like \`xargs\`: literal \`:::\` operands are checked as the command's arguments with replacement strings filled in, arguments from standard input or \`::::\` files are unknown text, and shell-text or command-less \`parallel\` is blocked. \`development-system clean-cache <entry>\` moves one direct entry of an allowlisted regenerable cache (Playwright, Cypress, Puppeteer, Xcode DerivedData) to the Trash and records it, so an owner-approved cleanup no longer needs \`rm -rf\`; links, cache roots and other paths are refused. Installation and live host adoption are separate evidence.
+Contract ${version} (catalog ${catalogVersion}) adds \`development-system check-file-size\`: a changed source file may not end over 5000 estimated tokens (bytes / 4), and a file already over may grow at most 1000 bytes per change. It checks staged changes by default and the working tree plus untracked files against the merge-base with \`--base <ref>\`; generated, vendored and build files are excluded, and a repository may set \`budgetTokens\`, \`growthBytes\`, \`include\` and \`exclude\` in \`.file-size-budget.json\` (unknown keys fail). Guard policy 2.4.0 opens GNU \`parallel\` like \`xargs\`: literal \`:::\` operands are checked as the command's arguments with replacement strings filled in, arguments from standard input or \`::::\` files are unknown text, and shell-text or command-less \`parallel\` is blocked. The weekly Development Steward adds an Emil design-engineering pass: it diffs the installed Emil skills against upstream and, from seven days of PostHog data, proposes at most two screens per product repository for an Emil pass, editing nothing. \`/in-your-own-words\` first deepens the request with the four pstack \`sharpen\` questions and lists those improvements apart from what the owner asked. \`development-system clean-cache <entry>\` moves one direct entry of an allowlisted regenerable cache (Playwright, Cypress, Puppeteer, Xcode DerivedData) to the Trash and records it, so an owner-approved cleanup no longer needs \`rm -rf\`; links, cache roots and other paths are refused. Installation and live host adoption are separate evidence.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);

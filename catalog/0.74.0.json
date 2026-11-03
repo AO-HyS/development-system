@@ -1875,23 +1875,23 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.8.0/skills/internal/development-steward"
+        "path": "artifacts/2.10.0/skills/internal/development-steward"
       },
       "variants": [
         {
           "id": "development-steward.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.8.0/skills/internal/development-steward",
+          "sourceDirectory": "artifacts/2.10.0/skills/internal/development-steward",
           "destination": ".agents/skills/development-steward",
-          "folderSha256": "483b33ccb23d960583f03dcd104c547c1fb72119b5f7eb8a5517cd6caf260a48",
+          "folderSha256": "9c17e99662e7be3c8107fa1aa26fc3aad8ad8681ebaa2d8fd098f97cbd8ce37b",
           "expectedMirrorOf": null
         },
         {
           "id": "development-steward.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.8.0/skills/internal/development-steward",
+          "sourceDirectory": "artifacts/2.10.0/skills/internal/development-steward",
           "destination": ".claude/skills/development-steward",
-          "folderSha256": "483b33ccb23d960583f03dcd104c547c1fb72119b5f7eb8a5517cd6caf260a48",
+          "folderSha256": "9c17e99662e7be3c8107fa1aa26fc3aad8ad8681ebaa2d8fd098f97cbd8ce37b",
           "expectedMirrorOf": "development-steward.codex",
           "install": "symlink"
         }
@@ -4887,12 +4887,12 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.4.2/skills/external/in-your-own-words",
+        "path": "artifacts/2.10.0/skills/external/in-your-own-words",
         "upstreamReference": {
           "repository": "https://github.com/cursor/plugins",
-          "license": "MIT",
           "commit": "c86f349b102feb91f1966f8a6a60882a4e601b50",
           "path": "pstack/skills/in-your-own-words",
+          "license": "MIT",
           "capabilityTreeSha256": "49d983cb552ece1cc4b6a8e16f48dc90611f3c1a2d834507ec48fa80f30fa044"
         }
       },
@@ -4900,17 +4900,17 @@
         {
           "id": "in-your-own-words.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.4.2/skills/external/in-your-own-words",
+          "sourceDirectory": "artifacts/2.10.0/skills/external/in-your-own-words",
           "destination": ".agents/skills/in-your-own-words",
-          "folderSha256": "9b23e8bbbcc893720ed7df951e8e5cadaa9ea20441292b79804bef2de03a00fa",
+          "folderSha256": "5eb5b8df93a89d397de48e613b42a89ad54bae620a37d867f285219cca703dfb",
           "expectedMirrorOf": null
         },
         {
           "id": "in-your-own-words.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.4.2/skills/external/in-your-own-words",
+          "sourceDirectory": "artifacts/2.10.0/skills/external/in-your-own-words",
           "destination": ".claude/skills/in-your-own-words",
-          "folderSha256": "9b23e8bbbcc893720ed7df951e8e5cadaa9ea20441292b79804bef2de03a00fa",
+          "folderSha256": "5eb5b8df93a89d397de48e613b42a89ad54bae620a37d867f285219cca703dfb",
           "expectedMirrorOf": "in-your-own-words.codex",
           "install": "symlink"
         }
