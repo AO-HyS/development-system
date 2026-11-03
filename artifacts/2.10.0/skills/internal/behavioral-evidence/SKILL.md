@@ -42,8 +42,8 @@ One command installs, runs and records it:
 ```bash
 development-system quicke2e status    # QuickE2E 0.5.0, Playwright >= 1.64.1, Jev access
 development-system quicke2e install   # only when status reports a problem
-development-system quicke2e check <flows.mjs> --base <url> --repo <checkout>
-development-system quicke2e run <flows.mjs> --base <url> --repo <checkout>
+development-system quicke2e check <flows.json> --base <url> --repo <checkout>
+development-system quicke2e run <flows.json> --base <url> --repo <checkout>
 ```
 
 - `run` adds `--json --headless --trace` and writes a hashed `run.json` under
@@ -59,8 +59,10 @@ development-system quicke2e run <flows.mjs> --base <url> --repo <checkout>
 - Computer Use: `--tool computer-use --reason "<what QuickE2E cannot reach>" --capture <file>`;
   simulator runs: `--tool simulator --platforms ios,android --capture <file>`.
   Every capture must exist.
-- Write flow files under `~/.development-system/private/quicke2e-flows/<repo>/`
-  (for example `flows.mjs`), never in a repository; the command refuses a flow
+- Flow files are declarative JSON (`flows.json`: the array a QuickE2E spec
+  would export, as plain data). A `.mjs` spec is refused: it would run code in
+  the process that reports the results. Write them under
+  `~/.development-system/private/quicke2e-flows/<repo>/`, never in a repository; the command refuses a flow
   inside a product checkout and refuses `--emit`: no replay spec is kept, so
   this is live verification, not an automated test (operator decision
   2026-10-13). A failed flow is re-run live, so renamed labels need no

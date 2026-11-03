@@ -4,17 +4,19 @@
 //
 //   development-system quicke2e install            pinned QuickE2E + a Playwright with the 2026-10-30 sandbox fix
 //   development-system quicke2e status             what is installed and whether a Jev key is available
-//   development-system quicke2e <discover|check|run> <args> [--repo <checkout>]
+//   development-system quicke2e discover <args> | <check|run> <flows.json> <args> [--repo <checkout>]
 //
 // `run` always adds --json --headless --trace and writes `run.json` (records, app checkout head, spec hash, exit code
 // and a sha256 of the whole record) under ~/.development-system/private/evidence/quicke2e/. `evidence record --tool
-// quicke2e --run <run.json>` refuses a record whose hash, head or flows do not hold. Flow files stay in private
+// quicke2e --run <run.json>` refuses a record whose hash, head or flows do not hold. Flow files are declarative JSON
+// (see quicke2e-flows.mjs: no agent code runs in the process that reports results) and stay in private
 // ~/.development-system/private/quicke2e-flows/, never in a repository, and no Playwright spec is emitted (operator decision 2026-10-13).
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { packageDigest, prepareFlows, QUICKE2E_PACKAGE_SHA256 } from "./quicke2e-flows.mjs";
 
 export const QUICKE2E_VERSION = "0.5.0";
 // Playwright 1.64.1 bundles Chromium 156, which fixes the 2026-10-30 Chrome sandbox escape.
@@ -61,8 +63,11 @@ function jevRoute(home) {
 /** Chromium lives with the pinned runtime, so an isolated HOME and the operator HOME use the browser that runtime installed. @param {string} home */
 export const browsersRoot = (home) => path.join(runtimeRoot(home), "browsers");
 
-/** Child environment: the selected HOME (the TypeSafe preload reads credentials from it) and the runtime's browsers. @param {string} home */
-const childEnv = (home) => ({ ...process.env, HOME: home, PLAYWRIGHT_BROWSERS_PATH: browsersRoot(home) });
+/** Child environment: the selected HOME (the TypeSafe preload reads credentials from it) and the runtime browsers; NODE_OPTIONS and NODE_PATH would load caller-chosen code into QuickE2E, so they are dropped. @param {string} home */
+const childEnv = (home) => {
+  const { NODE_OPTIONS: _options, NODE_PATH: _path, ...env } = process.env;
+  return { ...env, HOME: home, PLAYWRIGHT_BROWSERS_PATH: browsersRoot(home) };
+};
 
 /** @param {string} home */
 export function quicke2eStatus(home) {
@@ -73,6 +78,7 @@ export function quicke2eStatus(home) {
   /** @type {string[]} */
   const problems = [];
   if (quicke2e !== QUICKE2E_VERSION) problems.push(`QuickE2E ${quicke2e ?? "missing"}, expected ${QUICKE2E_VERSION}: run development-system quicke2e install`);
+  if (quicke2e === QUICKE2E_VERSION && packageDigest(path.join(root, "node_modules/quicke2e")) !== QUICKE2E_PACKAGE_SHA256) problems.push(`QuickE2E package files differ from the published ${QUICKE2E_VERSION}: run development-system quicke2e install after removing ${path.join(root, "node_modules/quicke2e")}`);
   if (!playwright || !atLeast(playwright, PLAYWRIGHT_MINIMUM)) problems.push(`Playwright ${playwright ?? "missing"} is below ${PLAYWRIGHT_MINIMUM} (Chrome sandbox fix): run development-system quicke2e install`);
   if (!existsSync(browsersRoot(home)) || readdirSync(browsersRoot(home)).length === 0) problems.push(`no Chromium in ${browsersRoot(home)}: run development-system quicke2e install`);
   if (!route.source) problems.push(`no Jev access: jevgrep TypeSafe credentials with the installed preload (${typesafePreload(home)}), TYPESAFE_AI_API_KEY, or OPENROUTER_API_KEY (or use --engine local)`);
@@ -105,7 +111,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   const [command, ...rest] = args;
   if (!["discover", "check", "run"].includes(command)) throw new Error("quicke2e takes install, status, or discover|check|run <args> [--repo <checkout>]");
   const status = quicke2eStatus(home);
-  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright") || problem.startsWith("no Chromium"))) throw new Error(status.problems.join("; "));
+  if (status.quicke2e !== QUICKE2E_VERSION || status.problems.some((problem) => problem.startsWith("Playwright") || problem.startsWith("no Chromium") || problem.startsWith("QuickE2E package"))) throw new Error(status.problems.join("; "));
   const repoIndex = rest.indexOf("--repo");
   const repo = path.resolve(repoIndex >= 0 ? rest[repoIndex + 1] ?? "" : process.cwd());
   const passthrough = repoIndex >= 0 ? [...rest.slice(0, repoIndex), ...rest.slice(repoIndex + 2)] : rest;
@@ -115,20 +121,25 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   let spec = "";
   if (command !== "discover") {
     const given = passthrough[0];
-    if (!given || given.startsWith("-")) throw new Error(`quicke2e ${command} takes <flows.mjs> as its first argument`);
+    if (!given || given.startsWith("-")) throw new Error(`quicke2e ${command} takes <flows.json> as its first argument`);
     if (!existsSync(given)) throw new Error(`flow file not found: ${path.resolve(given)}`);
     spec = realpathSync(given);
     // ~/.development-system is itself a checkout; any other repository (a product repo) is refused.
     const specTop = gitTop(path.dirname(spec));
     if (specTop && specTop !== gitTop(path.join(home, ".development-system"))) throw new Error(`flow file ${spec} is inside a git repository; keep it under ${flowRoot(home)}/<repo>/ (operator decision 2026-10-13)`);
-    passthrough[0] = spec;
   }
   const top = gitTop(repo);
   const head = top ? execFileSync("git", ["-C", top, "rev-parse", "HEAD"], { encoding: "utf8" }).trim() : "";
   const stamp = now.toISOString().replace(/[:.]/g, "-");
   const directory = path.join(runRoot(home), path.basename(top || repo), stamp);
   const extra = command === "run" ? [...REQUIRED_HEADLESS.filter((flag) => !passthrough.includes(flag)), "--trace", path.join(directory, "trace")] : [];
-  if (command === "run") mkdirSync(directory, { recursive: true, mode: 0o700 });
+  let specSha256 = "";
+  if (spec) {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    const prepared = prepareFlows(spec, directory);
+    passthrough[0] = prepared.module;
+    specSha256 = prepared.specSha256;
+  }
   const route = jevRoute(home);
   const bin = path.join(runtimeRoot(home), "node_modules/quicke2e/bin/quicke2e.mjs");
   const started = Date.now();
@@ -144,7 +155,7 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   let records = [];
   try { records = JSON.parse(stdout.trimEnd().split("\n").at(-1) ?? "[]"); } catch { records = []; }
   const body = {
-    quicke2e: QUICKE2E_VERSION, playwright: status.playwright, repo: top || repo, head, spec, specSha256: createHash("sha256").update(readFileSync(spec)).digest("hex"),
+    quicke2e: QUICKE2E_VERSION, playwright: status.playwright, repo: top || repo, head, spec, specSha256, packageSha256: QUICKE2E_PACKAGE_SHA256,
     command: [command, ...passthrough, ...extra], exitCode, startedAt: now.toISOString(), wallMs: Date.now() - started,
     records: Array.isArray(records) ? records : [],
   };
@@ -190,7 +201,7 @@ export function verifyRunRecord(file, { home, verifiedSha, environment }) {
   /** @type {string[]} */
   const problems = [];
   if (runSha256 !== runDigest(body)) problems.push("QuickE2E run record was edited after the run (hash mismatch)");
-  if (body.quicke2e !== QUICKE2E_VERSION || !Array.isArray(body.command) || body.command[0] !== "run") problems.push("QuickE2E run record was not produced by quicke2e run");
+  if (body.quicke2e !== QUICKE2E_VERSION || body.packageSha256 !== QUICKE2E_PACKAGE_SHA256 || !Array.isArray(body.command) || body.command[0] !== "run" || !String(body.command[1] ?? "").endsWith("flows.generated.mjs")) problems.push("QuickE2E run record was not produced by quicke2e run from declarative flows");
   if (body.exitCode !== 0) problems.push(`QuickE2E exited with ${String(body.exitCode)}`);
   if (!Array.isArray(body.records) || body.records.length === 0) problems.push("QuickE2E run record has no flows");
   if (body.head !== verifiedSha) problems.push(`QuickE2E ran against checkout ${String(body.head || "unknown").slice(0, 12)}, not the verified head ${verifiedSha.slice(0, 12)}`);

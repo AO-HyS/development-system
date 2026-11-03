@@ -2354,13 +2354,13 @@ function unwrapWrapper(name, args, ctx) {
       const cut = tail.findIndex((word) => separators.has(word.value));
       const command = cut < 0 ? tail : tail.slice(0, cut);
       if (command.length === 0) throw new Block("shell-dynamic-command", "parallel without a command runs its arguments as commands; the command text cannot be inspected.");
+      // Only the plain {} replacement is modelled. Any other brace ({.}, {/}, {#}, {1}, Perl {= ... =}) transforms each
+      // argument, so the written path would differ from the inspected one; literal braces are refused with them.
+      if (command.some((word) => word.value.replaceAll("{}", "").includes("{"))) throw new Block("shell-dynamic-command", "parallel replacement strings other than {} (including {= ... =}) transform each argument; the resulting paths cannot be inspected.");
       // One quoted word with spaces is shell text that parallel hands to a shell.
       if (command.length === 1 && /\s/u.test(command[0].value)) {
         return { args: [{ ...command[0], value: "sh", raw: "sh" }, { ...command[0], value: "-c", raw: "-c" }, command[0]], appended: true, replace: "{}" };
       }
-      // Only the plain {} replacement is modelled; {.}, {/}, {//}, {/.}, {#}, {%} and {n} transform the operand, so the
-      // written path would differ from the inspected one.
-      if (command.some((word) => /\{[^{}\s]+\}/u.test(word.value))) throw new Block("shell-dynamic-command", "parallel replacement strings other than {} transform each argument; the resulting paths cannot be inspected.");
       const placeholder = /\{\}/u, placeholders = /\{\}/gu;
       if (cut < 0) return { args: command, appended: true, replace: command.some((word) => placeholder.test(word.value)) ? "{}" : null };
       /** @type {Word[]} */
