@@ -35,6 +35,7 @@
 //                           approval needs the last round's result to be none or non-blocking, on the head or covered
 //   lineage (2.9.0)         Sol rounds count per branch lineage (review-state.mjs); siguiente names the reservation,
 //                           the owner approval past the budget, or the redesign a fix-induced blocker needs
+//   routing (2.10.0)        the first unmet gate picks siguiente through review-gate-machine.mjs (XState); --diagram draws it
 //   mergeReady              Codex ok (no-findings, or budget-spent and covered) AND no blocking finding AND Sol ok AND
 //                           develop evidence
 import { execFileSync } from "node:child_process";
@@ -42,6 +43,7 @@ import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { ACCEPTED_EVIDENCE, evaluateEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
 import { readLineage, readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
+import { OWNER_DECIDES, gateNextAction, gateStep } from "./review-gate-machine.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -55,9 +57,6 @@ const TERMINAL = /usage limit|quota|not enabled|no access|couldn['’]?t review|
 const REQUEST = /^\s*@codex\s+review\b/i;
 const REQUEST_LOCK_WAIT_MS = 20_000;
 const RUNNING = /running|progress|queued/i;
-const OWNER_DECIDES = "decide el dueño";
-const OUT_OF_SCOPE = "cambio fuera de alcance: sácalo a otro PR o decide el dueño";
-const RETRY_READ = "GitHub no respondió completo: vuelve a correr pr-review-status; si persiste, decide el dueño";
 
 /** @param {any} user REST user object */
 const isCodexApp = (user) => user?.type === "Bot" && user?.login === `${APP_LOGIN}[bot]`;
@@ -506,21 +505,11 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     chmodSync(path, 0o600);
     mergeGate = path;
   }
-  const short = head.slice(0, 12);
-  /** The single next action, first unmet gate first. */
-  let siguiente;
-  if (blockingIds.length) siguiente = `atiende los hallazgos de Codex: corrige o responde por escrito cada hilo y resuélvelo (${blockingIds.slice(0, 5).join(", ")}${blockingIds.length > 5 ? ", …" : ""})`;
-  else if (!ok && codexCoverage) siguiente = codexCoverage.error ? RETRY_READ : OUT_OF_SCOPE;
-  else if (!ok && (headState === "requested" || headState === "running")) siguiente = `espera la revisión de Codex del head ${short}; vuelve a correr pr-review-status sin --request`;
-  else if (!ok && published.length >= BUDGET) siguiente = OWNER_DECIDES;
-  else if (!ok) siguiente = `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;
-  else if (solState === "invalid") siguiente = "registros de Sol inválidos: decide el dueño";
-  else if (solState === "exemption-stale") siguiente = `la exención de Sol es del head ${exemption?.head.slice(0, 12)}, no del ${short}: si sigue aplicando regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si no, decide el dueño`;
-  else if (solState === "missing" || solState === "blocking") siguiente = solNextStep({ lineage, lineageError, prKey, head, number });
-  else if (solState === "not-covered") siguiente = solCoverage?.error ? RETRY_READ : OUT_OF_SCOPE;
-  else if (!evidenceOk) siguiente = `graba la evidencia de comportamiento del head ${short} con development-system evidence record, o cita la exención del dueño`;
-  else if (!mergeGate) siguiente = `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}`;
-  else siguiente = `fusiona: gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`;
+  // The single next action, first unmet gate first: the review gate machine (2.10.0) picks the step.
+  const step = gateStep({ blocking: blockingIds.length > 0, codexOk: ok, codexCoverage, headState, published: published.length, budget: BUDGET,
+    solState, solCoverageError: solCoverage?.error === true, evidenceOk, mergeGate: Boolean(mergeGate) });
+  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head,
+    solNext: () => solNextStep({ lineage, lineageError, prKey, head, number }) });
   return {
     ok,
     operation: "pr-review-status",
@@ -532,6 +521,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     sol: `${rounds.length}/${solMax}${exemption ? ` (exempt ${exemption.exempt})` : ""}`,
     evidencia: `${behavioralEvidence.state}${evidenceRequired ? "" : " (not required)"}`,
     siguiente,
+    step,
     state,
     behavioralEvidence,
     evidenceRequired,

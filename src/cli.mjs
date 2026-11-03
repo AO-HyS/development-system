@@ -1,5 +1,6 @@
 // @ts-check
 
+import { EVIDENCE_USAGE, parseEvidenceArguments } from "./evidence-arguments.mjs";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
@@ -288,30 +289,6 @@ function parseMistakeArguments(argv) {
   return options;
 }
 
-/** @param {string[]} argv */
-function parseEvidenceArguments(argv) {
-  const [, subcommand, ...tokens] = argv;
-  if (subcommand !== "record") throw new Error(`Usage: development-system evidence record ${EVIDENCE_USAGE}`);
-  /** @type {{home: string, json: boolean, captures: string[], [key: string]: unknown}} */
-  const options = { home: homedir(), json: false, captures: [] };
-  /** @type {Record<string, string>} */
-  const valueFlags = { "--home": "home", "--pr": "pr", "--verified-sha": "verifiedSha", "--deployed-sha": "deployedSha", "--environment": "environment", "--account": "account", "--role": "role", "--allowed": "allowed", "--denied": "denied", "--effects": "effects", "--exception": "exception", "--reason": "reason", "--checks": "checks", "--owner-waiver": "ownerWaiver", "--platforms": "platforms" };
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token === "--json") { options.json = true; continue; }
-    const value = tokens[index + 1];
-    if (token === "--capture") {
-      if (value === undefined || value.startsWith("--")) throw new Error("Missing value for --capture");
-      options.captures.push(value); index += 1; continue;
-    }
-    const key = valueFlags[token];
-    if (!key) throw new Error(`Unknown option for evidence record: ${token}`);
-    if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${token}`);
-    options[key] = value;
-    index += 1;
-  }
-  return /** @type {{home: string, json: boolean, captures: string[], pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string, platforms?: string}} */ (options);
-}
 
 /** @param {Record<string, unknown>} result */
 function formatMistake(result) {
@@ -355,8 +332,7 @@ function parseThreadHealthArguments(argv) {
   return options;
 }
 
-const EVIDENCE_USAGE = "--pr <ref> --verified-sha <sha> (--deployed-sha <sha> --environment <url> --allowed pass|fail --denied pass|fail --effects pass|fail | --exception nonvisual --reason <text> --checks <text> | --owner-waiver <owner's exact words>) [--platforms ios,android,web] [--account <a>] [--role <r>] [--capture <path>]... [--home <dir>] [--json]";
-const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json]";
+const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json] | --diagram";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
 
 const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
@@ -428,6 +404,9 @@ const COMMAND_TABLE = [
   ["docs-grants", COMMON_OPTIONS],
   ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
   ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
+  ["clean-cache", "<cache entry> [--dry-run] [--home <dir>] [--json] (allowlisted regenerable caches; moves to the Trash)"],
+  ["quicke2e", "install | status | discover|check|run <args> [--repo <checkout>] (pinned QuickE2E; run writes a hashed run.json)"],
+  ["check-file-size", "[--root <dir>] [--base <ref>] [--json] (staged by default; optional .file-size-budget.json)"],
   ["mistake add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
   ["mistake list", "[--repeated] [--by id|cause|topic] [--home <dir>] [--json]"],
   ["mistake annotate", "--line <n> [--topic <t>] [--cause <slug>] [--home <dir>] [--json]"],
@@ -594,6 +573,9 @@ async function runCommand(argv) {
     result.ok = result.valid;
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
+  if (argv[0] === "quicke2e") return (await import("./quicke2e.mjs")).runQuicke2eCommand(argv.slice(1));
+  if (argv[0] === "check-file-size") return (await import("./file-size.mjs")).runFileSizeCommand(argv.slice(1));
+  if (argv[0] === "clean-cache") return (await import("./clean-cache.mjs")).runCleanCacheCommand(argv.slice(1));
   if (argv[0] === "allow-tests" || argv[0] === "test-grants") {
     const json = argv.includes("--json");
     /** @type {Record<string, string>} */
@@ -722,6 +704,10 @@ async function runCommand(argv) {
     const { checkPrimitives, formatPrimitives } = await import("./primitives.mjs");
     const result = checkPrimitives({ root: resolve(values.root ?? process.cwd()), ref: values.ref, file: values.file });
     return { result, output: json ? JSON.stringify(result) : formatPrimitives(result), json };
+  }
+  if (argv[0] === "pr-review-status" && argv[1] === "--diagram" && argv.length === 2) {
+    const diagram = (await import("./review-gate-machine.mjs")).gateDiagram();
+    return { result: { ok: true, operation: "pr-review-status", diagram }, output: diagram, json: false };
   }
   if (argv[0] === "pr-review-status") {
     const json = argv.includes("--json");

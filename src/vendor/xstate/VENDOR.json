@@ -1,0 +1,20 @@
+{
+  "name": "xstate",
+  "version": "5.33.3",
+  "license": "MIT",
+  "tarball": "https://registry.npmjs.org/xstate/-/xstate-5.33.3.tgz",
+  "tarballSha256": "9dd7d05d6eecade4480f866e200d73f5f878dd2c0cdd8eaf70c7ce15d97a9253",
+  "integrity": "sha512-AnDRjS/GyKHmbA1PyhVCYBqYsA7EGe3KGgeD0ht3NFsXzoz7leX/HQDFX9QlHFJ/ltLHPsgChJYwPzRvB/0b4g==",
+  "source": "package/dist/<file> and package/LICENSE, copied byte for byte; production ESM build, no dependencies",
+  "use": "src/review-gate-machine.mjs (plan v5 1.4 pilot)",
+  "files": {
+    "LICENSE": "542d926d7bbb099785e322d1d5574c539d51942e52ec8adce2be4629ba81fc7f",
+    "StateMachine-ae06a22b.esm.js": "667a858403ef22e039238a06a70eaf1e3b85e23c2aeaf10d723fd75f3944b353",
+    "assign-1f0d7720.esm.js": "25fbe7a05d539bc6f43d2bf82c72af2d02f88f7c18b12aa263734c2a98ed7f4a",
+    "log-6a5e50a8.esm.js": "12926a1d7f274373ab96ab10f44767e01564601b1ed2a85d07d44c821ed9ce44",
+    "raise-effbee0c.esm.js": "772ccf89e6b15b0887ecd8863feb6e1fe1b4cb00f46190c2e20fbc749be35108",
+    "xstate-actors.esm.js": "479ffeb4eaed281570adcf91914225f75a795b07994ec5e6aa168dabd175a504",
+    "xstate-dev.esm.js": "2faf423da88e07f488c5c8eb84c34f6889f817c3c12747e37140a850ed7374bd",
+    "xstate.esm.js": "40168eebd6aeae5a0ef84c5691d433e47d642900b62be38a3565bc402328c468"
+  }
+}
