@@ -6,18 +6,21 @@
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
+import { verifyRunRecord } from "./quicke2e.mjs";
 
 const SHA = /^[0-9a-f]{40}$/;
 const SHORT_SHA = /^[0-9a-f]{7,40}$/;
 const FLOWS = /** @type {const} */ (["allowed", "denied", "effects"]);
 const PLATFORMS = /** @type {const} */ (["ios", "android", "web"]);
+// QuickE2E is the standard web run; Computer Use only where QuickE2E cannot reach, with the reason (owner 2026-11-02).
+const TOOLS = /** @type {const} */ (["quicke2e", "computer-use", "simulator"]);
 // A merge pass is valid for two hours; GitHub refuses it anyway once the head moves (`--match-head-commit`).
 const GATE_HOURS = 2;
 
 /**
  * @typedef {"pass" | "fail"} FlowResult
  * @typedef {"ok" | "failed" | "incomplete" | "missing" | "stale" | "waived" | "nonvisual" | "nonfunctional"} EvidenceState
- * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], platforms?: string[], exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
+ * @typedef {{pr: string, verifiedSha: string, deployedSha?: string, environment?: string, account?: string, role?: string, flows: Partial<Record<"allowed" | "denied" | "effects", FlowResult>>, captures: string[], platforms?: string[], tool?: string, toolReason?: string, quicke2e?: {run: string, runSha256: string, flows: string[]} | null, exception?: {kind: "nonvisual", reason: string, checks: string}, ownerWaiver?: string, status: "ok" | "failed" | "incomplete" | "waived" | "nonvisual", problems: string[], recordedAt: string, receiptSha256?: string}} Receipt
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  */
 
@@ -44,9 +47,9 @@ const text = (value) => (typeof value === "string" && value.trim() ? value.trim(
 /**
  * Writes one receipt. Its status is decided here from what the run observed, not from what the caller hopes:
  * a deployed revision that differs from the verified head, or any failed flow, makes it `failed`.
- * @param {{home: string, pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, captures?: string[], platforms?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} options
+ * @param {{home: string, pr?: string, verifiedSha?: string, deployedSha?: string, environment?: string, account?: string, role?: string, allowed?: string, denied?: string, effects?: string, captures?: string[], platforms?: string, tool?: string, run?: string, exception?: string, reason?: string, checks?: string, ownerWaiver?: string}} options
  */
-export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment, account, role, allowed, denied, effects, captures = [], platforms, exception, reason, checks, ownerWaiver }) {
+export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment, account, role, allowed, denied, effects, captures = [], platforms, tool, run, exception, reason, checks, ownerWaiver }) {
   if (!pr) throw new Error("evidence record needs --pr <owner/repo#number | PR URL>");
   const reference = parsePrReference(pr);
   if (!verifiedSha || !SHA.test(verifiedSha)) throw new Error("evidence record needs --verified-sha <40-hex head SHA the run verified>");
@@ -68,11 +71,20 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
   if (exception && waiver) throw new Error("use either --exception nonvisual or --owner-waiver, not both");
   /** @type {Receipt["status"]} */
   let status;
+  /** @type {Receipt["quicke2e"]} */
+  let quicke2e;
   if (waiver) status = "waived";
   else if (exception) status = "nonvisual";
   else {
     if (!deployedSha || !SHORT_SHA.test(deployedSha)) throw new Error("evidence record needs --deployed-sha: the revision the environment served during the run (preview deployment SHA or /version)");
-    if (!text(environment)) throw new Error("evidence record needs --environment <preview URL or develop URL>");
+    if (!/^https?:\/\/\S+$/.test(text(environment) ?? "")) throw new Error("evidence record needs --environment <preview URL or develop URL> (an http(s) URL)");
+    if (!TOOLS.includes(/** @type {typeof TOOLS[number]} */ (tool))) throw new Error(`evidence record needs --tool ${TOOLS.join("|")}: the tool that ran the flows`);
+    if (tool === "computer-use" && !text(reason)) throw new Error("--tool computer-use needs --reason: what QuickE2E cannot reach here");
+    if (tool === "simulator" && !covered?.some((name) => name !== "web")) throw new Error("--tool simulator needs --platforms ios and/or android");
+    if (tool === "quicke2e") { const checked = verifyRunRecord(run, { home, verifiedSha, environment: text(environment) ?? "" }); problems.push(...checked.problems); quicke2e = checked.summary; }
+    // A capture is a file the run left; a path that does not exist proves nothing.
+    if (tool !== "quicke2e" && captures.length === 0) problems.push("capture missing");
+    for (const capture of captures) if (!existsSync(resolve(capture))) problems.push(`capture ${capture} missing`);
     if (!verifiedSha.startsWith(deployedSha.toLowerCase()) && deployedSha.toLowerCase() !== verifiedSha) problems.push(`deployed revision ${deployedSha} is not the verified head ${verifiedSha.slice(0, 12)}`);
     for (const flow of FLOWS) {
       if (flows[flow] === "fail") problems.push(`${flow} failed`);
@@ -85,6 +97,7 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
     pr: reference.key, verifiedSha, ...(deployedSha ? { deployedSha: deployedSha.toLowerCase() } : {}),
     ...(text(environment) ? { environment: text(environment) } : {}), ...(text(account) ? { account: text(account) } : {}), ...(text(role) ? { role: text(role) } : {}),
     flows, captures: captures.map((path) => resolve(path)), ...(covered ? { platforms: covered } : {}),
+    ...(tool && !waiver && !exception ? { tool } : {}), ...(tool === "computer-use" && !waiver && !exception && text(reason) ? { toolReason: text(reason) } : {}), ...(quicke2e ? { quicke2e } : {}),
     ...(exception ? { exception: { kind: "nonvisual", reason: /** @type {string} */ (text(reason)), checks: /** @type {string} */ (text(checks)) } } : {}),
     ...(waiver ? { ownerWaiver: waiver } : {}),
     status, problems, recordedAt: new Date().toISOString(),
