@@ -3,7 +3,8 @@
 //
 // The guard blocks `rm -rf` and large moves, so an owner-approved cleanup had no agent path. This command moves
 // one entry of an allowlisted cache directory to the user's Trash (recoverable) and appends a record. Anything
-// outside the allowlist, the cache root itself, links and paths that resolve elsewhere are refused.
+// outside the allowlist, the cache root itself, links (the entry, the cache root or any directory between it and HOME)
+// and paths that resolve elsewhere are refused.
 import { appendFileSync, existsSync, lstatSync, mkdirSync, realpathSync, renameSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -29,8 +30,13 @@ export function cleanCache({ target, home = homedir(), dryRun = false, now = new
   try { stat = lstatSync(absolute); } catch { throw new Error(`${absolute} does not exist`); }
   if (stat.isSymbolicLink()) throw new Error(`${absolute} is a symbolic link; clean-cache removes real cache entries only`);
   const real = realpathSync(absolute);
-  const roots = CACHE_ROOTS.map((relative) => path.join(home, relative)).filter((root) => existsSync(root)).map((root) => realpathSync(root));
-  const root = roots.find((candidate) => path.dirname(real) === candidate);
+  // A cache root counts only when no component below HOME is a link: a linked ~/Library/Caches/ms-playwright would
+  // otherwise turn whatever it points at (a project, ~/Documents) into "cache".
+  const realHome = realpathSync(home);
+  const roots = CACHE_ROOTS.filter((relative) => existsSync(path.join(home, relative)))
+    .map((relative) => path.join(realHome, relative))
+    .filter((root) => realpathSync(root) === root);
+  const root = roots.find((candidate) => path.dirname(real) === candidate && real === path.join(candidate, path.basename(real)));
   if (!root) {
     throw new Error(`${absolute} is not a direct entry of an allowlisted cache directory (${CACHE_ROOTS.map((relative) => `~/${relative}/<entry>`).join(", ")}); anything else stays with the owner`);
   }
@@ -38,6 +44,7 @@ export function cleanCache({ target, home = homedir(), dryRun = false, now = new
   const trash = path.join(home, ".Trash");
   const trashPath = path.join(trash, `${path.basename(real)}-${stamp}`);
   const recordPath = path.join(home, ".development-system/private/cache-cleanup.jsonl");
+  if (existsSync(trash) && (lstatSync(trash).isSymbolicLink() || !lstatSync(trash).isDirectory())) throw new Error(`${trash} is not a real directory; refusing to move into it`);
   if (!dryRun) {
     mkdirSync(trash, { recursive: true });
     renameSync(real, trashPath);

@@ -12,7 +12,7 @@
 // ~/.development-system/private/quicke2e-flows/, never in a repository, and no Playwright spec is emitted (operator decision 2026-10-13).
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -103,12 +103,18 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   const repo = path.resolve(repoIndex >= 0 ? rest[repoIndex + 1] ?? "" : process.cwd());
   const passthrough = repoIndex >= 0 ? [...rest.slice(0, repoIndex), ...rest.slice(repoIndex + 2)] : rest;
   if (passthrough.some((arg) => arg === "--emit" || arg.startsWith("--emit="))) throw new Error("--emit writes a Playwright spec; no emitted spec is kept (operator decision 2026-10-13)");
-  const spec = command === "discover" ? "" : path.resolve(passthrough.find((arg) => !arg.startsWith("-")) ?? "");
-  if (spec) {
-    if (!existsSync(spec)) throw new Error(`flow file not found: ${spec}`);
+  // The flow file is the first argument after the command. It is resolved to its physical path once, checked there,
+  // and that exact absolute path is what QuickE2E receives, so the checked, hashed and executed file are the same.
+  let spec = "";
+  if (command !== "discover") {
+    const given = passthrough[0];
+    if (!given || given.startsWith("-")) throw new Error(`quicke2e ${command} takes <flows.mjs> as its first argument`);
+    if (!existsSync(given)) throw new Error(`flow file not found: ${path.resolve(given)}`);
+    spec = realpathSync(given);
     // ~/.development-system is itself a checkout; any other repository (a product repo) is refused.
     const specTop = gitTop(path.dirname(spec));
     if (specTop && specTop !== gitTop(path.join(home, ".development-system"))) throw new Error(`flow file ${spec} is inside a git repository; keep it under ${flowRoot(home)}/<repo>/ (operator decision 2026-10-13)`);
+    passthrough[0] = spec;
   }
   const top = gitTop(repo);
   const head = top ? execFileSync("git", ["-C", top, "rev-parse", "HEAD"], { encoding: "utf8" }).trim() : "";
@@ -146,25 +152,48 @@ export function runQuicke2e({ home = homedir(), args, now = new Date() }) {
   };
 }
 
+/** @param {string} url */
+const originOf = (url) => { try { return new URL(url).origin; } catch { return ""; } };
+
 /**
  * Checks a QuickE2E run record for an evidence receipt. Problems ending in "missing" make the receipt incomplete;
  * any other problem makes it failed.
- * @param {string | undefined} file @param {string} verifiedSha
+ *
+ * The record must be a regular file this command wrote under the run root, which the guard keeps agents from
+ * writing by hand; a record anywhere else, or reached through a link, is refused. The hash catches a record edited
+ * after the run; it does not authenticate one written in place, which is what the location rule is for.
+ * @param {string | undefined} file @param {{home: string, verifiedSha: string, environment: string}} expected
  */
-export function verifyRunRecord(file, verifiedSha) {
+export function verifyRunRecord(file, { home, verifiedSha, environment }) {
   if (!file) return { problems: ["QuickE2E run record missing"], summary: null };
+  const absolute = path.resolve(file);
+  let real;
+  try {
+    if (!lstatSync(absolute).isFile()) return { problems: [`QuickE2E run record ${file} is not a regular file`], summary: null };
+    real = realpathSync(absolute);
+  } catch { return { problems: [`QuickE2E run record ${file} unreadable`], summary: null }; }
+  const root = existsSync(runRoot(home)) ? realpathSync(runRoot(home)) : runRoot(home);
+  if (!real.startsWith(`${root}${path.sep}`) || path.basename(real) !== "run.json") {
+    return { problems: [`QuickE2E run record ${file} is not a run.json written by quicke2e run under ${runRoot(home)}`], summary: null };
+  }
   /** @type {any} */
   let run;
-  try { run = JSON.parse(readFileSync(path.resolve(file), "utf8")); } catch { return { problems: [`QuickE2E run record ${file} unreadable`], summary: null }; }
+  try { run = JSON.parse(readFileSync(real, "utf8")); } catch { return { problems: [`QuickE2E run record ${file} unreadable`], summary: null }; }
   const { runSha256, ...body } = run;
   /** @type {string[]} */
   const problems = [];
   if (runSha256 !== runDigest(body)) problems.push("QuickE2E run record was edited after the run (hash mismatch)");
+  if (body.quicke2e !== QUICKE2E_VERSION || !Array.isArray(body.command) || body.command[0] !== "run") problems.push("QuickE2E run record was not produced by quicke2e run");
+  if (body.exitCode !== 0) problems.push(`QuickE2E exited with ${String(body.exitCode)}`);
   if (!Array.isArray(body.records) || body.records.length === 0) problems.push("QuickE2E run record has no flows");
   if (body.head !== verifiedSha) problems.push(`QuickE2E ran against checkout ${String(body.head || "unknown").slice(0, 12)}, not the verified head ${verifiedSha.slice(0, 12)}`);
   const records = Array.isArray(body.records) ? body.records : [];
-  for (const record of records) if (record.passed !== true) problems.push(`QuickE2E flow ${record.flow} ${record.outcome ?? "failed"}`);
-  return { problems, summary: { run: path.resolve(file), runSha256, flows: records.map((/** @type {any} */ record) => `${record.flow}:${record.passed === true ? "pass" : record.outcome ?? "fail"}`) } };
+  const wanted = originOf(environment);
+  for (const record of records) {
+    if (record.passed !== true) problems.push(`QuickE2E flow ${record.flow} ${record.outcome ?? "failed"}`);
+    if (!wanted || originOf(String(record.base ?? "")) !== wanted) problems.push(`QuickE2E flow ${record.flow} ran against ${String(record.base ?? "unknown")}, not the receipt environment ${environment}`);
+  }
+  return { problems, summary: { run: real, runSha256, flows: records.map((/** @type {any} */ record) => `${record.flow}:${record.passed === true ? "pass" : record.outcome ?? "fail"}`) } };
 }
 
 /** CLI entry; `--home <dir>` (before the QuickE2E arguments) selects another HOME. @param {string[]} rawArgs */

@@ -2007,7 +2007,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/behavioral-evidence",
           "destination": ".agents/skills/behavioral-evidence",
-          "folderSha256": "a89c023069ec01c2172361e5db9bba8188ab425c2ab8aa114df85c2e22b57530",
+          "folderSha256": "5407f67b11f15677cd418c5cd62209956f752be8115c67d717523655b48e94c2",
           "expectedMirrorOf": null
         },
         {
@@ -2015,7 +2015,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/behavioral-evidence",
           "destination": ".claude/skills/behavioral-evidence",
-          "folderSha256": "a89c023069ec01c2172361e5db9bba8188ab425c2ab8aa114df85c2e22b57530",
+          "folderSha256": "5407f67b11f15677cd418c5cd62209956f752be8115c67d717523655b48e94c2",
           "expectedMirrorOf": "behavioral-evidence.codex",
           "install": "symlink"
         }
@@ -2182,7 +2182,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "ca2f3d9fdf48ca582740c4155f04b5e2c0e3820043097211dc3ddbb4b8d4ab62",
+          "folderSha256": "68d6f334dcd7331ab69f6e8b28d2e7e27af92315e6fe3d1ec2969b6dd7554a19",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -2193,7 +2193,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.10.0/skills/internal/global-agent-guardrails",
           "destination": ".claude/skills/global-agent-guardrails",
-          "folderSha256": "ca2f3d9fdf48ca582740c4155f04b5e2c0e3820043097211dc3ddbb4b8d4ab62",
+          "folderSha256": "68d6f334dcd7331ab69f6e8b28d2e7e27af92315e6fe3d1ec2969b6dd7554a19",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],

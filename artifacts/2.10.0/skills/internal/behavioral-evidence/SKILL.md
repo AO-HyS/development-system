@@ -51,8 +51,11 @@ development-system quicke2e run <flows.mjs> --base <url> --repo <checkout>
   HEAD. Run it with the checkout at the PR head you verify.
 - Record the receipt from that run:
   `development-system evidence record --pr <ref> --verified-sha <head> --deployed-sha <served sha> --environment <url> --tool quicke2e --run <run.json> --allowed pass|fail --denied pass|fail --effects pass|fail`.
-  A record edited after the run, a failed flow, or a run on another checkout
-  makes the receipt fail; a missing run leaves it incomplete.
+  Pass the `run.json` that `run` printed: a record outside that directory or
+  reached through a link, a record edited after the run, a non-zero exit, a
+  failed flow, a run on another checkout, or flows whose base URL is not the
+  receipt's `--environment` make the receipt fail; a missing run leaves it
+  incomplete.
 - Computer Use: `--tool computer-use --reason "<what QuickE2E cannot reach>" --capture <file>`;
   simulator runs: `--tool simulator --platforms ios,android --capture <file>`.
   Every capture must exist.

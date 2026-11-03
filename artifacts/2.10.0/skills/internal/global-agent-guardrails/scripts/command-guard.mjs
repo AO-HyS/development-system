@@ -2332,14 +2332,23 @@ function unwrapWrapper(name, args, ctx) {
       // GNU parallel: options, then the command, then `:::` operands (`::::` names argument files, read at run time).
       // Literal `:::` operands are inspected as the command's arguments; replacement strings ({}, {.}, {/}...) are
       // filled with each operand. Without literal operands the arguments come from standard input or files, like xargs.
+      // Only options that neither write files (--joblog, --results, --files...), nor change replacement strings
+      // (-I, --replace, -X...), nor run elsewhere (--sshlogin, --workdir...) are accepted; any other option is refused
+      // because its effect is not inspected.
       const separators = new Set([":::", ":::+", "::::", "::::+"]);
-      const withValue = new Set(["-j", "-P", "-n", "-N", "-L", "-l", "-I", "-S", "-C", "-d", "-a", "-E", "-X", "--jobs", "--max-procs", "--max-args", "--max-lines", "--max-replace-args", "--replace", "--sshlogin", "--colsep", "--delimiter", "--arg-file", "--eof", "--env", "--tmpdir", "--joblog", "--results", "--timeout", "--delay", "--halt", "--workdir", "--wd", "--basefile", "--tag-string", "--load", "--memfree", "--retries", "--shebang"]);
+      const flagsOnly = new Set(["-k", "--keep-order", "--line-buffer", "--lb", "-u", "--ungroup", "--group", "--tag", "--will-cite", "--no-notice", "--dry-run", "--verbose", "-v", "--quote", "-q"]);
+      const withValue = new Set(["-j", "-P", "-n", "-N", "--jobs", "--max-procs", "--max-args", "--timeout", "--delay", "--halt", "--load", "--memfree", "--retries"]);
       let i = 0;
       while (i < rest.length) {
         const value = rest[i].value;
         if (value === "--") { i++; break; }
         if (separators.has(value) || !value.startsWith("-") || value === "-") break;
-        i += withValue.has(value) ? 2 : 1;
+        if (flagsOnly.has(value)) { i += 1; continue; }
+        if (withValue.has(value)) { i += 2; continue; }
+        const name = value.includes("=") ? value.slice(0, value.indexOf("=")) : value;
+        if (value.includes("=") && withValue.has(name)) { i += 1; continue; }
+        if (/^-[jPnN]\d+%?$/u.test(value)) { i += 1; continue; }
+        throw new Block("shell-dynamic-command", `parallel option ${value} can write files, change replacement strings or run elsewhere; its effect is not inspected.`);
       }
       const tail = rest.slice(i);
       const cut = tail.findIndex((word) => separators.has(word.value));
@@ -2349,7 +2358,10 @@ function unwrapWrapper(name, args, ctx) {
       if (command.length === 1 && /\s/u.test(command[0].value)) {
         return { args: [{ ...command[0], value: "sh", raw: "sh" }, { ...command[0], value: "-c", raw: "-c" }, command[0]], appended: true, replace: "{}" };
       }
-      const placeholder = /\{[^{}\s]*\}/u, placeholders = /\{[^{}\s]*\}/gu;
+      // Only the plain {} replacement is modelled; {.}, {/}, {//}, {/.}, {#}, {%} and {n} transform the operand, so the
+      // written path would differ from the inspected one.
+      if (command.some((word) => /\{[^{}\s]+\}/u.test(word.value))) throw new Block("shell-dynamic-command", "parallel replacement strings other than {} transform each argument; the resulting paths cannot be inspected.");
+      const placeholder = /\{\}/u, placeholders = /\{\}/gu;
       if (cut < 0) return { args: command, appended: true, replace: command.some((word) => placeholder.test(word.value)) ? "{}" : null };
       /** @type {Word[]} */
       const operands = [];

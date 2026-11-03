@@ -81,7 +81,7 @@ export function recordEvidence({ home, pr, verifiedSha, deployedSha, environment
     if (!TOOLS.includes(/** @type {typeof TOOLS[number]} */ (tool))) throw new Error(`evidence record needs --tool ${TOOLS.join("|")}: the tool that ran the flows`);
     if (tool === "computer-use" && !text(reason)) throw new Error("--tool computer-use needs --reason: what QuickE2E cannot reach here");
     if (tool === "simulator" && !covered?.some((name) => name !== "web")) throw new Error("--tool simulator needs --platforms ios and/or android");
-    if (tool === "quicke2e") { const checked = verifyRunRecord(run, verifiedSha); problems.push(...checked.problems); quicke2e = checked.summary; }
+    if (tool === "quicke2e") { const checked = verifyRunRecord(run, { home, verifiedSha, environment: text(environment) ?? "" }); problems.push(...checked.problems); quicke2e = checked.summary; }
     // A capture is a file the run left; a path that does not exist proves nothing.
     if (tool !== "quicke2e" && captures.length === 0) problems.push("capture missing");
     for (const capture of captures) if (!existsSync(resolve(capture))) problems.push(`capture ${capture} missing`);
