@@ -428,6 +428,7 @@ const COMMAND_TABLE = [
   ["docs-grants", COMMON_OPTIONS],
   ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
   ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
+  ["check-file-size", "[--root <dir>] [--base <ref>] [--json] (staged by default; optional .file-size-budget.json)"],
   ["mistake add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
   ["mistake list", "[--repeated] [--by id|cause|topic] [--home <dir>] [--json]"],
   ["mistake annotate", "--line <n> [--topic <t>] [--cause <slug>] [--home <dir>] [--json]"],
@@ -594,6 +595,7 @@ async function runCommand(argv) {
     result.ok = result.valid;
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
+  if (argv[0] === "check-file-size") return (await import("./file-size.mjs")).runFileSizeCommand(argv.slice(1));
   if (argv[0] === "allow-tests" || argv[0] === "test-grants") {
     const json = argv.includes("--json");
     /** @type {Record<string, string>} */

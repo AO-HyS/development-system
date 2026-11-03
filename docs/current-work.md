@@ -1,5 +1,15 @@
 # Current work
 
+## 2.10.0 — shared checks (in progress, session of 2026-11-02)
+
+- Branch `feat/ds-2100-shared-checks`, base 9b2d268 (develop after the 2.9.0 release). Every change of this session goes here; the release builder (`build-release-2100.mjs`) is cut when the scope closes.
+- Origin: the X bookmarks review of 2026-11-02 (bookmark 54, Matt Pocock; summary in `~/.development-system/private/scratch/x-bookmarks-review/resumen-bookmarks-x.md`).
+- Done (not committed):
+  - `development-system check-file-size [--root] [--base <ref>] [--json]` in `src/file-size.mjs`. Staged index vs HEAD by default; `--base` compares the working tree plus untracked files with the merge-base. A file may not end over 5000 tokens (bytes/4); a file already over may grow at most 1000 bytes per change. Generated, vendored and build files are excluded. Optional `.file-size-budget.json` (`budgetTokens`, `growthBytes`, `include`, `exclude`; unknown keys fail).
+  - This repo's `.file-size-budget.json` scopes it to `bin/`, `src/`, `scripts/`, `runtime/`.
+  - Live check: a new 30 KB file fails, a `.gen.ts` passes, `src/cli.mjs` +2000 B fails, +400 B passes, a bad config fails. It also caught its own first wiring growing `src/cli.mjs` by 1044 B, which moved into the module.
+- Next: wire it into Barber, NutriPlan and Casa Roca pre-commit and CI after the release and their pin bumps; drop Barber's local branch `chore/staged-file-size-budget` (cfa403dc8, never pushed) once the shared check replaces it.
+
 ## 2.9.0 — review brake, stopping rules and cleanup (released)
 
 - Merged to develop in #182 (7bf71ee) and promoted to main in #183 (7656f27, same tree). Published as GitHub release v2.9.0 on 2026-11-02, tarball sha256 `d9c57c46…`.

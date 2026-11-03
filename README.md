@@ -4,16 +4,13 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.9.0**, shared skill catalog **0.73.0**. This
-candidate puts a real brake on Sol PR reviews: the budget counts per branch
-lineage, `development-system review reserve|approve|void|release` manage
-slots and owner approvals bound to one round, the Claude hook reserves
-`delegate_task` review packets, later rounds default to a fix diff, new
-unrelated findings become follow-ups, a fix-induced blocker requires a redesign
-packet, and a clean base merge or a Sol round at the head covers post-Codex
-commits. Host instructions add child settling, the runtimeMode check and a
-parent rotation handoff; obsolete release builders were removed. 2.8.1 routed
-computer use and browser QA to Terra 6.1 fast per the
+Current source candidate: **2.10.0**, shared skill catalog **0.74.0**. This
+candidate adds shared checks: `development-system check-file-size` keeps changed
+source files under a token budget (an already large file may grow at most 1000
+bytes per change; per-repository `.file-size-budget.json`), and guard policy
+2.4.0 inspects GNU `parallel` like `xargs`. 2.9.0 put a real brake on Sol PR
+reviews: the budget counts per branch lineage and owner approvals bind one
+round. 2.8.1 routed computer use and browser QA to Terra 6.1 fast per the
 [model screen of 2026-10-29](docs/model-screen-2026-10-29.md). Earlier weekly
 learning controls are described in
 [ADR 0073](docs/adr/0073-weekly-learning-controls.md).
