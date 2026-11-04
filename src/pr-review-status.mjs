@@ -196,8 +196,9 @@ function cleanBaseMerge(base, entry, baseRef) {
  * head. It walks the first-parent chain from the current head back to the reviewed head (at most 20 first-parent
  * commits). A first-parent commit that is a verified clean merge of `baseRef` is covered, and the base history it
  * imports through its second parent is not a PR commit, so it needs no `fixes:` line. Every other first-parent commit
- * may co-cite the other reviewer's findings (`peers`) when one fix answers both, but it must cite at least one finding
- * of this review and touch only the cited findings' paths; those commits then need a fix-only coverage record. An
+ * must cite findings of this review or of the other reviewer (`peers`): a fix the other reviewer asked for is still a
+ * fix, not new scope (operator decision 2026-11-03). It must touch only the cited findings' paths; those commits then
+ * need a fix-only coverage record. An
  * interval made only of clean base merges needs no record. Anything GitHub or the local checkout cannot prove leaves the
  * interval uncovered with the reason.
  * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string}} input @returns {Coverage}
@@ -211,7 +212,6 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
   let compare;
   try { compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`])); } catch { return uncovered(`GitHub could not compare ${from.slice(0, 12)}...${to.slice(0, 12)}`, true); }
   if (compare.status !== "ahead") return uncovered(`the head is ${compare.status} of the reviewed head ${from.slice(0, 12)}, not ahead`);
-  const own = new Set(findings.map((finding) => finding.id));
   const known = new Map([...peers, ...findings].map((finding) => [finding.id, finding.paths]));
   let filtersPass = true;
   let baseMerges = 0;
@@ -243,7 +243,6 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
     const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names };
     if (fixes.length === 0) commit.problem = "no `fixes: <id>` line";
     else if (unknown.length) commit.problem = `cites ids that are not findings of that review: ${unknown.join(", ")}`;
-    else if (!fixes.some((id) => own.has(id))) commit.problem = "cites only the other reviewer's findings";
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
     // Only a verified clean base merge may skip its side parents; any other merge brings in history this walk never
@@ -300,7 +299,7 @@ function solNextStep({ lineage, lineageError, prKey, head, number }) {
   if (slot === 1) return `reserva y pide la revisión full de Sol 6.1 High del head ${head.slice(0, 12)}: ${reserve("full")}; regístrala con ${record("full")}`;
   const last = lineage.lastRound;
   if (!last || last.result !== "blocking") return `${OWNER_DECIDES}: la última ronda de Sol del linaje (${last ? `${last.pr}, ${last.result}` : "ninguna registrada"}) no es bloqueante y el freno no admite otra ronda para este PR`;
-  const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras exactas del dueño con #${number} y ronda ${slot}>"`;
+  const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras del dueño>"`;
   // An owner approval binds the PR it was recorded for; another lineage PR's approval does not apply here.
   const approval = lineage.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr === prKey.toLowerCase());
   if (last.fixInduced) return `la ronda de Sol de ${last.pr} (${last.slot ? `ranura ${last.slot}` : `ronda local ${last.round}`}) tiene un hallazgo bloqueante fix-induced: rediseña la corrección antes de otra ronda y resérvala con --redesign <ruta>#<sha256 de sus bytes> (línea "Redesign:" del paquete)${slot > BUDGET && !approval ? `; la ranura ${slot} además necesita la aprobación del dueño: ${approve}` : ""}`;
@@ -461,7 +460,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   }
   /** @type {Coverage | null} */
   let solCoverage = null;
-  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered"} */
+  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered" | "waived"} */
   let solState;
   if (recordsError || (exemption && rounds.length)) solState = "invalid";
   else if (exemption) solState = exemption.head === head ? "exempt" : "exemption-stale";
@@ -475,13 +474,20 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
-  const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
-  const ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
+  let ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
   // The branch lineage that Sol rounds count against (informational for the gate; it drives siguiente).
   /** @type {ReturnType<typeof readLineage> | null} */
   let lineage = null;
   let lineageError = "";
   try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
+  // A round after a clean one is valid only through the owner approval the lineage proves; unreadable proof fails closed.
+  if (lineageError && rounds.some((round, index) => index > 0 && rounds[index - 1].result !== "blocking")) solState = "invalid";
+  // The owner stopped reviews for this exact head, in words the PR description quotes verbatim: no more Sol or Codex rounds.
+  const waiver = recordsError ? undefined : /** @type {import("./review-records.mjs").WaiverRecord | undefined} */ (records.filter((record) => record.type === "waiver" && record.head === head && String(pull.body ?? "").includes(record.quote)).at(-1));
+  if (waiver && solState !== "invalid") solState = "waived";
+  // A waiver also stands in for further Codex rounds; unresolved threads still block through blockingIds.
+  if (waiver) ok = true;
+  const solOk = solState === "exempt" || solState === "approved" || solState === "covered" || solState === "waived";
   const evidenceReceipts = readReceipts(home, prKey);
   const latest = evidenceReceipts.at(-1)?.receipt;
   const behavioralEvidence = evaluateEvidence({
@@ -495,7 +501,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
-  const contradictory = solState === "invalid" || codexCoverage?.error === true || solCoverage?.error === true;
+  const contradictory = solState === "invalid" || (!waiver && (codexCoverage?.error === true || solCoverage?.error === true));
   const estado = contradictory ? "unknown" : headState;
   let mergeGate = null;
   if (gate) {

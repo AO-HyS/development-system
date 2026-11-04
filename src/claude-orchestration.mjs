@@ -14,7 +14,7 @@ const settingsRelative = ".claude/settings.json";
 export const stateRelative = ".development-system/claude-orchestration/state.json";
 const manifestRelative = ".development-system/installed-manifest.json";
 const ledgerRelative = ".development-system/private/runs/claude-orchestration";
-const managedEnv = /** @type {const} */ ({
+export const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS: "4",
   CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH: "1",
   // Compact near 300K tokens instead of the 1M window: every call rereads the whole context.

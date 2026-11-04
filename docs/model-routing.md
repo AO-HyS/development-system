@@ -1,6 +1,6 @@
-# Model routing (2.10.0)
+# Model routing (2.10.1)
 
-The generated source of truth is `artifacts/2.10.0/model-routing.md`; this page is
+The generated source of truth is `artifacts/2.10.1/model-routing.md`; this page is
 a short operator summary. Edit `config/agent-roster.json`, then publish a new
 snapshot. Requested model, effort and tier are not observed identity: report
 actual runtime metadata or mark it unknown.
