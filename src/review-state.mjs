@@ -307,7 +307,7 @@ export function recordProblem(record, key) {
  * blocking round 1; a third or later only full, after a blocking round, with the operator's approval. With slot rows
  * (2.9.0, lineage-wide): local rounds stay numbered 1..n, each after a blocking local round, lineage slots strictly
  * increase, slot 1 is full and slot 2 fix-diff; the lineage-wide checks (previous round blocking, approvals) ran when
- * the slot was reserved. Rounds and exemptions never mix (a later exemption replaces an earlier one).
+ * the slot was reserved; an owner-approved round may follow a clean one. Rounds and exemptions never mix (a later exemption replaces an earlier one).
  * @param {ReviewRecord[]} records @returns {string}
  */
 export function sequenceProblem(records) {
@@ -321,7 +321,8 @@ export function sequenceProblem(records) {
     return "";
   }
   if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
-  if (rounds.some((round, index) => index >= 1 && rounds[index - 1].result !== "blocking")) return "has a Sol round after a non-blocking round";
+  // An owner-approved slot (its round carries the approval id from its reservation) may follow a clean round.
+  if (rounds.some((round, index) => index >= 1 && rounds[index - 1].result !== "blocking" && !round.approvalId)) return "has a Sol round after a non-blocking round without the owner's approval";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
   if (rounds.some((round) => slotOf(round) === 2 && round.scope !== "fix-diff")) return "has a lineage slot 2 that is not fix-diff";
