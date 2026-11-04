@@ -8,11 +8,42 @@ import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { loadPackageSource, verifyPackageFile } from './package-source.mjs';
+import { auditGlobalGuardrails } from './guardrails.mjs';
+import { auditClaudeOrchestration } from './claude-orchestration.mjs';
+import { auditReportGate } from './report-gate.mjs';
 
 const statePath = '.development-system/shared-installation.json';
 const journalPath = '.development-system/shared-installation-pending.json';
 const lockPath = '.development-system/shared-installation-lock.sqlite';
 const launchers = ['.local/bin/development-system', '.local/bin/aohys-development-system'];
+// Shared host settings files: the owner may add their own keys (env, plugins, permissions, autoMode).
+// A whole-file change there is owner content, not drift, while every hook the installers own still
+// audits clean (friction whole-file-drift-on-shared-settings, 2026-11-03).
+const ownerEditableSettings = new Set(['.claude/settings.json', '.codex/hooks.json']);
+/** Hash of the canonical `hooks` subtree only. @param {string} file @returns {Promise<string|null>} */
+async function hooksIntegrity(file) {
+  const stat = await statOrNull(file);
+  if (!stat?.isFile()) return null;
+  /** @type {any} */
+  let parsed;
+  try { parsed = JSON.parse(await readFile(file, 'utf8')); } catch { return null; }
+  /** @param {any} value @returns {any} */
+  const canonical = value => Array.isArray(value) ? value.map(canonical)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  return hash(`hooks:${JSON.stringify(canonical(parsed?.hooks ?? null))}`);
+}
+const guardBytesProblem = /guard skill bytes do not match a catalogued guard version/;
+/**
+ * Legacy entries (installed before afterHooks existed) are checked by the hook installers' own audits.
+ * Guard bytes are excluded only when the guard skill entries themselves still match their installed hash,
+ * because a newer CLI audits against its own catalog while an older guard is still installed.
+ * @param {string} home @param {boolean} guardBytesIntact @returns {Promise<string[]>}
+ */
+async function managedHookProblems(home, guardBytesIntact) {
+  const audits = await Promise.all([auditGlobalGuardrails({ home }), auditClaudeOrchestration({ home }), auditReportGate({ home })]);
+  return audits.flatMap((/** @type {any} */ audit) => audit.ok ? [] : (audit.problems ?? audit.findings ?? ['managed hook audit failed']).map(String))
+    .filter(problem => !(guardBytesIntact && guardBytesProblem.test(problem)));
+}
 const runtimeRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** @param {string|Buffer} bytes */
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -142,9 +173,25 @@ export async function auditSharedInstallation(options) {
   if (!state) problems.push('Shared installation not adopted; run the verified package setup');
   if (state) {
     if (state.packageRoot !== runtime.packageRoot || state.sourceCommit !== runtime.sourceCommit || state.packageVersion !== runtime.packageVersion) problems.push('Invoked CLI differs from the active shared package');
+    /** @type {any[]} */
+    const settingsEntries = [];
     for (const entry of state.entries) {
       const target = await confined(home, entry.path, true);
-      if (await integrity(target) !== entry.after) problems.push(`Managed drift: ${entry.path}`);
+      if (await integrity(target) === entry.after) continue;
+      if (ownerEditableSettings.has(entry.path) && (await statOrNull(target))?.isFile()) { settingsEntries.push(entry); continue; }
+      problems.push(`Managed drift: ${entry.path}`);
+    }
+    const guardBytesIntact = !problems.some(problem => problem.includes('skills/global-agent-guardrails'));
+    /** @type {string[] | null} */
+    let hookProblems = null;
+    for (const entry of settingsEntries) {
+      const target = await confined(home, entry.path, true);
+      if (entry.afterHooks) {
+        if (await hooksIntegrity(target) !== entry.afterHooks) problems.push(`Managed drift: ${entry.path} (managed hooks changed)`);
+        continue;
+      }
+      hookProblems ??= await managedHookProblems(home, guardBytesIntact);
+      if (hookProblems.length) problems.push(`Managed drift: ${entry.path} (managed hooks: ${hookProblems.join('; ')})`);
     }
     const contract = await jsonOrNull(await confined(home, '.development-system/state.json'));
     const skills = await jsonOrNull(await confined(home, '.development-system/skills-lock.json'));
@@ -272,7 +319,11 @@ export async function setupSharedInstallation(options) {
         await rename(temporary, target);
       }
       // Do not include state itself in drift hashes (it contains the receipt).
-      for (const entry of entries) entry.after = await integrity(await confined(home, entry.path, true));
+      for (const entry of entries) {
+        const target = await confined(home, entry.path, true);
+        entry.after = await integrity(target);
+        if (ownerEditableSettings.has(entry.path)) /** @type {any} */ (entry).afterHooks = await hooksIntegrity(target);
+      }
       const state = { schemaVersion: 1, ...provenance, packageRoot, contractVersion: options.version, catalogVersion: release.catalog.catalogVersion, backupRoot: backupRelative, previous, entries: entries.filter(entry => entry.path !== statePath), installedAt: new Date().toISOString() };
       await atomicJson(await confined(home, statePath), state);
       const stateEntry = entries.find(entry => entry.path === statePath);
