@@ -460,7 +460,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   }
   /** @type {Coverage | null} */
   let solCoverage = null;
-  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered"} */
+  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered" | "waived"} */
   let solState;
   if (recordsError || (exemption && rounds.length)) solState = "invalid";
   else if (exemption) solState = exemption.head === head ? "exempt" : "exemption-stale";
@@ -474,7 +474,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
-  const ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
+  let ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
   // The branch lineage that Sol rounds count against (informational for the gate; it drives siguiente).
   /** @type {ReturnType<typeof readLineage> | null} */
   let lineage = null;
@@ -482,7 +482,12 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
   // A round after a clean one is valid only through the owner approval the lineage proves; unreadable proof fails closed.
   if (lineageError && rounds.some((round, index) => index > 0 && rounds[index - 1].result !== "blocking")) solState = "invalid";
-  const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
+  // The owner stopped reviews for this exact head, in words the PR description quotes verbatim: no more Sol or Codex rounds.
+  const waiver = recordsError ? undefined : /** @type {import("./review-records.mjs").WaiverRecord | undefined} */ (records.filter((record) => record.type === "waiver" && record.head === head && String(pull.body ?? "").includes(record.quote)).at(-1));
+  if (waiver && solState !== "invalid") solState = "waived";
+  // A waiver also stands in for further Codex rounds; unresolved threads still block through blockingIds.
+  if (waiver) ok = true;
+  const solOk = solState === "exempt" || solState === "approved" || solState === "covered" || solState === "waived";
   const evidenceReceipts = readReceipts(home, prKey);
   const latest = evidenceReceipts.at(-1)?.receipt;
   const behavioralEvidence = evaluateEvidence({
@@ -496,7 +501,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
-  const contradictory = solState === "invalid" || codexCoverage?.error === true || solCoverage?.error === true;
+  const contradictory = solState === "invalid" || (!waiver && (codexCoverage?.error === true || solCoverage?.error === true));
   const estado = contradictory ? "unknown" : headState;
   let mergeGate = null;
   if (gate) {

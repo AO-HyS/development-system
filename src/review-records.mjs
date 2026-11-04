@@ -22,6 +22,7 @@ export { approveReview, classifyFindings, ledgerLines, parseFinding, readReviewR
  * @typedef {import("./review-state.mjs").RoundRecord} RoundRecord
  * @typedef {import("./review-state.mjs").ExemptionRecord} ExemptionRecord
  * @typedef {import("./review-state.mjs").CoverageRecord} CoverageRecord
+ * @typedef {import("./review-state.mjs").WaiverRecord} WaiverRecord
  * @typedef {import("./review-state.mjs").ReviewRecord} ReviewRecord
  */
 
@@ -142,6 +143,25 @@ export function recordCoverage({ home, pr, from, to, findings, verdict, note }) 
   });
 }
 
+/**
+ * Records the owner's words stopping reviews for one head ("ya no quiero más revisiones"). The gate counts it as Sol
+ * and Codex review for that head only while the same words appear verbatim in the PR description; any later commit
+ * needs a new waiver. It never resolves open review threads.
+ * @param {{home: string, pr?: string, head?: string, quote?: string}} options
+ */
+export function waiveReview({ home, pr, head, quote }) {
+  const { key, file } = locate(home, pr);
+  if (!head || !SHA.test(head)) throw new Error("review waive needs --head <40-hex PR head>");
+  if (!text(quote)) throw new Error("review waive needs --quote \"<owner's words, as said>\"");
+  verifyHead(resolveLineage({ pr: key, home }), head);
+  return withFileLock(`${file}.lock`, () => {
+    /** @type {WaiverRecord} */
+    const record = { type: "waiver", pr: key, head, quote: /** @type {string} */ (text(quote)), recordedAt: new Date().toISOString() };
+    appendChecked(home, key, file, record);
+    return { ok: true, operation: "review-waive", path: file, record };
+  });
+}
+
 /** @param {string} sha */
 const short = (sha) => sha.slice(0, 12);
 
@@ -149,6 +169,7 @@ const short = (sha) => sha.slice(0, 12);
 export function formatReviewRecord(result) {
   const record = result.record;
   const prefix = result.dryRun ? "Dry run (nothing written): " : "";
+  if (record.type === "waiver") return `${record.pr}: owner stopped reviews at head ${short(record.head)}: «${record.quote}».\nRecord: ${result.path}`;
   if (record.type === "exemption") return `${prefix}${record.pr}: Sol exempt (${record.exempt}) at head ${short(record.head)}: ${record.reason}.\nRecord: ${result.path}`;
   if (record.type === "round") {
     const findings = record.findings.map((finding) => `- ${finding.id}: ${finding.paths.join(", ")}${finding.origin ? ` (${finding.origin}${finding.critical ? `/${finding.critical}` : ""})` : ""}`);

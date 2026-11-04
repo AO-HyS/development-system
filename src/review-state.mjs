@@ -39,7 +39,8 @@ const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
  * @typedef {{type: "round", pr: string, reviewer: "sol", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string}} RoundRecord
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
- * @typedef {RoundRecord | ExemptionRecord | CoverageRecord} ReviewRecord
+ * @typedef {{type: "waiver", pr: string, head: string, quote: string, recordedAt: string}} WaiverRecord
+ * @typedef {RoundRecord | ExemptionRecord | CoverageRecord | WaiverRecord} ReviewRecord
  * @typedef {{type: "void", pr: string, lineHash: string, reason: string, quote: string, recordedAt: string}} VoidRecord
  * @typedef {{type: "approval", id: string, lineage: string, pr: string, slot: number, scope: "full" | "fix-diff", quote: string, sourceRef?: string, recordedAt: string}} Approval
  * @typedef {{type: "reservation", id: string, lineage: string, pr: string, slot: number, scope: "full" | "fix-diff", requestKey: string, packetHash?: string, approvalId?: string, redesign?: string, reservedAt: string}} Reservation
@@ -298,6 +299,11 @@ export function recordProblem(record, key) {
     if (!VERDICTS.includes(record.verdict)) return "coverage verdict is not fix-only or out-of-scope";
     if (record.verdict === "fix-only" && record.findings.length === 0) return "fix-only coverage names no findings";
     if (!text(record.note)) return "coverage has no note";
+  } else if (record.type === "waiver") {
+    // The owner stopped reviews for this head: their words, quoted as said, replace any further Sol or Codex round.
+    if (!hasKeys(record, ["type", "pr", "head", "quote", "recordedAt"])) return "waiver has missing or unknown fields";
+    if (typeof record.head !== "string" || !SHA.test(record.head)) return "waiver head is not a 40-hex SHA";
+    if (!text(record.quote)) return "waiver has no owner words";
   } else return "has an unknown record type";
   return isDate(record.recordedAt) ? "" : "has no valid recordedAt";
 }
