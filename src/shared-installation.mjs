@@ -17,24 +17,52 @@ const journalPath = '.development-system/shared-installation-pending.json';
 const lockPath = '.development-system/shared-installation-lock.sqlite';
 const launchers = ['.local/bin/development-system', '.local/bin/aohys-development-system'];
 // Shared host settings files: the owner may add their own keys (env, plugins, permissions, autoMode).
-// A whole-file change there is owner content, not drift, while every hook the installers own still
-// audits clean (friction whole-file-drift-on-shared-settings, 2026-11-03).
+// Only an allowlist of owner keys is free; everything else (hooks, disableAllHooks, allowManagedHooksOnly,
+// unknown future keys) stays protected, so a change that can turn hooks off is still drift
+// (friction whole-file-drift-on-shared-settings, 2026-11-03; review DS188-01).
 const ownerEditableSettings = new Set(['.claude/settings.json', '.codex/hooks.json']);
-/** Hash of the canonical `hooks` subtree only. @param {string} file @returns {Promise<string|null>} */
-async function hooksIntegrity(file) {
-  const stat = await statOrNull(file);
-  if (!stat?.isFile()) return null;
-  /** @type {any} */
-  let parsed;
-  try { parsed = JSON.parse(await readFile(file, 'utf8')); } catch { return null; }
-  /** @param {any} value @returns {any} */
-  const canonical = value => Array.isArray(value) ? value.map(canonical)
-    : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
-  return hash(`hooks:${JSON.stringify(canonical(parsed?.hooks ?? null))}`);
+const ownerKeys = new Set(['$schema', 'env', 'enabledPlugins', 'extraKnownMarketplaces', 'pluginConfigs', 'effortLevel', 'model',
+  'autoUpdatesChannel', 'skipDangerousModePermissionPrompt', 'skipAutoPermissionPrompt', 'permissions', 'autoMode', 'theme',
+  'outputStyle', 'language', 'alwaysThinkingEnabled', 'showThinkingSummaries', 'fastMode', 'autoCompactWindow', 'modelSettings',
+  'spinnerTipsEnabled', 'viewMode', 'tui', 'voice', 'voiceEnabled', 'cleanupPeriodDays', 'attribution', 'includeCoAuthoredBy',
+  'enableAllProjectMcpServers', 'enabledMcpjsonServers', 'disabledMcpjsonServers', 'autoMemoryEnabled', 'editorMode', 'verbose',
+  'prefersReducedMotion', 'timeFormat', 'timeZone', 'feedbackSurveyRate']);
+/** Hook commands the installers own; a background (async) copy of one can no longer block (review DS188-02). */
+const managedHookCommand = /command-guard\.mjs|roster-guard\.mjs|stop-gate\.mjs/;
+/** @param {any} value @returns {any} */
+const canonical = value => Array.isArray(value) ? value.map(canonical)
+  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+/** @param {string} file @returns {Promise<any>} parsed object, or undefined when missing or not a JSON object */
+async function settingsObject(file) {
+  if (!(await statOrNull(file))?.isFile()) return undefined;
+  try { const parsed = JSON.parse(await readFile(file, 'utf8')); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined; } catch { return undefined; }
+}
+/** Everything outside the owner allowlist, plus env names that mention hooks. @param {any} parsed */
+function protectedView(parsed) {
+  const view = Object.fromEntries(Object.entries(parsed).filter(([key]) => !ownerKeys.has(key)));
+  const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => /HOOK/i.test(name))) : {};
+  return { ...view, '#env-hooks': env };
+}
+/** @param {string} file @returns {Promise<string|null>} */
+async function protectedIntegrity(file) {
+  const parsed = await settingsObject(file);
+  return parsed === undefined ? null : hash(`protected:${JSON.stringify(canonical(protectedView(parsed)))}`);
+}
+/** Managed hook commands set to run in the background. @param {any} parsed @returns {string[]} */
+function weakenedHooks(parsed) {
+  const found = [];
+  for (const [event, groups] of Object.entries(parsed?.hooks ?? {})) {
+    for (const group of Array.isArray(groups) ? groups : []) {
+      for (const hook of Array.isArray(group?.hooks) ? group.hooks : []) {
+        if (managedHookCommand.test(String(hook?.command ?? '')) && (hook.async === true || hook.asyncRewake === true)) found.push(`${event} hook runs async`);
+      }
+    }
+  }
+  return found;
 }
 const guardBytesProblem = /guard skill bytes do not match a catalogued guard version/;
 /**
- * Legacy entries (installed before afterHooks existed) are checked by the hook installers' own audits.
+ * Legacy entries (installed before afterProtected existed) are checked by the hook installers' own audits.
  * Guard bytes are excluded only when the guard skill entries themselves still match their installed hash,
  * because a newer CLI audits against its own catalog while an older guard is still installed.
  * @param {string} home @param {boolean} guardBytesIntact @returns {Promise<string[]>}
@@ -186,12 +214,17 @@ export async function auditSharedInstallation(options) {
     let hookProblems = null;
     for (const entry of settingsEntries) {
       const target = await confined(home, entry.path, true);
-      if (entry.afterHooks) {
-        if (await hooksIntegrity(target) !== entry.afterHooks) problems.push(`Managed drift: ${entry.path} (managed hooks changed)`);
+      const parsed = await settingsObject(target);
+      const weakened = parsed === undefined ? ['not a JSON object'] : weakenedHooks(parsed);
+      if (entry.afterProtected) {
+        if (weakened.length || await protectedIntegrity(target) !== entry.afterProtected) problems.push(`Managed drift: ${entry.path} (managed hooks or hook switches changed${weakened.length ? `: ${weakened.join('; ')}` : ''})`);
         continue;
       }
+      // Legacy receipt: no protected hash was recorded, so only owner keys may sit beside hooks.
+      const unknown = parsed === undefined ? [] : Object.keys(parsed).filter(key => key !== 'hooks' && !ownerKeys.has(key));
       hookProblems ??= await managedHookProblems(home, guardBytesIntact);
-      if (hookProblems.length) problems.push(`Managed drift: ${entry.path} (managed hooks: ${hookProblems.join('; ')})`);
+      const legacy = [...weakened, ...unknown.map(key => `unmanaged key ${key}`), ...hookProblems];
+      if (legacy.length) problems.push(`Managed drift: ${entry.path} (${legacy.join('; ')})`);
     }
     const contract = await jsonOrNull(await confined(home, '.development-system/state.json'));
     const skills = await jsonOrNull(await confined(home, '.development-system/skills-lock.json'));
@@ -322,7 +355,11 @@ export async function setupSharedInstallation(options) {
       for (const entry of entries) {
         const target = await confined(home, entry.path, true);
         entry.after = await integrity(target);
-        if (ownerEditableSettings.has(entry.path)) /** @type {any} */ (entry).afterHooks = await hooksIntegrity(target);
+        if (ownerEditableSettings.has(entry.path) && entry.after !== null) {
+          const weakened = weakenedHooks(await settingsObject(target));
+          if (weakened.length) throw new Error(`Managed hooks in ${entry.path} would not block: ${weakened.join('; ')}`);
+          /** @type {any} */ (entry).afterProtected = await protectedIntegrity(target);
+        }
       }
       const state = { schemaVersion: 1, ...provenance, packageRoot, contractVersion: options.version, catalogVersion: release.catalog.catalogVersion, backupRoot: backupRelative, previous, entries: entries.filter(entry => entry.path !== statePath), installedAt: new Date().toISOString() };
       await atomicJson(await confined(home, statePath), state);
