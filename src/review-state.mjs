@@ -553,6 +553,20 @@ export function lineageState(home, lineage) {
   const slotsUsed = live.length + legacy.length;
   // An approval is used once any reservation (of any lineage in the sidecar) names it.
   const used = new Set(allReservations.flatMap((reservation) => (reservation.approvalId ? [reservation.approvalId] : [])));
+  // A round that follows a clean round is valid only through a real owner approval: the approval row for that PR, slot
+  // and scope, used by exactly one live reservation of the same PR, slot and scope (review DS188-R6-01).
+  for (const entry of prs) {
+    entry.rounds.forEach((round, index) => {
+      if (index === 0 || entry.rounds[index - 1].result === "blocking" || !isSlotRow(round)) return;
+      const slot = slotOf(round);
+      const approval = allApprovals.find((candidate) => candidate.id === round.approvalId);
+      const holders = allReservations.filter((reservation) => reservation.approvalId === round.approvalId);
+      const bound = live.some((reservation) => reservation.pr === entry.key && reservation.slot === slot && reservation.scope === round.scope && reservation.approvalId === round.approvalId);
+      if (!approval || approval.pr !== entry.key || approval.slot !== slot || approval.scope !== round.scope || holders.length !== 1 || !bound) {
+        throw new Error(`${entry.key} slot ${slot} follows a non-blocking round without a matching owner approval and reservation`);
+      }
+    });
+  }
   const approvalsUnused = approvals.filter((approval) => !used.has(approval.id));
   const recorded = prs.flatMap((entry) => entry.rounds.map((round) => ({ pr: entry.key, round })))
     .sort((a, b) => Date.parse(a.round.recordedAt) - Date.parse(b.round.recordedAt) || slotOf(a.round) - slotOf(b.round));

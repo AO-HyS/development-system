@@ -474,13 +474,15 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
-  const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
   const ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
   // The branch lineage that Sol rounds count against (informational for the gate; it drives siguiente).
   /** @type {ReturnType<typeof readLineage> | null} */
   let lineage = null;
   let lineageError = "";
   try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
+  // A round after a clean one is valid only through the owner approval the lineage proves; unreadable proof fails closed.
+  if (lineageError && rounds.some((round, index) => index > 0 && rounds[index - 1].result !== "blocking")) solState = "invalid";
+  const solOk = solState === "exempt" || solState === "approved" || solState === "covered";
   const evidenceReceipts = readReceipts(home, prKey);
   const latest = evidenceReceipts.at(-1)?.receipt;
   const behavioralEvidence = evaluateEvidence({
