@@ -1,6 +1,17 @@
 # Current work
 
-## 2.10.0 — shared checks (in progress, session of 2026-11-02)
+## 2.10.1 — settings drift, owner approvals, review waiver (merged to main 2026-11-03)
+
+- PR #188 (`fix/ds-2101-settings-drift`) merged to develop as 3793d44; release PR #189 merged to main as 5c91a41. It includes 2.10.0, which never got its own GitHub release.
+- Settings drift: an allowlist of owner keys, a hash of the managed hooks and the execution env, and stricter field checks on managed hooks. Settings the owner changes no longer block installs.
+- Approvals: `review approve --quote` takes the owner's words as said, with no PR or round numbers to repeat. An owner-approved Sol round may follow a clean round only with a matching approval and live reservation (151103a).
+- `review waive --pr --head --quote` (150bea9): the owner's stop words end review rounds for that head. The gate counts it as Sol and Codex review while the PR description quotes the words verbatim. Open threads still block. The global instructions say: record the waiver and merge, never ask for another round.
+- #188 used Sol rounds 1–6 and both Codex requests. It merged under the owner's waiver «Ya estoy harto de las revisiones. Ya no quiero que hagas más revisiones. Ya solo quiero que lleves esta nueva versión a la producción.»
+- Pending owner actions:
+  - GitHub release v2.10.1. The auto-mode classifier blocked `gh release create`. The tarball is at `~/.development-system/private/releases/2.10.1/aohys-development-system-2.10.1.tgz` (sha256 `77267724…`).
+  - Global reinstall. The live install is from 7d44143 and lacks `review waive`.
+
+## 2.10.0 — shared checks (shipped inside 2.10.1)
 
 - Branch `feat/ds-2100-shared-checks`, base 9b2d268 (develop after the 2.9.0 release). Every change of this session goes here; the release builder (`build-release-2100.mjs`) is cut when the scope closes.
 - Origin: the X bookmarks review of 2026-11-02 (bookmark 54, Matt Pocock; summary in `~/.development-system/private/scratch/x-bookmarks-review/resumen-bookmarks-x.md`).
