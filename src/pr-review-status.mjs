@@ -196,8 +196,9 @@ function cleanBaseMerge(base, entry, baseRef) {
  * head. It walks the first-parent chain from the current head back to the reviewed head (at most 20 first-parent
  * commits). A first-parent commit that is a verified clean merge of `baseRef` is covered, and the base history it
  * imports through its second parent is not a PR commit, so it needs no `fixes:` line. Every other first-parent commit
- * may co-cite the other reviewer's findings (`peers`) when one fix answers both, but it must cite at least one finding
- * of this review and touch only the cited findings' paths; those commits then need a fix-only coverage record. An
+ * must cite findings of this review or of the other reviewer (`peers`): a fix the other reviewer asked for is still a
+ * fix, not new scope (operator decision 2026-11-03). It must touch only the cited findings' paths; those commits then
+ * need a fix-only coverage record. An
  * interval made only of clean base merges needs no record. Anything GitHub or the local checkout cannot prove leaves the
  * interval uncovered with the reason.
  * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string}} input @returns {Coverage}
@@ -211,7 +212,6 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
   let compare;
   try { compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`])); } catch { return uncovered(`GitHub could not compare ${from.slice(0, 12)}...${to.slice(0, 12)}`, true); }
   if (compare.status !== "ahead") return uncovered(`the head is ${compare.status} of the reviewed head ${from.slice(0, 12)}, not ahead`);
-  const own = new Set(findings.map((finding) => finding.id));
   const known = new Map([...peers, ...findings].map((finding) => [finding.id, finding.paths]));
   let filtersPass = true;
   let baseMerges = 0;
@@ -243,7 +243,6 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
     const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names };
     if (fixes.length === 0) commit.problem = "no `fixes: <id>` line";
     else if (unknown.length) commit.problem = `cites ids that are not findings of that review: ${unknown.join(", ")}`;
-    else if (!fixes.some((id) => own.has(id))) commit.problem = "cites only the other reviewer's findings";
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
     // Only a verified clean base merge may skip its side parents; any other merge brings in history this walk never
