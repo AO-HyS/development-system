@@ -300,7 +300,7 @@ function solNextStep({ lineage, lineageError, prKey, head, number }) {
   if (slot === 1) return `reserva y pide la revisión full de Sol 6.1 High del head ${head.slice(0, 12)}: ${reserve("full")}; regístrala con ${record("full")}`;
   const last = lineage.lastRound;
   if (!last || last.result !== "blocking") return `${OWNER_DECIDES}: la última ronda de Sol del linaje (${last ? `${last.pr}, ${last.result}` : "ninguna registrada"}) no es bloqueante y el freno no admite otra ronda para este PR`;
-  const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras exactas del dueño con #${number} y ronda ${slot}>"`;
+  const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras del dueño>"`;
   // An owner approval binds the PR it was recorded for; another lineage PR's approval does not apply here.
   const approval = lineage.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr === prKey.toLowerCase());
   if (last.fixInduced) return `la ronda de Sol de ${last.pr} (${last.slot ? `ranura ${last.slot}` : `ronda local ${last.round}`}) tiene un hallazgo bloqueante fix-induced: rediseña la corrección antes de otra ronda y resérvala con --redesign <ruta>#<sha256 de sus bytes> (línea "Redesign:" del paquete)${slot > BUDGET && !approval ? `; la ranura ${slot} además necesita la aprobación del dueño: ${approve}` : ""}`;

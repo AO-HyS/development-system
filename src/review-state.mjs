@@ -334,7 +334,7 @@ function voidProblem(record, key, number) {
   if (record.pr !== key) return `is not a void for ${key}`;
   if (typeof record.lineHash !== "string" || !SHA256.test(record.lineHash)) return "void lineHash is not a sha256";
   if (!text(record.reason)) return "void has no reason";
-  if (!quotesPr(record.quote, [number])) return `void quote does not cite #${number}`;
+  if (!ownerWords(record.quote)) return "void has no owner words";
   return isDate(record.recordedAt) ? "" : "void has no valid recordedAt";
 }
 
@@ -390,16 +390,11 @@ function rawRounds(file, voided) {
 // ---------------------------------------------------------------------------------------------------------------
 // Owner quotes
 
-/** True when `quote` cites one of `numbers` as `#<n>` (not a prefix of a longer number). @param {unknown} quote @param {number[]} numbers */
-export function quotesPr(quote, numbers) {
-  const value = text(quote);
-  if (!value) return false;
-  return [...value.matchAll(/#(\d+)(?!\d)/g)].some((match) => numbers.includes(Number(match[1])));
-}
-
-/** True when `quote` names `slot` word-bounded as `3`, `R3`, `ronda 3` or `round 3`. @param {string} quote @param {number} slot */
-export function quotesSlot(quote, slot) {
-  return new RegExp(`(?<![#\\w])(?:r|ronda\\s+|round\\s+)?${slot}(?![\\w])`, "i").test(quote);
+// The owner's words in the conversation are the approval ("apruebo", "pásatela", "sí, sigue"). The agent names the PR
+// and the slot with --pr and --slot; the owner never has to repeat numbers (operator decision 2026-11-03).
+/** True when `quote` holds the owner's words. @param {unknown} quote */
+export function ownerWords(quote) {
+  return Boolean(text(quote));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -621,7 +616,7 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
       return { ok: true, operation: "review-reserve", reused: true, path: lineage.file, reservation: existing, lineage: lineageSummary(state), ...(dryRun ? { dryRun: true } : {}) };
     }
     const waiting = state.pending[0];
-    if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} (reservation ${waiting.id}) but has no recorded round: record it (development-system review record --pr ${waiting.pr} ...) or, with the owner's words, release it (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why> --quote "<owner's words citing #${numberOf(waiting.pr)}>")`);
+    if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} (reservation ${waiting.id}) but has no recorded round: record it (development-system review record --pr ${waiting.pr} ...) or, with the owner's words, release it (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why> --quote "<owner's words>")`);
     const slot = state.nextSlot;
     const last = state.lastRound;
     /** @param {NonNullable<typeof last>} round */
@@ -641,7 +636,7 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
       if (!approval) {
         const elsewhere = state.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr !== lineage.key && (!approvalId || candidate.id === approvalId));
         const why = elsewhere ? `approval ${elsewhere.id} for slot ${slot} was recorded for ${elsewhere.pr}, not ${lineage.key}; an approval does not transfer to another PR` : approvalId ? `approval ${approvalId} is not an unused approval for slot ${slot} of ${lineage.key}` : candidates.length > 1 ? `${candidates.length} unused approvals exist for slot ${slot}; name one with --approval-id` : `slot ${slot} is past the lineage budget (${BUDGET}) and has no unused owner approval`;
-        throw new Error(`${why}: decide el dueño; record the owner's words with development-system review approve --pr ${lineage.key} --slot ${slot} --scope fix-diff --quote "<owner's exact words citing #${lineage.number} and round ${slot}>"`);
+        throw new Error(`${why}: decide el dueño; record the owner's words with development-system review approve --pr ${lineage.key} --slot ${slot} --scope fix-diff --quote "<owner's words>"`);
       }
       if (approval.scope !== scope) throw new Error(`approval ${approval.id} for slot ${slot} is --scope ${approval.scope}, not ${scope}`);
     } else if (approvalId !== undefined) throw new Error(`--approval-id applies only past the budget (slot 3 or later); this is slot ${slot}`);
@@ -662,7 +657,7 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
 
 /**
  * Records the owner's approval of one lineage slot past the budget for the PR named by --pr, quoted verbatim. The
- * quote must cite `#<n>` of that PR (not another PR of the lineage) and the slot number (`3`, `R3`, `ronda 3`, `round 3`). One approval allows at most one reservation.
+ * quote is the owner's words as said; --pr and --slot bind it to one PR and one slot. One approval allows at most one reservation.
  * @param {{home: string, pr?: string, slot?: string | number, scope?: string, quote?: string, sourceRef?: string, dryRun?: boolean}} options
  */
 export function approveReview({ home, pr, slot, scope = "fix-diff", quote, sourceRef, dryRun = false }) {
@@ -673,8 +668,6 @@ export function approveReview({ home, pr, slot, scope = "fix-diff", quote, sourc
   if (!words) throw new Error("review approve needs --quote <the owner's exact words>");
   if (sourceRef !== undefined && !text(sourceRef)) throw new Error("--source-ref needs a value");
   const lineage = resolveLineage({ pr, home });
-  if (!quotesPr(words, [lineage.number])) throw new Error(`--quote must cite the approved PR as #${lineage.number}; an approval binds one PR, and words naming another PR of the lineage do not approve ${lineage.key}`);
-  if (!quotesSlot(words, number)) throw new Error(`--quote must name the round as ${number}, R${number}, ronda ${number} or round ${number}`);
   const work = () => {
     const state = lineageState(home, lineage);
     if (number <= state.slotsUsed) throw new Error(`slot ${number} of this lineage is already used (${state.slotsUsed} used)`);
@@ -698,7 +691,7 @@ export function releaseReservation({ home, pr, reservationId, reason, quote }) {
   if (!text(reason)) throw new Error("review release needs --reason <why the round did not run>");
   const words = text(quote);
   const lineage = resolveLineage({ pr, home });
-  if (!quotesPr(words, lineage.prs.map((entry) => entry.number))) throw new Error(`review release needs --quote <the owner's words> citing a PR of this lineage as #<n> (${lineage.prs.map((entry) => `#${entry.number}`).join(", ")})`);
+  if (!ownerWords(words)) throw new Error("review release needs --quote <the owner's words>");
   return withFileLock(`${lineage.file}.lock`, () => {
     const state = lineageState(home, lineage);
     const reservation = state.reservations.find((candidate) => candidate.id === reservationId);
@@ -717,7 +710,7 @@ export function releaseReservation({ home, pr, reservationId, reason, quote }) {
 }
 
 /**
- * Annuls one line of a PR ledger by the sha256 of its raw text, with the owner's words citing `#<n>`. The line stays
+ * Annuls one line of a PR ledger by the sha256 of its raw text, with the owner's words. The line stays
  * in the file; readers drop it before parsing. A void restores no budget.
  * @param {{home: string, pr?: string, lineHash?: string, reason?: string, quote?: string}} options
  */
@@ -725,7 +718,7 @@ export function voidReviewLine({ home, pr, lineHash, reason, quote }) {
   const { key, number, file } = locate(home, pr);
   if (!lineHash || !SHA256.test(lineHash)) throw new Error("review void needs --line-hash <sha256 of the raw ledger line>");
   if (!text(reason)) throw new Error("review void needs --reason <why the line is wrong>");
-  if (!quotesPr(quote, [number])) throw new Error(`review void needs --quote <the owner's words> citing #${number}`);
+  if (!ownerWords(quote)) throw new Error("review void needs --quote <the owner's words>");
   return withFileLock(`${file}.lock`, () => {
     if (!rawLines(file).some((line) => sha256(line) === lineHash)) throw new Error(`${file} has no line with sha256 ${lineHash}`);
     if (readVoids(home, key).some((record) => record.lineHash === lineHash)) throw new Error(`line ${lineHash} of ${key} is already voided`);

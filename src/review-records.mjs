@@ -39,7 +39,7 @@ export function requestLockPath(home, pr) {
   return locate(home, pr).file.replace(/\.jsonl$/, ".request.lock");
 }
 
-export const OPERATOR_APPROVAL_MOVED = "--operator-approval was replaced in 2.9.0: record the owner's exact words with development-system review approve --pr <ref> --slot <n> --scope fix-diff|full --quote \"<words citing #<n> and the round>\", reserve the slot with development-system review reserve, then record the round";
+export const OPERATOR_APPROVAL_MOVED = "--operator-approval was replaced in 2.9.0: record the owner's exact words with development-system review approve --pr <ref> --slot <n> --scope fix-diff|full --quote \"<owner's words>\", reserve the slot with development-system review reserve, then record the round";
 
 /** Appends `record` only if it and the whole sequence read under the lock stay valid. @param {string} home @param {string} key @param {string} file @param {ReviewRecord} record */
 function appendChecked(home, key, file, record) {
