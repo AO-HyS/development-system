@@ -415,9 +415,10 @@ const COMMAND_TABLE = [
   ["evidence record", EVIDENCE_USAGE],
   ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <t3-thread://...|thread:<id>|<uuid>|codex:<id>|claude:<id>|https://...> [--from <sha> (fix-diff)] [--finding <id>:<path>[+<path>][@prior|fix-induced|new[/security|authorization|data-loss|money|minors-privacy|consent]]]... | --exempt docs-only|low-risk --reason <text> [--dry-run] [--home <dir>] [--json] (a round needs the PR's oldest unrecorded reservation; --operator-approval was replaced by review approve)"],
   ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--approval-id <id>] [--redesign <path>#<sha256>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol slot of the branch lineage before launch; slot 3+ needs an owner approval)"],
-  ["review approve", "--pr <ref> --slot <n>=3+ --scope fix-diff|full --quote <owner's exact words citing #<n> and the round> [--source-ref <ref>] [--home <dir>] [--json]"],
-  ["review void", "--pr <ref> --line-hash <sha256 of the ledger line> --reason <text> --quote <owner's words citing #<n>> [--home <dir>] [--json] (restores no budget)"],
-  ["review release", "--pr <ref> --reservation-id <id> --reason <text> --quote <owner's words citing #<n>> [--home <dir>] [--json] (only a reservation with no recorded round)"],
+  ["review approve", "--pr <ref> --slot <n>=3+ --scope fix-diff|full --quote <owner's words, as said; --pr and --slot name the PR and round> [--source-ref <ref>] [--home <dir>] [--json]"],
+  ["review void", "--pr <ref> --line-hash <sha256 of the ledger line> --reason <text> --quote <owner's words> [--home <dir>] [--json] (restores no budget)"],
+  ["review release", "--pr <ref> --reservation-id <id> --reason <text> --quote <owner's words> [--home <dir>] [--json] (only a reservation with no recorded round)"],
+  ["review waive", "--pr <ref> --head <sha> --quote <owner's words stopping reviews, as said; quote them verbatim in the PR description> [--home <dir>] [--json] (counts as Sol and Codex review for that head only)"],
   ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
@@ -649,6 +650,7 @@ async function runCommand(argv) {
       approve: { "--home": "home", "--pr": "pr", "--slot": "slot", "--scope": "scope", "--quote": "quote", "--source-ref": "sourceRef" },
       void: { "--home": "home", "--pr": "pr", "--line-hash": "lineHash", "--reason": "reason", "--quote": "quote" },
       release: { "--home": "home", "--pr": "pr", "--reservation-id": "reservationId", "--reason": "reason", "--quote": "quote" },
+      waive: { "--home": "home", "--pr": "pr", "--head": "head", "--quote": "quote" },
     };
     const valueFlags = subcommand !== undefined && Object.hasOwn(flagsBySubcommand, subcommand) ? flagsBySubcommand[subcommand] : undefined;
     if (!valueFlags) throw new Error(`Usage: development-system review <${Object.keys(flagsBySubcommand).join("|")}> [options]`);
@@ -678,6 +680,10 @@ async function runCommand(argv) {
       const result = subcommand === "record"
         ? reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, from: values.from, dryRun })
         : reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
+      return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
+    }
+    if (subcommand === "waive") {
+      const result = reviews.waiveReview({ home, pr: values.pr, head: values.head, quote: values.quote });
       return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
     }
     const result = subcommand === "reserve"

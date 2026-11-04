@@ -19,7 +19,7 @@ import { assign, createActor, setup } from "./vendor/xstate/xstate.esm.js";
  * @property {string} headState          pending | requested | running | answered | failed-terminal | unknown
  * @property {number} published          "@codex review" requests published on the PR
  * @property {number} budget             Codex request budget per PR
- * @property {string} solState           invalid | exempt | exemption-stale | missing | blocking | approved | covered | not-covered
+ * @property {string} solState           invalid | exempt | exemption-stale | missing | blocking | approved | covered | not-covered | waived
  * @property {boolean} solCoverageError  Sol coverage could not be read
  * @property {boolean} evidenceOk        behavioral evidence accepted, or not required for this base
  * @property {boolean} mergeGate         a merge pass was written in this run
@@ -90,7 +90,7 @@ export function gateStep(facts) {
 }
 
 export const OWNER_DECIDES = "decide el dueño";
-const OUT_OF_SCOPE = "cambio fuera de alcance: sácalo a otro PR o decide el dueño";
+const OUT_OF_SCOPE = "cambio fuera de alcance: sácalo a otro PR o decide el dueño (si ya dijo que no se revisa más: development-system review waive con sus palabras)";
 const RETRY_READ = "GitHub no respondió completo: vuelve a correr pr-review-status; si persiste, decide el dueño";
 
 /**
