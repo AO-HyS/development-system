@@ -29,6 +29,16 @@ const ownerKeys = new Set(['$schema', 'env', 'enabledPlugins', 'extraKnownMarket
   'prefersReducedMotion', 'timeFormat', 'timeZone', 'feedbackSurveyRate']);
 /** Hook commands the installers own; a background (async) copy of one can no longer block (review DS188-02). */
 const managedHookCommand = /command-guard\.mjs|roster-guard\.mjs|stop-gate\.mjs/;
+// A managed hook and its group may carry only the fields the installers write; any other field
+// (if, async, asyncRewake, once, shell, ...) can narrow or defer execution (reviews DS188-02, DS188-03).
+const managedHookFields = new Set(['type', 'command', 'timeout', 'statusMessage']);
+const managedGroupFields = new Set(['matcher', 'hooks']);
+// Environment that can change how a hook or the host runs stays protected; other owner env (API keys,
+// tool settings) is free. Prefixes cover the host, our runtime and process loaders (review DS188-01).
+const executionEnvPrefix = /^(CLAUDE|CODEX|ANTHROPIC|AOHYS|DEVELOPMENT_SYSTEM|T3CODE|NODE|NPM|DYLD|LD|GIT|GH|XDG|TAR|UNZIP|BASH|ZSH|SHELL)(_|$)/;
+const executionEnvNames = new Set(['PATH', 'HOME', 'TMPDIR', 'CDPATH', 'ENV', 'ZDOTDIR', 'IFS', 'SIMPLE_BACKUP_SUFFIX', 'UNZIPOPT', 'PERL5LIB', 'PYTHONPATH']);
+/** @param {string} name */
+const executionEnv = name => /HOOK/i.test(name) || Object.hasOwn(managedEnv, name) || executionEnvPrefix.test(name) || executionEnvNames.has(name);
 /** @param {any} value @returns {any} */
 const canonical = value => Array.isArray(value) ? value.map(canonical)
   : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
@@ -37,29 +47,37 @@ async function settingsObject(file) {
   if (!(await statOrNull(file))?.isFile()) return undefined;
   try { const parsed = JSON.parse(await readFile(file, 'utf8')); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined; } catch { return undefined; }
 }
-/** Everything outside the owner allowlist, plus env names that mention hooks or that the orchestration installer owns. @param {any} parsed */
+/** Everything outside the owner allowlist, plus env entries that can change execution. @param {any} parsed */
 function protectedView(parsed) {
   const view = Object.fromEntries(Object.entries(parsed).filter(([key]) => !ownerKeys.has(key)));
-  const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => /HOOK/i.test(name) || Object.hasOwn(managedEnv, name))) : {};
-  return { ...view, '#env-hooks': env };
+  const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => executionEnv(name))) : {};
+  return { ...view, '#env-execution': env };
 }
 /** @param {string} file @returns {Promise<string|null>} */
 async function protectedIntegrity(file) {
   const parsed = await settingsObject(file);
   return parsed === undefined ? null : hash(`protected:${JSON.stringify(canonical(protectedView(parsed)))}`);
 }
-/** Managed hook commands set to run in the background. @param {any} parsed @returns {string[]} */
+/** Managed hooks (or their groups) carrying fields that can narrow, defer or replace execution. @param {any} parsed @returns {string[]} */
 function weakenedHooks(parsed) {
   const found = [];
   for (const [event, groups] of Object.entries(parsed?.hooks ?? {})) {
     for (const group of Array.isArray(groups) ? groups : []) {
-      for (const hook of Array.isArray(group?.hooks) ? group.hooks : []) {
-        if (managedHookCommand.test(String(hook?.command ?? '')) && (hook.async === true || hook.asyncRewake === true)) found.push(`${event} hook runs async`);
+      const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
+      const managed = hooks.filter((/** @type {any} */ hook) => managedHookCommand.test(String(hook?.command ?? '')));
+      if (!managed.length) continue;
+      const groupExtra = Object.keys(group).filter(key => !managedGroupFields.has(key));
+      if (groupExtra.length) found.push(`${event} managed hook group has ${groupExtra.join(', ')}`);
+      for (const hook of managed) {
+        const extra = Object.keys(hook).filter(key => !managedHookFields.has(key));
+        if (extra.length || hook.type !== 'command') found.push(`${event} managed hook has ${extra.length ? extra.join(', ') : `type ${hook.type}`}`);
       }
     }
   }
   return found;
 }
+/** Hash of the canonical `hooks` subtree, as recorded by receipts that carry afterHooks. @param {any} parsed */
+const hooksIntegrity = parsed => hash(`hooks:${JSON.stringify(canonical(parsed?.hooks ?? null))}`);
 const guardBytesProblem = /guard skill bytes do not match a catalogued guard version/;
 /**
  * Legacy entries (installed before afterProtected existed) are checked by the hook installers' own audits.
@@ -220,10 +238,14 @@ export async function auditSharedInstallation(options) {
         if (weakened.length || await protectedIntegrity(target) !== entry.afterProtected) problems.push(`Managed drift: ${entry.path} (managed hooks or hook switches changed${weakened.length ? `: ${weakened.join('; ')}` : ''})`);
         continue;
       }
-      // Legacy receipt: no protected hash was recorded, so only owner keys may sit beside hooks.
+      // Legacy receipt: no protected hash was recorded, so only owner keys may sit beside hooks, execution env
+      // may hold only the orchestration values, and a recorded hooks hash must still match (review DS188-03).
       const unknown = parsed === undefined ? [] : Object.keys(parsed).filter(key => key !== 'hooks' && !ownerKeys.has(key));
+      const env = parsed?.env && typeof parsed.env === 'object' ? parsed.env : {};
+      const envChanged = Object.keys(env).filter(name => executionEnv(name) && env[name] !== /** @type {any} */ (managedEnv)[name]);
+      const hooksChanged = entry.afterHooks && parsed !== undefined && hooksIntegrity(parsed) !== entry.afterHooks ? ['managed hooks changed'] : [];
       hookProblems ??= await managedHookProblems(home, guardBytesIntact);
-      const legacy = [...weakened, ...unknown.map(key => `unmanaged key ${key}`), ...hookProblems];
+      const legacy = [...weakened, ...hooksChanged, ...unknown.map(key => `unmanaged key ${key}`), ...envChanged.map(name => `execution env ${name}`), ...hookProblems];
       if (legacy.length) problems.push(`Managed drift: ${entry.path} (${legacy.join('; ')})`);
     }
     const contract = await jsonOrNull(await confined(home, '.development-system/state.json'));
