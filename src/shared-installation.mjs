@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { loadPackageSource, verifyPackageFile } from './package-source.mjs';
 import { auditGlobalGuardrails } from './guardrails.mjs';
-import { auditClaudeOrchestration } from './claude-orchestration.mjs';
+import { auditClaudeOrchestration, managedEnv } from './claude-orchestration.mjs';
 import { auditReportGate } from './report-gate.mjs';
 
 const statePath = '.development-system/shared-installation.json';
@@ -37,10 +37,10 @@ async function settingsObject(file) {
   if (!(await statOrNull(file))?.isFile()) return undefined;
   try { const parsed = JSON.parse(await readFile(file, 'utf8')); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined; } catch { return undefined; }
 }
-/** Everything outside the owner allowlist, plus env names that mention hooks. @param {any} parsed */
+/** Everything outside the owner allowlist, plus env names that mention hooks or that the orchestration installer owns. @param {any} parsed */
 function protectedView(parsed) {
   const view = Object.fromEntries(Object.entries(parsed).filter(([key]) => !ownerKeys.has(key)));
-  const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => /HOOK/i.test(name))) : {};
+  const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => /HOOK/i.test(name) || Object.hasOwn(managedEnv, name))) : {};
   return { ...view, '#env-hooks': env };
 }
 /** @param {string} file @returns {Promise<string|null>} */
