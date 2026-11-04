@@ -27,8 +27,9 @@ const ownerKeys = new Set(['$schema', 'env', 'enabledPlugins', 'extraKnownMarket
   'spinnerTipsEnabled', 'viewMode', 'tui', 'voice', 'voiceEnabled', 'cleanupPeriodDays', 'attribution', 'includeCoAuthoredBy',
   'enableAllProjectMcpServers', 'enabledMcpjsonServers', 'disabledMcpjsonServers', 'autoMemoryEnabled', 'editorMode', 'verbose',
   'prefersReducedMotion', 'timeFormat', 'timeZone', 'feedbackSurveyRate']);
-/** Hook commands the installers own; a background (async) copy of one can no longer block (review DS188-02). */
-const managedHookCommand = /command-guard\.mjs|roster-guard\.mjs|stop-gate\.mjs/;
+/** Hook commands the installers own, by their installed paths; an owner's own hook with a similar file name is not managed
+ * (reviews DS188-02, codex:4462244185). */
+const managedHookCommand = /\/\.agents\/skills\/global-agent-guardrails\/scripts\/command-guard\.mjs|\/\.codex\/development-system\/runtime\/(claude-orchestration\/roster-guard|report-gate\/stop-gate)\.mjs/;
 // A managed hook and its group may carry only the fields the installers write; any other field
 // (if, async, asyncRewake, once, shell, ...) can narrow or defer execution (reviews DS188-02, DS188-03).
 const managedHookFields = new Set(['type', 'command', 'timeout', 'statusMessage']);
