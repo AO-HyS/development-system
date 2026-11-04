@@ -624,7 +624,10 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     if (slot === 1 && scope !== "full") throw new Error("the first Sol round of a lineage must be --scope full");
     if (slot >= 2) {
       if (!last) throw new Error(`slot ${slot} needs a recorded blocking round before it; this lineage has ${state.slotsUsed} slot(s) used and no recorded round: decide el dueño`);
-      if (last.record.result !== "blocking") throw new Error(`slot ${slot} needs a blocking previous round; the last recorded round of this lineage (${where(last)}) was ${last.record.result}: decide el dueño`);
+      // An owner approval for this slot is the owner's decision: it runs the round even after a clean one (operator
+      // decision 2026-11-03). Without one, a round only follows a blocking round.
+      const approved = state.approvalsUnused.some((candidate) => candidate.slot === slot && candidate.pr === lineage.key && candidate.scope === scope);
+      if (last.record.result !== "blocking" && !approved) throw new Error(`slot ${slot} needs a blocking previous round or the owner's approval; the last recorded round of this lineage (${where(last)}) was ${last.record.result}: decide el dueño`);
       if (slot === 2 && scope !== "fix-diff") throw new Error("the second Sol round of a lineage must be --scope fix-diff");
     }
     /** @type {Approval | undefined} */
