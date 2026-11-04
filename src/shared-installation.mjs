@@ -36,7 +36,7 @@ const managedHookFields = new Set(['type', 'command', 'timeout', 'statusMessage'
 const managedGroupFields = new Set(['matcher', 'hooks']);
 // Environment that can change how a hook or the host runs stays protected; other owner env (API keys,
 // tool settings) is free. Prefixes cover the host, our runtime and process loaders (review DS188-01).
-const executionEnvPrefix = /^(CLAUDE|CODEX|ANTHROPIC|AOHYS|DEVELOPMENT_SYSTEM|T3CODE|NODE|NPM|DYLD|LD|GIT|GH|XDG|TAR|UNZIP|BASH|ZSH|SHELL)(_|$)/;
+const executionEnvPrefix = /^(CLAUDE|CODEX|AOHYS|DEVELOPMENT_SYSTEM|T3CODE|NODE|NPM|DYLD|LD|GIT|GH|XDG|TAR|UNZIP|BASH|ZSH|SHELL)(_|$)/;
 const executionEnvNames = new Set(['PATH', 'HOME', 'TMPDIR', 'CDPATH', 'ENV', 'ZDOTDIR', 'IFS', 'SIMPLE_BACKUP_SUFFIX', 'UNZIPOPT', 'PERL5LIB', 'PYTHONPATH']);
 /** @param {string} name */
 const executionEnv = name => /HOOK/i.test(name) || Object.hasOwn(managedEnv, name) || executionEnvPrefix.test(name) || executionEnvNames.has(name);
