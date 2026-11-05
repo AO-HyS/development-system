@@ -315,7 +315,10 @@ export async function setupSharedInstallation(options) {
     const previousManifest = await jsonOrNull(await confined(home, '.development-system/installed-manifest.json'));
     if (previousManifest) {
       const canonical = await releaseInputs(root, previousManifest.contractVersion);
-      if (JSON.stringify(canonical.manifest.artifacts) !== JSON.stringify(previousManifest.artifacts)) throw new Error('Previous installed manifest differs from canonical declared destinations');
+      // Destination authority: the same artifacts at the same destinations. Content hashes may differ when the installed
+      // package was a pre-release build of this version; the audit of the previous package below still verifies its files.
+      const destinations = (/** @type {any[]} */ rows) => JSON.stringify(rows.map((row) => [row.id, row.destination, row.harness, row.expectedMirrorOf ?? null]));
+      if (destinations(canonical.manifest.artifacts) !== destinations(previousManifest.artifacts)) throw new Error('Previous installed manifest differs from canonical declared destinations');
       paths.push(...managedPaths(canonical.manifest, canonical.catalog));
     }
     paths = compactPaths(paths);

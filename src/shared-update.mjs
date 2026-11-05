@@ -46,6 +46,16 @@ export async function updateSharedInstallation(options) {
   if (!source || (options.version && source.packageVersion !== options.version)) throw new Error('Update requires the exact verified package');
   for (const [file, metadata] of source.files) verifyPackageFile(source, file, metadata.sha256);
   const metadata = JSON.parse(await readFile(resolve(sourceRoot, 'package.json'), 'utf8'));
-  const result = await execute(process.execPath, [resolve(sourceRoot, 'bin/development-system.mjs'), 'setup', '--home', home, '--version', metadata.contractVersion ?? metadata.version, ...(options.duringActiveRuns ? ['--during-active-runs', options.duringActiveRuns] : []), '--json'], { maxBuffer: 32 * 1024 * 1024 });
+  let result;
+  try {
+    result = await execute(process.execPath, [resolve(sourceRoot, 'bin/development-system.mjs'), 'setup', '--home', home, '--version', metadata.contractVersion ?? metadata.version, ...(options.duringActiveRuns ? ['--during-active-runs', options.duringActiveRuns] : []), '--json'], { maxBuffer: 32 * 1024 * 1024 });
+  } catch (error) {
+    // Surface what setup said; "Command failed" alone hides why the update stopped.
+    const failure = /** @type {{stdout?: string, stderr?: string, message?: string}} */ (error);
+    let reason = '';
+    try { reason = String(JSON.parse(String(failure.stdout ?? '')).error ?? ''); } catch { reason = String(failure.stdout ?? '').trim(); }
+    reason ||= String(failure.stderr ?? '').trim() || String(failure.message ?? 'setup failed');
+    throw new Error(`setup from the ${metadata.version} package stopped: ${reason.slice(0, 2000)}`);
+  }
   return { ...JSON.parse(result.stdout), operation: 'update', productRepositoriesWritten: false };
 }
