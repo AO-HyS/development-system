@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "commit": "c86f349b102feb91f1966f8a6a60882a4e601b50",
+  "path": "pstack/skills/in-your-own-words",
+  "license": "MIT",
+  "capabilityTreeSha256": "49d983cb552ece1cc4b6a8e16f48dc90611f3c1a2d834507ec48fa80f30fa044",
+  "files": {
+    "SKILL.md": "fa8ba74e27d7be371dc270ec78bbf816411477d0dfab185356c861ac8dd413ad"
+  }
+}

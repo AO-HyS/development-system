@@ -4,8 +4,9 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.10.0**, shared skill catalog **0.74.0**. This
-candidate adds shared checks: `development-system check-file-size` keeps changed
+Current source candidate: **2.11.0**, shared skill catalog **0.75.0**. This
+candidate makes `/in-your-own-words` plans say when the work is done and how it
+will be proven, and that list becomes the goal after approval. 2.10.0 added shared checks: `development-system check-file-size` keeps changed
 source files under a token budget (an already large file may grow at most 1000
 bytes per change; per-repository `.file-size-budget.json`), and guard policy
 2.4.0 inspects GNU `parallel` like `xargs`; `development-system clean-cache`
