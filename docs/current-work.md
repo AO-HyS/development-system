@@ -1,5 +1,12 @@
 # Current work
 
+## 2.11.0 — `/in-your-own-words` says when the work is done (branch `feat/ds-2110-own-words-done`)
+
+- Owner request 2026-11-07, after the task-eval month run (top failure: stopping before the end or re-asking granted permission; 84 objectives "done" without evidence). The owner rejected a lock and chose to put the definition of done in the plan.
+- `artifacts/2.11.0/skills/external/in-your-own-words`: the proposal now has five parts: what it understood, how to improve it, the plan, when it is done (numbered `action or command -> observation` at the authorized endpoint) and how it will be proven (real verification per item, what cannot be proven, real effects). After approval the list is the goal: check every item before saying done, keep working while authorized, stop only for a named concrete blocker, never loosen the list, report each item passed/failed/not reached. Idea from pstack poteto-mode `autonomous-run`; provenance in `UPSTREAM.md`.
+- Release builder `scripts/build-release-2110.mjs`, catalog 0.75.0; only `in-your-own-words` changes.
+- Pending: PR to develop, Codex review, isolated HOME install, then main/release/global install wait for the owner.
+
 ## 2.10.1 — settings drift, owner approvals, review waiver (merged to main 2026-11-03)
 
 - PR #188 (`fix/ds-2101-settings-drift`) merged to develop as 3793d44; release PR #189 merged to main as 5c91a41. It includes 2.10.0, which never got its own GitHub release.
