@@ -11,6 +11,12 @@
     "unknown": "Stopped as unknown: this MCP tool or input is not on the versioned allow list, so the guard cannot show it is free, reversible and private."
   },
   "stop": {
+    "browse": {
+      "network": "account-security",
+      "secrets_refresh": "account-security",
+      "secrets_run": "account-security",
+      "settings": "account-security"
+    },
     "claude_ai_Claude_Docs": {
       "delete": "destruction"
     },
@@ -1096,6 +1102,22 @@
       "open",
       "performance_metrics",
       "screenshot"
+    ],
+    "browse": [
+      "execute",
+      "flight_recorder",
+      "recording",
+      "secrets_list",
+      "secrets_status",
+      "session_adopt",
+      "session_allowlist",
+      "session_delete",
+      "session_list",
+      "session_new",
+      "session_reset",
+      "session_use",
+      "status",
+      "tabs_cleanup"
     ]
   }
 }
