@@ -10,7 +10,7 @@ import { checkActiveToolingDocs } from './check-active-tooling-docs.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const version = '2.12.0', previous = '2.11.0', catalogVersion = '0.76.0', previousCatalog = '0.75.0', prefix = `artifacts/${version}`;
-// 2.12.0: four owner stops; guard policy 2.5.0 (MCP spend guard, mentioned commands are data, spend CLI rule).
+// 2.12.0: five owner stops; guard policy 2.5.0 (MCP spend guard, argv reconstruction, spend CLI rule).
 /** @type {string[]} */
 const updatedSkills = ['global-agent-guardrails'];
 // Provenance (upstream reference) is unchanged; only the adapted installed bytes move.
@@ -68,9 +68,9 @@ async function globalInstructions() {
 }
 const hostProfiles = () => ['shared', 'codex', 'claude'].map(host => renderHostInstructions(/** @type {'shared'|'codex'|'claude'} */ (host)).trimEnd()).join('\n\n');
 
-const releaseNote = `## ${version}: agents stop only for four things
+const releaseNote = `## ${version}: agents stop only for five things
 
-Contract ${version} (catalog ${catalogVersion}) replaces the many ask-first rules with four stops: incremental spend (only usage the billing inventory proves included or prepaid is exempt), destruction the owner did not order, new messages to real people, and account-security changes. A prior authorization for the same operation, account, resource and scope is never asked again. Merges to main, releases, global installs and deploys without incremental spend proceed once their gates pass. Review budgets never produce a question and never downgrade a blocker or promote the candidate. Guard policy 2.5.0 adds an MCP spend guard (Claude Code \`mcp__.*\`; Codex MCP hooks are a declared gap until observed): a versioned stop list, inspected generic executors, an exact allow list per governed server and stop-as-unknown for everything else; text that only mentions a command is data; and \`vercel domains buy\` or live-mode \`stripe\` stop as incremental spend.
+Contract ${version} (catalog ${catalogVersion}) replaces the many ask-first rules with five stops: incremental spend (only usage the billing inventory proves included or prepaid is exempt), destruction the owner did not order, new messages to real people, account-security changes, and production (a merge to main or a production deploy, asked once after its gates pass). A prior authorization for the same operation, account, resource and scope is never asked again, and the owner's many ways of saying "do not ask me" cover everything except the five stops. Merges and deploys to develop, preview and staging proceed once their gates pass. Review budgets never produce a question and never downgrade a blocker or promote the candidate. Guard policy 2.5.0 adds an MCP spend guard (Claude Code \`mcp__.*\`; Codex MCP hooks are a declared gap until observed): a versioned stop list, inspected generic executors, an exact allow list per governed server and stop-as-unknown for everything else; interpreter argv forms are reconstructed; and \`vercel domains buy\` or live-mode \`stripe\` stop as incremental spend.
 `;
 
 const roleCheck = checkRolePolicyOutputs(root);

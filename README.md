@@ -5,9 +5,9 @@ reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
 Current source candidate: **2.12.0**, shared skill catalog **0.76.0**. This
-candidate limits owner stops to four (incremental spend, destruction the owner did not order,
-messages to real people, account security), lets main merges and releases proceed once their gates
-pass, and adds an MCP spend guard (guard policy 2.5.0). 2.11.0 made
+candidate limits owner stops to five (incremental spend, destruction the owner did not order,
+messages to real people, account security, production), recognizes the owner's many ways of saying
+"do not ask me" for everything else, and adds an MCP spend guard (guard policy 2.5.0). 2.11.0 made
 `/in-your-own-words` plans say when the work is done and how it
 will be proven, and that list becomes the goal after approval. 2.10.0 added shared checks: `development-system check-file-size` keeps changed
 source files under a token budget (an already large file may grow at most 1000
