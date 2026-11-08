@@ -4507,14 +4507,16 @@ function scanInterpreterCode(name, rest, redirects, ctx, stdin) {
   if (!family) return;
   for (const code of interpreterCode(family, rest, redirects, ctx, stdin)) {
     const plain = code.replaceAll(UNKNOWN, "x");
-    // Policy 2.5.0: a program that never calls a process API outside its quoted strings cannot run them as commands, so
-    // text that only mentions a command (a plan written by a heredoc program) is data. Backtick strings stay code.
-    if (!PROCESS_API.test(plain.replace(/'''[\s\S]*?'''|"""[\s\S]*?"""/gu, "''").replace(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\]|\\.)*"/gu, "''"))) continue;
     const { strings, lone } = codeStrings(plain);
     if (PROCESS_API.test(plain) && lone.some((text) => SHELLS.has(commandName(text.trim())))) {
       throw new Block("shell-dynamic-stdin", "The program starts a shell without a command; the shell reads the program's standard input, which cannot be inspected.");
     }
-    for (const text of new Set([...strings, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
+    // execvp/execlp/posix_spawnp(file, argv): the file name is repeated as argv[0], so also read the argv alone.
+    const argvForms = strings.flatMap((text) => {
+      const words = text.trim().split(/\s+/u);
+      return words.length > 2 && commandName(words[0]) === commandName(words[1]) ? [words.slice(1).join(" ")] : [];
+    });
+    for (const text of new Set([...strings, ...argvForms, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
       checkDeadline();
       if (!/\S\s+\S/u.test(text)) continue;
       const shellText = text.replace(/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_.]*\}|%[sdr]/gu, "x");
