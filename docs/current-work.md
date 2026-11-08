@@ -94,3 +94,4 @@ Earlier records were removed from this file. The full previous version is at
 https://github.com/AO-HyS/development-system/blob/703fa478eda5f0cfe9667d6e2099e9f226119f37/docs/current-work.md
 - Browse updated 2026-11-08 at the owner's request («usa la ultima version»): CLI and relay 0.0.16 (doctor all ok); the Chrome extension stays 0.0.15 until the Web Store ships 0.0.16 (protocol 3 compatible). tools/list on 0.0.16 has the same 18 tools, so the browse policy entry is unchanged.
 - Sol R4 (fix-diff 0d6f511..HEAD) approved by the owner: «usa la ultima version y realiza otra revision solo de los ultimos cambios».
+- Sol R4 result: blocking (DS195-12 argv list concatenation; DS195-02a Node executor filter bypass). Fixed in 4fc97b9 (call-boundary reconstruction; expect/playwright stopped). Dry run 87/87 repo and isolated HOME (home-2120f). Gate: budget-spent, not mergeReady; a round 5 or a review waiver needs the owner's words.
