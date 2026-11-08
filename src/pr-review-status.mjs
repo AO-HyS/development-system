@@ -496,7 +496,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
     prFiles: pullFiles(base, number, Number(pull.changed_files)),
   });
-  // Evidence is a develop-merge gate; main, releases and production wait for the owner regardless.
+  // Evidence is a develop-merge gate. From 2.12.0 a main merge whose gate passes does not wait for the owner (four-stop policy).
   const evidenceRequired = baseRef === "develop";
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk;

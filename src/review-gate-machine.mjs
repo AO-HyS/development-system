@@ -89,7 +89,8 @@ export function gateStep(facts) {
   return /** @type {GateStep} */ (snapshot.value);
 }
 
-export const OWNER_DECIDES = "decide el dueño";
+// 2.12.0: a spent budget never produces a question and never promotes the candidate (four-stop policy).
+export const OWNER_DECIDES = "presupuesto agotado, sin ronda automática: no preguntes ni promuevas el candidato; registra el bloqueo, sigue con trabajo independiente y repórtalo en el cierre";
 const OUT_OF_SCOPE = "cambio fuera de alcance: sácalo a otro PR o decide el dueño (si ya dijo que no se revisa más: development-system review waive con sus palabras)";
 const RETRY_READ = "GitHub no respondió completo: vuelve a correr pr-review-status; si persiste, decide el dueño";
 

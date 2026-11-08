@@ -1,5 +1,15 @@
 # Current work
 
+## 2.12.0 — agent autonomy: four stops, spend guard, Browse pilot, OpenCode benchmark (branch `feat/ds-2120-agent-autonomy`)
+
+- Owner request 2026-11-08 (thread 63235c05): stop approving and pushing agents; full control with his accounts; compare OpenCode Browse. Plan v4 accepted by Sol 6.1 High cross review (thread `mcp:launch:bc946dc8…`, 4 rounds), `~/.development-system/private/cross-review/agent-autonomy-20261108/plan-v4.md` sha256 `87573042a0992e83d122445185fa796bc77a3f70feb4d1887f89140170e29c33`.
+- Owner approval, verbatim: «Adelante, adelante, implementa todo esto. Y aparte necesitamos medir al agente de pen code. Instálalo y ve en cuál salen mejor las cosas.» It approves the four stops as proposed, improvements A–E, and the first promotion of this version (merge to main, release, global install), per plan step 2. It adds an OpenCode agent benchmark against Claude Code and Codex.
+- Base: origin/develop 4b9dfe9 (same tree as main after the 2.11.0 release).
+- Inventory (criterion 1): ~/.development-system/private/permission-audit/2026-11-08-inventory.md. Hypothesis confirmed: DS guards/rules ~867 of 1,061 denials and 17 of 35 sampled nudges vs 28 host classifier denials; agents stopping early is the second cause.
+- Built: config/global-instructions.md four stops + common rule (main/releases/installs proceed through gates; budgets never ask, never promote); guard policy 2.5.0 in artifacts/2.12.0/skills/internal/global-agent-guardrails (MCP spend guard scripts/mcp-guard.mjs + references/mcp-policy.json, mentioned commands are data, incremental-spend CLI rule); src/guardrails.mjs matchers add mcp__.* (catalog 0.76.0, setup 2.12.0) and MCP audit probes; review gate text no longer asks the owner; scripts/build-release-2120.mjs.
+- Dry run (criterion 3): ~/.development-system/private/scratch/agent-autonomy/dryrun.py -> 35/35 on the candidate guard (2.10.0 guard: 25/35).
+- Pending: AGENTS.md authorization boundary needs the owner docs grant for this repo; T3 defaultRuntimeMode full-access is an owner setting; OpenCode ChatGPT login refused by the Claude classifier (benchmark runs free models only).
+
 ## 2.11.0 — `/in-your-own-words` says when the work is done (branch `feat/ds-2110-own-words-done`)
 
 - Owner request 2026-11-07, after the task-eval month run (top failure: stopping before the end or re-asking granted permission; 84 objectives "done" without evidence). The owner rejected a lock and chose to put the definition of done in the plan.
