@@ -34,11 +34,13 @@
       "notion-calendar-cancel-events": "message-to-people",
       "notion-calendar-create-events": "message-to-people",
       "notion-calendar-update-events": "message-to-people",
+      "notion-create-comment": "message-to-people",
       "notion-delete-comment": "destruction",
       "notion-delete-databases": "destruction",
       "notion-delete-pages": "destruction",
       "notion-send-message-to-session": "incremental-spend",
-      "notion-spawn-session": "incremental-spend"
+      "notion-spawn-session": "incremental-spend",
+      "notion-update-comment": "message-to-people"
     },
     "claude_ai_Resend": {
       "batch-remove-suppressions": "destruction",
@@ -80,10 +82,14 @@
       "update-inbox-agent": "message-to-people"
     },
     "github": {
+      "add_issue_comment": "message-to-people",
+      "add_reply_to_pull_request_comment": "message-to-people",
       "assign_copilot_to_issue": "incremental-spend",
       "create_pull_request_with_copilot": "incremental-spend",
       "delete_repository": "destruction",
-      "request_copilot_review": "incremental-spend"
+      "pull_request_review_write": "message-to-people",
+      "request_copilot_review": "incremental-spend",
+      "update_issue_comment": "message-to-people"
     },
     "mercadopago": {
       "form_homologation": "message-to-people",
@@ -137,6 +143,9 @@
       "ads_update_entity": "incremental-spend",
       "offer_report": "incremental-spend"
     },
+    "mobbin": {
+      "add_comment": "message-to-people"
+    },
     "plugin_convex_convex": {
       "envGet": "account-security",
       "envList": "account-security",
@@ -150,7 +159,11 @@
       "delete_comment": "destruction",
       "delete_diff_comment": "destruction",
       "delete_status_update": "destruction",
-      "share_issue": "account-security"
+      "save_comment": "message-to-people",
+      "save_diff_comment": "message-to-people",
+      "save_status_update": "message-to-people",
+      "share_issue": "account-security",
+      "submit_diff_review": "message-to-people"
     },
     "plugin_vercel_vercel": {
       "accept_project_transfer_request": "account-security",
@@ -292,6 +305,13 @@
         "parameter": "tool_name",
         "readCalls": [],
         "note": "registry names are not verified; use the dedicated *_get tools"
+      }
+    },
+    "expect": {
+      "playwright": {
+        "parameter": "code",
+        "evaluate": "node",
+        "note": "Playwright code runs in Node.js; it is checked like `node -e <code>`"
       }
     },
     "plugin_linear_linear": {
@@ -783,8 +803,6 @@
     ],
     "github": [
       "add_comment_to_pending_review",
-      "add_issue_comment",
-      "add_reply_to_pull_request_comment",
       "create_branch",
       "create_or_update_file",
       "create_pull_request",
@@ -813,7 +831,6 @@
       "list_repository_collaborators",
       "list_tags",
       "pull_request_read",
-      "pull_request_review_write",
       "push_files",
       "run_secret_scanning",
       "search_code",
@@ -823,7 +840,6 @@
       "search_repositories",
       "search_users",
       "sub_issue_write",
-      "update_issue_comment",
       "update_pull_request",
       "update_pull_request_branch"
     ],
@@ -953,8 +969,6 @@
       "retire_initiative_label",
       "retire_issue_label",
       "retire_project_label",
-      "save_comment",
-      "save_diff_comment",
       "save_document",
       "save_initiative",
       "save_initiative_label",
@@ -965,9 +979,7 @@
       "save_project_label",
       "save_release",
       "save_release_note",
-      "save_status_update",
       "search_documentation",
-      "submit_diff_review",
       "unshare_issue",
       "update_diff",
       "whoami"
@@ -982,7 +994,6 @@
       "notion-convert-page-to-skill",
       "notion-convert-to-meetings-database",
       "notion-create-attachment",
-      "notion-create-comment",
       "notion-create-database",
       "notion-create-file-upload",
       "notion-create-folder",
@@ -1031,7 +1042,6 @@
       "notion-set-comment-reaction",
       "notion-set-discussion-resolved",
       "notion-stop-session",
-      "notion-update-comment",
       "notion-update-data-source",
       "notion-update-folder",
       "notion-update-page",
@@ -1070,7 +1080,6 @@
       "view_items_in_registries"
     ],
     "mobbin": [
-      "add_comment",
       "create_collection",
       "get_collection_contents",
       "list_collections",
@@ -1086,7 +1095,6 @@
       "network_requests",
       "open",
       "performance_metrics",
-      "playwright",
       "screenshot"
     ]
   }

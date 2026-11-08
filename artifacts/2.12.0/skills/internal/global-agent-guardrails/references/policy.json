@@ -10,7 +10,7 @@
     },
     {
       "id": "incremental-spend",
-      "pattern": "^(?:vercel (?:.* )?domains? (?:.* )?(?:buy|transfer-in)(?: |$)|stripe (?=(?:.* )?(?:--live(?: |$)|[^ ]*(?:sk|rk)_live_)))",
+      "pattern": "^(?:vercel (?:--?[A-Za-z][A-Za-z0-9-]*(?:[ =][^ -][^ ]*)? )*domains? (?:--?[A-Za-z][A-Za-z0-9-]*(?:[ =][^ -][^ ]*)? )*(?:buy|transfer-in)(?: |$)|stripe (?=(?:.* )?(?:--live(?: |$)|[^ ]*(?:sk|rk)_live_)))",
       "reason": "Stop 1 (incremental spend): buying a domain or running Stripe in live mode costs money or moves it. Ask the owner first; test mode and reads stay allowed."
     },
     {

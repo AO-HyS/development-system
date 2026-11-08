@@ -54,6 +54,8 @@ function evaluateExecutor(server, name, executor, input, evaluateShell) {
   const value = input[executor.parameter];
   if (typeof value !== "string" || !value.trim()) return stopped("unknown", `${server}/${name} has no ${executor.parameter}.`);
   const text = value.trim();
+  // Code executors (expect/playwright runs Node.js): the code meets the same interpreter scan as `node -e <code>`.
+  if (executor.evaluate === "node") return evaluateShell(`node -e '${value.replaceAll("'", "'\\''")}'`);
   const reads = /** @type {string[]} */ (executor.readCalls ?? []);
   if (server === "posthog") {
     // Exact targets only (no name patterns): `<read command> [words]` or `call [--json] <listed read> [one JSON object]`.
