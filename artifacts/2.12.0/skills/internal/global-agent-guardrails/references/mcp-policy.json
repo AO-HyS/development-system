@@ -315,9 +315,7 @@
     },
     "expect": {
       "playwright": {
-        "parameter": "code",
-        "evaluate": "node",
-        "note": "Playwright code runs in Node.js; it is checked like `node -e <code>`"
+        "note": "its code runs with full Node.js access, which no text scan can bound; drive pages with browse execute (a restricted realm without process, require, import(), fs or child_process) or the other expect tools"
       }
     },
     "plugin_linear_linear": {

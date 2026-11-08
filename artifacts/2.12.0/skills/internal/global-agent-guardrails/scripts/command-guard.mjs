@@ -4495,6 +4495,68 @@ function codeStrings(code) {
 /** Program text that starts processes; with it, a lone shell-name string runs a shell reading the program's stdin. */
 const PROCESS_API = /\b(?:system|exec\w*|spawn\w*|popen\w*|Popen|run|call|check_call|check_output|getoutput|getstatusoutput|qx|shell)\b|`|%x/u;
 
+/** A process call opening its argument list; also after `_` (posix_spawnp, shell_exec, proc_open). */
+const PROCESS_CALL = /(?:\b|(?<=_))(?:system|exec\w*|spawn\w*|popen\w*|Popen|run|call|check_call|check_output|getoutput|getstatusoutput|shell|passthru|proc_open)\s*\(/gu;
+
+/**
+ * End of the expression starting at `start`: the closing bracket that balances depth 0 (exclusive) or, outside
+ * brackets, the first newline or `;`. Quoted text is skipped whole.
+ * @param {string} code @param {number} start @param {boolean} inside true when `start` is just after an opening bracket
+ */
+function expressionEnd(code, start, inside) {
+  let depth = inside ? 1 : 0;
+  for (let i = start; i < code.length; i++) {
+    const char = code[i];
+    if (char === "'" || char === '"' || char === "`") {
+      i++;
+      while (i < code.length && code[i] !== char) i += code[i] === "\\" ? 2 : 1;
+    } else if (char === "(" || char === "[" || char === "{") depth++;
+    else if (char === ")" || char === "]" || char === "}") { depth--; if (depth === 0 && inside) return i; if (depth < 0) return i; }
+    else if (depth === 0 && (char === "\n" || char === ";")) return i;
+  }
+  return code.length;
+}
+
+/** String literals and names of an expression, in order. @param {string} text */
+function expressionTokens(text) {
+  return [...text.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`|([A-Za-z_]\w*)/gu)].map((match) =>
+    match[4] === undefined ? { text: (match[1] ?? match[2] ?? match[3]).replace(/\\(.)/gu, "$1") } : { name: match[4] });
+}
+
+/**
+ * One command per process call: the call's literals in order, names bound by `name = ...` / `name += ...` in the same
+ * program expanded to their literals (cycles and depth past four stay unexpanded; unbound names add nothing).
+ * @param {string} code
+ */
+function callForms(code) {
+  /** @type {Map<string, Array<{ text?: string, name?: string }>>} */
+  const bindings = new Map();
+  for (const match of code.matchAll(/(?:^|[\s;(,{])(?:(?:const|let|var|my|local|our)\s+)?[$@]?([A-Za-z_]\w*)\s*(\+?=)(?![=~>])/gmu)) {
+    checkDeadline();
+    const start = match.index + match[0].length;
+    const tokens = expressionTokens(code.slice(start, expressionEnd(code, start, false)));
+    bindings.set(match[1], match[2] === "+=" ? [...(bindings.get(match[1]) ?? []), ...tokens] : tokens);
+  }
+  /** @param {Array<{ text?: string, name?: string }>} tokens @param {string[]} seen @returns {string[]} */
+  const expand = (tokens, seen) => tokens.flatMap((token) => {
+    checkDeadline();
+    if (token.text !== undefined) return [token.text];
+    const bound = token.name === undefined ? undefined : bindings.get(token.name);
+    if (!bound || seen.includes(/** @type {string} */ (token.name)) || seen.length >= 4) return [];
+    return expand(bound, [...seen, /** @type {string} */ (token.name)]);
+  });
+  const forms = [];
+  for (const match of code.matchAll(PROCESS_CALL)) {
+    checkDeadline();
+    const start = match.index + match[0].length;
+    const words = expand(expressionTokens(code.slice(start, expressionEnd(code, start, true))), []);
+    // Fail closed instead of truncating: a cut form could hide the command at its tail.
+    if (words.length > 4096) throw new Block("guard-timeout", TOO_LARGE_REASON);
+    if (words.length > 0) forms.push(words.join(" "));
+  }
+  return forms;
+}
+
 /**
  * Interpreters hand strings to a shell (os.system, execSync, system(), do shell script, qx{}, %x()). Evaluate each string
  * literal of an inline or stdin program, and each code fragment between delimiters (newline ; quotes brackets) for quote
@@ -4511,14 +4573,16 @@ function scanInterpreterCode(name, rest, redirects, ctx, stdin) {
     if (PROCESS_API.test(plain) && lone.some((text) => SHELLS.has(commandName(text.trim())))) {
       throw new Block("shell-dynamic-stdin", "The program starts a shell without a command; the shell reads the program's standard input, which cannot be inspected.");
     }
-    // execvp/execlp/posix_spawnp(file, argv): a literal call reads as one string `file argv0 arg1 ...`, so each such
-    // string is also read without its second word (argv[0]), whether argv[0] repeats the file or not. Bound to one
-    // literal argument list; argv assembled from separate expressions is a declared gap (accidents, not a bypass).
-    const argvForms = strings.flatMap((text) => {
+    // Each process call also reads as one command: the literals inside its own parentheses, in order, with names bound
+    // to literals in the same program expanded (`['git'] + ['reset', '--hard']`, `[*base, 'reset']`). Strings outside a
+    // call stay data. execvp/execlp/posix_spawnp(file, argv) repeat the file as argv[0], so every multi-word form is
+    // also read without its second word.
+    const forms = [...strings, ...callForms(plain)];
+    const argvForms = forms.flatMap((text) => {
       const words = text.trim().split(/\s+/u);
       return words.length > 2 ? [`${words[0]} ${words.slice(2).join(" ")}`] : [];
     });
-    for (const text of new Set([...strings, ...argvForms, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
+    for (const text of new Set([...forms, ...argvForms, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
       checkDeadline();
       if (!/\S\s+\S/u.test(text)) continue;
       const shellText = text.replace(/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|\{[A-Za-z_][A-Za-z0-9_.]*\}|%[sdr]/gu, "x");
