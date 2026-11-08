@@ -4511,27 +4511,13 @@ function scanInterpreterCode(name, rest, redirects, ctx, stdin) {
     if (PROCESS_API.test(plain) && lone.some((text) => SHELLS.has(commandName(text.trim())))) {
       throw new Block("shell-dynamic-stdin", "The program starts a shell without a command; the shell reads the program's standard input, which cannot be inspected.");
     }
-    // execvp/execlp/posix_spawnp(file, argv) and argv lists built in pieces: argv[0] may be anything and the file may be
-    // a separate string, so every single-word string is also tried as the file in front of each multi-word string, with
-    // and without that string's first word (its possible argv[0]). Not gated on PROCESS_API: names like posix_spawnp or
-    // shell_exec do not match its word boundaries.
-    const argvForms = [];
-    {
-      // Candidate files: every single-word string and the first word of every string (`exec('gh', ['gh'] + [...])`).
-      const files = [...new Set([...lone, ...strings.map((text) => text.trim().split(/\s+/u)[0] ?? "")].map((text) => text.trim()).filter((text) => /^[A-Za-z0-9_./+-]{1,64}$/u.test(text) && /[A-Za-z]/u.test(text)))].slice(0, 40);
-      const lists = [...new Set(strings.map((text) => text.trim()).filter((text) => /\S\s+\S/u.test(text)))].slice(0, 40);
-      // `exec('git', ['client', 'reset'])` reads as one string `git client reset`: also drop its second word.
-      for (const list of lists) {
-        const words = list.split(/\s+/u);
-        if (words.length > 2) argvForms.push(`${words[0]} ${words.slice(2).join(" ")}`);
-      }
-      for (const file of files) {
-        for (const list of lists) {
-          const words = list.split(/\s+/u);
-          argvForms.push(`${file} ${list}`, `${file} ${words.slice(1).join(" ")}`);
-        }
-      }
-    }
+    // execvp/execlp/posix_spawnp(file, argv): a literal call reads as one string `file argv0 arg1 ...`, so each such
+    // string is also read without its second word (argv[0]), whether argv[0] repeats the file or not. Bound to one
+    // literal argument list; argv assembled from separate expressions is a declared gap (accidents, not a bypass).
+    const argvForms = strings.flatMap((text) => {
+      const words = text.trim().split(/\s+/u);
+      return words.length > 2 ? [`${words[0]} ${words.slice(2).join(" ")}`] : [];
+    });
     for (const text of new Set([...strings, ...argvForms, ...plain.split(/[\n;'"`(){}[\]]/u)])) {
       checkDeadline();
       if (!/\S\s+\S/u.test(text)) continue;

@@ -55,7 +55,14 @@ function evaluateExecutor(server, name, executor, input, evaluateShell) {
   if (typeof value !== "string" || !value.trim()) return stopped("unknown", `${server}/${name} has no ${executor.parameter}.`);
   const text = value.trim();
   // Code executors (expect/playwright runs Node.js): the code meets the same interpreter scan as `node -e <code>`.
-  if (executor.evaluate === "node") return evaluateShell(`node -e '${value.replaceAll("'", "'\\''")}'`);
+  // Browser automation never needs Node modules or dynamic code; any such reach stops (fail closed), the rest meets the
+  // same scan as `node -e <code>`.
+  if (executor.evaluate === "node") {
+    if (/\b(?:require|import)\s*\(|^\s*import\s|\bnode:|child_process|\bprocess\s*\.|\bglobalThis\b|\b(?:eval|Function)\s*\(|\bnew\s+Function\b/mu.test(value)) {
+      return stopped("unknown", `${server}/${name} code reaches Node modules, the process object or dynamic code; browser steps need none of them.`);
+    }
+    return evaluateShell(`node -e '${value.replaceAll("'", "'\\''")}'`);
+  }
   const reads = /** @type {string[]} */ (executor.readCalls ?? []);
   if (server === "posthog") {
     // Exact targets only (no name patterns): `<read command> [words]` or `call [--json] <listed read> [one JSON object]`.
