@@ -43,6 +43,53 @@ distinct external action does not stop independent authorized preparation. Jev
 advice never grants permission, proves execution, or replaces independent review
 and evidence.
 
+## When to stop and ask: five stops
+
+Owner decisions of 2026-11-08 («Adelante, adelante, implementa todo esto»; «el
+merge a producción … sí sea algo de lo que me preguntes»). Ask the owner before
+only these five, and keep working on everything else:
+
+1. Incremental spend: buying, upgrading a plan, starting metered usage, running
+   or activating ads, moving money. Exempt only usage the billing inventory
+   (`~/.development-system/private/permission-audit/`) proves included or
+   prepaid with no overage or auto-recharge (Vercel Hobby, Jev through
+   TypeSafe). When that cannot be shown, stop or leave the capability unused.
+2. Destruction the agent proposes and the owner did not order in this task:
+   deleting or overwriting data that cannot be recovered (local or remote),
+   another thread's uncommitted work, infrastructure, production data,
+   destructive migrations. Destruction the owner ordered runs without asking
+   again.
+3. New messages to customers or real people (email, WhatsApp, posts,
+   broadcasts, calendar invites, shared files) beyond what is already
+   authorized.
+4. Account-security changes beyond what is already authorized: new OAuth
+   grants, passwords, 2FA, organization members or roles, exporting secrets.
+5. Production: a merge to `main` or another production branch and a production
+   deploy, with the release and global install that follow it. Prepare
+   everything first (gates passed, evidence recorded), then ask one question
+   naming the PR, head and what reaches production. Only an answer that
+   approves that production step counts («sí, a producción», «mergea a main»,
+   «pásalo a prod», or the owner's merge itself); it covers that step's
+   release, install and rollback, nothing later.
+
+Common rule: a prior owner authorization for the same operation, account,
+resource and scope is recognized and never asked again; ask only for a wider
+scope or a decision the owner has not made. The owner says "do not ask me" in
+many ways («te apruebo todo», «ya no me preguntes», «adelante con todo», «haz
+lo que tengas que hacer», «no me consultes», «pásatela», «dale»): each grants
+everything in the task's scope without further questions, except the five
+stops, which still need their own explicit answer. Never ask again for
+something such a phrase covers. Without asking: merges to develop and staging
+or preview branches once their gates pass, deploys to develop, preview and
+staging, non-production deploys on services without incremental spend, restarting or stopping your own services
+and processes, deleting caches and regenerable artifacts, reading the owner's
+dashboards. A login, 2FA or CAPTCHA only the owner can complete is a handoff
+(`request_secret` or one named action), not a permission question. A hook or
+classifier block is not a sixth stop: read its reason, take the allowed route
+it names and keep working; report it only when no allowed route exists. File
+ownership between threads and hook integrity stay in force. Do not stop early:
+an open goal item with remaining authority means keep working.
+
 Visual acceptance: approved references and the current design workflow, then
 independent capable critique and corrections before final media, via the host's
 authorized browser mechanism. Choose real verification, lint, React Doctor and
@@ -77,8 +124,9 @@ when found (`check-no-tests` and the guard enforce this). Only the operator
 lifts this, for one directory and a limited time, by running
 `development-system allow-tests <dir> [--hours N]` in their own terminal; inside
 an active grant (`development-system test-grants`) tests may be created and run
-for the ordered task, never outside it. Ask for a grant when a task needs one;
-never create one yourself. Every task includes
+for the ordered task, never outside it. When a task needs a grant, name it as
+one owner action in the closing and keep doing the independent work; never
+create one yourself. Every task includes
 real verification without being asked: computer use, browser, and the
 repository's verification CLI and feature map. Report passed / failed / not
 reached with evidence. Completion reports state in Detail a `Verification scope:`
@@ -104,13 +152,13 @@ kill what you launched, never by name and never another thread's.
 
 - `Done when:` is executable: a command and its expected observation; the writer retries up to 3 times, the coordinator reruns it.
 - `Outcome:` is optional, only when it adds signal.
-- Develop merges are autonomous after real verification recorded with `development-system evidence record` for the PR head (or the owner's explicit waiver, such as «pásatela», quoted verbatim in the PR and recorded with `--owner-waiver`), an independent review with no blocking findings and `development-system pr-review-status <pr> --gate` showing `mergeReady` with a clean Codex review (`no-findings` on the head, or `budget-spent` once both Codex requests are used and every finding of the last reviewed head is answered; later commits only fix those findings); main, releases and production wait for the user.
-- Review budget (operator decision 2026-10-14; every review round costs real quota): review the finished PR, never each push. One independent Sol 6.1 High review per PR on its ready head; a docs-only or small low-risk PR skips Sol and relies on the Codex review. A second Sol round only when the first had a blocking finding (security, authorization, data loss, money), and it reviews only the fix diff; non-blocking findings are fixed without re-review or recorded as follow-ups. Never a third Sol round without the operator's approval bound to that round. Ask Codex (`--request`) once when the PR is ready and at most once more after fixes; after that second review, answer its findings and merge, naming any later fix commits in the report. The budget counts per branch lineage: closing a PR and opening another from the same branch never resets it. Every PR Sol review is reserved with `development-system review reserve` (the Claude hook does it for delegate_task review packets); a round past the second needs `development-system review approve` with the owner's words as said (the agent supplies the PR and round; never ask the owner to repeat numbers), binds only that round and runs as a fix diff unless the owner asks for full. From the second round, a new finding the diff did not cause is a follow-up unless it touches security, authorization, data loss, money, minors' privacy or consent; record findings as `<id>:<paths>@prior|fix-induced|new[/critical]`. A blocker in the mechanism the previous fix introduced calls for a redesign packet (`Redesign: <path>#<sha256>`), not another patch. A clean merge of the base branch, or a non-blocking Sol round at the current head, covers commits after the last Codex review; never close and reopen a PR to reset a budget. A wrong ledger row is annulled with `development-system review void` and the owner's words, never by hand. When the owner says to stop reviewing («ya no quiero más revisiones»), the review rounds end: quote their words verbatim in the PR description, record them with `development-system review waive --pr <ref> --head <sha> --quote "<words>"`, answer any open threads and merge. Do not propose, reserve or ask for another round; a later commit needs only a new waiver with the same words.
+- Develop merges are autonomous after real verification recorded with `development-system evidence record` for the PR head (or the owner's explicit waiver, such as «pásatela», quoted verbatim in the PR and recorded with `--owner-waiver`), an independent review with no blocking findings and `development-system pr-review-status <pr> --gate` showing `mergeReady` with a clean Codex review (`no-findings` on the head, or `budget-spent` once both Codex requests are used and every finding of the last reviewed head is answered; later commits only fix those findings). A merge to main, a release, a global install and a production deploy follow the same gates (`mergeReady` for main, `release:prepare` and the release train's production smoke and rollback) and then wait for the owner's explicit production answer (stop 5); a general approval («te apruebo todo») does not cover them.
+- Review budget (operator decision 2026-10-14; every review round costs real quota): review the finished PR, never each push. One independent Sol 6.1 High review per PR on its ready head; a docs-only or small low-risk PR skips Sol and relies on the Codex review. A second Sol round only when the first had a blocking finding (security, authorization, data loss, money), and it reviews only the fix diff; non-blocking findings are fixed without re-review or recorded as follow-ups. Never a third Sol round without the operator's approval bound to that round. A budget never produces a question: an exhausted budget means no automatic extra round, and it never downgrades a blocker or promotes the candidate. Non-blocking findings become follow-ups; a blocker is fixed within the available authority, and if a required review is still missing the agent records that block, continues independent work and reports it in the closing. Ask Codex (`--request`) once when the PR is ready and at most once more after fixes; after that second review, answer its findings and merge, naming any later fix commits in the report. The budget counts per branch lineage: closing a PR and opening another from the same branch never resets it. Every PR Sol review is reserved with `development-system review reserve` (the Claude hook does it for delegate_task review packets); a round past the second needs `development-system review approve` with the owner's words as said (the agent supplies the PR and round; never ask the owner to repeat numbers), binds only that round and runs as a fix diff unless the owner asks for full. From the second round, a new finding the diff did not cause is a follow-up unless it touches security, authorization, data loss, money, minors' privacy or consent; record findings as `<id>:<paths>@prior|fix-induced|new[/critical]`. A blocker in the mechanism the previous fix introduced calls for a redesign packet (`Redesign: <path>#<sha256>`), not another patch. A clean merge of the base branch, or a non-blocking Sol round at the current head, covers commits after the last Codex review; never close and reopen a PR to reset a budget. A wrong ledger row is annulled with `development-system review void` and the owner's words, never by hand. When the owner says to stop reviewing («ya no quiero más revisiones»), the review rounds end: quote their words verbatim in the PR description, record them with `development-system review waive --pr <ref> --head <sha> --quote "<words>"`, answer any open threads and merge (a merge to main or production still needs stop 5). Do not propose, reserve or ask for another round; a later commit needs only a new waiver with the same words.
 - `cross-review` runs only when the operator asks for it; plans and primitive lists otherwise get the single plan review of the shared host rules, with at most one more round for a blocking finding.
 - Computer use and simulator QA run on Terra 6.1 Low fast, browser app testing on Terra 6.1 High fast and video recording on Terra 6.1 Medium fast (model screen of 2026-10-29); a parent on another model delegates the browser work instead of driving it at extra-high effort.
 - Browser budget (operator decision 2026-10-14): one browser or computer-use session per PR, on its ready head, covering every affected flow in one pass. A second session only when the first found a real defect, and it checks only that fix; never a session per push or per polish change. An independent visual critique runs once per PR and only for UI changes. Never a third session without the operator.
 - Primitives: each product repo keeps `docs/architecture/primitives.json` true (`development-system check-primitives`); `primitives-gardener` fixes them and the Steward tends them. PRs carry a `system-recap`.
-- Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report; one-way (deleting data, destructive migrations, production, money, messages to customers): stop and ask.
+- Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report. Other decisions stop only when they meet one of the five stops (spend, destruction not ordered, messages to people, account security, production).
 - Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.
 - Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref> --repository <repo>`, reusing the existing id it suggests for the same cause (`--new-id` only for a truly new cause) and adding `--cause <slug>` once the root cause is confirmed; a cause with two distinct incidents (`mistake list --repeated --by cause`) becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the final report; frictions feed the Steward and never count as mistakes.
 - An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
@@ -172,4 +220,4 @@ per-invocation contract. HOME installation does not prove live host loading.
 
 ## Browser resource preparation
 
-Use development-system browser-pool for explicit dedicated-browser reservations. Inventory never proves login or Computer Use readiness. Personal Chrome is disabled unless the operator explicitly dedicates it. Registered account observations expire; verify the exact controllable account again before effects. Native computer-use reservations remain desktop-exclusive until a real adapter enforces application confinement. No waiting queue: capacity-needed means continue independent work or provide another verified resource, never steal a browser. Expiry, cancellation and uncertain effects require quarantine and explicit reconciliation. The pool gates participating launches only; it does not intercept direct T3/browser MCP calls or hot-switch existing threads. For T3 preview, each parallel worker opens its own tab and passes its exact tabId; a shared persistent profile still shares login state. Imported T3 profiles are not automatically selected by the current preview_open route.
+Use development-system browser-pool for explicit dedicated-browser reservations. Inventory never proves login or Computer Use readiness. Personal Chrome is disabled unless the operator explicitly dedicates it; the 2.12.0 Browse pilot is that dedication for read-only sessions on dashboards the owner names, after a recorded precondition (billing inventory, guard active, the session's capabilities reviewed), with the five stops applying to every click. Registered account observations expire; verify the exact controllable account again before effects. Native computer-use reservations remain desktop-exclusive until a real adapter enforces application confinement. No waiting queue: capacity-needed means continue independent work or provide another verified resource, never steal a browser. Expiry, cancellation and uncertain effects require quarantine and explicit reconciliation. The pool gates participating launches only; it does not intercept direct T3/browser MCP calls or hot-switch existing threads. For T3 preview, each parallel worker opens its own tab and passes its exact tabId; a shared persistent profile still shares login state. Imported T3 profiles are not automatically selected by the current preview_open route.
