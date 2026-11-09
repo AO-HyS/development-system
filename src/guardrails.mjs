@@ -9,10 +9,10 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Catalog 0.74.0 ships policy 2.4.0 (GNU parallel inspected like xargs) from artifacts/2.10.0/skills/internal/global-agent-guardrails. */
-const guardCatalogVersion = "0.74.0";
+/** Catalog 0.76.0 ships policy 2.5.0 (MCP spend guard, mentioned commands are data, spend CLI rule) from artifacts/2.12.0/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.76.0";
 /** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
-const guardSetupVersion = "2.10.0";
+const guardSetupVersion = "2.12.0";
 /** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**
@@ -20,8 +20,8 @@ const legacyCodexCatalogVersion = "0.13.0";
  * canonical engine: the Claude skill variant is a link to it, and links are not managed paths.
  */
 const adapters = /** @type {const} */ ([
-  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec|apply_patch", label: "Codex" },
-  { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor|Edit|Write|MultiEdit|NotebookEdit", label: "Claude Code" },
+  { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec|apply_patch|mcp__.*", label: "Codex" },
+  { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor|Edit|Write|MultiEdit|NotebookEdit|mcp__.*", label: "Claude Code" },
 ]);
 
 /** @param {unknown} error */
@@ -295,6 +295,11 @@ export async function auditGlobalGuardrails({ home }) {
         if (grantWrite.status !== 2) problems.push(`${adapter.label} guard did not block the test-grant file write probe`);
         const selfGrant = probe(adapter.enginePath, "pnpm exec development-system allow-tests guard-probe", resolvedHome);
         if (selfGrant.status !== 2) problems.push(`${adapter.label} guard did not block the agent self-grant probe`);
+        // Policy 2.5.0: the MCP spend guard stops a purchase and lets a listed read through.
+        const spend = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_vercel_vercel__buy_domain", cwd: resolvedHome, tool_input: { name: "guard-probe.invalid" } }, resolvedHome);
+        if (spend.status !== 2) problems.push(`${adapter.label} guard did not stop the MCP purchase probe`);
+        const read = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_vercel_vercel__list_projects", cwd: resolvedHome, tool_input: {} }, resolvedHome);
+        if (read.status !== 0) problems.push(`${adapter.label} guard did not allow the MCP read probe`);
       }
     }
   }
