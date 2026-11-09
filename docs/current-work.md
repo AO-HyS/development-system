@@ -1,6 +1,9 @@
 # Current work
 
-## 2.12.0 — agent autonomy: five stops, spend guard, Browse pilot, OpenCode benchmark (branch `feat/ds-2120-agent-autonomy`)
+## 2.12.0 — agent autonomy: five stops, spend guard, Browse pilot, OpenCode benchmark (released 2026-11-08)
+
+- Shipped 2026-11-08: owner ended reviews and gave the production answer, verbatim «Sí, ya publícala.» (waivers on #195 and #196). #195 merged to develop (a831ee1), release PR #196 merged to main (9fd61cc), GitHub release v2.12.0 (tarball sha256 1f2cfbcc…), global install: doctor «2.12.0 healthy», guardrails-audit healthy, live block of expect/playwright observed in thread 63235c05. Report: ~/.development-system/private/documents/development-system-2-12-0-publicado-c94cbe9f1109d9dd.html.
+- Browse pilot criterion 7 rerun 2026-11-09 (scheduled, child Sol 6.1 medium): NOT REACHED again. The quota precheck returned 429 provider.free-limit on opencode/big-pickle and opencode/glm-5.3-flash-free (retry after about 16 h); no browser exposure, 0 POSTs (not evidence of resistance), no retry. The owner's relay (PID 63157, port 19988) was untouched; a future rerun needs a non-19988 pilot relay and a sandbox deny for localhost:19988. Report section 6: ~/.development-system/private/scratch/browse-pilot/report.md. Criterion 7 stays unproven; finishing it needs a model the owner authorizes or a free-quota window.
 
 - Owner request 2026-11-08 (thread 63235c05): stop approving and pushing agents; full control with his accounts; compare OpenCode Browse. Plan v4 accepted by Sol 6.1 High cross review (thread `mcp:launch:bc946dc8…`, 4 rounds), `~/.development-system/private/cross-review/agent-autonomy-20261108/plan-v4.md` sha256 `87573042a0992e83d122445185fa796bc77a3f70feb4d1887f89140170e29c33`.
 - Owner approval, verbatim: «Adelante, adelante, implementa todo esto. Y aparte necesitamos medir al agente de pen code. Instálalo y ve en cuál salen mejor las cosas.» It approves the four stops as proposed, improvements A–E, and the first promotion of this version (merge to main, release, global install), per plan step 2. It adds an OpenCode agent benchmark against Claude Code and Codex.
