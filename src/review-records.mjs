@@ -3,10 +3,11 @@
 // <home>/.development-system/private/reviews/<owner>/<repo>/<number>.jsonl. The coordinator writes them
 // (`review record`, `review coverage`); `pr-review-status` reads them for `mergeReady`. This module is the facade the
 // CLI and the gate import; the shared state (validation, voids, the lineage brake) lives in `review-state.mjs`.
-// Budget (2.9.0): Sol rounds count per branch lineage (see review-state.mjs). A round is recorded only against the
-// oldest unrecorded reservation of its PR (`review reserve`, which the Claude hook and the Codex wrapper call before a
-// launch), at a SHA GitHub lists for the PR, with a reopenable thread reference; from slot 2 the findings' origin
-// decides whether a result blocks. An exemption binds one head and replaces any earlier exemption; rounds and
+// Budget: Sol rounds count per branch lineage (see review-state.mjs) and run without anyone's approval up to the cap
+// in review-policy.mjs (2.13.0). A round is recorded only against the oldest unrecorded reservation of its PR
+// (`review reserve`, which the Claude hook and the Codex wrapper call before a launch), at a SHA GitHub lists for the
+// PR, with a reopenable thread reference; from slot 2 the findings' origin decides whether a result blocks, and a
+// fix-diff always starts at the head of the previous round. An exemption binds one head and replaces any earlier exemption; rounds and
 // exemptions never mix. Every read validates each record and the whole sequence, and every write checks and appends
 // under an exclusive lock, so a hand-edited or racing file can never pass as approval. A record states what a reviewer
 // or the coordinator concluded; it never authorizes a merge by itself.
@@ -40,7 +41,7 @@ export function requestLockPath(home, pr) {
   return locate(home, pr).file.replace(/\.jsonl$/, ".request.lock");
 }
 
-export const OPERATOR_APPROVAL_MOVED = "--operator-approval was replaced in 2.9.0: record the owner's exact words with development-system review approve --pr <ref> --slot <n> --scope fix-diff|full --quote \"<owner's words>\", reserve the slot with development-system review reserve, then record the round";
+export const OPERATOR_APPROVAL_MOVED = "--operator-approval is gone: since 2.13.0 no Sol round needs the owner's approval; reserve the slot with development-system review reserve, then record the round";
 
 /** Appends `record` only if it and the whole sequence read under the lock stay valid. @param {string} home @param {string} key @param {string} file @param {ReviewRecord} record */
 function appendChecked(home, key, file, record) {
@@ -95,18 +96,22 @@ export function recordReview({ home, pr, reviewer, head, scope, result, thread, 
   // Lineage lock first, then the PR lock (the order every writer uses), re-reading inside both.
   const work = () => {
     const existing = readReviewRecords(home, key);
-    if (existing.some((record) => record.type === "exemption")) throw new Error(`${key} has a Sol exemption; rounds and exemptions do not mix (record a new exemption for this head or ask the owner)`);
+    if (existing.some((record) => record.type === "exemption")) throw new Error(`${key} has a Sol exemption; rounds and exemptions do not mix (record a new exemption for this head, or void it with development-system review void if the PR is no longer docs-only or low-risk)`);
     const state = lineageState(home, lineage);
     const reservation = state.pending.find((candidate) => candidate.pr === key);
     if (!reservation) throw new Error(`${key} has no unrecorded Sol reservation: reserve the round before launching it (development-system review reserve --pr ${key} --scope ${scope} --request-key <key>; a T3 dispatch with "Review kind: pr" reserves it), then record it`);
     if (reservation.scope !== scope) throw new Error(`the reservation for slot ${reservation.slot} (${reservation.id}) is --scope ${reservation.scope}, not ${scope}`);
     const rounds = /** @type {RoundRecord[]} */ (existing.filter((record) => record.type === "round"));
     const round = rounds.length + 1;
+    // A fix-diff starts exactly at the head of the previous round, so the rounds chain without a gap.
+    const previous = state.lastRound?.record.head;
+    if (scope === "fix-diff" && previous && from !== undefined && from !== previous) throw new Error(`a fix-diff starts exactly at the head of the previous round (${previous}); --from ${from} would leave commits nobody read`);
+    const start = scope === "fix-diff" ? from ?? previous : undefined;
     const classified = classifyFindings(parsed, reservation.slot, /** @type {RoundRecord["result"]} */ (result));
     /** @type {RoundRecord} */
     const record = {
       type: "round", pr: key, reviewer: "sol", round, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: classified.result, thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt,
-      ...(reservation.slot !== round ? { slot: reservation.slot } : {}), ...(from ? { from } : {}), ...(reservation.approvalId ? { approvalId: reservation.approvalId } : {}),
+      ...(reservation.slot !== round ? { slot: reservation.slot } : {}), ...(start ? { from: start } : {}), ...(reservation.approvalId ? { approvalId: reservation.approvalId } : {}),
     };
     if (slotOf(record) !== reservation.slot) throw new Error(`refusing to record: slot ${slotOf(record)} does not match reservation slot ${reservation.slot}`);
     if (dryRun) {
@@ -169,6 +174,8 @@ const short = (sha) => sha.slice(0, 12);
 export function formatReviewRecord(result) {
   const record = result.record;
   const prefix = result.dryRun ? "Dry run (nothing written): " : "";
+  if (record.type === "disposition") return `${prefix}${record.pr}: round ${record.round} finding ${record.finding} ${record.outcome}${record.commit ? ` in ${short(record.commit)}` : ""}${record.note ? `: ${record.note}` : ""}.\nRecord: ${result.path}`;
+  if (record.type === "auto-advance") return `${prefix}${record.pr}: advances without another round after round ${record.round} (slot ${record.slot}, ${record.kind}) at head ${short(record.head)}; nobody re-read ${record.fixCommits.length ? record.fixCommits.map(short).join(", ") : "any commit"} for ${record.findings.join(", ") || "no findings"}.\nRecord: ${result.path}`;
   if (record.type === "waiver") return `${record.pr}: owner stopped reviews at head ${short(record.head)}: «${record.quote}».\nRecord: ${result.path}`;
   if (record.type === "exemption") return `${prefix}${record.pr}: Sol exempt (${record.exempt}) at head ${short(record.head)}: ${record.reason}.\nRecord: ${result.path}`;
   if (record.type === "round") {
@@ -195,6 +202,7 @@ export function formatReviewState(result) {
     return [`${prefix}Owner approval ${a.id} for lineage slot ${a.slot} (${a.scope}) recorded from ${a.pr}: "${a.quote}".`, lineage, `Record: ${result.path}`].filter(Boolean).join("\n");
   }
   if (result.operation === "review-release") return [`Released reservation ${result.reservation.id} (slot ${result.reservation.slot}, ${result.reservation.pr}): ${result.release.reason}.`, lineage, `Record: ${result.path}`].filter(Boolean).join("\n");
+  if (result.operation === "review-lines") return result.lines.map((/** @type {{lineHash: string, line: string}} */ entry) => `${entry.lineHash}  ${entry.line}`).join("\n") || "No ledger lines.";
   if (result.operation === "review-void") return [`Voided line ${result.record.lineHash} of ${result.record.pr}: ${result.record.reason}. A void restores no budget.`, result.remainingProblem ? `The remaining ledger is still invalid: ${result.remainingProblem}` : "", `Record: ${result.path}`].filter(Boolean).join("\n");
   return JSON.stringify(result);
 }
