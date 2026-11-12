@@ -6,8 +6,11 @@
 // Only the repository's own people answer: a human account GitHub reports as its owner, a member of its organization
 // or a collaborator. A reply from anyone else who can comment on the PR answers nothing.
 // Answered is not corrected. A rejected thread that is P0 or P1 (Codex's own badge), carries no readable priority, or
-// touches a critical domain whatever its priority, is closed only by a Sol round recorded after the rejection; until
-// then it asks for that round. Only a rejected P2 or P3 outside the critical domains closes with its reason.
+// touches a critical domain whatever its priority, is closed only by a Sol round reserved after the rejection (a
+// round already running when the finding was rejected could not have read it); until then it asks for that round.
+// Only a rejected P2 or P3 outside the critical domains closes with its reason.
+import { slotOf } from "./review-state.mjs";
+
 const APP_LOGIN = "chatgpt-codex-connector";
 
 export const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId createdAt authorAssociation author{__typename login}body originalCommit{oid}pullRequestReview{commit{oid}}}}}}}}}`;
@@ -67,9 +70,22 @@ const REJECTION = /^\s*(?:\*\*)?(?:rechazad[oa]|rejected|no aplica|won'?t fix)(?
  */
 
 /**
+ * When each recorded Sol round of the PR was reserved (ms): the moment its reviewer packet was handed over, so what a
+ * round can have read. A round with no live reservation of its slot (a legacy row) has no known start and is left out.
+ * @param {{rounds: {round: number, slot?: number}[], live: {pr: string, slot: number, reservedAt: string}[], pr: string}} input
+ */
+export function roundsReservedAt({ rounds, live, pr }) {
+  return rounds.flatMap((round) => {
+    const reservation = live.find((entry) => entry.pr === pr && entry.slot === slotOf(round));
+    return reservation ? [Date.parse(reservation.reservedAt)] : [];
+  });
+}
+
+/**
  * The state of every Codex thread. `commitInfo(sha)` resolves a cited (possibly abbreviated) SHA to a PR commit as
  * {sha, files, after(origin)} or null when the PR has no such commit; it may throw when GitHub cannot say, which
- * leaves the thread unverified. `solRoundsAt` are the times (ms) Sol rounds of the PR were recorded.
+ * leaves the thread unverified. `solRoundsAt` are the times (ms) the PR's recorded Sol rounds were reserved, which is
+ * when each reviewer packet was handed over; a round with no reservation has no known start and is not listed.
  * @param {{threads: any[], commitInfo: (cited: string) => {sha: string, files: string[], after: (origin: string) => boolean} | null, solRoundsAt: number[]}} input
  * @returns {ThreadState[]}
  */
@@ -90,9 +106,9 @@ export function threadStates({ threads, commitInfo, solRoundsAt }) {
       if (REJECTION.test(text)) {
         if (!base.critical) return { ...base, state: /** @type {const} */ ("rejected"), detail: "rejected with a reason (P2/P3 outside the critical domains)" };
         const at = Date.parse(String(reply.createdAt));
-        const read = Number.isFinite(at) && solRoundsAt.some((recorded) => recorded > at);
+        const read = Number.isFinite(at) && solRoundsAt.some((reserved) => reserved > at);
         return read
-          ? { ...base, state: /** @type {const} */ ("rejected"), detail: "rejected with a reason; a Sol round recorded after the rejection read it" }
+          ? { ...base, state: /** @type {const} */ ("rejected"), detail: "rejected with a reason; a Sol round reserved after the rejection read it" }
           : { ...base, state: /** @type {const} */ ("rejected-needs-sol"), detail: "rejected, but it is P0/P1, has no readable priority or touches a critical domain: Sol reads the rejection in the next round" };
       }
       for (const cited of new Set(text.match(/\b[0-9a-f]{7,40}\b/g) ?? [])) {
