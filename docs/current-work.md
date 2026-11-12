@@ -14,6 +14,13 @@
   - `gate-walk.mjs`: 276,480 fact combinations; base develop reaches `ownerDecides` 0 times, base main 19,968; all 83 develop texts name an agent action and none names the owner.
   - `ledger-replay.mjs`: the candidate reads all 205 ledgers on this machine. At the 30 owner-approved rounds and 29 waivers of Barber #663–#691 and NutriPlan #690–#725 the gate decides alone (round, covered, or content to another PR). #653, #677, #680 ask for round 6 and #652 for rounds 6 and 7 before any merge; none asks for an eighth.
   - `scenario-cap.sh` in isolated homes on merged PR #195 (GitHub read-only): rounds 2 to 5 reserve with no approval; round 6 is refused when nothing is critical and reserved when the finding is `money`; `review advance` refuses without dispositions, on a stale head and with a commit outside the PR; after round 7 it accepts only `--withdrawn` with follow-up dispositions, and the gate refuses that advance while the PR still changes the finding's file.
+- PR A (#198) Sol round 1 (full, head 1f4540e): blocking, seven findings, all fixed in `src/`:
+  - R1-1 a new finding with no stated domain stays blocking at rounds 2 to 5 (only `new` marked non-critical becomes a follow-up).
+  - R1-2 the Codex thread domain match reads «authorization», «autorización», «autenticación» as critical and «author» as not.
+  - R1-3, R1-4, R1-5 one pure function, `advanceProblem` (`src/review-policy.mjs`), judges an `auto-advance` row both when it is written and when the gate reads it: its slot is the round's slot, the policy really says advance or withdraw there, the round names its findings, every finding has a disposition, and no commit after it goes uncounted (only a clean base merge may follow). A row without that authority is ignored and the gate says why.
+  - R1-6 an owner approval never opens a round past the caps (historical approval rows inside the five rounds still read as valid).
+  - R1-7 the first Sol round toward develop is not reserved without accepted behavioral evidence (`evaluatePullEvidence` in `src/evidence.mjs`, shared by gate and reservation).
+  - Reverified: `sol-r1-repro.mjs` 16 cases, `gate-walk.mjs`, `ledger-replay.mjs`, `scenario-cap.sh` for `none` and `money` in new isolated homes (the reservation is refused without evidence, then runs).
 - Not reached yet: done-when 5 (next real priority-repo PR with the candidate installed in an isolated HOME), which needs PRs B and C.
 - Pending: PR B (guards B1–B4), PR C (format C1–C5, `development-system progress`, rule text, hooks, pre-commit skill, release cut), then the production question.
 

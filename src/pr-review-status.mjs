@@ -43,11 +43,12 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { ACCEPTED_EVIDENCE, evaluateEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
 import { readLineage, readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
 import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
 import { codexThreads, threadStates } from "./codex-threads.mjs";
-import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
+import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
+import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
@@ -84,9 +85,6 @@ function gh(args) {
 
 /** @param {string} path @returns {any[]} */
 const ghList = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
-
-/** @param {any} file */
-const changedFile = (file) => ({ filename: String(file.filename), status: String(file.status), ...(file.previous_filename ? { previous_filename: String(file.previous_filename) } : {}) });
 
 /**
  * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely.
@@ -391,6 +389,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const stillOpen = lastRound ? openFindings(lastRound, Number(lastRound.slot ?? lastRound.round)) : { blockers: [], critical: false };
   const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
   let advanceRefused = false;
+  // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
+  let advanceNote = "";
   /** @param {string} from @param {string} reason @param {boolean} covered @returns {Coverage} */
   const verdict = (from, reason, covered) => ({ from, to: head, covered, error: false, filtersPass: covered, reason, commits: [] });
   /** @param {string} from @param {Finding[]} findings */
@@ -411,8 +411,15 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
       // The advance stands in for the re-read only while every commit after the round is a cited fix of its findings
       // or a clean base merge; a withdrawn change must be gone from the PR's files.
       const after = lastRound.head === head ? null : walk(lastRound.head, lastRound.findings);
+      // The row is judged again against the ledger and the PR as they are now. First its authority (the real slot, what
+      // the policy says after that round, the findings and their dispositions), then, once every commit after the
+      // round is a cited fix or a clean base merge, whether the row accounts for each of them at the current head.
+      const judged = { advance, slot: Number(lastRound.slot ?? lastRound.round), open: stillOpen, dispositions: dispositionsOf(records, lastRound.round), roundHead: lastRound.head };
+      advanceNote = advanceProblem({ ...judged, head: advance.head });
+      if (!advanceNote && after !== null && !after.error && after.filtersPass) advanceNote = advanceProblem({ ...judged, head, commits: after.commits });
       const kept = advance.kind === "withdrawn" ? stillOpen.blockers.flatMap((finding) => finding.paths).filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
-      if (after?.error) solCoverage = after;
+      if (advanceNote) solCoverage = null;
+      else if (after?.error) solCoverage = after;
       else if ((after === null || after.filtersPass) && kept.length === 0) solState = "advanced";
       else { advanceRefused = true; solCoverage = after && !after.filtersPass ? after : verdict(lastRound.head, `the PR still changes the files of the withdrawn finding: ${kept.slice(0, 5).join(", ")}`, false); }
     }
@@ -451,10 +458,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A rejected critical Codex thread waits for Sol's read; only the owner's waiver stands in for it.
   const pendingCritical = rejectedNeedSol.length > 0 && !waiver;
   const evidenceReceipts = readReceipts(home, prKey);
-  const latest = evidenceReceipts.at(-1)?.receipt;
-  const behavioralEvidence = evaluateEvidence({
-    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""),
-    changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(base, latest.verifiedSha, head) : undefined,
+  const behavioralEvidence = evaluatePullEvidence({
+    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
     // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
     prFiles,
   });
@@ -485,7 +490,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
-  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered,
+  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
     open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt }) });
   return {
@@ -514,7 +519,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     codexAdmissible: { head: reviewedHead, ids: admissibleFindings.map((finding) => finding.id), ...(originUnknown ? { error: "GitHub did not report which commit a Codex thread reviewed" } : {}) },
     codexRequests: published,
     ...(codexCoverage ? { codexCoverage } : {}),
-    solReview: { state: solState, rounds: rounds.length, max: solMax, ...(exemption ? { exemption } : {}), ...(lastRound ? { lastRound } : {}), ...(solCoverage ? { coverage: solCoverage } : {}), ...(recordsError ? { error: recordsError } : {}) },
+    solReview: { state: solState, rounds: rounds.length, max: solMax, ...(advanceNote ? { advanceNote } : {}), ...(exemption ? { exemption } : {}), ...(lastRound ? { lastRound } : {}), ...(solCoverage ? { coverage: solCoverage } : {}), ...(recordsError ? { error: recordsError } : {}) },
     lineage: lineage ?? { error: lineageError },
     requestedForHead: published.some((entry) => entry.sha === head),
     request: requestStatus,

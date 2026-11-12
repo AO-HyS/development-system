@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parsePrReference } from "./evidence.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
 import { BUDGET, CRITICAL, NOT_CRITICAL, admission, openFindings, policyRecordProblem } from "./review-policy.mjs";
 
 export { BUDGET, CRITICAL, classifyFindings } from "./review-policy.mjs";
@@ -574,6 +574,33 @@ function verifyRedesign(value, cwd) {
 const numberOf = (key) => Number(key.slice(key.lastIndexOf("#") + 1));
 
 /**
+ * Evidence comes before the first Sol round of a PR into develop: the reservation applies the evaluation the gate
+ * uses, with its exceptions (a docs-only PR, the owner's waiver, a nonvisual receipt). Other bases are not asked.
+ * Returns "" or why the round does not start yet.
+ * @param {string} home @param {Lineage} lineage
+ */
+function evidenceBeforeFirstRound(home, lineage) {
+  const pull = lineage.pull;
+  if (String(pull?.base?.ref ?? "") !== "develop") return "";
+  if (readReviewRecords(home, lineage.key).some((record) => record.type === "round")) return "";
+  const head = String(pull?.head?.sha ?? "");
+  const api = `repos/${lineage.owner}/${lineage.repo}`;
+  /** @param {string[]} args @returns {any} */
+  const read = (args) => { try { return JSON.parse(gh(args)); } catch { return null; } };
+  const listed = read(["api", "--paginate", "--slurp", `${api}/pulls/${lineage.number}/files`]);
+  const files = Array.isArray(listed) ? listed.flat() : null;
+  const evidence = evaluatePullEvidence({
+    receipts: readReceipts(home, lineage.key), head, prBody: String(pull?.body ?? ""),
+    prFiles: files && files.length === Number(pull?.changed_files) ? files.map(changedFile) : null,
+    changedSince: (from) => {
+      const compare = read(["api", `${api}/compare/${from}...${head}`]);
+      return compare && Array.isArray(compare.files) && compare.files.length < 300 ? compare.files.map(changedFile) : null;
+    },
+  });
+  return ACCEPTED_EVIDENCE.has(evidence.state) ? "" : `the behavioral evidence of ${lineage.key} is ${evidence.state} (${evidence.reason}): record it with development-system evidence record before the first Sol round`;
+}
+
+/**
  * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
  * is unrecorded: a retry gets the same reservation; once that slot has a recorded round the key is spent and the call
  * refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
@@ -608,6 +635,8 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     const approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates[0];
     if (approvalId !== undefined && !approval) throw new Error(`approval ${approvalId} is not an unused approval for slot ${slot} (${scope}) of ${lineage.key}; no round needs an approval since 2.13.0, so drop --approval-id`);
     if (!last && slot >= 2 && scope !== "full") throw new Error(`slot ${slot} has no recorded round to diff from: reserve it with --scope full`);
+    const unproven = evidenceBeforeFirstRound(home, lineage);
+    if (unproven) throw new Error(unproven);
     const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved: Boolean(approval), pendingCritical: Boolean(criticalThread) });
     if (refusal) throw new Error(`slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}`);
     if (last?.fixInduced && !redesign) throw new Error(`the last round of this lineage (${where(last)}) has a fix-induced blocking finding: redesign the fix before another round and pass --redesign <path>#<sha256 of its bytes> (packet line "Redesign: <path>#<sha256>")`);

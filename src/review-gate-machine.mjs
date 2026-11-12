@@ -119,10 +119,12 @@ const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve 
 /**
  * The siguiente text for a final step: always an action the agent takes; toward develop it never asks anyone.
  * @param {GateStep} step
- * @param {{prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], open?: {id: string, paths: string[]}[], solNext: () => string}} info
+ * @param {{prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
  */
-export function gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], open = [], solNext }) {
+export function gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
   const short = head.slice(0, 12);
+  // A recorded advance that does not count is said first, with its reason, so the agent records it again or runs the round.
+  const stale = advanceNote ? `el avance registrado no cuenta (${advanceNote}). ` : "";
   const ids = open.map((finding) => finding.id).join(", ") || "el hallazgo crítico";
   const paths = [...new Set(open.flatMap((finding) => finding.paths))].slice(0, 8).join(", ");
   const dispose = `development-system review dispose --pr ${prKey} --finding <id> --outcome fixed|rejected|follow-up [--commit <sha> | --note <razón>]`;
@@ -135,9 +137,9 @@ export function gateNextAction(step, { prKey, owner, repo, number, head, blockin
     case "requestCodex": return `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;
     case "solRecordsInvalid": return `registros de Sol inválidos${recordsError ? ` (${recordsError})` : ""}: mira las filas con development-system review lines --pr ${prKey}, anula la mala con development-system review void --pr ${prKey} --line-hash <sha256> --reason <causa> y vuelve a correr la puerta`;
     case "solExemptionStale": return `la exención de Sol es del head ${exemptionHead?.slice(0, 12)}, no del ${short}: si el PR sigue siendo docs-only o low-risk regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si ya no lo es, anúlala con development-system review void y corre la ronda full`;
-    case "solRound": return solNext();
-    case "advance": return `avanza: van ${BUDGET} rondas y nada de lo abierto es crítico, así que no hay otra ronda. Arregla lo que encontró la última (${ids}) en commits que lleven la línea «fixes: <id>», registra cada hallazgo con ${dispose}, registra el avance con development-system review advance --pr ${prKey} --head <head final>, dilo en una línea en el hilo y en el PR («llegué a ${BUDGET} revisiones; arreglé lo último y avanzo sin otra ronda») y vuelve a correr la puerta`;
-    case "withdrawChange": return `retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, déjalo como seguimiento (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y fusiona el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
+    case "solRound": return `${stale}${solNext()}`;
+    case "advance": return `${stale}avanza: van ${BUDGET} rondas y nada de lo abierto es crítico, así que no hay otra ronda. Arregla lo que encontró la última (${ids}) en commits que lleven la línea «fixes: <id>», registra cada hallazgo con ${dispose}, registra el avance con development-system review advance --pr ${prKey} --head <head final>, dilo en una línea en el hilo y en el PR («llegué a ${BUDGET} revisiones; arreglé lo último y avanzo sin otra ronda») y vuelve a correr la puerta`;
+    case "withdrawChange": return `${stale}retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, déjalo como seguimiento (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y fusiona el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
     case "holdPr": return `#${number} se queda fuera: el linaje gastó sus rondas sin una ronda válida. No fusiones; dilo en tu siguiente avance y sigue con el trabajo independiente`;
     case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de Sol y otra vez sobre el head final)`;
     case "runGate": return `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}`;

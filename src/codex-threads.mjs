@@ -46,7 +46,7 @@ export function threadPriority(body) {
 }
 
 // Words that put a thread in a critical domain whatever its priority. Broad on purpose: when in doubt, critical.
-const DOMAIN = /\b(?:secur|vulnerab|inject|xss|csrf|ssrf|sanitiz|secret|access.?token|session|jwt|bearer|password|credential|api.?key|auth(?!or)|unauth|permission|privilege|role|rbac|acl\b|tenant|ownership|access control|payment|pago|charge|cobro|refund|reembolso|billing|invoice|factura|price|precio|money|dinero|stripe|mercado.?pago|checkout|subscription|suscripci|data.?loss|delet|borra|destroy|drop\s|truncate|migration|migraci|overwrit|irreversib|privacy|privacidad|minors\b|underage|child|menor(?:es)? de edad|niñ|consent|pii\b|personal data|datos personales)/i;
+const DOMAIN = /\b(?:secur|vulnerab|inject|xss|csrf|ssrf|sanitiz|secret|access.?token|session|jwt|bearer|password|credential|api.?key|auth(?!or(?:s|ed|ship)?\b)|autoriz|autentic|unauth|permission|privilege|role|rbac|acl\b|tenant|ownership|access control|payment|pago|charge|cobro|refund|reembolso|billing|invoice|factura|price|precio|money|dinero|stripe|mercado.?pago|checkout|subscription|suscripci|data.?loss|delet|borra|destroy|drop\s|truncate|migration|migraci|overwrit|irreversib|privacy|privacidad|minors\b|underage|child|menor(?:es)? de edad|niñ|consent|pii\b|personal data|datos personales)/i;
 
 /** P0, P1, no readable priority, or a critical domain in its text or path. @param {{body: string, path: string}} thread */
 export function threadCritical({ body, path }) {

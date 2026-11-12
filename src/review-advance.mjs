@@ -7,7 +7,7 @@
 //                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop; the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
-import { nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
+import { advanceProblem, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
 import { SHA, append, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
 
 /**
@@ -29,6 +29,11 @@ export function dispositionsOf(records, round) {
   const latest = new Map();
   for (const record of records) if (record.type === "disposition" && record.round === round) latest.set(record.finding, record);
   return latest;
+}
+
+/** Every commit a fixed disposition of one round names, the replaced rows included: a finding may take several commits. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round @param {string[]} findings */
+export function dispositionCommits(records, round, findings) {
+  return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round === round && record.commit && findings.includes(record.finding) ? [record.commit] : []))];
 }
 
 /**
@@ -82,16 +87,20 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
         ? `slot ${state.nextSlot} still runs (${next.scope}${next.critical ? ", critical re-read" : ""}): reserve and run it instead of advancing`
         : `the policy says ${next.action}, not ${wanted}: ${next.action === "withdraw" ? "a critical finding is still open after the last round; take the disputed change out and pass --withdrawn" : "nothing open is critical; advance without --withdrawn"}`);
     }
-    const open = openFindings(last.record, slot).blockers;
+    const stillOpen = openFindings(last.record, slot);
+    const open = stillOpen.blockers;
     const records = readReviewRecords(home, key);
     const dispositions = dispositionsOf(records, last.record.round);
     const missing = open.filter((finding) => !dispositions.has(finding.id)).map((finding) => finding.id);
     if (missing.length) throw new Error(`round ${last.record.round} left ${missing.join(", ")} open without a disposition: record each with development-system review dispose --pr ${key} --finding <id> --outcome fixed|rejected|follow-up`);
     const kept = withdrawn ? open.filter((finding) => dispositions.get(finding.id)?.outcome !== "follow-up").map((finding) => finding.id) : [];
     if (kept.length) throw new Error(`--withdrawn means the disputed change left the PR as a follow-up, but ${kept.join(", ")} ${kept.length === 1 ? "is" : "are"} not recorded as follow-up`);
-    const fixCommits = [...new Set(open.flatMap((finding) => { const commit = dispositions.get(finding.id)?.commit; return commit ? [commit] : []; }))];
+    const fixCommits = dispositionCommits(records, last.record.round, open.map((finding) => finding.id));
     /** @type {AdvanceRecord} */
     const record = { type: "auto-advance", pr: key, round: last.record.round, slot, kind: withdrawn ? "withdrawn" : "cap", head, findings: open.map((finding) => finding.id), fixCommits, recordedAt: new Date().toISOString() };
+    // The same check the gate repeats on every read; the commits after the round are walked there, against GitHub.
+    const refused = advanceProblem({ advance: record, slot, open: stillOpen, dispositions, head, roundHead: head });
+    if (refused) throw new Error(`refusing to record the advance of ${key}: ${refused}`);
     if (dryRun) {
       const problem = recordProblem(record, key) || sequenceProblem([...records, record]);
       if (problem) throw new Error(`refusing to record: ${key} ${problem}`);

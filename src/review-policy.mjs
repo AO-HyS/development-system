@@ -36,7 +36,8 @@ export const isCritical = (finding) => finding.critical !== NOT_CRITICAL;
 
 /**
  * Which findings keep a round blocking. Slot 1 keeps the result as given. Slots 2 to 5: a finding with origin `new`
- * outside a critical domain is a follow-up; prior, fix-induced, unknown origin and any critical domain block. Slots 6
+ * that says `none` is a follow-up; prior, fix-induced, unknown origin, any critical domain and a finding that names
+ * no domain block. Slots 6
  * and 7 re-read a critical fix only: everything marked `none` is a follow-up. A blocking result that names no finding
  * stays blocking; a blocking result whose findings are all follow-ups becomes non-blocking.
  * @param {Finding[]} findings @param {number} slot @param {"blocking" | "non-blocking" | "none"} result
@@ -45,7 +46,7 @@ export function classifyFindings(findings, slot, result) {
   if (slot < 2) return { result, blockers: findings.map((finding) => finding.id), followUps: /** @type {string[]} */ ([]) };
   const followUp = slot > BUDGET
     ? (/** @type {Finding} */ finding) => !isCritical(finding)
-    : (/** @type {Finding} */ finding) => finding.origin === "new" && !CRITICAL.includes(finding.critical ?? "");
+    : (/** @type {Finding} */ finding) => finding.origin === "new" && !isCritical(finding);
   const blockers = findings.filter((finding) => !followUp(finding)).map((finding) => finding.id);
   const followUps = findings.filter(followUp).map((finding) => finding.id);
   let effective = result;
@@ -94,12 +95,13 @@ export function nextReview({ nextSlot, last, moved = false, pendingCritical = fa
 
 /**
  * Why a reservation for `slot` is refused, or "" when the policy admits it. An unused owner approval recorded for the
- * slot (2.9.0 rows still work) admits any round.
+ * slot (2.9.0 rows still read) admits a round the policy would not run only inside the five; it never opens a round
+ * past the caps.
  * @param {{slot: number, scope: string, last?: {result: string, critical: boolean, head: string}, head: string, approved?: boolean, pendingCritical?: boolean}} input
  */
 export function admission({ slot, scope, last, head, approved = false, pendingCritical = false }) {
   if (slot === 1) return scope === "full" ? "" : "the first Sol round of a lineage must be --scope full";
-  if (approved) return "";
+  if (approved && slot <= BUDGET) return "";
   const next = nextReview({ nextSlot: slot, last, moved: Boolean(last) && last?.head !== head, pendingCritical });
   if (next.action === "round") return "";
   const gate = "run development-system pr-review-status <pr> --gate and do what it says";
@@ -122,6 +124,37 @@ export function chainGap(rounds) {
     const previous = rounds[index - 1];
     if (round.scope === "fix-diff" && round.from && round.from !== previous.head) return `round ${round.round} read from ${round.from.slice(0, 12)}, not from the head of round ${previous.round} (${previous.head.slice(0, 12)})`;
   }
+  return "";
+}
+
+/**
+ * Why an `auto-advance` row does not let the PR advance, or "". Checked when the row is written and again every time
+ * the gate reads it, against the ledger and the PR as they are then: a row that contradicts its own history has no
+ * authority. `slot` is the real lineage slot of the row's round, `open` what that round left open, `dispositions` the
+ * latest disposition of each of its findings, `commits` the first-parent commits after the round's head (newest
+ * first) and `roundHead` that head.
+ * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean}[]}} input
+ */
+export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits = [] }) {
+  if (advance.slot !== slot) return `the advance says slot ${advance.slot}, but its round is slot ${slot}`;
+  const wanted = advance.kind === "withdrawn" ? "withdraw" : "advance";
+  const next = nextReview({ nextSlot: slot + 1, last: { result: "blocking", critical: open.critical } });
+  if (next.action !== wanted) return `after slot ${slot} the policy says ${next.action}, not ${wanted}`;
+  // Nothing identified means nothing whose fix or withdrawal can be checked.
+  if (open.blockers.length === 0) return "the round names no finding, so there is no fix or withdrawn change to check";
+  const ids = open.blockers.map((finding) => finding.id);
+  if (ids.length !== advance.findings.length || ids.some((id) => !advance.findings.includes(id))) return `the advance lists ${advance.findings.join(", ") || "no finding"}, but the round left ${ids.join(", ")} open`;
+  const missing = ids.filter((id) => !dispositions.has(id));
+  if (missing.length) return `${missing.join(", ")} ${missing.length === 1 ? "has" : "have"} no disposition`;
+  const kept = advance.kind === "withdrawn" ? ids.filter((id) => dispositions.get(id)?.outcome !== "follow-up") : [];
+  if (kept.length) return `${kept.join(", ")} ${kept.length === 1 ? "is" : "are"} not recorded as follow-up, so the disputed change did not leave the PR`;
+  if (advance.head !== head) {
+    // Only clean merges of the base may arrive after the advance; anything else needs the advance recorded again.
+    const at = advance.head === roundHead ? commits.length : commits.findIndex((commit) => commit.sha === advance.head);
+    if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)} and commits arrived after it: record it again for the current head`;
+  }
+  const unlisted = commits.filter((commit) => !commit.baseMerge && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
+  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record a fixed disposition with each commit, then the advance again`;
   return "";
 }
 
