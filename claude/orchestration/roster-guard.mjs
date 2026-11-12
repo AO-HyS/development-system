@@ -841,12 +841,13 @@ async function delegateCall() {
     const scope = line('Review scope');
     const approval = line('Review approval');
     const redesign = line('Redesign');
+    const criticalThread = line('Critical thread');
     if (!pr || !/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) deny('A PR review delegate_task needs a `PR: owner/repo#N` line.', { ...entry, blockedBy: 'review-pr' });
     if (scope !== 'full' && scope !== 'fix-diff') deny('A PR review delegate_task needs `Review scope: full` or `Review scope: fix-diff`.', { ...entry, pr, blockedBy: 'review-scope' });
     const packetHash = crypto.createHash('sha256').update(task).digest('hex');
     const requestKey = typeof ti.clientRequestId === 'string' && ti.clientRequestId.trim() ? ti.clientRequestId.trim() : packetHash;
     const args = ['--pr', pr, '--scope', scope, '--request-key', requestKey, '--packet-hash', packetHash,
-      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : [])];
+      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : []), ...(criticalThread ? ['--critical-thread', criticalThread] : [])];
     const answer = await reviewReserve(args, input.cwd);
     const reservation = answer?.reservation;
     if (answer?.ok !== true || !reservation) deny(`Review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`, { ...entry, pr, scope, blockedBy: 'review-brake' });

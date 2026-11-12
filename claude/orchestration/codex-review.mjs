@@ -7,13 +7,13 @@
 // completes: Codex exits 0 and findings.md ends with `Verdict: merge` or `Verdict: do not merge`
 // (rounds.jsonl). Any other ending is an attempt (attempts.jsonl) and does not count. From
 // policy.review.roundsWithoutRationale complete rounds on, a review needs a "Round rationale:"
-// line. A packet with a `PR: owner/repo#N` line (and `Review scope: full|fix-diff`, optional `Review approval: <id>`
-// and `Redesign: <path>#<sha256>`) instead reserves the next Sol slot of the PR's branch lineage through the installed
+// line. A packet with a `PR: owner/repo#N` line (and `Review scope: full|fix-diff`, optional `Review approval: <id>`,
+// `Critical thread: codex:<id>` and `Redesign: <path>#<sha256>`) instead reserves the next Sol slot of the PR's branch lineage through the installed
 // Development System CLI (review brake, 2.9.0; request key Task-Id + packet sha256); a refusal exits 2 before launch.
 // Launch ownership of a reservation is single-use: launches/<reservationId>.json is created exclusively before the run
 // claims anything else. A repeated invocation of a completed launch prints the existing receipt and launches nothing;
 // an active, failed, cancelled or uncertain launch refuses until it is reconciled (record the round, or release the
-// reservation with the owner's words). A refusal before the launch removes its own claim.
+// reservation). A refusal before the launch removes its own claim.
 // A later round gets the latest complete round's findings (hash-checked) in its prompt
 // and in previous-findings.md. --computer-use runs the packet as a Codex Computer Use operator:
 // Task-Id optional, no rounds, at most policy.review.maxComputerUse live runs (one screen).
@@ -252,11 +252,12 @@ if (mode === 'review') {
     const scope = packetLine('Review scope');
     const approval = packetLine('Review approval');
     const redesign = packetLine('Redesign');
+    const criticalThread = packetLine('Critical thread');
     if (!/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) refuse(`the packet's PR line must be \`PR: owner/repo#N\` (got "${pr}")`);
     if (scope !== 'full' && scope !== 'fix-diff') refuse('a PR review packet needs `Review scope: full` or `Review scope: fix-diff`');
     const packetHash = sha256(packetBytes);
     const answer = reviewReserve(['--pr', pr, '--scope', scope, '--request-key', `${taskId}:${packetHash}`, '--packet-hash', packetHash,
-      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : [])], root);
+      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : []), ...(criticalThread ? ['--critical-thread', criticalThread] : [])], root);
     if (answer?.ok !== true || !answer.reservation) refuse(`review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`);
     reservation = { id: answer.reservation.id, pr: answer.reservation.pr, slot: answer.reservation.slot, scope: answer.reservation.scope, reused: Boolean(answer.reused) };
     round = reservation.slot;

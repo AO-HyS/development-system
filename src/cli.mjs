@@ -334,6 +334,7 @@ function parseThreadHealthArguments(argv) {
 
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json] | --diagram";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
+const PROGRESS_USAGE = "<owner/repo#number | PR URL>... [--home <dir>] [--json] (facts only: GitHub state, gate step, Sol rounds, recorded evidence; unread = desconocido)";
 
 const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
 /** Governance subcommands and usage; the dispatcher rejects any subcommand absent here. */
@@ -400,8 +401,6 @@ const COMMAND_TABLE = [
   ["check-no-tests", `[--root <dir>] ${COMMON_OPTIONS}`],
   ["allow-tests", "<directory> [--hours N] [--reason text] | --revoke <directory> [--home <dir>] [--json]"],
   ["test-grants", COMMON_OPTIONS],
-  ["allow-docs", "<repo> --task <slug> [--hours N] [--reason text] | --revoke <repo> [--home <dir>] [--json]"],
-  ["docs-grants", COMMON_OPTIONS],
   ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
   ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
   ["clean-cache", "<cache entry> [--dry-run] [--home <dir>] [--json] (allowlisted regenerable caches; moves to the Trash)"],
@@ -426,6 +425,7 @@ const COMMAND_TABLE = [
   ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
+  ["progress", PROGRESS_USAGE],
   ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
   ...BROWSER_POOL_TABLE,
   ["commands", "[--json]"],
@@ -616,33 +616,15 @@ async function runCommand(argv) {
     const paths = COMMAND_TABLE.map(([path]) => path);
     return { result: { ok: true, operation: "commands", commands: paths }, output: json ? JSON.stringify(paths) : paths.join("\n"), json };
   }
-  if (argv[0] === "allow-docs" || argv[0] === "docs-grants") {
+  if (argv[0] === "progress") {
     const json = argv.includes("--json");
-    /** @type {Record<string, string>} */
-    const values = {};
-    /** @type {string[]} */
-    const roots = [];
-    let revoke = false;
-    for (let index = 1; index < argv.length; index += 1) {
-      const arg = argv[index];
-      if (arg === "--json") continue;
-      if (arg === "--revoke" && argv[0] === "allow-docs") { revoke = true; continue; }
-      if (["--home", "--hours", "--reason", "--task"].includes(arg) && (arg === "--home" || argv[0] === "allow-docs")) {
-        const value = argv[++index];
-        if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
-        values[arg.slice(2)] = value;
-        continue;
-      }
-      if (arg.startsWith("--") || argv[0] === "docs-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
-      roots.push(arg);
-    }
-    const { allowDocs, confirmOperatorDocsGrant, listDocsGrants, formatDocsGrants } = await import("./docs-grants.mjs");
-    const home = values.home ?? homedir();
-    if (argv[0] === "allow-docs" && (roots.length !== 1 || (!revoke && values.task === undefined))) throw new Error("Usage: development-system allow-docs <repo> --task <slug> [--hours N] [--reason text] | --revoke <repo>");
-    const result = argv[0] === "allow-docs"
-      ? await allowDocs({ home, root: roots[0], task: values.task, hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke, confirm: confirmOperatorDocsGrant })
-      : listDocsGrants({ home });
-    return { result, output: json ? JSON.stringify(result) : formatDocsGrants(result), json };
+    const homeIndex = argv.indexOf("--home");
+    const home = homeIndex > 0 ? argv[homeIndex + 1] : homedir();
+    const rest = (homeIndex > 0 ? [...argv.slice(1, homeIndex), ...argv.slice(homeIndex + 2)] : argv.slice(1)).filter((arg) => arg !== "--json");
+    if (!home || home.startsWith("--") || rest.length === 0 || rest.some((arg) => arg.startsWith("--"))) throw new Error(`Usage: development-system progress ${PROGRESS_USAGE}`);
+    const { progress, formatProgress } = await import("./progress.mjs");
+    const result = progress({ prs: rest, home });
+    return { result, output: json ? JSON.stringify(result) : formatProgress(result), json };
   }
   if (argv[0] === "review") return (await import("./review-cli.mjs")).runReviewCommand(argv);
   if (argv[0] === "check-primitives") {
