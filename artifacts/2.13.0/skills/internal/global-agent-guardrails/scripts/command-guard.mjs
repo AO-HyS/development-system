@@ -586,10 +586,12 @@ class Parser {
    * Record the assignments a finished pipeline made. parseSimple already forgot each assigned name; a value is kept only
    * for plain text assigned by a command that is nothing but assignments. Piped or backgrounded assignments run in a
    * subshell and stay forgotten. `uncertain` says an earlier `&&` or `||` of the same list may have skipped this
-   * pipeline: its names go to `chained`, which the caller forgets when the list ends.
-   * @param {any} pipeline @param {boolean} uncertain @param {string[]} chained
+   * pipeline: its names go to `chained`, which the caller forgets when the list ends. `alternative` says the pipeline
+   * follows `||`: it can be skipped while a later `&&` link still runs (`true || B=echo && "$B" …`), so its value is
+   * never kept and the name stays forgotten.
+   * @param {any} pipeline @param {boolean} uncertain @param {string[]} chained @param {boolean} alternative
    */
-  trackAssignments(pipeline, uncertain, chained) {
+  trackAssignments(pipeline, uncertain, chained, alternative) {
     if (!this.tracking) return;
     for (const command of pipeline.commands) {
       if (command.type !== "simple" || command.words.length > 0 || command.assigns.length === 0) continue;
@@ -597,7 +599,7 @@ class Parser {
         const name = value.name ?? "";
         if (!TRACK_NAME.test(name) || TRACK_RESERVED.test(name) || CAT_LOOKUP_NAMES.test(name)) { this.stopTracking(); return; }
         const known = value.plain && value.subs.length === 0 && !value.procSubst && !value.value.includes(UNKNOWN) && (value.literal || value.tracked) && (TRACK_VALUE.test(value.value) || TRACK_BLANK_VALUE.test(value.value));
-        if (!known || pipeline.commands.length > 1 || pipeline.background) continue;
+        if (!known || alternative || pipeline.commands.length > 1 || pipeline.background) continue;
         const frame = this.frames[this.frames.length - 1];
         // The condition of an `if` or loop, and a loop written without `do`, are not bodies the parser follows.
         if (frame && !frame.open) continue;
@@ -718,6 +720,8 @@ class Parser {
     let conditional = false;
     // Tracking: whether an earlier link of the current and-or list may have skipped this pipeline, and the variables assigned since.
     let uncertain = false;
+    // Whether the pipeline being read follows `||`.
+    let alternative = false;
     /** @type {string[]} */
     let chained = [];
     for (;;) {
@@ -745,10 +749,11 @@ class Parser {
       const or = this.at("||");
       conditional = this.at("&&") || or;
       if (!conditional) pipeline.background = this.peek() === "&" && !this.at("&>");
-      this.trackAssignments(pipeline, uncertain, chained);
+      this.trackAssignments(pipeline, uncertain, chained, alternative);
       // After `||`, or when the list ends, what a skippable link assigned is no longer known.
       if (or || !conditional) { for (const name of chained) this.vars.delete(name); chained = []; }
       uncertain = or || (conditional && (uncertain || !certainPipeline(pipeline)));
+      alternative = or;
       if (conditional) { this.i += 2; continue; }
     }
     for (const name of chained) this.vars.delete(name);
@@ -2411,7 +2416,26 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
   if (effect.unknownContents) {
     const roots = operandPaths(word, ctx);
     if (roots === null || roots.length !== 1) {
-      if (!ctx.codeString) block(`${shownWord(word)} (archive or remote contents into an unknown directory)`);
+      if (!ctx.codeString) {
+        block(`${shownWord(word)} (archive or remote contents into an unknown directory)`);
+        const cut = word.value.indexOf(UNKNOWN);
+        // A folder written out before the unknown part (`-C ~/.claude/"$dir"`): guard configuration below it blocks.
+        if (cut !== 0 && !(ctx.cwd === null && !isAbsolute(cut < 0 ? text : word.value.slice(0, cut)))) {
+          blindBelow("archive or remote contents into a directory the guard cannot read");
+          return;
+        }
+        // No folder at all (`-C "$dir"`): contents the guard can list pass unless a member's name can end a protected
+        // path; contents it cannot read are blocked, since the place and the contents are both unknown.
+        const listed = effect.renames || !effect.archives || effect.archives.length === 0 ? null : effect.archives.map((archive) => archiveMembers(archive, ctx));
+        if (listed === null || listed.some((members) => members === null)) throw blindBlock(`${shownWord(word)} (archive or remote contents the guard cannot read, into a directory it cannot read either)`);
+        for (const member of listed.flatMap((members) => members ?? [])) {
+          const parts = member.split(/[\\/]/u).filter((part) => part !== "" && part !== ".");
+          for (let k = 0; k < (effect.strips ? parts.length : Math.min(parts.length, 1)); k++) {
+            const hit = protectedTail(parts.slice(k).join("/"), "write", targets);
+            if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit} (${member}, extracted into a directory the guard cannot read)`);
+          }
+        }
+      }
       return;
     }
     const [root] = roots;

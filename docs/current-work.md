@@ -109,7 +109,7 @@ https://github.com/AO-HyS/development-system/blob/703fa478eda5f0cfe9667d6e2099e9
 - B4: `broad-recursive-delete` lets through regenerable folders, the agent's scratch and temporary folders when the path is verified; `git-branch-delete-force` lets through a branch already merged into its base, never develop, main or master.
 - Verified (private folder `~/.development-system/private/verification/ds-2130/`, the guard only reads text; nothing is executed):
   - `guard-replay.mjs`: of the 396 payloads the guard blocked in the two architecture thread trees, 268 pass now (67.7%, goal 264); 2.12.0 passes 6. The 4 inspection failures left are real shell syntax errors.
-  - `stops-and-harmless.mjs` (with the folder `fixtures-199.sh` builds): 112 commands that touch the five stops, written out and indirect, all block; 44 harmless dynamic forms all pass. Noted limit, same as 2.12.0: an unfinished `if` with nothing harmful inside is not reported as a syntax error (the shell rejects it; with a delete inside it blocks).
+  - `stops-and-harmless.mjs` (with the folder `fixtures-199.sh` builds): 120 commands that touch the five stops, written out and indirect, all block; 46 harmless dynamic forms all pass. Noted limit, same as 2.12.0: an unfinished `if` with nothing harmful inside is not reported as a syntax error (the shell rejects it; with a delete inside it blocks).
 - Sol round 1 on #199 (full, head fa7d923): blocking, seven regressions against 2.12.0, all fixed in the same three files and each payload added to `stops-and-harmless.mjs`:
   - DS199-R1-1/-2: retiring the docs names had switched off checks that fail closed. A recursive copy, move or sync from a source the guard cannot read is blocked when guard configuration lies below the destination written out; a relative write under `find -execdir` is blocked; `find -delete`/`-exec` from a start the guard cannot read is judged by the protected files its tests pass.
   - DS199-R1-3: `sensitiveWriteOptions` and `sensitiveValueOptions` in the policy. An option that writes a file makes a read-only subcommand a write and its file is a write target; an unreadable word passes only where it cannot be that option. `terraform providers` left the read-only list (`providers mirror` writes).
@@ -123,4 +123,8 @@ https://github.com/AO-HyS/development-system/blob/703fa478eda5f0cfe9667d6e2099e9
   - DS199-R2-3: the merged-branch exception holds only in a command with no expansion at all (`E=export; "$E" …` spelled the redirect through variables).
   - DS199-R2-4: an unreadable value of a listed option must be inside double quotes; unquoted it can split into the write option (`pulumi preview --stack $s`).
   - Replay after these fixes: 265 of 396 pass (goal 264). The three that block again feed `git ls-files` to `xargs git rm`, which 2.12.0 blocked for the same reason.
+- Codex on 4ba107a, two P1 threads, both fixed in `command-guard.mjs`:
+  - 4545186638: an assignment right after `||` is never kept (`B=git; true || B=echo && "$B" reset --hard` was judged as `echo`).
+  - 4545186639: archive or remote contents into a directory the guard cannot read are judged by the folder written out (`tar -xf "$a" -C ~/.claude/"$dir"` blocks); with no folder written out they pass only when the archive can be listed and carries no name that can end a protected path.
+  - `stops-and-harmless.mjs` now holds 120 stops and 46 harmless forms; replay unchanged at 265.
 - Not reached: the guard installed in an isolated HOME on a real priority-repo PR (done-when 5), which needs the cut in PR C.
