@@ -1,12 +1,12 @@
 // @ts-check
-// `development-system review <subcommand>`: the Sol ledger from the command line. Moved out of cli.mjs in 2.13.0 with
+// `development-system review <subcommand>`: the review ledger (Fable or Sol rounds) from the command line. Moved out of cli.mjs in 2.13.0 with
 // the subcommands that let the agent finish a review without anyone's permission: brief (the reviewer packet), dispose
 // (what happened to each finding), advance (the row at the round cap) and lines (the hashes a void names).
 import { homedir } from "node:os";
 
 /** @type {Record<string, Record<string, string>>} */
 const FLAGS = {
-  record: { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--from": "from", "--operator-approval": "operatorApproval" },
+  record: { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--observed-model": "observedModel", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--from": "from", "--operator-approval": "operatorApproval" },
   coverage: { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" },
   reserve: { "--home": "home", "--pr": "pr", "--scope": "scope", "--request-key": "requestKey", "--packet-hash": "packetHash", "--approval-id": "approvalId", "--redesign": "redesign", "--critical-thread": "criticalThread" },
   approve: { "--home": "home", "--pr": "pr", "--slot": "slot", "--scope": "scope", "--quote": "quote", "--source-ref": "sourceRef" },
@@ -20,7 +20,7 @@ const FLAGS = {
 };
 
 /**
- * The reviewer packet for the PR's next Sol round, read from the gate's own state (read-only).
+ * The reviewer packet for the PR's next review round (Fable or Sol), read from the gate's own state (read-only).
  * @param {{home: string, pr?: string}} options
  */
 async function reviewBrief({ home, pr }) {
@@ -29,7 +29,7 @@ async function reviewBrief({ home, pr }) {
   const { reviewerBrief } = await import("./review-next.mjs");
   const status = prReviewStatus({ pr, home });
   const lineage = "error" in status.lineage ? null : status.lineage;
-  if (status.step !== "solRound" || !lineage) return { ok: true, operation: "review-brief", pr: status.pr, round: false, brief: `No Sol round runs now for ${status.pr}. Siguiente: ${status.siguiente}` };
+  if (status.step !== "solRound" || !lineage) return { ok: true, operation: "review-brief", pr: status.pr, round: false, brief: `No review round runs now for ${status.pr}. Siguiente: ${status.siguiente}` };
   const pending = lineage.pending.find((reservation) => reservation.pr === status.pr.toLowerCase());
   const slot = pending?.slot ?? lineage.nextSlot;
   const last = lineage.lastRound;
@@ -39,8 +39,9 @@ async function reviewBrief({ home, pr }) {
     prKey: status.pr, head: status.head, scope, from: scope === "fix-diff" ? last?.head : undefined, slot,
     receipt: ["ok", "nonvisual"].includes(status.behavioralEvidence.state) ? evidence.receipt : undefined,
     rejected: status.codexThreads.filter((thread) => thread.state === "rejected-needs-sol"),
+    hard: status.reviewer === "fable" ? status.reviewerReason : "",
   });
-  return { ok: true, operation: "review-brief", pr: status.pr, round: true, slot, scope, brief };
+  return { ok: true, operation: "review-brief", pr: status.pr, round: true, slot, scope, reviewer: status.reviewer, brief };
 }
 
 /** @param {string[]} argv starting at "review" */
@@ -74,7 +75,7 @@ export async function runReviewCommand(argv) {
   /** @param {any} result @param {(result: any) => string} format */
   const done = (result, format) => ({ result, output: json ? JSON.stringify(result) : format(result), json });
   if (subcommand === "record" && values.operatorApproval !== undefined) throw new Error(reviews.OPERATOR_APPROVAL_MOVED);
-  if (subcommand === "record") return done(reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, from: values.from, dryRun }), reviews.formatReviewRecord);
+  if (subcommand === "record") return done(reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, observedModel: values.observedModel, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, from: values.from, dryRun }), reviews.formatReviewRecord);
   if (subcommand === "coverage") return done(reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note }), reviews.formatReviewRecord);
   if (subcommand === "waive") return done(reviews.waiveReview({ home, pr: values.pr, head: values.head, quote: values.quote }), reviews.formatReviewRecord);
   if (subcommand === "dispose" || subcommand === "advance") {

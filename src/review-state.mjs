@@ -5,7 +5,7 @@
 // PRs are the unmerged PRs with that head created after the latest merged one (a merge ends a lineage). Slots, approvals,
 // reservations and releases live in a head sidecar <reviews>/<owner>/<repo>/branches/<hash>.jsonl shared by every
 // lineage of that head; only entries of the current lineage's PRs count, older ones are history. Which round runs next
-// is `review-policy.mjs` (2.13.0): five rounds without anyone's approval, two more only to re-read a critical fix. A
+// is `review-policy.mjs` (2.13.0; caps of 2.14.1): two rounds without anyone's approval, two more only to re-read a critical fix. A
 // round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a coordinator calling the
 // CLI) goes through the same brake. Every GitHub read that the brake depends on fails closed. A void annuls one ledger
 // line (even a malformed or fake one) but restores no budget.
@@ -15,9 +15,9 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
-import { BUDGET, CRITICAL, NOT_CRITICAL, admission, openFindings, policyRecordProblem } from "./review-policy.mjs";
+import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, hardReason, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
-export { BUDGET, CRITICAL, classifyFindings } from "./review-policy.mjs";
+export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
 export const SHA = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -37,7 +37,7 @@ const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
 
 /**
  * @typedef {{id: string, paths: string[], origin?: "prior" | "fix-induced" | "new", critical?: string}} Finding
- * @typedef {{type: "round", pr: string, reviewer: "sol", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string}} RoundRecord
+ * @typedef {{type: "round", pr: string, reviewer: "sol" | "fable", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string, observedModel?: string}} RoundRecord
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
  * @typedef {{type: "waiver", pr: string, head: string, quote: string, recordedAt: string}} WaiverRecord
@@ -247,6 +247,9 @@ export const slotOf = (record) => Number(record?.slot ?? record?.round);
 export function recordProblem(record, key) {
   if (record?.pr !== key) return `is not a review record for ${key}`;
   if (record.type === "round") {
+    const fable = fableRound(record);
+    if ("problem" in fable) return fable.problem;
+    if (fable.row !== record) return recordProblem(fable.row, key);
     const keys = ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"];
     if (hasNewKeys(record) || (Number(record.round) > 2 && !("operatorApproval" in record))) {
       // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (a 2.9.0
@@ -263,7 +266,7 @@ export function recordProblem(record, key) {
       if (record.round > 2 && (!text(record.operatorApproval) || record.scope !== "full")) return "round past the second has no operator approval or is not full";
       if (!Array.isArray(record.findings) || !record.findings.every(isFinding)) return "round findings are not {id, paths[]}";
     }
-    if (record.reviewer !== "sol") return "round reviewer is not sol";
+    if (record.reviewer !== "sol") return `round reviewer is not ${REVIEWERS.join(" or ")}`;
     if (typeof record.head !== "string" || !SHA.test(record.head)) return "round head is not a 40-hex SHA";
     if (!SCOPES.includes(record.scope)) return "round scope is not full or fix-diff";
     if (!RESULTS.includes(record.result)) return "round result is not blocking, non-blocking or none";
@@ -303,8 +306,8 @@ export function recordProblem(record, key) {
  */
 export function sequenceProblem(records) {
   const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
-  if (rounds.length && records.some((record) => record.type === "exemption")) return "has both Sol rounds and an exemption";
-  if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
+  if (rounds.length && records.some((record) => record.type === "exemption")) return "has both review rounds and an exemption";
+  if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its review rounds out of order";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
   return "";
@@ -543,7 +546,10 @@ export function lineageState(home, lineage) {
   // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
   // slot its lineage used. The writer of an advance and the gate both read it from here.
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
-  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
+  // 2.14.0: who runs the next round (Sol, Fable when hard); slots are shared between reviewers. `rejected` (a pending
+  // critical Codex rejection) is known only to the gate. The round runs on the first reserved slot, else the next.
+  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected, nextSlot: pending[0]?.slot ?? slotsUsed + 1 }) });
+  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer: reviewerWith(), reviewerWith };
 }
 
 /** The gate's view of a lineage. @param {ReturnType<typeof lineageState>} state */
@@ -608,7 +614,7 @@ function evidenceBeforeFirstRound(home, lineage) {
  * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
  * is unrecorded: a retry gets the same reservation, after the same evidence and policy questions a new one answers;
  * once that slot has a recorded round the key is spent and the call refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
- * (the Codex wrapper keeps a launch claim per reservation). Refused while another slot of the lineage is reserved but
+ * (the Codex wrapper and, since 2.14.2, the Claude guard keep one launch claim per reservation). Refused while another slot of the lineage is reserved but
  * unrecorded, when the policy (`admission` in review-policy.mjs) has no round to run, or after a fix-induced blocker
  * without a verified redesign. `criticalThread` names a rejected critical Codex thread that needs Sol's read.
  * `dryRun` validates the same way and writes nothing.

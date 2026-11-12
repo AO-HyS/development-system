@@ -1,9 +1,10 @@
 // @ts-check
-// What happens to each Sol finding and the advance at the round cap (2.13.0, plan A2, A3 and A8).
+// What happens to each review finding and the advance at the round cap (2.13.0, plan A2, A3 and A8).
 //   review dispose   one row per finding of a round: fixed (with its commit), rejected (with the reason) or follow-up
 //                    (with where it went). The ledger can then say how much of what a review finds ends in a change.
-//   review advance   the `auto-advance` row: round 5 came back blocking with nothing critical open, so no round 6
-//                    runs; or (`--withdrawn`) round 7 still has a critical finding open and the disputed change left
+//   review advance   the `auto-advance` row: the last round of the cap (2 since 2.14.1) came back blocking with nothing
+//                    critical open, so no further round runs; or (`--withdrawn`) the last critical re-read (round 4)
+//                    still has a critical finding open and the disputed change left
 //                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop; the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
@@ -37,7 +38,7 @@ export function dispositionCommits(records, round, findings) {
 }
 
 /**
- * Records what happened to one finding of a Sol round (the last round unless `round` names another).
+ * Records what happened to one finding of a review round (the last round unless `round` names another).
  * @param {{home: string, pr?: string, finding?: string, outcome?: string, commit?: string, note?: string, round?: string | number}} options
  */
 export function recordDisposition({ home, pr, finding, outcome, commit, note, round }) {
@@ -51,7 +52,7 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
   return withFileLock(`${file}.lock`, () => {
     const rounds = /** @type {RoundRecord[]} */ (readReviewRecords(home, key).filter((record) => record.type === "round"));
     const target = round === undefined ? rounds.at(-1) : rounds.find((candidate) => candidate.round === Number(round));
-    if (!target) throw new Error(`${key} has no ${round === undefined ? "recorded Sol round" : `Sol round ${round}`}`);
+    if (!target) throw new Error(`${key} has no ${round === undefined ? "recorded review round" : `review round ${round}`}`);
     if (!target.findings.some((candidate) => candidate.id === finding)) throw new Error(`round ${target.round} of ${key} has no finding ${finding} (it has: ${target.findings.map((candidate) => candidate.id).join(", ") || "none"})`);
     /** @type {DispositionRecord} */
     const record = { type: "disposition", pr: key, round: target.round, finding: /** @type {string} */ (text(finding)), outcome: /** @type {DispositionRecord["outcome"]} */ (outcome), ...(commit ? { commit } : {}), ...(text(note) ? { note: text(note) } : {}), recordedAt: new Date().toISOString() };
@@ -61,7 +62,7 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
 }
 
 /**
- * Records that the PR advances without another Sol round. Refused unless the PR goes into develop, `head` is its
+ * Records that the PR advances without another review round. Refused unless the PR goes into develop, `head` is its
  * current head, the lineage's last round is this PR's and blocking, the policy says advance (or, with `withdrawn`,
  * withdraw), no reserved round is waiting, and every finding that round left open has a disposition.
  * @param {{home: string, pr?: string, head?: string, withdrawn?: boolean, dryRun?: boolean}} options
@@ -78,7 +79,7 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
     const waiting = state.pending[0];
     if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} without a recorded round: record or release it first`);
     const last = state.lastRound;
-    if (!last || last.pr !== key || last.record.result !== "blocking") throw new Error(`the last Sol round of this lineage (${last ? `${last.pr}, ${last.record.result}` : "none"}) is not a blocking round of ${key}: nothing to advance past`);
+    if (!last || last.pr !== key || last.record.result !== "blocking") throw new Error(`the last review round of this lineage (${last ? `${last.pr}, ${last.record.result}` : "none"}) is not a blocking round of ${key}: nothing to advance past`);
     const slot = last.effectiveSlot;
     const next = nextReview({ nextSlot: state.nextSlot, last: { result: last.record.result, critical: last.critical } });
     const wanted = withdrawn ? "withdraw" : "advance";

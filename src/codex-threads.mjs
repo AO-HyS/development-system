@@ -6,8 +6,9 @@
 // Only the repository's own people answer: a human account GitHub reports as its owner, a member of its organization
 // or a collaborator. A reply from anyone else who can comment on the PR answers nothing.
 // Answered is not corrected. A rejected thread that is P0 or P1 (Codex's own badge), carries no readable priority, or
-// touches a critical domain whatever its priority, is closed only by a Sol round reserved after the rejection (a
-// round already running when the finding was rejected could not have read it); until then it asks for that round.
+// touches a critical domain whatever its priority, is closed only by a review round (Fable or Sol) reserved after the
+// rejection (a round already running when the finding was rejected could not have read it); until then it asks for
+// that round.
 // Only a rejected P2 or P3 outside the critical domains closes with its reason.
 import { slotOf } from "./review-state.mjs";
 
@@ -110,8 +111,8 @@ export function threadStates({ threads, commitInfo, solRoundsAt }) {
         const at = Date.parse(String(reply.createdAt));
         const read = Number.isFinite(at) && solRoundsAt.some((reserved) => reserved > at);
         return read
-          ? { ...base, state: /** @type {const} */ ("rejected"), detail: "rejected with a reason; a Sol round reserved after the rejection read it" }
-          : { ...base, state: /** @type {const} */ ("rejected-needs-sol"), detail: "rejected, but it is P0/P1, has no readable priority or touches a critical domain: Sol reads the rejection in the next round" };
+          ? { ...base, state: /** @type {const} */ ("rejected"), detail: "rejected with a reason; a review round reserved after the rejection read it" }
+          : { ...base, state: /** @type {const} */ ("rejected-needs-sol"), detail: "rejected, but it is P0/P1, has no readable priority or touches a critical domain: the reviewer of the next reserved round reads the rejection" };
       }
       for (const cited of new Set(text.match(/\b[0-9a-f]{7,40}\b/g) ?? [])) {
         try {

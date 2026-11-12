@@ -413,7 +413,7 @@ const COMMAND_TABLE = [
   ["friction list", COMMON_OPTIONS],
   ["evidence record", EVIDENCE_USAGE],
   ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <t3-thread://...|thread:<id>|<uuid>|codex:<id>|claude:<id>|https://...> [--finding <id>:<path>[+<path>][@prior|fix-induced|new[/security|authorization|data-loss|money|minors-privacy|consent|none]]]... | --exempt docs-only|low-risk --reason <text> [--dry-run] [--home <dir>] [--json] (a round needs the PR's oldest unrecorded reservation; a fix-diff starts at the previous round's head)"],
-  ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--redesign <path>#<sha256>] [--critical-thread codex:<id>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol round of the branch lineage; five run on their own, two more only to re-read a critical fix)"],
+  ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--redesign <path>#<sha256>] [--critical-thread codex:<id>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol round of the branch lineage; two run on their own, two more only to re-read a critical fix)"],
   ["review brief", "--pr <ref> [--home <dir>] [--json] (the reviewer packet for the next round: scope, diff start, evidence receipt, rules)"],
   ["review dispose", "--pr <ref> --finding <id> --outcome fixed|rejected|follow-up [--commit <sha>] [--note <text>] [--round <n>] [--home <dir>] [--json]"],
   ["review advance", "--pr <ref> --head <sha> [--withdrawn] [--dry-run] [--home <dir>] [--json] (at the round cap: advance into develop without another round)"],

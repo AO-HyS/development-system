@@ -3,6 +3,11 @@
 // paths (one path token per entry) and a finish line and never share a path with an
 // active writer. Normal dispatch disables automatic Jev classification/tier calls;
 // the parent can use the separate advisory CLI at an unresolved decision.
+// Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High. Security reviews and hard reviews run on the
+// native primary `reviewer` (Fable 5.2): fresh, read-only, with a `Review kind:` line and, unless the kind is
+// free (security), a `Review difficulty: hard: <why>` line; kind pr reserves the PR's lineage slot like delegate_task.
+// One reservation launches one review (2.14.2): a second reviewer on the same slot is denied, also through a
+// Codex fallback receipt.
 // Sol reviews and Terra computer use retain receipt-bound native fallback. A fresh
 // primary Opus visual critic needs no fallback envelope, never source ownership.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
@@ -10,7 +15,13 @@
 // release of the writer's paths; an expired hold is logged as writer-hold-expired.
 // Every read-modify-write of active-writers.json runs under one session lock directory.
 // CLI mode `mapper-bash` (code-mapper frontmatter hook): PreToolUse Bash limited to
-// read-only git commands, typechecks and jevgrep (`jg "<question>" <relative root>`).
+// read-only search (rg, grep, ls, cat, sed -n, find without actions...), read-only git
+// commands and jevgrep (`jg "<question>" <relative root>`); since 2.14.1 several of them may
+// be joined by `;` or `&&` after one leading `cd <path>`, and a typecheck is no longer a mapper
+// command (it runs a script of the repository; the parent or a writer runs it).
+// Orchestration coach (parent PreToolUse only, plus secret requests anywhere): never denies;
+// it appends one sentence of context after long read streaks, repeated solo writers and
+// repeated secret requests, and logs only the kind and the count.
 // CLI mode `writer-bash` (writer frontmatter hook): PreToolUse Bash denies git commands
 // that change the index, refs or worktree; the coordinator owns staging and commits.
 // PreToolUse T3 delegate_task (review brake, 2.9.0): only role "review" or a `Review kind:` line is checked; kind pr
@@ -48,10 +59,17 @@ function deny(reason, entry) {
     hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }));
   process.exit(0);
 }
+// Coach output rides on whatever the call allows: coachNote is ready text, coachOnAllow a
+// deferred update that runs only once the call is allowed (a denied launch never counts).
+let coachNote = null;
+let coachOnAllow = null;
 function allow(context, entry) {
   if (entry) ledger({ decision: 'allow', ...entry });
-  if (context) process.stdout.write(JSON.stringify({ hookSpecificOutput: {
-    hookEventName: 'PreToolUse', additionalContext: context } }));
+  let note = coachNote;
+  if (coachOnAllow) { try { note = [note, coachOnAllow()].filter(Boolean).join(' ') || null; } catch { /* the coach never changes a decision */ } }
+  const text = [context, note].filter(Boolean).join(' ');
+  if (text) process.stdout.write(JSON.stringify({ hookSpecificOutput: {
+    hookEventName: 'PreToolUse', additionalContext: text } }));
   process.exit(0);
 }
 
@@ -65,7 +83,10 @@ const agentsForRoute = (route) => Object.entries(POLICY.roster).filter(([, r]) =
 // outside it they stay absolute (held, but not sent to Jev, which takes repo paths only).
 // "none" is an empty list except for Owned paths.
 const LIST_HEADER = /^[A-Z][\w /-]*:/;
-const OWNED_FORMAT = 'Owned paths must be one path per entry: `Owned paths: src/a.ts, src/b/**` or one `- path` line each.';
+const OWNED_FORMAT = 'Owned paths must be one path per entry: `Owned paths: src/a.ts, src/b/**` or one `- path` line each (a note in parentheses after a path is ignored; say the rest in Settled decisions).';
+// 2.14.1: `src/new/ (new directory)` is the path `src/new/`. Only a parenthesis after whitespace that closes the entry
+// is a note, so a route group such as `app/(auth)/page.tsx` stays a path.
+const withoutNotes = (text) => text.replace(/\s+\([^()\n]*\)(?=\s*(?:[,;]|$))/g, '');
 function listPath(token, cwd) {
   if (!token || /[\s`[\]?{}\\]/.test(token)) return null;
   let p = token.replace(/\/\*\*$/, '');
@@ -86,11 +107,11 @@ function packetList(prompt, label, cwd) {
     if (at < 0) return { paths: [], rejected: [] };
     first = lines[at].slice(lines[at].indexOf(`${label}:`) + label.length + 1);
   }
-  const entries = first.split(',');
+  const entries = withoutNotes(first).split(/[,;]/);
   const rejected = [];
   for (const line of lines.slice(at + 1)) {
     if (!line.trim() || LIST_HEADER.test(line)) break;
-    if (/^\s*- /.test(line)) entries.push(...line.replace(/^\s*- /, '').split(','));
+    if (/^\s*- /.test(line)) entries.push(...withoutNotes(line.replace(/^\s*- /, '')).split(/[,;]/));
     else rejected.push(line.trim());
   }
   const paths = [];
@@ -374,6 +395,87 @@ function fallbackReceipt(prompt, type) {
   return receipt;
 }
 
+// One `Label: value` packet line (optional list bullet or bold label), or null. Shared by delegate_task and the
+// native primary reviewer so both read review packets the same way.
+const packetLine = (text, label) => new RegExp(`^\\s*(?:[-*]\\s+)?(?:\\*\\*)?${label}:(?:\\*\\*)?[ \\t]*(.*?)\\s*$`, 'im').exec(String(text))?.[1] ?? null;
+
+// PR review reservation shared by delegate_task and the native primary reviewer: validates the PR and scope lines,
+// reserves the PR's next lineage slot through the installed CLI and denies on any refusal. requestKey defaults to the
+// packet hash. One reservation launches one review (2.14.2): see claimLaunch.
+async function reservePrReview(text, entry, requestKey, via, launchKey) {
+  const pr = packetLine(text, 'PR');
+  const scope = packetLine(text, 'Review scope');
+  const approval = packetLine(text, 'Review approval');
+  const redesign = packetLine(text, 'Redesign');
+  const criticalThread = packetLine(text, 'Critical thread');
+  if (!pr || !/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) deny(`A PR review ${via} needs a \`PR: owner/repo#N\` line.`, { ...entry, blockedBy: 'review-pr' });
+  if (scope !== 'full' && scope !== 'fix-diff') deny(`A PR review ${via} needs \`Review scope: full\` or \`Review scope: fix-diff\`.`, { ...entry, pr, blockedBy: 'review-scope' });
+  const packetHash = crypto.createHash('sha256').update(text).digest('hex');
+  const args = ['--pr', pr, '--scope', scope, '--request-key', requestKey || packetHash, '--packet-hash', packetHash,
+    ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : []), ...(criticalThread ? ['--critical-thread', criticalThread] : [])];
+  const answer = await reviewReserve(args, input.cwd);
+  const reservation = answer?.reservation;
+  if (answer?.ok !== true || !reservation) deny(`Review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`, { ...entry, pr, scope, blockedBy: 'review-brake' });
+  const slot = `${answer.reused ? 'reused' : 'reserved'} lineage slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`;
+  const logged = { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) };
+  claimLaunch(reservation, launchKey, via, logged);
+  return { reservation, slot, logged };
+}
+
+// Launch ownership of a reservation, in the file the Codex wrapper uses (launches/<reservationId>.json, created
+// exclusively), so a slot never runs two reviewers whichever launcher took it. The same launch key (the tool call, or
+// the T3 clientRequestId, which T3 answers with the same task) is a retry of one launch; any other key is a second
+// reviewer on the same slot and is denied. A release ends the reservation, so the next packet gets a new one.
+function claimLaunch(reservation, launchKey, via, entry) {
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(String(reservation.id))) throw new Error(`unusable reservation id ${JSON.stringify(reservation.id)}`);
+  const dir = path.join(home(POLICY.review?.stateDir ?? '~/.development-system/private/runs/codex-review'), 'launches');
+  const file = path.join(dir, `${reservation.id}.json`);
+  const key = typeof launchKey === 'string' && launchKey ? launchKey : null;
+  try {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(file, `${JSON.stringify({ reservationId: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope, launcher: via, launchKey: key, status: 'claimed', at: new Date().toISOString() })}\n`, { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error;
+    let existing = null;
+    try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* unreadable claim: counts as another launch */ }
+    if (key && existing?.launchKey === key) return;
+    deny(`Review brake: reservation ${reservation.id} (slot ${reservation.slot} of ${reservation.pr}) already launched a review${existing?.at ? ` at ${existing.at}` : ''}; one reservation launches one review, so nothing was started. If that review ran, record its round (development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ...). If it never ran or never answered, release the reservation (development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason <why>) and send the packet again.`, { ...entry, blockedBy: 'review-launch-claimed' });
+  }
+}
+
+// Every other review goes to codex-review on Sol 6.1 High; shared by the launch text and the difficulty denial.
+const CODEX_REVIEW_LAUNCH = 'write the review packet to a file and run node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <mock> --image <capture>] with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep.';
+const REVIEW_ROUTES = `Reviews (diff, plan, PR) -> codex-review on Sol 6.1 High: ${CODEX_REVIEW_LAUNCH} Security reviews and hard reviews -> Agent reviewer (Fable 5.2, fresh, read-only) with \`Review kind: pr|plan|security|diff\` and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`).`;
+
+// Native primary reviewer (Fable 5.2), only for security reviews and hard reviews: fresh, read-only, with a
+// `Review kind:` line from POLICY.review.primary.kinds and, unless the kind is in POLICY.review.primary.freeKinds,
+// a `Review difficulty: hard: <reason>` line. Kind pr reserves the PR's lineage slot exactly like delegate_task;
+// an internal error there denies. Always exits.
+async function primaryReview(type, ti, prompt, entry, primary) {
+  const kinds = (primary.kinds ?? []).map((k) => String(k).toLowerCase());
+  const kind = packetLine(prompt, 'Review kind');
+  const normalized = String(kind ?? '').toLowerCase();
+  const reviewEntry = { ...entry, reviewKind: kind, jev: 'skipped', tier: null, why: 'fresh primary Fable review' };
+  if (!kinds.includes(normalized)) deny(`${type} (Fable 5.2) needs a \`Review kind: ${kinds.join('|')}\` line and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`); the only other admission is a receipt-bound "Codex fallback:" envelope.`, { ...reviewEntry, blockedBy: 'review-kind' });
+  if (ti.resume !== undefined) deny(`${type} primary review requires a fresh Agent; resume is forbidden.`, { ...reviewEntry, blockedBy: 'primary-review-fresh' });
+  if (/^\s*(Owned paths|Writer|Source writes):/mi.test(prompt) || ti.writer === true) deny(`${type} primary review is independent read-only review; source ownership is forbidden.`, { ...reviewEntry, blockedBy: 'primary-review-ownership' });
+  // Fable only for free kinds (security) or a hard review with a stated reason; checked before any PR reservation.
+  const freeKinds = (primary.freeKinds ?? ['security']).map((k) => String(k).toLowerCase());
+  const difficulty = packetLine(prompt, 'Review difficulty');
+  if (!freeKinds.includes(normalized) && !/^hard\s*[:\u2013\u2014-]\s*\S.{2,}$/i.test(String(difficulty ?? ''))) {
+    deny(`${type} (Fable 5.2) is for security reviews and hard reviews; add \`Review kind: security\`, or \`Review difficulty: hard: <why>\` (a critical finding still open, a third round or later, a shared contract or primitive, an open architectural decision); any other review runs on Sol 6.1 High through codex-review: ${CODEX_REVIEW_LAUNCH}`, { ...reviewEntry, difficulty, blockedBy: 'review-difficulty' });
+  }
+  // Any packet naming a PR takes that PR's lineage slot, whatever its kind; kind pr without a PR line is denied below.
+  if (normalized !== 'pr' && packetLine(prompt, 'PR') === null) allow(null, reviewEntry);
+  try {
+    const { reservation, slot, logged } = await reservePrReview(prompt, reviewEntry, null, `for ${type}`, input.tool_use_id);
+    allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --reviewer fable --scope ${reservation.scope} ... once the reviewer answers. If Fable fails on quota or is unavailable: development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason "fable-unavailable: <observed message>" and rerun the gate.`, logged);
+  } catch (error) {
+    // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.
+    deny(`Review brake error: ${String(error?.message ?? error).split('\n')[0].slice(0, 300)}`, { ...reviewEntry, blockedBy: 'review-brake-error' });
+  }
+}
+
 async function agentCall() {
   const ti = input.tool_input ?? {};
   const type = ti.subagent_type ?? 'general-purpose';
@@ -402,18 +504,23 @@ async function agentCall() {
       if (POLICY.otherAgentsRequireModel.includes(ti.model)) allow(null, entry);
       deny(`Plugin agent ${type} has no pinned model. Pass model: "opus" (or "sonnet" for read-only work) or use a roster role: ${rosterList}.`, entry);
     }
-    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, diff, plan, security or image review -> codex-review on Sol 6.1 High (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true); computer use (dashboards, tools, the real app) -> codex-review.mjs --computer-use [--flow browser-testing|video] --packet <file> --root <repo> (Bash run_in_background: true); reviewer or browser-qa require an eligible receipt-bound fallback; visual-reviewer can be fresh primary read-only critique.`, entry);
+    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, reviews (diff, plan, PR) -> codex-review on Sol 6.1 High (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true), security reviews and hard reviews -> Agent reviewer (Fable 5.2, fresh, read-only) with \`Review kind: pr|plan|security|diff\` and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`); computer use (dashboards, tools, the real app) -> codex-review.mjs --computer-use [--flow browser-testing|video] --packet <file> --root <repo> (Bash run_in_background: true); reviewer-medium or browser-qa require an eligible receipt-bound fallback; visual-reviewer can be fresh primary read-only critique.`, entry);
   }
   if (ti.model && ti.model !== role.model) {
     deny(`${type} runs on ${role.model}; do not override it with "${ti.model}". For more capability dispatch senior-implementer or planner (Opus high); for less, mechanical-worker or code-mapper (Sonnet, low effort).`, entry);
   }
   const prompt = String(ti.prompt ?? '');
-  // 1.34.0: reviews run on Sol 6.1 High through codex-review. Claude reviewers are a declared
-  // fallback; these denials are not Jev refusals.
+  // Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High, as do computer use and visual
+  // captures; security reviews and hard reviews run on the native primary reviewer (Fable 5.2,
+  // owner decision 2026-11-12). Claude fallback roles stay receipt-bound. These denials are not
+  // Jev refusals.
   if (POLICY.review?.engine === 'codex') {
-    const launch = 'Write the review packet to a file and run node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <mock> --image <capture>] with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use a Claude reviewer only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.';
-    if (role.retired) deny(`${type} is retired in 1.34.0: reviews run on Sol 6.1 High through codex-review. ${launch}`, { ...entry, blockedBy: 'retired' });
+    const launch = `${REVIEW_ROUTES} Use a Claude fallback role only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`;
     const fallbackEnvelope = /^\s*Codex fallback(?: receipt| packet)?:/mi.test(prompt);
+    const primary = POLICY.review.primary;
+    // The primary reviewer skips Jev, the tier ladder and the Fable scope line: it returns through allow or deny here.
+    if (primary?.role === type && !role.retired && !fallbackEnvelope) await primaryReview(type, ti, prompt, entry, primary);
+    if (role.retired) deny(`${type} is retired. ${launch}`, { ...entry, blockedBy: 'retired' });
     const fallbackLine = /^\s*Codex fallback:\s*\S/m.test(prompt);
     const primaryVisual = role.family === 'visual' && POLICY.primaryVisualReview?.enabled === true && POLICY.primaryVisualReview.role === type && !fallbackEnvelope;
     if (primaryVisual) {
@@ -423,7 +530,7 @@ async function agentCall() {
     }
     const fallbackReason = prompt.match(/^\s*Codex fallback:\s*(\S.*)$/m)?.[1]?.slice(0, 300) ?? null;
     if (role.family === 'browser' && !fallbackLine) deny(`${type} is a fallback: computer use (changing dashboards or tools, testing the real app) runs on Terra 6.1 fast through node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --computer-use --packet <file> --root <repo> (low effort; add --flow browser-testing for real-app testing on high or --flow video for recordings on medium), with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use browser-qa only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`, { ...entry, blockedBy: 'codex-computer-use' });
-    if (['review', 'visual'].includes(role.family) && !fallbackEnvelope) deny(`${type} is a fallback: reviews run on Sol 6.1 High through codex-review. ${launch}`, { ...entry, blockedBy: 'codex-review' });
+    if (['review', 'visual'].includes(role.family) && !fallbackEnvelope) deny(`${type} is a receipt-bound fallback. ${launch}`, { ...entry, blockedBy: 'codex-review' });
     // An accepted fallback skips the Jev tier and route gate: the parent already declared why.
     if (['review', 'visual', 'browser'].includes(role.family)) {
       let receipt;
@@ -431,13 +538,22 @@ async function agentCall() {
         if (ti.resume !== undefined) throw new Error('fallback requires a fresh Agent; resume is forbidden');
         receipt = fallbackReceipt(prompt, type);
         if (receipt.mode === 'computer-use' && receipt.browserAssignment) throw new Error('Pooled computer-use fallback has no validated ownership transfer; reconcile the assigned browser before any new operator');
-        if (receipt.mode === 'computer-use') {
+        // A computer-use receipt and (2.14.2) the receipt of a PR review, which holds a lineage slot, admit one native
+        // launch. Only the review may repeat, and only as the same tool call.
+        const held = receipt.mode === 'computer-use' ? null : receipt.reservation;
+        if (receipt.mode === 'computer-use' || held) {
           const consumeDir = path.join(POLICY.stateDir, 'native-fallback');
+          const consumed = path.join(consumeDir, `${receipt.runId}.json`);
           fs.mkdirSync(consumeDir, { recursive: true });
           try {
-            fs.writeFileSync(path.join(consumeDir, `${receipt.runId}.json`), `${JSON.stringify({ runId: receipt.runId, packetSha256: receipt.packetSha256, session, receiptPath: receipt.fallback.receiptPath })}\n`, { flag: 'wx' });
+            fs.writeFileSync(consumed, `${JSON.stringify({ runId: receipt.runId, packetSha256: receipt.packetSha256, session, receiptPath: receipt.fallback.receiptPath, toolUseId: input.tool_use_id ?? null })}\n`, { flag: 'wx' });
           } catch (error) {
-            throw new Error(error?.code === 'EEXIST' ? 'computer-use receipt already consumed; reconcile before any new run' : 'cannot atomically consume computer-use receipt');
+            if (error?.code !== 'EEXIST') throw new Error(`cannot atomically consume ${held ? 'review' : 'computer-use'} receipt`);
+            if (!held) throw new Error('computer-use receipt already consumed; reconcile before any new run');
+            let first = null;
+            try { first = JSON.parse(fs.readFileSync(consumed, 'utf8')); } catch { /* unreadable: counts as another launch */ }
+            const label = (value) => String(value ?? '').replace(/[^\w./#-]/g, '').slice(0, 120);
+            if (!input.tool_use_id || first?.toolUseId !== input.tool_use_id) throw new Error(`this receipt already launched a fallback reviewer for reservation ${label(held.id)} (slot ${label(held.slot)} of ${label(held.pr)}); one reservation launches one review, so nothing was started. If that review ran, record its round (development-system review record --pr ${label(held.pr)} ...). If it never ran or never answered, release the reservation (development-system review release --pr ${label(held.pr)} --reservation-id ${label(held.id)} --reason <why>) and run codex-review again`);
           }
         }
       }
@@ -448,7 +564,7 @@ async function agentCall() {
   // Fable is kept for very large or ultra-hard specs: Jev has to pick it, or the parent
   // says why in a "Fable scope:" line.
   const fableLine = new RegExp(`^\\s*${POLICY.fableMarker}\\s*\\S`, 'm').test(prompt);
-  const denyFable = (why, logged = entry) => deny(`${type} runs on Fable 5.1, reserved for very large or ultra-hard specs that touch many surfaces. ${why}If this really is that scale, add a "${POLICY.fableMarker} ..." line naming the surfaces and why Opus high is not enough.`, logged);
+  const denyFable = (why, logged = entry) => deny(`${type} runs on Fable 5.2, reserved for very large or ultra-hard specs that touch many surfaces. ${why}If this really is that scale, add a "${POLICY.fableMarker} ..." line naming the surfaces and why Opus high is not enough.`, logged);
   if (role.writer) {
     // Typed syntax only: admission must not guess intent from free-form prose.
     const field = (label) => {
@@ -465,7 +581,7 @@ async function agentCall() {
       canonicalRoot = path.isAbsolute(packetRoot) && fs.statSync(packetRoot).isDirectory() ? fs.realpathSync(packetRoot) : null;
       canonicalCwd = fs.realpathSync(input.cwd ?? process.cwd());
     } catch { canonicalRoot = null; }
-    if (!canonicalRoot || canonicalRoot !== canonicalCwd) deny('Writer Root must be an existing absolute directory matching invocation cwd after realpath resolution.', { ...entry, blockedBy: 'execution-contract-root' });
+    if (!canonicalRoot || canonicalRoot !== canonicalCwd) deny(`Writer Root must be an existing absolute directory matching invocation cwd after realpath resolution. This session runs in ${canonicalCwd ?? 'an unreadable directory'}: write \`Root: ${canonicalCwd ?? '<that directory>'}\`. A writer for another checkout is launched from a session of that checkout.`, { ...entry, blockedBy: 'execution-contract-root' });
     if (!/^[a-fA-F0-9]{40}$/.test(field('Revision'))) deny('Writer Revision must be an exact 40-character Git SHA.', { ...entry, blockedBy: 'execution-contract-revision' });
     const done = field('Done when');
     const arrow = done.indexOf('->');
@@ -580,15 +696,68 @@ function imageCall() {
   allow(null, entry);
 }
 
-// mapper-bash: an optional `cd <path> &&` prefix, then git show/log/diff/blame/status/
-// rev-parse/ls-files/grep, a typecheck, or jevgrep (`jg --version`, or `jg "<question>"
+// mapper-bash: an optional leading `cd <path>`, then one or more commands joined by `;` or `&&` (2.14.1: a list of
+// readers is as read-only as each reader; `echo <words>` may separate their output). Each command is a read-only search (rg/grep
+// without --pre, --pre-glob or --hostname-bin; ls, wc, cat, head, tail, shasum, stat; file
+// without -C; tail without -f/-F/--follow; find without -exec/-execdir/-ok/-okdir/-delete/
+// -fprint*/-fls; sed only as `sed -n [-E] '<addresses>p' [file...]`), git show/log/diff/blame/status/
+// rev-parse/ls-files/grep, or jevgrep (`jg --version`, or `jg "<question>"
 // [relative root] [--max-source-bytes N] [--concurrency N] [--no-cache]`), optionally
-// piped into head/tail/wc/sort/uniq/cut/rg/grep. jg subcommands (auth, doctor, skill,
+// piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or `sed -n`. jg subcommands (auth, doctor, skill,
 // cache) and help/version words are denied even when quoted, a double-quoted question may
 // not hold $, ` or \, and a cd before jg and the jg root must be plain relative paths (no
 // quotes, -, ..) that resolve inside the working directory with symlinks followed.
-// Filter-disabling flags, substitutions, file redirects and command lists are denied too.
-const MAPPER_HELP = 'code-mapper Bash runs only git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), optionally piped into head/tail/wc/sort/uniq/cut/rg/grep. Use Grep, Glob and Read for everything else.';
+// Filter-disabling flags, substitutions, file redirects, `||`, loops, subshells and background jobs are denied too.
+const MAPPER_HELP = 'code-mapper Bash runs only read-only search (rg or grep without --pre/--pre-glob/--hostname-bin; ls, wc, cat, head, shasum, stat; tail without -f/-F/--follow; file without -C; find without -exec/-execdir/-ok/-okdir/-delete/-fprint/-fprint0/-fprintf/-fls; sed -n [-E] with one script of line, $ or /regex/ addresses and p, e.g. sed -n \'10,40p\' file), git show/log/diff/blame/status/rev-parse/ls-files/grep, or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), each optionally piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or sed -n (same rules). Several such commands may be joined by `;` or `&&` after at most one leading `cd <path>`, with `echo <words>` between them to label the output. No command substitution, variables, file redirects, `||`, loops, subshells or background jobs. Use Grep, Glob and Read for everything else.';
+const MAPPER_SEARCH = new Set(['rg', 'grep', 'ls', 'wc', 'cat', 'head', 'tail', 'sed', 'find', 'shasum', 'stat', 'file']);
+const MAPPER_FILTERS = new Set(['head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'tr', 'rg', 'grep', 'sed']);
+const FIND_ACTIONS = new Set(['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf', '-fls']);
+// A sed -n script (allowlist): `;`-separated commands, each an optional address or comma range (line number, $ or
+// /regex/), an optional !, then p. Any other command (w, r, e, s, ...) does not match.
+const SED_ADDRESS = String.raw`(?:\d+|\$|/(?:\\.|[^/\\\n])*/)`;
+const SED_COMMAND = String.raw`\s*(?:${SED_ADDRESS}(?:\s*,\s*${SED_ADDRESS})?\s*)?!?\s*p\s*`;
+const SED_SCRIPT = new RegExp(`^${SED_COMMAND}(?:;${SED_COMMAND})*;?\\s*$`);
+// Null when `sed` (shell words) is allowed, else why not: sed, then only the separate flags -n (required) and -E,
+// then exactly one print-only script, then file paths (none starting with -).
+function sedRefusal(step) {
+  let i = 1;
+  const flags = new Set();
+  for (; i < step.length && step[i].startsWith('-'); i += 1) {
+    if (step[i] !== '-n' && step[i] !== '-E') return `\`sed ${step[i]}\` is not allowed: only sed -n [-E] '<addresses>p' [file...].`;
+    flags.add(step[i]);
+  }
+  if (!flags.has('-n') || i >= step.length) return 'sed runs only as `sed -n [-E] \'<addresses>p\' [file...]`.';
+  if (!SED_SCRIPT.test(step[i])) return 'A sed -n script may hold only line, $ or /regex/ addresses (comma ranges, optional !) followed by p; no w, r, e, s or other commands.';
+  if (step.slice(i + 1).some((w) => w.startsWith('-'))) return 'After the sed -n script only file paths are allowed.';
+  return null;
+}
+// Options that run a program, write a file or never end: [long names, short letters] per command. getopt accepts
+// any unique prefix of a long option and clusters short ones, so a word is forbidden when it abbreviates or extends
+// a listed long name, or is a single-dash word that holds a listed letter. `git --text` is its own exact option.
+const MAPPER_FORBIDDEN = {
+  rg: [['--pre', '--hostname-bin'], ''], grep: [['--pre', '--hostname-bin'], ''], file: [['--compile'], 'C'], tail: [['--follow'], 'fF'],
+  sort: [['--output', '--compress-program'], 'o'], git: [['--output', '--ext-diff', '--textconv', '--open-files-in-pager'], ''],
+};
+// `stop` lists short options whose argument is the rest of the word (`git grep -eTODO`): the scan ends there.
+function forbiddenOption(step, [longs, shorts, stop = ''] = MAPPER_FORBIDDEN[step[0]] ?? [[], '']) {
+  return step.slice(1).find((w) => {
+    if (!w.startsWith('--')) {
+      if (w[0] !== '-') return false;
+      for (const letter of w.slice(1)) { if (stop.includes(letter)) return false; if (shorts.includes(letter)) return true; }
+      return false;
+    }
+    const name = w.split('=')[0];
+    return name.length > 2 && name !== '--text' && longs.some((long) => long.startsWith(name) || name.startsWith(long));
+  });
+}
+// Null when a first-step search command (shell words) is read-only, else why not.
+function searchRefusal(step) {
+  const name = step[0];
+  const option = forbiddenOption(step);
+  if (option) return `\`${name} ${option}\` is not allowed (it runs a program, writes a file or never ends).`;
+  if (name === 'find') { const action = step.find((w) => FIND_ACTIONS.has(w)); if (action) return `\`find ${action}\` is not allowed.`; }
+  return name === 'sed' ? sedRefusal(step) : null;
+}
 // jevgrep for the mapper: null when allowed, else why not. Works on raw shell words
 // (quotes kept) so the question must be one quoted word and the root stays a plain
 // relative path inside the working directory.
@@ -628,6 +797,28 @@ function jgRefusal(step, dir = JG_BASE ?? '.') {
   }
   return null;
 }
+// The commands of a list: splits on unquoted `;` and `&&`. Null for an unterminated quote. What each command may be
+// is decided per command, so a list is never wider than its parts.
+function splitList(command) {
+  const parts = [];
+  let current = '';
+  let quote = null;
+  for (let i = 0; i < command.length; i += 1) {
+    const c = command[i];
+    if (quote) {
+      current += c;
+      if (c === '\\' && quote === '"') { current += command[i + 1] ?? ''; i += 1; } else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { quote = c; current += c; continue; }
+    if (c === '\\') { current += c + (command[i + 1] ?? ''); i += 1; continue; }
+    if (c === ';' || (c === '&' && command[i + 1] === '&')) { parts.push(current.trim()); current = ''; if (c === '&') i += 1; continue; }
+    current += c;
+  }
+  if (quote) return null;
+  parts.push(current.trim());
+  return parts;
+}
 // Splits on unquoted | and &&; null for any other unquoted list, subshell, input redirect
 // or background job.
 function splitShell(command) {
@@ -661,7 +852,52 @@ function splitShell(command) {
   segments.push(current);
   return { segments: segments.map((s) => s.trim()), separators };
 }
-const shellWords = (segment) => (segment.match(/'[^']*'|"(?:\\.|[^"\\])*"|[^\s'"]+/g) ?? []).map((w) => w.replace(/^(['"])([\s\S]*)\1$/, '$2'));
+// Words as Bash builds them: adjacent quoted and unquoted pieces join into one word (`-ex'ec'` and `-ex\ec` are
+// `-exec`). Strict mode is the mapper grammar: it returns null for what that grammar does not model, so a checked
+// word can never differ from the one Bash runs: a backslash outside quotes, a `$` expansion outside single quotes,
+// brace expansion, a glob that could expand into an option, and an unterminated quote.
+const EXPANSION = /[\w@*#?!$({-]/;
+function bashWords(text, strict) {
+  const words = [];
+  let current = '';
+  let open = false;
+  let braces = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    const next = text[i + 1] ?? '';
+    if (/\s/.test(c)) { if (open) words.push(current); current = ''; open = false; braces = 0; continue; }
+    open = true;
+    if (c === "'") {
+      const end = text.indexOf("'", i + 1);
+      if (end < 0 && strict) return null;
+      current += text.slice(i + 1, end < 0 ? text.length : end);
+      i = end < 0 ? text.length : end;
+    } else if (c === '"') {
+      for (i += 1; i < text.length && text[i] !== '"'; i += 1) {
+        if (text[i] === '\\' && '"\\$`\n'.includes(text[i + 1] ?? '')) { i += 1; if (text[i] === '\n') continue; }
+        else if (strict && text[i] === '$' && EXPANSION.test(text[i + 1] ?? '')) return null;
+        current += text[i];
+      }
+      if (i >= text.length && strict) return null;
+    } else if (c === '\\') {
+      if (strict) return null;
+      if (next !== '\n') current += next;
+      i += 1;
+    } else {
+      if (strict) {
+        if (c === '$' && (EXPANSION.test(next) || next === "'" || next === '"')) return null;
+        if ('*?['.includes(c) && (current === '' || current[0] === '-')) return null;
+        if (c === '{') braces += 1;
+        else if (c === '}') braces = Math.max(0, braces - 1);
+        else if (braces > 0 && (c === ',' || (c === '.' && next === '.'))) return null;
+      }
+      current += c;
+    }
+  }
+  if (open) words.push(current);
+  return words;
+}
+const shellWords = (segment) => bashWords(segment, false);
 function mapperBash() {
   if (input.tool_name && input.tool_name !== 'Bash') process.exit(0);
   const command = String(input.tool_input?.command ?? '').trim();
@@ -669,26 +905,32 @@ function mapperBash() {
   const refuse = (why) => deny(`${why} ${MAPPER_HELP}`, entry);
   if (!command) refuse('Empty command.');
   if (/\$\(|\$\{|`/.test(command)) refuse('Command substitution is not allowed.');
-  const parsed = splitShell(command);
-  if (!parsed) refuse('Command lists, subshells, input redirects and background jobs are not allowed.');
-  let { segments, separators } = parsed;
-  const cdMatch = separators[0] === '&&' ? segments[0].match(/^cd\s+("[^"]+"|'[^']+'|[^\s"']+)$/) : null;
+  if (/[\n\r]/.test(command)) refuse('A mapper command is one line.');
+  if (bashWords(command, true) === null) refuse('A backslash outside quotes, a `$` or brace expansion, a glob that starts a word or an option, and an unterminated quote are not allowed: put the word in single quotes (a glob as `./*.md`).');
+  const list = splitList(command);
+  if (!list) refuse('Unterminated quote.');
+  if (list.length > 1 && list.at(-1) === '') list.pop();
+  if (list.some((part) => !part)) refuse('Empty command in the list.');
+  // One leading `cd <path>`; a cd anywhere else is not a mapper command.
+  const cdMatch = list.length > 1 ? leadingCd(list[0]) : null;
+  const cdPath = cdMatch ? cdMatch[1] : null;
+  for (const part of cdMatch ? list.slice(1) : list) mapperCommand(part, cdPath, refuse);
+  allow(null, null);
+}
+// The leading `cd` of a list is exactly `cd` and one path word. It is not checked as a reader, so nothing else may
+// ride on it: a pipe, a redirect or a job in that segment (`cd .|x`, `cd .&>out`) makes it an ordinary command,
+// which the reader checks refuse.
+function leadingCd(part) {
+  const parsed = splitShell(part);
+  if (!parsed || parsed.segments.length !== 1) return null;
+  return part.match(/^cd\s+("[^"]+"|'[^']+'|[^\s"'|&;<>()]+)$/);
+}
+// One command of a mapper list: a reader, optionally piped into filters. Refuses (never returns) when it is not.
+function mapperCommand(text, cdPath, refuse) {
+  const parsed = splitShell(text);
+  if (!parsed) refuse('`||`, subshells, input redirects and background jobs are not allowed.');
+  const { segments } = parsed;
   let jgDir = JG_BASE ?? '.';
-  if (cdMatch) {
-    // jg reads a whole tree, so its cd prefix must stay inside the working directory.
-    const next = shellWords(segments[1] ?? '');
-    const cdPath = cdMatch[1];
-    if (next[0] === 'jg' && !(next.length === 2 && next[1] === '--version')) {
-      if (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..')
-        || !jgInside(path.resolve(JG_BASE ?? '.', cdPath))) {
-        refuse(`\`cd ${cdPath}\` before jg must be a plain relative path that resolves inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment; symlinks are followed).`);
-      }
-      jgDir = path.resolve(JG_BASE ?? '.', cdPath);
-    }
-    segments = segments.slice(1);
-    separators = separators.slice(1);
-  }
-  if (separators.includes('&&')) refuse('Only one leading `cd <path> &&` is allowed.');
   if (segments.some((s) => !s)) refuse('Empty pipeline step.');
   // Output may go to /dev/null or another descriptor, never into a file.
   const steps = segments.map((s) => s.replace(/(^|\s)\d*>>?\s*(&\d|\/dev\/null)(?=\s|$)/g, ' '));
@@ -696,42 +938,56 @@ function mapperBash() {
   const [first, ...rest] = steps.map(shellWords);
   let ok = false;
   if (first[0] === 'jg') {
+    // jg reads a whole tree, so a cd before it must stay inside the working directory.
+    if (cdPath !== null && !(first.length === 2 && first[1] === '--version')) {
+      if (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..')
+        || !jgInside(path.resolve(JG_BASE ?? '.', cdPath))) {
+        refuse(`\`cd ${cdPath}\` before jg must be a plain relative path that resolves inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment; symlinks are followed).`);
+      }
+      jgDir = path.resolve(JG_BASE ?? '.', cdPath);
+    }
     const why = jgRefusal(steps[0], jgDir);
     if (why) refuse(why);
+    ok = true;
+  } else if (first[0] === 'echo') {
+    // A label between commands: its words are literal (no `$`, no substitution) and it writes to no file.
     ok = true;
   } else if (first[0] === 'git') {
     let i = 1;
     while (first[i] === '--no-pager' || first[i] === '-C') i += first[i] === '-C' ? 2 : 1;
+    // `git grep -O<pager>` opens the matches in a program; -O also hides inside a short cluster.
     ok = ['show', 'log', 'diff', 'blame', 'status', 'rev-parse', 'ls-files', 'grep'].includes(first[i])
-      && !first.some((w) => /^(--output|--ext-diff|--textconv|--open-files-in-pager|-O)/.test(w));
-  } else {
-    const joined = first.join(' ');
-    ok = /^pnpm (run )?typecheck$/.test(joined) || /^(pnpm exec|npx) tsc --noEmit( (-p|--project) \S+)?( --pretty( false)?)?$/.test(joined);
+      && !forbiddenOption(first, [MAPPER_FORBIDDEN.git[0], first[i] === 'grep' ? 'O' : '', 'ef']) && !first.some((w) => w.startsWith('-O'));
+  } else if (MAPPER_SEARCH.has(first[0])) {
+    const why = searchRefusal(first);
+    if (why) refuse(why);
+    ok = true;
   }
   if (!ok) refuse(`\`${first.slice(0, 3).join(' ')}\` is not an allowed mapper command.`);
   for (const step of rest) {
-    if (!['head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'rg', 'grep'].includes(step[0])) refuse(`Piping into \`${step[0]}\` is not allowed.`);
-    if (step.some((w) => /^--pre/.test(w) || (step[0] === 'sort' && /^(-[A-Za-z]*o|--output|--compress-program)/.test(w)))) refuse(`\`${step[0]}\` with that flag is not allowed.`);
+    if (!MAPPER_FILTERS.has(step[0])) refuse(`Piping into \`${step[0]}\` is not allowed.`);
+    const option = forbiddenOption(step);
+    if (option) refuse(`\`${step[0]} ${option}\` is not allowed (it runs a program, writes a file or never ends).`);
+    if (step[0] === 'sed') { const why = sedRefusal(step); if (why) refuse(why); }
+    // After a pipe uniq reads stdin and `uniq INPUT OUTPUT` writes OUTPUT, so only its flags pass (allowlist): flag
+    // clusters, and -f, -s, -w or their long forms with a number attached or as the next word. No operands, `-` or `--`.
     if (step[0] === 'uniq') {
-      // `uniq INPUT OUTPUT` writes OUTPUT; -f, -s and -w take a separate numeric argument.
-      const operands = [];
       for (let i = 1; i < step.length; i += 1) {
-        if (step[i] === '--') { operands.push(...step.slice(i + 1)); break; }
-        if (/^-[fsw]$/.test(step[i])) { i += 1; continue; }
-        if (!step[i].startsWith('-') || step[i] === '-') operands.push(step[i]);
+        if (/^(-[cdDiuz]+|-[cdDiuz]*[fsw]\d+|--(count|repeated|unique|ignore-case|zero-terminated|(skip-fields|skip-chars|check-chars)=\d+))$/.test(step[i])) continue;
+        if (/^(-[cdDiuz]*[fsw]|--(skip-fields|skip-chars|check-chars))$/.test(step[i]) && /^\d+$/.test(step[i + 1] ?? '')) { i += 1; continue; }
+        refuse(`\`uniq ${step[i]}\` is not allowed: after a pipe uniq takes only its flags (-c, -d, -u, -i, -f N, -s N, -w N), no file operands.`);
       }
-      if (operands.length >= 2) refuse('`uniq` with an output file operand is not allowed.');
     }
   }
-  allow(null, null);
 }
 
 // writer-bash: every command runs except a git invocation whose subcommand can change the
 // index, refs, config or worktree. Not a security boundary (`sh -c`, aliases and scripts
 // get around it); it stops the habit of a writer staging or committing what the
 // coordinator owns.
-const WRITER_GIT_HELP = 'The coordinator owns the Git index and commits: report the files you changed and the coordinator stages them.';
-const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'blame', 'rev-parse', 'ls-files', 'grep', 'shortlog', 'describe', 'cat-file', 'ls-tree', 'merge-base']);
+const WRITER_GIT_HELP = 'The coordinator owns the Git index, branches and commits: report the files you changed and the coordinator stages them. Move, copy or delete files with plain mv, cp and rm; read with git status, diff, log, show, ls-files, grep, check-ignore.';
+const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'blame', 'rev-parse', 'ls-files', 'grep', 'shortlog', 'describe', 'cat-file', 'ls-tree', 'merge-base',
+  'check-ignore', 'check-attr', 'rev-list', 'show-ref', 'for-each-ref', 'diff-tree', 'name-rev', 'count-objects']);
 const GIT_BRANCH_READ = new Set(['--show-current', '--list', '-a', '-r', '-v', '-vv']);
 const GIT_CONFIG_READ = new Set(['--get', '--get-all', '--list', '-l']);
 const GIT_CONFIG_FLAGS = new Set([...GIT_CONFIG_READ, '--global', '--local', '--system', '--show-origin', '--show-scope', '--name-only', '-z', '--null']);
@@ -828,8 +1084,7 @@ async function reviewReserve(args, cwd) {
 async function delegateCall() {
   const ti = input.tool_input ?? {};
   const task = String(ti.task ?? '');
-  const line = (label) => new RegExp(`^\\s*(?:[-*]\\s+)?(?:\\*\\*)?${label}:(?:\\*\\*)?[ \\t]*(.*?)\\s*$`, 'im').exec(task)?.[1] ?? null;
-  const kind = line('Review kind');
+  const kind = packetLine(task, 'Review kind');
   if (ti.role !== 'review' && kind === null) return;
   const entry = { tool: 'delegate_task', role: ti.role ?? null, reviewKind: kind, clientRequestId: ti.clientRequestId ?? null };
   try {
@@ -837,26 +1092,127 @@ async function delegateCall() {
     const normalized = kind.toLowerCase();
     if (normalized === 'plan' || normalized === 'visual') allow(null, entry);
     if (normalized !== 'pr') deny(`Review kind must be pr, plan or visual (got "${kind}").`, { ...entry, blockedBy: 'review-kind' });
-    const pr = line('PR');
-    const scope = line('Review scope');
-    const approval = line('Review approval');
-    const redesign = line('Redesign');
-    const criticalThread = line('Critical thread');
-    if (!pr || !/^[^/\s]+\/[^#\s]+#\d+$/.test(pr)) deny('A PR review delegate_task needs a `PR: owner/repo#N` line.', { ...entry, blockedBy: 'review-pr' });
-    if (scope !== 'full' && scope !== 'fix-diff') deny('A PR review delegate_task needs `Review scope: full` or `Review scope: fix-diff`.', { ...entry, pr, blockedBy: 'review-scope' });
-    const packetHash = crypto.createHash('sha256').update(task).digest('hex');
-    const requestKey = typeof ti.clientRequestId === 'string' && ti.clientRequestId.trim() ? ti.clientRequestId.trim() : packetHash;
-    const args = ['--pr', pr, '--scope', scope, '--request-key', requestKey, '--packet-hash', packetHash,
-      ...(approval ? ['--approval-id', approval] : []), ...(redesign ? ['--redesign', redesign] : []), ...(criticalThread ? ['--critical-thread', criticalThread] : [])];
-    const answer = await reviewReserve(args, input.cwd);
-    const reservation = answer?.reservation;
-    if (answer?.ok !== true || !reservation) deny(`Review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`, { ...entry, pr, scope, blockedBy: 'review-brake' });
-    allow(`Review brake: ${answer.reused ? 'reused' : 'reserved'} lineage slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}. Record the round with development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ... once Sol answers.`,
-      { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) });
+    const requestKey = typeof ti.clientRequestId === 'string' && ti.clientRequestId.trim() ? ti.clientRequestId.trim() : null;
+    const { reservation, slot, logged } = await reservePrReview(task, entry, requestKey, 'delegate_task', requestKey ?? input.tool_use_id);
+    allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ... once the reviewer answers.`, logged);
   } catch (error) {
     // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.
     deny(`Review brake error: ${String(error?.message ?? error).split('\n')[0].slice(0, 300)}`, { ...entry, blockedBy: 'review-brake-error' });
   }
+}
+
+// Orchestration coach: never denies, never asks the owner. Counters live in coach.json in the session directory,
+// written through a temp file and a rename, never under the active-writer lock (a lost update between two
+// concurrent hooks is acceptable); any error skips the coach. Read streaks and solo writers count for the parent
+// session only; secret requests count anywhere. The ledger gets the kind and the count, never commands, paths or
+// prompt text.
+const COACH = path.join(sessionDir, 'coach.json');
+const COACH_GIT_READS = new Set(['show', 'log', 'diff', 'blame', 'status', 'ls-files', 'grep', 'rev-parse']);
+const COACH_READ_WORDS = new Set(['rg', 'grep', 'cat', 'head', 'tail', 'ls', 'find', 'wc', 'jg']);
+function coachStepIsRead(words) {
+  if (COACH_READ_WORDS.has(words[0])) return true;
+  if (words[0] === 'sed') return words[1] === '-n';
+  if (words[0] !== 'git') return false;
+  let i = 1;
+  while (words[i] === '--no-pager' || words[i] === '-C') i += words[i] === '-C' ? 2 : 1;
+  return COACH_GIT_READS.has(words[i]);
+}
+// 'read', 'reset' or null (neutral). A Bash command counts as one read when every command of its list (`;`, `&&`)
+// and every pipeline step, after an optional leading `cd <path>`, is a read; one the splitter cannot parse
+// (subshells, `||`) is neutral.
+function coachKind(tool) {
+  if (['Read', 'Grep', 'Glob'].includes(tool)) return 'read';
+  if (tool === 'Agent' || /^mcp__t3[-_]code__delegate_task$/.test(tool)) return 'reset';
+  if (tool !== 'Bash') return null;
+  let parts = splitList(String(input.tool_input?.command ?? '').trim());
+  if (!parts) return null;
+  if (parts.length > 1 && parts.at(-1) === '') parts.pop();
+  if (parts.length > 1 && /^cd\s+\S+$/.test(parts[0])) parts = parts.slice(1);
+  const steps = [];
+  for (const part of parts) {
+    const parsed = splitShell(part);
+    if (!parsed) return null;
+    steps.push(...parsed.segments.map(shellWords));
+  }
+  return steps.length && steps.every((words) => words.length && (coachStepIsRead(words) || words[0] === 'echo')) ? 'read' : null;
+}
+// 2.14.1, from the council's measurements of October and November 2026 (owner asks closed and verified): tasks with
+// 6 to 20 helpers closed the most per minute and per dollar and past 20 they cost and took twice as much; Opus
+// writers cost about three times more per closed ask without being faster; the best week opened one PR for every
+// two asks and the worst almost three per ask. Hints only.
+const COACH_HELPERS = 20;
+const OPUS_REASON = /^\s*(?:[-*]\s+)?Opus reason:\s*\S/mi;
+const coachOpusWriter = (type) => type !== 'ui-implementer' && POLICY.roster[type]?.writer === true && /opus/i.test(String(POLICY.roster[type]?.model ?? ''));
+const PR_CREATE = /(?:^|[\s;&|(])gh\s+pr\s+create\b/;
+function coachUpdate(change) {
+  let state = {};
+  try { state = JSON.parse(fs.readFileSync(COACH, 'utf8')); } catch { /* first call of the session */ }
+  const counts = { reads: Number(state.reads) || 0, soloWriters: Number(state.soloWriters) || 0, secrets: Number(state.secrets) || 0,
+    helpers: Number(state.helpers) || 0, prs: Number(state.prs) || 0 };
+  const note = change(counts);
+  fs.mkdirSync(sessionDir, { recursive: true });
+  const temporary = `${COACH}.${process.pid}-${crypto.randomBytes(4).toString('hex')}.tmp`;
+  fs.writeFileSync(temporary, JSON.stringify(counts));
+  fs.renameSync(temporary, COACH);
+  return note;
+}
+function coachEmit(kind, count, text) {
+  ledger({ event: 'coach', kind, count });
+  return text;
+}
+function coach() {
+  if ((input.hook_event_name ?? 'PreToolUse') !== 'PreToolUse') return;
+  const tool = String(input.tool_name ?? '');
+  if (/^mcp__t3[-_]code__request_secret$/.test(tool)) {
+    coachNote = coachUpdate((c) => {
+      c.secrets += 1;
+      return c.secrets >= 2 ? coachEmit('secrets', c.secrets, `Orchestration coach: secret request ${c.secrets} in this session. Put every remaining privileged step in one script and ask once; check with sudo -n true whether a password is still needed before asking again.`) : null;
+    });
+    return;
+  }
+  if (input.agent_id) return;
+  const kind = coachKind(tool);
+  if (kind === 'read') {
+    coachNote = coachUpdate((c) => {
+      c.reads += 1;
+      return c.reads % 10 === 0 ? coachEmit('reads', c.reads, `Orchestration coach: 10 consecutive reads or searches by the parent without a mapper (${c.reads} so far). If this is one open question about unfamiliar code, send it now to Explore or code-mapper (Haiku 5.5) and work from its map; if you are reading files you already know you need, continue. This is a hint, not a block; never ask the owner about it.`) : null;
+    });
+  } else if (kind === 'reset') coachUpdate((c) => { c.reads = 0; return null; });
+  if (tool === 'Bash' && PR_CREATE.test(String(input.tool_input?.command ?? ''))) {
+    coachNote = coachUpdate((c) => {
+      c.prs += 1;
+      return c.prs === 3 || (c.prs > 3 && c.prs % 5 === 0) ? coachEmit('prs', c.prs, `Orchestration coach: PR ${c.prs} opened in this session. One PR per thing the owner asked: the best measured week opened one PR for every two asks, the worst almost three per ask. Open a new PR only for a different thing he asked for; a fix or a follow-up of the same thing goes as commits on its open PR. This is a hint, not a block.`) : null;
+    });
+  }
+  // A launch counts once the guard allows it. Helpers: every Agent or delegate_task of the parent. Writers: solo when
+  // no other live writer of this session holds paths (the active-writer map is only read here: no lock, no pruning).
+  if (kind !== 'reset') return;
+  const type = String(input.tool_input?.subagent_type ?? '');
+  const writer = tool === 'Agent' && POLICY.roster[type]?.writer === true;
+  const opusNote = tool === 'Agent' && coachOpusWriter(type) && !OPUS_REASON.test(String(input.tool_input?.prompt ?? ''))
+    ? () => coachEmit('opus-writer', 1, `Orchestration coach: ${type} writes on Opus, which cost about three times more per closed ask and was not faster. Exact or mechanical edits go to exact-implementer or mechanical-worker (Haiku 5.5) and general bounded work to implementer (Sonnet 5.5). When the work needs Opus (open cross-cutting decisions, a shared primitive, two failed rounds with a cheaper writer), say so in a packet line \`Opus reason: <why>\`. This launch is not blocked.`)
+    : () => null;
+  coachOnAllow = () => {
+    let others = 0;
+    if (writer) {
+      let active = {};
+      try { active = JSON.parse(fs.readFileSync(ACTIVE, 'utf8')); } catch { /* no writer holds paths */ }
+      others = Object.entries(active).filter(([key, w]) => key !== input.tool_use_id && !staleReason(w)).length;
+    }
+    const notes = coachUpdate((c) => {
+      c.helpers += 1;
+      const found = [];
+      if (c.helpers === COACH_HELPERS + 1 || (c.helpers > COACH_HELPERS + 1 && (c.helpers - COACH_HELPERS - 1) % 10 === 0)) {
+        found.push(coachEmit('helpers', c.helpers, `Orchestration coach: helper ${c.helpers} of this session. Measured tasks closed the most per minute and per dollar with 6 to ${COACH_HELPERS} helpers; past ${COACH_HELPERS} they cost and took twice as much per closed ask. Launch another only for a different thing the owner asked for, not for one more pass over the same thing. This is a hint, not a block.`));
+      }
+      if (writer) {
+        c.soloWriters = others ? 0 : c.soloWriters + 1;
+        if (c.soloWriters >= 2) found.push(coachEmit('solo-writer', c.soloWriters, 'Orchestration coach: second writer in a row launched alone. If other lanes with disjoint owned paths are ready, launch them in the same message; if the work is truly serial, continue.'));
+      }
+      return found;
+    });
+    return [...notes, opusNote()].filter(Boolean).join(' ') || null;
+  };
 }
 
 function writerBash() {
@@ -894,10 +1250,13 @@ try {
     });
     process.exit(0);
   }
+  // Any coach failure falls through to the guard's own decision with no coach output.
+  try { coach(); } catch { coachNote = null; coachOnAllow = null; }
   if (input.tool_name === 'Agent') await agentCall();
   if (/^mcp__t3[-_]code__delegate_task$/.test(String(input.tool_name ?? '')) && input.hook_event_name !== 'PostToolUse') await delegateCall();
   if ((input.tool_name === 'Read' && IMAGE.test(String(input.tool_input?.file_path ?? ''))) || SCREENSHOT_TOOL.test(String(input.tool_name ?? ''))) imageCall();
-  process.exit(0);
+  // Every other call passes untouched; only a coach note, when one is due, becomes context.
+  allow(null, null);
 } catch (error) {
   try { ledger({ decision: 'guard-error', tool: input.tool_name ?? null, error: String(error).slice(0, 300) }); } catch { /* ignore */ }
   process.exit(0);

@@ -1,23 +1,32 @@
 ## Progress and delivery format
 
-One format says how the work is going (owner decision 2026-11-11). Write it as
-text in the thread every time: when a batch or a PR ends, whenever you stop,
-and whenever the owner asks how it is going. Use the user's language.
+One closing says how the work is going (owner decisions 2026-11-11 and
+2026-11-12: «qué se hizo a grandes rasgos, qué necesita de mí… en qué relación
+está con esa definición de done… sin tablas»; «visualmente alegre… que se
+entienda enseguida»). Write it in the thread every time: when a batch or a PR
+ends, whenever you stop, and whenever the owner asks how it is going. Use the
+user's language. The owner must understand it at once, without opening anything
+else and without asking a follow-up question.
 
 1. First sentence: whether you need something from the owner, and the state of
    the work. A request to the owner always goes in that first sentence. Never
    bury a required response in a selectable stage, a questionnaire, a report,
    a page served through a tunnel or a generic approval marker.
-2. One flow line with the stages of the work, and ✅ (done), ⏳ (in progress)
-   or 🧱 (blocked) under each stage.
-3. Short bullets: done, not done, in progress. A single 💡 note with what was
-   not verified, or what is stopped and why.
-4. A fixed closing with three parts: **What moves and what does not**, **What I
-   need from you** and **What happens next** (in Spanish: «Qué avanza y qué
-   no», «Lo que necesito de ti», «Lo que sigue»).
+2. **What was done** («Qué se hizo»): two to four plain sentences that a person
+   outside the task understands. When there is a plan, summarize it here in one
+   or two sentences. No file lists and no term without its meaning.
+3. **Against done** («Cómo vamos contra el terminado»): every task has a
+   definition of done; when the owner gave none, state the one you work to.
+   Name it in one line, then one short line per part with ✅ (met), ⏳ (in
+   progress), 🧱 (blocked) or ❌ (not met).
+4. **What I need from you** («Lo que necesito de ti») and **What happens next**
+   («Lo que sigue»).
 
-No tables. At most 2,000 characters. The detail lives in the HTML report from
-`development-system document`: link its persistent `htmlPath`, do not paste it.
+Cheerful and easy to scan: emojis and short lines are welcome. No tables. At
+most 2,000 characters. One 💡 line with what was not verified, or what is
+stopped and why, when there is something to say. A small change may use one
+line per part. Detail comes only when the owner asks; the HTML report from
+`development-system document` is produced on request, never as the explanation.
 
 **What I need from you** names the exact decision, input or action and what it
 unlocks; when nothing is needed, say so. **What happens next** names the next
@@ -44,12 +53,18 @@ stop watching the PR (`unwatch_pull_request`): a watched thread looks busy and
 never reaches the inbox. While you wait on your own for checks or reviews, keep
 the watch and end the turn without a message; never write "still waiting".
 
-The `visual-explain` line and window is for presenting a substantive plan and
-for when the owner asks for a visual; a closing does not need it. Explicit
-text-only requests win. Every visual shows all of its content without clicks.
-Only the parent publishes in the owning T3 thread, using `html_preview` before
+The Stop hook checks this: when a turn changed files and the last message
+lacks «Lo que necesito de ti» / "What I need from you" or «Lo que sigue» /
+"What happens next", it returns this format once.
+
+A visual rendered in the thread is for when a picture explains faster than
+text: a substantive plan (the `visual-explain` line and window), a trend or a
+comparison, or when the owner asks for one. It carries the same four parts and
+shows all of its content without clicks. Explicit text-only requests win. Only
+the parent publishes in the owning T3 thread, using `html_preview` before
 `html_render` on the exact HTML; without the capability or authorization, give
-text and a durable HTML path with the verification gap stated. Grill keeps its
-existing HTML questionnaires, contextual questions, drafts and submission flow.
-A visual, a report or an approval marker grants no authority and proves no
-installation, adoption or acceptance.
+the text closing and state the gap. Grill keeps its existing HTML
+questionnaires, contextual questions, drafts and submission flow; the question
+tool and the visual-choice tool stay as they are. A visual, a report or an
+approval marker grants no authority and proves no installation, adoption or
+acceptance.

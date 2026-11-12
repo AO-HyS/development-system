@@ -40,8 +40,8 @@
       "id": "report-gate",
       "category": "workflow",
       "status": "active",
-      "summary": "Stop hook that asks once for a completion report after edits.",
-      "paths": ["src/report-gate.mjs", "artifacts/2.1.6/runtime/report-gate/stop-gate.mjs"],
+      "summary": "Stop hook that asks once for a short closing in the thread when a turn changed files and its last message has none; it never asks for a report or a tunnel.",
+      "paths": ["src/report-gate.mjs", "artifacts/2.14.0/runtime/report-gate/stop-gate.mjs"],
       "symbols": ["src/report-gate.mjs#auditReportGate"]
     },
     {
@@ -73,7 +73,7 @@
       "id": "pr-review-gate",
       "category": "workflow",
       "status": "active",
-      "summary": "The merge gate of a PR's exact head: Codex threads answered (not resolved), one review request per head, Sol rounds and coverage, evidence, and one next action in words. For a PR into develop no route ends in the owner.",
+      "summary": "The merge gate of a PR's exact head: Codex threads answered (not resolved), one review request per head, review rounds (Sol 6.1 High; Fable 5.2 for security work and hard reviews) and coverage, evidence, and one next action in words. For a PR into develop no route ends in the owner.",
       "paths": ["src/pr-review-status.mjs", "src/review-gate-machine.mjs", "src/codex-threads.mjs", "src/review-next.mjs"],
       "symbols": ["src/pr-review-status.mjs#prReviewStatus", "src/review-gate-machine.mjs#gateStep"],
       "guarantees": [{ "statement": "With base develop no combination of gate facts ends in ownerDecides.", "verifiedBy": "development-system pr-review-status --diagram" }]
@@ -82,10 +82,19 @@
       "id": "review-brake",
       "category": "workflow",
       "status": "active",
-      "summary": "One authority for PR Sol reviews: slots reserved per branch lineage with no owner approval, five rounds and up to seven for a critical finding, verified records, dispositions per finding, the advance at the cap, voids and follow-up classification; the Claude delegate_task hook and codex-review reserve through it.",
+      "summary": "One authority for PR reviews, Sol 6.1 High by default and Fable 5.2 for security work and hard reviews: slots reserved per branch lineage with no owner approval, five rounds and up to seven for a critical finding, verified records, dispositions per finding, the advance at the cap, voids and follow-up classification; the Claude Agent and delegate_task hooks and codex-review reserve through it.",
       "paths": ["src/review-policy.mjs", "src/review-state.mjs", "src/review-records.mjs", "src/review-advance.mjs", "src/review-cli.mjs", "claude/orchestration/roster-guard.mjs"],
       "symbols": ["src/review-records.mjs#recordReview", "src/review-records.mjs#readReviewRecords", "src/review-policy.mjs#nextReview", "src/review-advance.mjs#recordAdvance"],
-      "guarantees": [{ "statement": "No Sol round runs past the fifth unless a critical finding is open, and none past the seventh.", "verifiedBy": "development-system review reserve --dry-run" }]
+      "guarantees": [{ "statement": "No review round runs past the fifth unless a critical finding is open, and none past the seventh.", "verifiedBy": "development-system review reserve --dry-run" }]
+    },
+    {
+      "id": "orchestration-coach",
+      "category": "workflow",
+      "status": "active",
+      "summary": "Claude roster guard: named roles and models, a read-only search grammar for mappers, and a coach that never blocks and tells the parent once to use a mapper after ten solo reads, to launch ready lanes together, and to batch secret requests.",
+      "paths": ["src/claude-orchestration.mjs", "src/claude-orchestration-coach-probe.mjs", "claude/orchestration/policy.json"],
+      "symbols": ["src/claude-orchestration.mjs#auditClaudeOrchestration", "src/claude-orchestration-coach-probe.mjs#probeCoach"],
+      "guarantees": [{ "statement": "The tenth counted parent read prints a coach hint and a subagent's reads print nothing.", "verifiedBy": "development-system claude-orchestration-audit" }]
     },
     {
       "id": "technical-document",
@@ -99,8 +108,8 @@
       "id": "visual-plan-delivery",
       "category": "agent-tools",
       "status": "active",
-      "summary": "One text format for progress answers and closings, with the facts of an initiative's PRs printed by `development-system progress`; the line-and-window renderer is for substantive plans and on request and writes every stage out, and the report and questionnaire renderers remain separate.",
-      "paths": ["config/visual-delivery.md", "src/progress.mjs", "artifacts/2.13.0/skills/internal/visual-explain/scripts/render.mjs", "artifacts/2.13.0/skills/internal/visual-explain/assets"],
+      "summary": "One text format for progress answers and closings, with the facts of an initiative's PRs printed by `development-system progress`; the closing says what was done, the status against done, what is needed and what follows; the line-and-window renderer is for substantive plans and on request and writes every stage out, and the report (on request) and questionnaire renderers remain separate.",
+      "paths": ["config/visual-delivery.md", "src/progress.mjs", "artifacts/2.14.0/skills/internal/visual-explain/scripts/render.mjs", "artifacts/2.14.0/skills/internal/visual-explain/assets"],
       "symbols": ["src/progress.mjs#progress", "src/progress.mjs#formatProgress"],
       "docs": ["docs/adr/0072-visual-plans-and-deliveries.md", "docs/adr/0074-one-progress-format.md"]
     },
