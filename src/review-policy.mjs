@@ -4,11 +4,10 @@
 // PR into develop never ends in a question to the owner.
 //   rounds       run without owner approval: round 1 full, later rounds fix-diff, after a blocking round or when
 //                commits arrived that coverage does not explain. Two per branch lineage since 2.14.1 (five before):
-//                in the council's measurements the things that closed took one or two rounds, and a third or later
-//                round doubled the time without closing more.
+//                in the council's measurements a third or later round doubled the time without closing more.
 //   cap          round 2 blocking with nothing critical open: no round 3; the coordinator fixes, records each finding
 //                and an `auto-advance` row, and merges. Stopping reviews is not acceptance: the row lists what nobody
-//                re-read. Rows written under the caps of five and seven stay valid: their slot is at or past this cap.
+//                re-read. Rows written under the caps of five and seven stay valid.
 //   critical     security, authorization, data-loss, money, minors-privacy, consent, and any finding that does not say
 //                `none`. A critical blocker gets up to two more rounds (3 and 4) that only re-read its fix. Still
 //                blocking after round 4: the disputed change leaves the PR, or the PR stays unmerged.
@@ -19,6 +18,8 @@ import { isNonFunctionalChange } from "./evidence.mjs";
 export const BUDGET = 2;
 /** Rounds 3 and 4 exist only to re-read the fix of a critical finding. */
 export const CRITICAL_LIMIT = 4;
+/** Last slot of the ordinary reading. Not BUDGET: a recorded round keeps its reading when caps move. */
+const ORDINARY_READING_UNTIL = 5;
 export const CRITICAL = ["security", "authorization", "data-loss", "money", "minors-privacy", "consent"];
 /** The explicit "not a critical domain" mark; a finding without the field counts as critical at the cap. */
 export const NOT_CRITICAL = "none";
@@ -75,16 +76,15 @@ export function reviewerFor({ releases, rounds, now, hard = "" }) {
 export const isCritical = (finding) => finding.critical !== NOT_CRITICAL;
 
 /**
- * Which findings keep a round blocking. Slot 1 keeps the result as given. Slot 2: a finding with origin `new`
+ * Which findings keep a round blocking. Slot 1 keeps the result as given. Slots 2 to 5: a finding with origin `new`
  * that says `none` is a follow-up; prior, fix-induced, unknown origin, any critical domain and a finding that names
- * no domain block. Slots 3
- * and 4 re-read a critical fix only: everything marked `none` is a follow-up. A blocking result that names no finding
- * stays blocking; a blocking result whose findings are all follow-ups becomes non-blocking.
+ * no domain block. Past slot 5 (rows of the 2.13.0 caps) everything marked `none` is a follow-up. A blocking result
+ * that names no finding stays blocking; one whose findings are all follow-ups becomes non-blocking.
  * @param {Finding[]} findings @param {number} slot @param {"blocking" | "non-blocking" | "none"} result
  */
 export function classifyFindings(findings, slot, result) {
   if (slot < 2) return { result, blockers: findings.map((finding) => finding.id), followUps: /** @type {string[]} */ ([]) };
-  const followUp = slot > BUDGET
+  const followUp = slot > ORDINARY_READING_UNTIL
     ? (/** @type {Finding} */ finding) => !isCritical(finding)
     : (/** @type {Finding} */ finding) => finding.origin === "new" && !isCritical(finding);
   const blockers = findings.filter((finding) => !followUp(finding)).map((finding) => finding.id);
