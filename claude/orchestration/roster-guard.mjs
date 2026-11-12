@@ -6,7 +6,8 @@
 // Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High. Security reviews and hard reviews run on the
 // native primary `reviewer` (Fable 5.2): fresh, read-only, with a `Review kind:` line and, unless the kind is
 // free (security), a `Review difficulty: hard: <why>` line; kind pr reserves the PR's lineage slot like delegate_task.
-// One reservation launches one review (2.14.2): a second reviewer on the same slot is denied.
+// One reservation launches one review (2.14.2): a second reviewer on the same slot is denied, also through a
+// Codex fallback receipt.
 // Sol reviews and Terra computer use retain receipt-bound native fallback. A fresh
 // primary Opus visual critic needs no fallback envelope, never source ownership.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
@@ -537,13 +538,22 @@ async function agentCall() {
         if (ti.resume !== undefined) throw new Error('fallback requires a fresh Agent; resume is forbidden');
         receipt = fallbackReceipt(prompt, type);
         if (receipt.mode === 'computer-use' && receipt.browserAssignment) throw new Error('Pooled computer-use fallback has no validated ownership transfer; reconcile the assigned browser before any new operator');
-        if (receipt.mode === 'computer-use') {
+        // A computer-use receipt and (2.14.2) the receipt of a PR review, which holds a lineage slot, admit one native
+        // launch. Only the review may repeat, and only as the same tool call.
+        const held = receipt.mode === 'computer-use' ? null : receipt.reservation;
+        if (receipt.mode === 'computer-use' || held) {
           const consumeDir = path.join(POLICY.stateDir, 'native-fallback');
+          const consumed = path.join(consumeDir, `${receipt.runId}.json`);
           fs.mkdirSync(consumeDir, { recursive: true });
           try {
-            fs.writeFileSync(path.join(consumeDir, `${receipt.runId}.json`), `${JSON.stringify({ runId: receipt.runId, packetSha256: receipt.packetSha256, session, receiptPath: receipt.fallback.receiptPath })}\n`, { flag: 'wx' });
+            fs.writeFileSync(consumed, `${JSON.stringify({ runId: receipt.runId, packetSha256: receipt.packetSha256, session, receiptPath: receipt.fallback.receiptPath, toolUseId: input.tool_use_id ?? null })}\n`, { flag: 'wx' });
           } catch (error) {
-            throw new Error(error?.code === 'EEXIST' ? 'computer-use receipt already consumed; reconcile before any new run' : 'cannot atomically consume computer-use receipt');
+            if (error?.code !== 'EEXIST') throw new Error(`cannot atomically consume ${held ? 'review' : 'computer-use'} receipt`);
+            if (!held) throw new Error('computer-use receipt already consumed; reconcile before any new run');
+            let first = null;
+            try { first = JSON.parse(fs.readFileSync(consumed, 'utf8')); } catch { /* unreadable: counts as another launch */ }
+            const label = (value) => String(value ?? '').replace(/[^\w./#-]/g, '').slice(0, 120);
+            if (!input.tool_use_id || first?.toolUseId !== input.tool_use_id) throw new Error(`this receipt already launched a fallback reviewer for reservation ${label(held.id)} (slot ${label(held.slot)} of ${label(held.pr)}); one reservation launches one review, so nothing was started. If that review ran, record its round (development-system review record --pr ${label(held.pr)} ...). If it never ran or never answered, release the reservation (development-system review release --pr ${label(held.pr)} --reservation-id ${label(held.id)} --reason <why>) and run codex-review again`);
           }
         }
       }

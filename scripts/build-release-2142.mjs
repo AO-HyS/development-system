@@ -77,6 +77,7 @@ const releaseNote = `## ${version}: one reservation launches one review
 Contract ${version} (catalog ${catalogVersion}, unchanged). Codex review of release PR #209: two identical PR review packets sent to the native Fable reviewer before the round was recorded both ran on one reserved lineage slot.
 
 - Review brake: the Claude guard now claims the launch of a PR review reservation before it admits the reviewer, in the same file the Codex wrapper uses (\`launches/<reservationId>.json\`), for the native \`reviewer\` and for a T3 \`delegate_task\`. A second launch on the same reservation is denied and says how to continue: record the round if the review ran, or release the reservation and send the packet again if it never ran. A repeated T3 \`clientRequestId\` (which T3 answers with the same task) and a retry of the same tool call are the same launch and pass.
+- Fallback: the receipt of a PR review that Codex could not run admits one native fallback reviewer, as a computer-use receipt already did; a repeat is denied with the same two ways to continue.
 
 Everything else is 2.14.1.
 `;
