@@ -127,6 +127,7 @@ function summaryStates(appComments) {
 
 /**
  * @typedef {{id: string, paths: string[]}} Finding
+ * @typedef {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} CodexState
  * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean}} CoveredCommit
  * @typedef {{from: string, to: string, covered: boolean, error: boolean, filtersPass: boolean, reason: string, commits: CoveredCommit[]}} Coverage
  */
@@ -238,6 +239,20 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
 }
 
 /**
+ * Where Codex's review stands for the current head. A request Codex has not answered yet keeps the review in flight
+ * whichever head it names: a hand-typed request names none until its review arrives, and one asked for an earlier head
+ * may still report. So two published requests count as spent only when none of them is still waiting.
+ * @param {{headReviewed: boolean, headRequest?: {state: CodexState}, headRunning: boolean, published: {state: CodexState}[]}} input
+ * @returns {CodexState}
+ */
+export function codexHeadState({ headReviewed, headRequest, headRunning, published }) {
+  if (headReviewed) return "answered";
+  const own = headRequest ? headRequest.state : headRunning ? "running" : "pending";
+  if (own === "requested" || own === "running") return own;
+  return published.filter((entry) => entry.state === "requested" || entry.state === "running").at(-1)?.state ?? own;
+}
+
+/**
  * @param {{pr: string, request?: boolean, gate?: boolean, home?: string}} options
  */
 export function prReviewStatus({ pr, request = false, gate = false, home = homedir() }) {
@@ -321,7 +336,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
           const namesSha = sha !== "" && [...body.matchAll(/\b[0-9a-f]{7,40}\b/g)].some((match) => cites(sha, match[0]));
           return namesSha || (reply === first && Date.parse(reply.created_at) < next);
         });
-        /** @type {"answered" | "failed-terminal" | "running" | "unknown" | "requested"} */
+        /** @type {CodexState} */
         let state;
         if (validReview(sha)) state = "answered";
         else if (terminal) state = "failed-terminal";
@@ -330,12 +345,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
         else state = "requested";
         return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
       });
-    const headRequest = published.filter((entry) => entry.sha === head).at(-1);
-    /** @type {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} */
-    let headState = "pending";
-    if (headReviewed) headState = "answered";
-    else if (headRequest) headState = headRequest.state;
-    else if (summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))) headState = "running";
+    let headState = codexHeadState({ headReviewed, headRequest: published.filter((entry) => entry.sha === head).at(-1),
+      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status)), published });
     const last = published.at(-1);
     const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
     /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */

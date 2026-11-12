@@ -3,15 +3,21 @@
 // `isResolved` and nobody clicks Resolve. A thread is a finding; it stops blocking when the coordinator's reply
 //   - cites a commit that belongs to the PR, comes after the commit Codex reviewed and touches the thread's file, or
 //   - rejects it with a reason (`Rechazado: <razón>` / `Rejected: <reason>`).
+// Only the repository's own people answer: a human account GitHub reports as its owner, a member of its organization
+// or a collaborator. A reply from anyone else who can comment on the PR answers nothing.
 // Answered is not corrected. A rejected thread that is P0 or P1 (Codex's own badge), carries no readable priority, or
 // touches a critical domain whatever its priority, is closed only by a Sol round recorded after the rejection; until
 // then it asks for that round. Only a rejected P2 or P3 outside the critical domains closes with its reason.
 const APP_LOGIN = "chatgpt-codex-connector";
 
-export const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId createdAt author{__typename login}body originalCommit{oid}pullRequestReview{commit{oid}}}}}}}}}`;
+export const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId createdAt authorAssociation author{__typename login}body originalCommit{oid}pullRequestReview{commit{oid}}}}}}}}}`;
 
 /** @param {any} author GraphQL actor */
 export const isCodexActor = (author) => author?.__typename === "Bot" && author?.login === APP_LOGIN;
+
+const ANSWERS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
+/** A reply that can answer a thread: from a human account (bots and deleted authors never) with authority over the repository. @param {any} comment */
+export const mayAnswer = (comment) => comment?.author?.__typename === "User" && ANSWERS.has(String(comment?.authorAssociation));
 
 /**
  * Every review thread whose first comment is from the Codex app, with `origin`: the commit its review read (the
@@ -76,9 +82,8 @@ export function threadStates({ threads, commitInfo, solRoundsAt }) {
       finding: body.replace(/<[^>]+>|!\[[^\]]*\]\([^)]*\)|\*\*/g, "").trim().split("\n")[0].slice(0, 160),
       priority: threadPriority(body), critical: threadCritical({ body, path: String(thread.path) }),
     };
-    // Only a reply from a human account (GraphQL __typename "User") answers a thread; bots and deleted authors do not.
-    const replies = thread.comments.nodes.slice(1).filter((/** @type {any} */ comment) => comment.author?.__typename === "User");
-    if (replies.length === 0) return { ...base, state: /** @type {const} */ ("open"), detail: "no reply" };
+    const replies = thread.comments.nodes.slice(1).filter(mayAnswer);
+    if (replies.length === 0) return { ...base, state: /** @type {const} */ ("open"), detail: thread.comments.nodes.length > 1 ? "no reply from the repository's owner, a member or a collaborator" : "no reply" };
     let detail = "the reply neither cites a fix commit of this PR nor rejects the finding with a reason";
     for (const reply of [...replies].reverse()) {
       const text = String(reply.body);

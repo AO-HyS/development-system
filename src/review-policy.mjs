@@ -113,13 +113,16 @@ export function admission({ slot, scope, last, head, approved = false, pendingCr
 }
 
 /**
- * The head each recorded round started from, checked as one chain: a full round restarts it, a fix-diff must start
- * (`from`) exactly at the previous round's head. A row without `from` is a pre-2.13.0 row and is read as chained.
- * Returns "" or the first gap.
+ * The head each recorded round started from, checked as one chain: a fix-diff must start (`from`) exactly at the
+ * previous round's head. A full round rereads the whole candidate, so only the chain from the latest full round
+ * counts and an older gap no longer leaves the PR uncovered. A row without `from` is a pre-2.13.0 row and is read as
+ * chained. Returns "" or the first gap.
  * @param {{round: number, scope: string, head: string, from?: string}[]} rounds
  */
 export function chainGap(rounds) {
-  for (let index = 1; index < rounds.length; index += 1) {
+  let start = 0;
+  rounds.forEach((round, index) => { if (round.scope === "full") start = index; });
+  for (let index = start + 1; index < rounds.length; index += 1) {
     const round = rounds[index];
     const previous = rounds[index - 1];
     if (round.scope === "fix-diff" && round.from && round.from !== previous.head) return `round ${round.round} read from ${round.from.slice(0, 12)}, not from the head of round ${previous.round} (${previous.head.slice(0, 12)})`;
