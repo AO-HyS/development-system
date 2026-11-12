@@ -80,7 +80,7 @@ class Block extends Error {
 class ParseError extends Error {}
 
 /**
- * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean, fromGlob?: boolean }} Word
+ * @typedef {{ value: string, literal: boolean, quoted: boolean, raw: string, subs: any[], procSubst: boolean, name?: string, glob?: boolean, opener?: boolean, tracked?: boolean, plain?: boolean, fromGlob?: boolean, split?: boolean }} Word
  * @typedef {{ op: string, fd: string, target: Word | null, heredoc: any }} Redirect
  * @typedef {{ cwd: string | null, scope: string, depth: number, aliases?: Map<string, Word[] | null>, lenient?: boolean, cdpath?: boolean, substituted?: boolean, codeString?: boolean, execdir?: boolean }} Context
  */
@@ -1074,6 +1074,8 @@ class Parser {
       word.quoted = true;
       return;
     }
+    // Outside double quotes the shell may split what an expansion produces into several words.
+    if (!inDouble) word.split = true;
     if (next === "(") {
       if (this.peek(2) === "(") { this.parseArithmetic(word, 3); return; }
       this.i += 2;
@@ -1215,6 +1217,7 @@ class Parser {
 
   /** @param {Word} word @param {boolean} inDouble */
   parseBacktick(word, inDouble) {
+    if (!inDouble) word.split = true;
     let j = this.i + 1;
     let content = "";
     for (;;) {
@@ -2297,15 +2300,17 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
   const shownWord = (/** @type {Word} */ each) => each.value.replaceAll(UNKNOWN, "$…");
   /**
    * Contents the guard cannot read, written below this target: blocked when guard configuration lies below the folder
-   * the target names. A target that starts with text the guard cannot read names no folder, and the write passes like
-   * any other the guard cannot read. @param {string} shown
+   * the target names. A target that starts with text the guard cannot read, or is relative to a directory it does not
+   * know, names no folder: the contents and the place are both unknown, so nothing shows the write stays outside guard
+   * configuration and it is blocked. @param {string} shown
    */
   const blindBelow = (shown) => {
     // `~/.codex/$name` (a copy that keeps its source's name) is read as `~/.codex`: the folder written out in full.
+    // `out-$n` names a folder of the current directory.
     const cut = word.value.indexOf(UNKNOWN);
     const known = cut < 0 ? text : word.value.slice(0, word.value.lastIndexOf("/", cut) + 1);
-    if (known === "" || (ctx.cwd === null && !isAbsolute(known))) return;
-    guardBelow(resolve(ctx.cwd ?? ctx.scope, known), shown);
+    if (cut === 0 || (ctx.cwd === null && !isAbsolute(known))) throw blindBlock(`${shownWord(word)} (${shown}, written where the guard cannot read either)`);
+    guardBelow(resolve(ctx.cwd ?? ctx.scope, known || "."), shown);
   };
   const covered = (/** @type {string[]} */ files, /** @type {boolean} */ operands) => operands && files.every((file) => grantedDocsWrite(file));
   const targetKnown = grantable(word, text, ctx);
@@ -3718,6 +3723,14 @@ function protectedSelected(selected, ctx) {
     }
   }
   return reached;
+}
+
+/**
+ * Every protected file and one stand-in entry for each protected directory: what an action that follows links can reach
+ * from a selection the guard cannot bound, whatever the names its tests ask for. @param {Context} ctx @returns {string[]}
+ */
+function protectedReach(ctx) {
+  return [...new Set([...protectedTargets, ...projectTargets(ctx.scope)].flatMap((target) => target.forms.map((path) => target.directory ? join(path, "unlisted") : path)))];
 }
 
 /** @param {Word[]} rest @param {Context} ctx @param {number} action */
@@ -5257,8 +5270,9 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
         const selection = findSelection(rest, ctx, i);
         const files = [...new Set([...selection.guard, ...selection.docs.map(({ file }) => file)])];
         const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : []),
-          // A selection the guard cannot bound stands for every protected file its tests pass.
-          ...(selection.blind !== null ? protectedSelected(selection.selected, ctx).slice(0, FIND_FILLS) : [])];
+          // A selection the guard cannot bound stands for every protected file: the tests read an entry's own name, and
+          // an entry there can be a link with any name that the action writes through.
+          ...(selection.blind !== null ? protectedReach(ctx) : [])];
         variants = fills.map((fill) => nested.map((word) => word.value.includes("{}")
           ? literalWord(word.value.replaceAll("{}", dir && fill !== UNKNOWN ? `./${basename(fill)}` : fill)) : word));
         // A word that adds text to `{}` (`{}.json`, `{}/hooks.json`) builds a new path from each file find visits: every file
@@ -5378,11 +5392,13 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     if (unsafe) throw new Block("sensitive-dynamic-argument", "xargs appends arguments from standard input to a destructive-capable command; put them after a literal -- separator.");
   }
 
-  // xargs adds words read from standard input, which can name any file: a protected name stands in for them.
+  // xargs adds words read from standard input, which can name any file: every protected file (and a docs name, when the
+  // policy lists any) stands in for them, so a writer or deleter blocks while a reader stays allowed.
   // A replace string (`-I{}`) is also read as unknown text, so the path around it (`{}/hooks.json`) still counts.
   const filled = (/** @type {string} */ text, /** @type {boolean} */ literal) => rest.map((word) => word.value.includes(/** @type {string} */ (replace))
     ? { ...literalWord(word.value.replaceAll(/** @type {string} */ (replace), text)), literal } : word);
-  const variants = !viaXargs ? [rest] : replace !== null ? [filled("AGENTS.md", true), filled(UNKNOWN, false)] : [[...rest, literalWord("AGENTS.md")]];
+  const standIns = viaXargs ? ["AGENTS.md", ...protectedReach(ctx)] : [];
+  const variants = !viaXargs ? [rest] : replace !== null ? [...standIns.map((each) => filled(each, true)), filled(UNKNOWN, false)] : standIns.map((each) => [...rest, literalWord(each)]);
   // git -C runs in that directory (each -C read from the one before); the protected project stays the same.
   let targetCtx = ctx;
   if (name === "git") {
@@ -5425,13 +5441,14 @@ function readOnlySensitive(name, rest) {
   // The program has options that write a file or a folder (`pulumi preview --save-plan plan.json`). One written out makes
   // the command a write; a word the guard cannot read passes only where it cannot be such an option: after a literal
   // `--`, as the value of an option the policy lists as taking one (`-n "$ns"`, `--stack="$s"`), or starting with
-  // written text that is not a dash.
+  // written text that is not a dash. Before `--` its expansions must be inside double quotes: unquoted, the shell may
+  // split the value into several arguments and one of them can be the option (`--stack $s`).
   const values = sensitiveValueOptions.get(name) ?? [];
   const end = rest.findIndex((word) => word.literal && word.value === "--");
   return rest.every((word, k) => {
     if (end >= 0 && k > end) return true;
     if (word.literal) return !writes.some((option) => word.value === option || word.value.startsWith(`${option}=`));
-    if (word.glob) return false;
+    if (word.glob || word.split) return false;
     if (k > 0 && rest[k - 1].literal && values.includes(rest[k - 1].value)) return true;
     const start = word.value.slice(0, Math.max(0, word.value.indexOf(UNKNOWN)));
     if (start.startsWith("-")) return start.endsWith("=") && values.includes(start.slice(0, -1));
@@ -5806,7 +5823,9 @@ function evaluateCommandNow(command, options) {
   backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
   dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
   const unquoted = command.replace(/["'\\]/gu, "");
-  gitRedirected = GIT_REDIRECTING_TEXT.test(unquoted) || /allexport/iu.test(unquoted.replaceAll("_", ""));
+  // A variable, a substitution or any other expansion can spell those names piece by piece (`E=export; "$E" …`), so the
+  // exception holds only in a command with no expansion at all.
+  gitRedirected = /[$`]/u.test(command) || GIT_REDIRECTING_TEXT.test(unquoted) || /allexport/iu.test(unquoted.replaceAll("_", ""));
   try {
     for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
     const list = parseScript(command, 0);
