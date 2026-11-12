@@ -64,7 +64,7 @@ export function progress({ prs, home = homedir(), readers = {} }) {
       const rounds = records.filter((record) => record.type === "round");
       const last = rounds.at(-1);
       const notes = [
-        ...records.filter((record) => record.type === "exemption").map((record) => `exento de Sol (${record.exempt})`),
+        ...new Set(records.filter((record) => record.type === "exemption").map((record) => `exento de Sol (${record.exempt})`)),
         ...(records.some((record) => record.type === "waiver") ? ["dispensa registrada"] : []),
         ...(records.some((record) => record.type === "auto-advance") ? ["avance sin otra ronda registrado"] : []),
       ];
