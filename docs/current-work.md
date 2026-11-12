@@ -1,5 +1,14 @@
 # Current work
 
+## 2.13.2 — Planeta Aula joins the weekly Development Steward (candidate, branch `feat/ds-2132-steward-planeta-aula`)
+
+- Owner opt-in of 2026-11-12, verbatim «mete Planeta Aula al Steward». He had asked whether Planeta Aula, NutriPlan, Barber and the other official repositories had the new Development System; the shared installation already served the four (their PRs #83, #746 and #696 went through the installed gate), but Planeta Aula was outside the Steward allowlist.
+- Change: `primaryRepositoryAllowlist` in `src/development-steward.mjs` has seven repositories; the `development-steward` skill, its collection prompt and its Codex card (`artifacts/2.13.2/skills/internal/development-steward`) name Planeta Aula for sessions, primitives, merged-PR Codex findings and the PostHog-driven Emil pass. Cut: `scripts/build-release-2132.mjs`, `manifests/2.13.2.json`, `catalog/0.79.0.json`. The guard is unchanged (policy 2.6.1).
+- Observed: with the same private input, the installed 2.13.1 answers `repository not allowlisted: planeta-aula` and the candidate accepts the repository evidence and one session into an isolated ledger.
+- After the global install (never before, the installed ledger refuses an id it does not know): update the T3 scheduled task «Development Steward · retro semanal y PR revisado» so its focus list names Planeta Aula.
+- Not in this change: Planeta Aula in `src/linear-hygiene.mjs` (it needs its Linear team and was not asked), an `AGENTS.md` in Planeta Aula, and the old `git push` approval lines in the NutriPlan and Barber `AGENTS.md`.
+- Pending: merge to develop, then the owner's production answer for 2.13.2 (merge to main, release v2.13.2, global install).
+
 ## 2.13.1 — two fixes from the Codex review of the 2.13.0 release (released 2026-11-11)
 
 - Codex reviewed release PR #201 on its own after the merge and left two threads. Both reproduced on the installed 2.13.0.

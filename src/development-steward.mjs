@@ -8,6 +8,7 @@ export const primaryRepositoryAllowlist = Object.freeze([
   { id: "casa-roca", repository: "AO-HyS/casa-roca", name: "Casa Roca" },
   { id: "the-barber-central", repository: "AO-HyS/the-barber-central", name: "The Barber Central" },
   { id: "nutri-plan", repository: "AO-HyS/nutri-plan", name: "NutriPlan" },
+  { id: "planeta-aula", repository: "AO-HyS/planeta-aula", name: "Planeta Aula" },
   { id: "development-system", repository: "AO-HyS/development-system", name: "Development System" },
   { id: "eteria", repository: "AO-HyS/eteria", name: "ETERIA" },
 ]);
