@@ -698,9 +698,14 @@ const MAPPER_FORBIDDEN = {
   rg: [['--pre', '--hostname-bin'], ''], grep: [['--pre', '--hostname-bin'], ''], file: [['--compile'], 'C'], tail: [['--follow'], 'fF'],
   sort: [['--output', '--compress-program'], 'o'], git: [['--output', '--ext-diff', '--textconv', '--open-files-in-pager'], ''],
 };
-function forbiddenOption(step, [longs, shorts] = MAPPER_FORBIDDEN[step[0]] ?? [[], '']) {
+// `stop` lists short options whose argument is the rest of the word (`git grep -eTODO`): the scan ends there.
+function forbiddenOption(step, [longs, shorts, stop = ''] = MAPPER_FORBIDDEN[step[0]] ?? [[], '']) {
   return step.slice(1).find((w) => {
-    if (!w.startsWith('--')) return w.length > 1 && w[0] === '-' && [...shorts].some((letter) => w.includes(letter));
+    if (!w.startsWith('--')) {
+      if (w[0] !== '-') return false;
+      for (const letter of w.slice(1)) { if (stop.includes(letter)) return false; if (shorts.includes(letter)) return true; }
+      return false;
+    }
     const name = w.split('=')[0];
     return name.length > 2 && name !== '--text' && longs.some((long) => long.startsWith(name) || name.startsWith(long));
   });
@@ -875,7 +880,7 @@ function mapperBash() {
     while (first[i] === '--no-pager' || first[i] === '-C') i += first[i] === '-C' ? 2 : 1;
     // `git grep -O<pager>` opens the matches in a program; -O also hides inside a short cluster.
     ok = ['show', 'log', 'diff', 'blame', 'status', 'rev-parse', 'ls-files', 'grep'].includes(first[i])
-      && !forbiddenOption(first, [MAPPER_FORBIDDEN.git[0], first[i] === 'grep' ? 'O' : '']) && !first.some((w) => w.startsWith('-O'));
+      && !forbiddenOption(first, [MAPPER_FORBIDDEN.git[0], first[i] === 'grep' ? 'O' : '', 'ef']) && !first.some((w) => w.startsWith('-O'));
   } else if (MAPPER_SEARCH.has(first[0])) {
     const why = searchRefusal(first);
     if (why) refuse(why);
@@ -890,8 +895,15 @@ function mapperBash() {
     const option = forbiddenOption(step);
     if (option) refuse(`\`${step[0]} ${option}\` is not allowed (it runs a program, writes a file or never ends).`);
     if (step[0] === 'sed') { const why = sedRefusal(step); if (why) refuse(why); }
-    // After a pipe uniq reads stdin: `uniq INPUT OUTPUT` writes OUTPUT and a glob can expand into both.
-    if (step[0] === 'uniq' && step.slice(1).some((w, i, rest) => w === '--' || (!w.startsWith('-') && !/^-[fsw]$/.test(rest[i - 1] ?? '')))) refuse('`uniq` after a pipe takes no file operands.');
+    // After a pipe uniq reads stdin and `uniq INPUT OUTPUT` writes OUTPUT, so only its flags pass (allowlist): flag
+    // clusters, and -f, -s, -w or their long forms with a number attached or as the next word. No operands, `-` or `--`.
+    if (step[0] === 'uniq') {
+      for (let i = 1; i < step.length; i += 1) {
+        if (/^(-[cdDiuz]+|-[cdDiuz]*[fsw]\d+|--(count|repeated|unique|ignore-case|zero-terminated|(skip-fields|skip-chars|check-chars)=\d+))$/.test(step[i])) continue;
+        if (/^(-[cdDiuz]*[fsw]|--(skip-fields|skip-chars|check-chars))$/.test(step[i]) && /^\d+$/.test(step[i + 1] ?? '')) { i += 1; continue; }
+        refuse(`\`uniq ${step[i]}\` is not allowed: after a pipe uniq takes only its flags (-c, -d, -u, -i, -f N, -s N, -w N), no file operands.`);
+      }
+    }
   }
   allow(null, null);
 }

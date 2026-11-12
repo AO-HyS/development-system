@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/2.14.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "8c88d1603bfb11ee7ca0bf1b1e81e70b38535b99e8315d641e5d352c8a70702a",
+      "sha256": "8774cac85c13a16511991f74feb69c8c5607bd44e0ed3e8a173abc96eeec8998",
       "expectedMirrorOf": null
     },
     {
