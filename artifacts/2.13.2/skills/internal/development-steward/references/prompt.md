@@ -1,0 +1,44 @@
+# Development Steward weekly review
+
+Perform one read-only weekly Development Steward review for exactly these repositories:
+
+- AO-HyS/aohys.com
+- AO-HyS/casa-roca
+- AO-HyS/the-barber-central
+- AO-HyS/nutri-plan
+- AO-HyS/planeta-aula
+- AO-HyS/eteria
+- AO-HyS/development-system
+
+Inspect local repository evidence and, when available without authentication changes, public primary-source upstream documentation. Report architectural drift, stale development-system guidance, dependency or platform updates with an exact current version, candidate version, relevant diff, and changelog, and deterministic maintenance that merits human review.
+
+In every run, explicitly inspect these four independent toolchain rows even if no repository declares them directly:
+
+1. `react-doctor`: exact version pinned by each applicable repository versus the exact stable npm release.
+2. `impeccable-cli`: exact globally installed CLI version versus the exact stable published npm release.
+3. `impeccable-skill`: exact installed umbrella skill version and source commit versus the exact stable `skill-v*` release.
+4. `matt-pocock-skills`: exact installed bundle commit/tag versus the exact stable release, plus a behavioral check that `grilling` asks the whole current question frontier in one numbered round with one recommendation per question.
+
+Do not combine these into one generic `skills` claim. A floating branch, `latest` alias, version inferred from source `main`, or version label without the required behavioral check is `unproven`.
+
+Emil design-engineering pass (owner decision of 2026-10-10: incorporate every Emil skill and review them weekly with PostHog data). Two parts, both read-only:
+
+1. Upstream: compare the installed Emil skills (`emil-animate`, `emil-design-eng`, `emil-prototype`, `animate`, `animation-performance`, `improve-animations`, `review-animations`, `break-ui`, `mobile-native`, `apple-design` and any other skill whose upstream is `github.com/emilkowalski/skills`) with that repository at its current commit, by exact diff and changelog. A change becomes one pending recommendation to adopt it in the next Development System release; never install it from the run.
+2. Where to apply: for Barber, NutriPlan, Casa Roca and Planeta Aula (allowlisted repositories only), read PostHog for the last seven days through the read-only PostHog tools (most used screens, drop-off steps, rage and dead clicks, slow interactions). Pick at most two screens per repository where an Emil pass (motion, feedback, mobile feel, worst-case data) would most help, each with the metric that justified it and the skill to run. These are proposals for the owner; the run edits nothing. Without PostHog access or data, report the gap as unproven instead of guessing.
+
+Review gate machine pilot (plan v5 1.4, started with 2.10.0): `pr-review-status` routes siguiente through an XState machine (`src/review-gate-machine.mjs`, `pr-review-status --diagram`). Each week, for every PR in the allowlisted repositories and the Development System that went through the gate, record: the machine step (`step` in `pr-review-status --json`), whether siguiente was the right next action, and whether the PR got stuck in review and why. Close the window at 15 PRs with at least 3 budget cases (`budget-spent` or a refused request) and 2 Sol cases, or at 4 weeks (one 2-week extension if cases are missing; still missing then = inconclusive). Verdict: it works only if no invalid transition was accepted, siguiente was right in at least 90% of PRs, the gate code grew at most 50% (excluding `src/vendor/`) and the owner says the diagram helps; an invalid transition, or a miss on the other criteria at the close, means it does not work and the recommendation is to restore the if/else routing and remove `src/vendor/xstate/`. Report it as one recommendation; the run edits nothing.
+
+Read repeated mistakes with the read-only command `development-system mistake list --repeated --json`. For each repeated id, add one evaluation with `area` `repeated-mistake` under the repository its incidents point to. Its `summary` names the id and either proposes the hard control at the highest level of the Gardener ladder (code > lint/CI/guard > rule/skill) or states the existing recorded control. A style note alone is not a control. If the command is unavailable, mark the repeated-mistake review `unproven`; never invent an id or incident.
+
+Run these read-only 2.3.0 checks too, and add one evaluation per finding under the repository it concerns (area in parentheses); mark the check `unproven` when its command is unavailable:
+
+- Primitives (`primitive-drift`): for each repository whose develop has `docs/architecture/primitives.json`, run `development-system check-primitives --root <repo> --ref origin/develop --json` and report every problem; also report new twins or bypasses of a listed primitive since the last run, `proposed` primitives with no progress and `deprecated` ones still imported.
+- Frictions (`friction`): `development-system friction list --json`; one evaluation per id with its repositories, incidents and a recommendation, saying when it needs an owner product decision. Frictions never count as repeated mistakes.
+- Codex review of merged PRs (`codex-review`): for each PR merged to develop since the last run, `development-system pr-review-status <owner/repo#number> --json` (never `--request`); a merged head with open or silently resolved Codex findings is an evaluation.
+
+Return only one raw JSON object, without Markdown fences or commentary. It must have `observedAt` as an ISO timestamp and `repositories` as an array containing only the seven explicitly allowlisted repository IDs: `aohys`, `casa-roca`, `the-barber-central`, `nutri-plan`, `planeta-aula`, `eteria`, and `development-system`. For each repository include its exact 40-hex `revision`, or an `error` when collection failed; `upstream` entries with `id`, exact `current`, exact `candidate`, `diff`, and `changelog`; and `evaluations` with `id`, `area`, `state`, `summary`, `deterministic`, `safeUpdate`, `focusedChecks`, and `device`. Use `unproven` whenever evidence is unavailable or ambiguous. Never manufacture a revision, version, diff, changelog, or successful check.
+
+This run is read-only. Do not edit repositories or HOME configuration, create branches or commits, push, open or modify pull requests, write to trackers, change credentials, activate services, merge, release, deploy, promote production, or run destructive commands. You may recommend a bounded draft change, but you must not perform it. Never print secrets or environment values.
+
+
+Request Sol 6.1 High; report observed identity or unknown. This is the read-only collection packet for the single recurring Steward, never activate another schedule. No automated tests or evals. For Development System, Casa Roca, Barber, NutriPlan and Planeta Aula, collect at most ten recent relevant real sessions each: sessions [{repositoryId,sessionId,revision or updatedAt,complete,evidence:[bounded pointers]}]. Do not include transcripts or credentials. In repository evidence include clean:true only after a real clean-tree observation, activeWriter:false only after ownership is established, otherwise unproven. A proposed deterministic change needs a stable changeId; never use revision as its identity. Failed publication remains pending. Return verified existing PR receipts only with exact repository, changeId, revision, verified:true, status:open-pr/resolved/no-change, evidence pointers and prUrl for an open PR. Session completion never proves change resolution. The ledger suppresses duplicates across revisions and keeps pending recommendations separate. Never auto merge, write business data or credentials, release main or production. A separately authorized writer can prepare one bounded draft PR per repository only after clean/ownership/revision proof and focused checks; this collector itself stays read-only.

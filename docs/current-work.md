@@ -1,18 +1,29 @@
 # Current work
 
-## 2.13.1 — two fixes from the Codex review of the 2.13.0 release (candidate, branch `fix/ds-2131-negation-and-case`)
+## 2.13.2 — Planeta Aula joins the weekly Development Steward (candidate, branch `feat/ds-2132-steward-planeta-aula`)
+
+- Owner opt-in of 2026-11-12, verbatim «mete Planeta Aula al Steward». He had asked whether Planeta Aula, NutriPlan, Barber and the other official repositories had the new Development System; the shared installation already served the four (their PRs #83, #746 and #696 went through the installed gate), but Planeta Aula was outside the Steward allowlist.
+- Change: `primaryRepositoryAllowlist` in `src/development-steward.mjs` has seven repositories; the `development-steward` skill, its collection prompt and its Codex card (`artifacts/2.13.2/skills/internal/development-steward`) name Planeta Aula for sessions, primitives, merged-PR Codex findings and the PostHog-driven Emil pass. Cut: `scripts/build-release-2132.mjs`, `manifests/2.13.2.json`, `catalog/0.79.0.json`. The guard is unchanged (policy 2.6.1).
+- Observed: with the same private input, the installed 2.13.1 answers `repository not allowlisted: planeta-aula` and the candidate accepts the repository evidence and one session into an isolated ledger.
+- After the global install (never before, the installed ledger refuses an id it does not know): update the T3 scheduled task «Development Steward · retro semanal y PR revisado» so its focus list names Planeta Aula.
+- Not in this change: Planeta Aula in `src/linear-hygiene.mjs` (it needs its Linear team and was not asked), an `AGENTS.md` in Planeta Aula, and the old `git push` approval lines in the NutriPlan and Barber `AGENTS.md`.
+- Pending: merge to develop, then the owner's production answer for 2.13.2 (merge to main, release v2.13.2, global install).
+
+## 2.13.1 — two fixes from the Codex review of the 2.13.0 release (released 2026-11-11)
 
 - Codex reviewed release PR #201 on its own after the merge and left two threads. Both reproduced on the installed 2.13.0.
 - P1, guard: `B=git; ! true && B=echo; "$B" reset --hard` passed, because the parser dropped `!` and trusted the assignment after `&&`. Policy 2.6.1 (`artifacts/2.13.1/skills/internal/global-agent-guardrails`): a pipeline with `!` is never certain; the payload stops as `dynamic-command-name`. Not a form anyone types by accident, but 2.12.0 stopped it. The replay of historical blocks gives the same rows on 2.13.0 and 2.13.1 (263 pass on 2026-11-11 after the merges; 264 when #199 was verified); the stops and harmless list passes.
 - P2, gate: `roundsReservedAt` compared the reference as typed (`AO-HyS/...`) with the lowercase reservation key, so a rejected critical Codex thread stayed `rejected-needs-sol` after Sol had reviewed it. `src/codex-threads.mjs` now matches in any letter case.
 - Cut: `scripts/build-release-2131.mjs`, `manifests/2.13.1.json`, `catalog/0.78.0.json`, `package.json` 2.13.1, `guardCatalogVersion` 0.78.0.
-- Pending: merge to develop, then the owner's production answer for 2.13.1 (merge to main, release v2.13.1, global install). The approval of 2.13.0 does not cover it.
+- Shipped 2026-11-11 with the owner's production answer, verbatim «Sí, lleva la 2.13.1 a producción»: #202 merged to develop (7f7c180), release PR #203 merged to main (aeadfb0), GitHub release v2.13.1 (tarball sha256 692fa5a2…), `update --version 2.13.1` checked first in an isolated HOME, then the global install: doctor «2.13.1 healthy», guardrails-audit healthy. The install ran while one other thread was running (recorded with `--during-active-runs`, the owner's answer quoted). No Sol round on #202 or #203: the owner had ended the reviews (waivers recorded).
+- Observed after the install: the installed guard (policy 2.6.1) blocks the payloads of the finding and passes the ordinary negated forms when asked directly, and in the installing thread the hook stopped `B=echo; ! true && B=printf; "$B" hola` as `dynamic-command-name` while `! grep -q … && echo …` ran.
+- Not observed: a live gate run with a rejected critical Codex thread (the function was called directly).
 
 ## 2.13.0 — less friction: reviews that run alone, guards for real harm, one progress format (released 2026-11-11)
 
 - Shipped 2026-11-11: the owner ended the reviews and gave the production answer, verbatim «Ya no quiero más revisiones. Ya llévala a la producción.» (waivers on #198, #199, #200 and #201). #198 (68a88aa), #199 (6634fb4) and #200 (9ec344b) merged to develop; release PR #201 merged to main (1667690); GitHub release v2.13.0 (tarball sha256 dabbf79f…); `update --version 2.13.0` checked first in an isolated HOME, then global install: doctor «2.13.0 healthy», guardrails-audit healthy. The install ran while three other threads were running (recorded with `--during-active-runs`, the owner's order quoted).
 - Observed after the install, in the installing thread: a loop over written numbers with a read-only `gh` and a write to `/tmp` pass (2.12.0 blocked both), `rm -rf` of an unreadable path still stops, the installed `progress` prints the four PRs, and the installed gate reads Barber #694 as `Sol 0/5` with its next action in words.
-- Done-when 6 («¿cómo vas?» in a fresh session): the Codex session (gpt-6.1-sol) answered in the new format and took its facts from `development-system progress`. The Claude session's answer is recorded in the release report.
+- Done-when 6 («¿cómo vas?» in a fresh session): the Codex session (gpt-6.1-sol) answered in the new format and took its facts from `development-system progress`. The Claude session (Sonnet 5.5) also answered in the new format, with facts from GitHub and `doctor`; it attributed the #201 merge to the owner, which the agent did on the owner's order.
 - Not reached: done-when 5, a real priority-repository PR from open to merge under 2.13.0 (the next one in Barber or NutriPlan is the observation).
 - Follow-up noted: `.husky/pre-commit` files already written into product repositories still format during merges; the new `setup-pre-commit` text applies when the hook is set up again.
 - Owner request 2026-11-11: the DS «está estorbando más de lo que está ayudando». Plan v5 accepted by Sol 6.1 High in cross review round 5: `~/.development-system/private/cross-review/ds-friction-plan-20261111/plan-v5.md` (sha256 `74cfc56a…5871994`). Owner approval, verbatim: «Implementa el plan.» Owner decision on rounds: «Una vez que llegue a 5 y todavía no encuentre el freno, ya quiero que avance.»
