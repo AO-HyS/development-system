@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.14.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "46004c895e54ad7ba689d9c610ee672277d6b282f508fa776d76b5f3186cb0d5",
+      "sha256": "7bf9c364700cf7e0e90a561d832eb505b657a4f141da8d2e1daeee0860a81429",
       "expectedMirrorOf": null
     },
     {
@@ -53,7 +53,7 @@
       "sourcePath": "config/2.14.1/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "bc3e6f12cb77328de619eca33fc9e7b8c12c49293ebd2f0bf4cc7acddf08a467",
+      "sha256": "607db799048eb1665688fc933e0b10c61091a16d74516ac6d77cf44cbff4bfef",
       "expectedMirrorOf": null
     },
     {
@@ -251,7 +251,7 @@
       "sourcePath": "artifacts/2.14.1/model-routing.md",
       "destination": ".codex/development-system/model-routing.md",
       "harness": "codex",
-      "sha256": "743eddf56867b7d2a1d52eaecf2b373a64ee412efc98dbd167fd8bf2ae880679",
+      "sha256": "ab62712c9ef5b54e860bcd302798d0e8ebf6a301399c38f8656dd9db7bbdf79b",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.14.1/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "32cdd65bc8b89d63e1d4e104f37e24dd79d578bc9c8f47abda4d2e82d22c4e69",
+      "sha256": "ecce9d19ce55f536a39237e0d93ea7b2dac5d26e0361ef6397f2e140b58b6516",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.14.1/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "61712b68a4afcd0fb36b4c8af0b370fc88e4b137829a7b6bce1ddf373078851a",
+      "sha256": "4653ea424cbb3c7fc9926fae13913eec5e4bcf47b9debbf69ec5c54aa8785898",
       "expectedMirrorOf": null
     },
     {
@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/2.14.1/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "bede782ce1f8b942e7f1188a7006c611a15267e1c3c28b6444bae58151f2bfcb",
+      "sha256": "4b78947c8be91508fd153a15dcf3deacb213df77f7bae73f99647047c7977226",
       "expectedMirrorOf": null
     },
     {
@@ -665,7 +665,7 @@
       "sourcePath": "artifacts/2.14.1/claude/agents/code-mapper.md",
       "destination": ".claude/agents/code-mapper.md",
       "harness": "claude",
-      "sha256": "00374343933df2ef725b3349f9b97c2720442c3ad356328cdbbf0a4ffa9a1dc8",
+      "sha256": "428d02205df2add764d8695c9875fe63c8bdc34ec85c687cfb1719648887f8b6",
       "expectedMirrorOf": null
     },
     {
@@ -809,7 +809,7 @@
       "sourcePath": "artifacts/2.14.1/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "5e69c0bb2909f3bab1914969a9acf3705c8d9f809e5d579c30d67005befc8dce",
+      "sha256": "05430a761b9415077c75a137f074de40ee59fa2e0b0bb10737518bb4dd1ee434",
       "expectedMirrorOf": null
     },
     {

@@ -14,8 +14,9 @@
 // Every read-modify-write of active-writers.json runs under one session lock directory.
 // CLI mode `mapper-bash` (code-mapper frontmatter hook): PreToolUse Bash limited to
 // read-only search (rg, grep, ls, cat, sed -n, find without actions...), read-only git
-// commands, typechecks and jevgrep (`jg "<question>" <relative root>`); since 2.14.1 several
-// of them may be joined by `;` or `&&` after one leading `cd <path>`.
+// commands and jevgrep (`jg "<question>" <relative root>`); since 2.14.1 several of them may
+// be joined by `;` or `&&` after one leading `cd <path>`, and a typecheck is no longer a mapper
+// command (it runs a script of the repository; the parent or a writer runs it).
 // Orchestration coach (parent PreToolUse only, plus secret requests anywhere): never denies;
 // it appends one sentence of context after long read streaks, repeated solo writers and
 // repeated secret requests, and logs only the kind and the count.
@@ -666,14 +667,14 @@ function imageCall() {
 // without --pre, --pre-glob or --hostname-bin; ls, wc, cat, head, tail, shasum, stat; file
 // without -C; tail without -f/-F/--follow; find without -exec/-execdir/-ok/-okdir/-delete/
 // -fprint*/-fls; sed only as `sed -n [-E] '<addresses>p' [file...]`), git show/log/diff/blame/status/
-// rev-parse/ls-files/grep, a typecheck, or jevgrep (`jg --version`, or `jg "<question>"
+// rev-parse/ls-files/grep, or jevgrep (`jg --version`, or `jg "<question>"
 // [relative root] [--max-source-bytes N] [--concurrency N] [--no-cache]`), optionally
 // piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or `sed -n`. jg subcommands (auth, doctor, skill,
 // cache) and help/version words are denied even when quoted, a double-quoted question may
 // not hold $, ` or \, and a cd before jg and the jg root must be plain relative paths (no
 // quotes, -, ..) that resolve inside the working directory with symlinks followed.
 // Filter-disabling flags, substitutions, file redirects, `||`, loops, subshells and background jobs are denied too.
-const MAPPER_HELP = 'code-mapper Bash runs only read-only search (rg or grep without --pre/--pre-glob/--hostname-bin; ls, wc, cat, head, shasum, stat; tail without -f/-F/--follow; file without -C; find without -exec/-execdir/-ok/-okdir/-delete/-fprint/-fprint0/-fprintf/-fls; sed -n [-E] with one script of line, $ or /regex/ addresses and p, e.g. sed -n \'10,40p\' file), git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), each optionally piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or sed -n (same rules). Several such commands may be joined by `;` or `&&` after at most one leading `cd <path>`, with `echo <words>` between them to label the output. No command substitution, variables, file redirects, `||`, loops, subshells or background jobs. Use Grep, Glob and Read for everything else.';
+const MAPPER_HELP = 'code-mapper Bash runs only read-only search (rg or grep without --pre/--pre-glob/--hostname-bin; ls, wc, cat, head, shasum, stat; tail without -f/-F/--follow; file without -C; find without -exec/-execdir/-ok/-okdir/-delete/-fprint/-fprint0/-fprintf/-fls; sed -n [-E] with one script of line, $ or /regex/ addresses and p, e.g. sed -n \'10,40p\' file), git show/log/diff/blame/status/rev-parse/ls-files/grep, or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), each optionally piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or sed -n (same rules). Several such commands may be joined by `;` or `&&` after at most one leading `cd <path>`, with `echo <words>` between them to label the output. No command substitution, variables, file redirects, `||`, loops, subshells or background jobs. Use Grep, Glob and Read for everything else.';
 const MAPPER_SEARCH = new Set(['rg', 'grep', 'ls', 'wc', 'cat', 'head', 'tail', 'sed', 'find', 'shasum', 'stat', 'file']);
 const MAPPER_FILTERS = new Set(['head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'tr', 'rg', 'grep', 'sed']);
 const FIND_ACTIONS = new Set(['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf', '-fls']);
@@ -927,9 +928,6 @@ function mapperCommand(text, cdPath, refuse) {
     const why = searchRefusal(first);
     if (why) refuse(why);
     ok = true;
-  } else {
-    const joined = first.join(' ');
-    ok = /^pnpm (run )?typecheck$/.test(joined) || /^(pnpm exec|npx) tsc --noEmit( (-p|--project) \S+)?( --pretty( false)?)?$/.test(joined);
   }
   if (!ok) refuse(`\`${first.slice(0, 3).join(' ')}\` is not an allowed mapper command.`);
   for (const step of rest) {

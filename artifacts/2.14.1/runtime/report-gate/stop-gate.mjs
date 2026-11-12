@@ -24,7 +24,7 @@ import { join } from "node:path";
 
 const stateMaxAgeMs = 7 * 24 * 60 * 60 * 1000;
 const reason = "Files changed this turn and your last message has no closing. Before stopping, write it in the thread, in the user's language, short and cheerful (emojis welcome, no tables, nothing the owner has to open elsewhere): 1) what was done, in plain words, and the plan in one or two sentences if there is one; 2) where the work stands against its definition of done: which parts are met and which are not; 3) «Lo que necesito de ti» / \"What I need from you\": the exact decision or action, or that nothing is needed; 4) «Lo que sigue» / \"What happens next\": the next action and who owns it. A small change can use one line per part. Do not produce an HTML report unless the owner asked for one.";
-const askReason = (/** @type {string} */ sentence) => `Your last message asks the owner for something that is already yours: «${sentence}». Ask him only for the five stops: incremental spend, destruction he did not order, new messages to real people, account-security changes, and production (a merge to main, a release, a production deploy). The rest of the task's scope is yours without asking: merging to develop once the gate says mergeReady, running review rounds, answering PR threads in the thread (nobody has to resolve them), recording what the gate asks, restarting your own services, and running every command you can run yourself. If this is one of the five stops, a login or secret only he can give, a real ambiguity only he can settle, or a pause a skill requires (in-your-own-words, a grill question), stop again with that question as the first sentence. Otherwise do it now, and close when it is done.`;
+const askReason = (/** @type {string} */ sentence) => `Your last message seems to ask the owner for something the instructions already give you: «${sentence}». Ask him only for the five stops: incremental spend, destruction he did not order, new messages to real people, account-security changes, and production (a merge to main, a release, a production deploy). The rest of the task's scope is yours without asking: merging to develop once the gate says mergeReady, running review rounds, answering PR threads in the thread (nobody has to resolve them), recording what the gate asks, restarting your own services, and running every command you can run yourself. If what you ask touches one of the five stops (any money movement or charge included), a login or secret only he can give, a real ambiguity only he can settle, or a pause a skill requires (in-your-own-words, a grill question), stop again with that question as the first sentence. Otherwise do it now, and close when it is done.`;
 /** A closing names both what the owner must do and what happens next. */
 const closingNeedPattern = /necesito de ti|need from you/iu;
 const closingNextPattern = /lo que sigue|sigue:|what happens next|next steps?:|next:/iu;
@@ -44,7 +44,15 @@ const askPatterns = [
   /(?:necesito que|te toca|por favor|tienes que|please|i need you to|you need to)(?![\p{L}\p{N}])[^.?!\n]{0,80}\b(?:corr(?:as|er|e)|ejecut(?:es|ar|a)|run)(?![\p{L}\p{N}])[^.?!\n]{0,120}(?:`[^`\n]+`|comando|command)/iu,
 ];
 /** A sentence that names one of the five stops, or a handoff only the owner can complete, is never needless. */
-const stopWordsPattern = /producci[oó]n|production|\bprod\b|\bmain\b|release|deploy|despliegue|public(?:ar|aci[oó]n)|pag(?:ar|o|os)\b|compr(?:a|ar)\b|gast(?:o|ar)\b|cobr(?:o|ar)\b|cargo|spend|billing|charge|upgrade|suscripci[oó]n|subscription|anuncios?\b|\bads?\b|borr(?:ar|o|es)\b|elimin(?:ar|o|es)\b|delete|destru|sobrescrib|overwrite|\bdrop\b|migraci[oó]n destructiva|correo|e-?mail|whatsapp|mensajes?\b|\bsms\b|broadcast|invitaci[oó]n|contrase[ñn]a|password|\b2fa\b|oauth|captcha|login|iniciar sesi[oó]n|token|secret|sudo|allow-tests|credencial|miembros?\b|\broles?\b|worktree/iu;
+const stopWordsPattern = /producci[oó]n|production|\bprod\b|\bmain\b|release|deploy|despliegue|public(?:ar|aci[oó]n)|\bpag(?:ar|o|os|a|as|ue|ues|u[eé])\b|\bcompr(?:a|ar|as|e|es|o)\b|\bgast\p{L}+|\bcobr\p{L}+|cargo|spend|billing|charge|upgrade|suscripci[oó]n|subscription|anuncios?\b|\bads?\b|\bborr\p{L}+|\belimin\p{L}+|delete|destru|sobrescrib|overwrite|\bdrop\b|migraci[oó]n destructiva|correo|e-?mail|whatsapp|mensajes?\b|\bsms\b|broadcast|invitaci[oó]n|contrase[ñn]a|password|\b2fa\b|oauth|captcha|login|iniciar sesi[oó]n|token|secret|sudo|allow-tests|credencial|miembros?\b|\broles?\b|worktree|transf(?:er|ier)|recarg|recharge|dinero|money|fondos|funds|\bMXN\b|\bUSD\b|factur|invoice|tarjeta|reembols|refund|forz|force/iu;
+/**
+ * What the instructions give the agent without asking, named. A question that asks for leave (patterns 0 to 2) is
+ * returned only when its line names one of these: no list of stop words can cover every money, deletion or message
+ * question, so a question about anything not named here is never returned.
+ */
+const ownChorePattern = /\bdevelop\b|\bPRs?\b|pull request|\bcommit|\bpush\b|\brama\b|\bbranch\b|\bronda|\bround|revisi[oó]n|\breview|\bhilos?\b|\bthreads?\b|dispensa|waiver|\barregl|\bcorrecci|\bcorrij|\bfix|hallazgos?\b|\bfindings?\b|typecheck|\blint/iu;
+/** Carrying on with the next part of the task in course; excused by a stop named anywhere in the message. */
+const carryOnPattern = /(?:siguiente|segund[oa]|tercer[oa]?|otr[oa]) (?:parte|paso|fase|etapa|pantalla|punto)|lo dem[aá]s|el resto|lo que (?:falta|sigue|queda)|\bpaso \d|(?:next|second|third|other|following) (?:part|step|phase|stage|screen|item)|the rest\b|what(?:'s| is) left|remaining (?:work|steps|items)/iu;
 /** Skills that pause on purpose and wait for the owner. */
 const pauseSkillPattern = /(?:<command-name>\/?|[$/]|"skill"\s*:\s*")(?:in-your-own-words|grill-with-docs|grilling|cross-review)\b/u;
 
@@ -57,9 +65,13 @@ function needlessAsk(text) {
     for (const pattern of askPatterns) {
       const match = pattern.exec(line);
       if (!match) continue;
+      // Asking for leave or an approval counts only for a named chore of the agent, or for carrying on with the task.
+      const leave = askPatterns.indexOf(pattern) < 3;
+      const own = ownChorePattern.test(line);
+      if (leave && !own && !carryOnPattern.test(line)) continue;
       // A stop word anywhere in the line excuses it (the stop may be named before or after the asking verb); a bare
-      // «necesito tu aprobación» is excused by a stop named anywhere in the message.
-      if (stopWordsPattern.test(pattern === askPatterns[2] ? text : line)) continue;
+      // «necesito tu aprobación» and a question about carrying on are excused by a stop named anywhere in the message.
+      if (stopWordsPattern.test(pattern === askPatterns[2] || (leave && !own) ? text : line)) continue;
       const before = line.slice(0, match.index);
       const start = Math.max(before.lastIndexOf(". "), before.lastIndexOf("? "), before.lastIndexOf("! ")) + 1;
       const rest = line.slice(match.index + match[0].length);
