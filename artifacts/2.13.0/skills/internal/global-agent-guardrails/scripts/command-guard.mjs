@@ -30,6 +30,10 @@ const readOnlyGitBranchOptions = new Set(policy.readOnlyGitBranchOptions);
 const maxDepth = Number(policy.maxSubstitutionDepth ?? 4);
 /** Subcommands of a sensitive program that only read, whatever their arguments: the leading words, written out. @type {Map<string, string[][]>} */
 const readOnlySubcommands = new Map(Object.entries(policy.readOnlySensitiveSubcommands ?? {}).map(([name, list]) => [name, /** @type {string[]} */ (list).map((entry) => entry.split(" "))]));
+/** Options of a sensitive program that write a file or a folder, also on its read-only subcommands. @type {Map<string, string[]>} */
+const sensitiveWriteOptions = new Map(Object.entries(policy.sensitiveWriteOptions ?? {}));
+/** Options of those programs that take a value, so the word after one is never an option itself. @type {Map<string, string[]>} */
+const sensitiveValueOptions = new Map(Object.entries(policy.sensitiveValueOptions ?? {}));
 /** Harness tools that touch no file, command or account (stopping the agent's own background task, reading its output). */
 const inertTools = new Set(policy.inertTools ?? []);
 const regenerableDelete = policy.regenerableDelete ?? { roots: [], temporaryRoots: false, names: [] };
@@ -332,6 +336,8 @@ function certainPipeline(pipeline) {
     return true;
   } catch { return false; }
 }
+/** Arithmetic text that names no variable and so assigns none: numbers, operators, the `@` and `*` of a whole array. */
+const ARITH_PLAIN = /^[\s0-9:+\-*/%()@]*$/u;
 /** A tracked value: a plain path, with no blank, quote, glob or expansion character that splitting or globbing could change. */
 const TRACK_VALUE = /^[A-Za-z0-9_./@%+,=-]+$/u;
 /** The same with single blanks inside (`/Applications/Google Chrome.app/…`): read only where the variable expands inside double quotes. */
@@ -505,14 +511,25 @@ class Parser {
         if (!plain || operands.some((word) => word.literal && ARITHMETIC_TESTS.has(word.value))) this.stopTracking();
         return;
       }
-      case "printf":
-        if (!args[0] || !args[0].literal || (args[0].value.startsWith("-") && args[0].value !== "--")) this.stopTracking();
+      case "printf": {
+        // Only a written-out format whose conversions print text keeps the variables: `%n` stores a count in the variable
+        // its argument names, and zsh reads the argument of a numeric conversion or of a `*` width as arithmetic, which
+        // can assign (`printf %d 'D=5'`). Plain numbers assign nothing.
+        const first = args[0]?.literal && args[0].value === "--" ? 1 : 0;
+        const format = args[first];
+        if (!format || !format.literal || (first === 0 && format.value.startsWith("-"))) { this.stopTracking(); return; }
+        const conversions = format.value.match(/%[-+ #0-9.'*$]*(?:\([^)]*\))?[\s\S]?/gu) ?? [];
+        const textOnly = conversions.every((each) => each === "%%" || /^%[-+ #0-9.']*[sbq]$/u.test(each));
+        const stores = conversions.some((each) => each !== "%%" && each.endsWith("n"));
+        if (stores || !(textOnly || args.slice(first + 1).every((word) => word.literal && /^[-+]?[0-9]+(?:\.[0-9]+)?$/u.test(word.value)))) this.stopTracking();
         return;
+      }
       case "print":
         for (const word of args) {
           const start = prefix(word);
           if (start !== "" && !start.startsWith("-")) return;
-          if (!word.literal || /^-[A-Za-z]*v/u.test(word.value)) { this.stopTracking(); return; }
+          // `print -v name` assigns, and `print -f format` formats like printf (`%n`, arithmetic arguments).
+          if (!word.literal || /^-[A-Za-z]*[vf]/u.test(word.value)) { this.stopTracking(); return; }
           if (word.value === "-" || word.value === "--") return;
         }
         return;
@@ -894,6 +911,8 @@ class Parser {
     const match = re.exec(this.s);
     if (!match) return null;
     const [, fd, op] = match;
+    // `{name}>file` opens a descriptor and stores its number in the variable.
+    if (/(?<!\$)\{[A-Za-z_][A-Za-z0-9_]*\}$/u.test(this.s.slice(Math.max(0, match.index - 256), match.index))) this.stopTracking();
     this.i = re.lastIndex;
     this.skipBlanks();
     if (op === "<<" || op === "<<-") {
@@ -1075,6 +1094,8 @@ class Parser {
       re.lastIndex = this.i + 1;
       const name = /** @type {RegExpExecArray} */ (re.exec(this.s))[0];
       this.i += 1 + name.length;
+      // zsh reads `$name[…]` as a subscript, which is arithmetic and can assign (`$s[D++]`).
+      if (this.peek() === "[") this.stopTracking();
       if (name === "HOME") word.value += HOME;
       else if (name === "TMPDIR" && TMPDIR) word.value += TMPDIR;
       else if (!this.trackedValue(word, name, this.peek(), inDouble)) markDynamic(word);
@@ -1183,6 +1204,9 @@ class Parser {
     // Subscripts and `${x:offset:length}` are arithmetic (`${a[PATH=5]}`); the text after `:-`, `+`, `#` and the rest is a word.
     const [, subscript = "", offset = ""] = /^(?:\([^)]*\))?[#!]?(?:\w+|[-@*#?$!])?(\[(?:[^\]\\]|\\.)*\])?(?::(?![-=+?])(.*))?/su.exec(content) ?? [];
     if ((target && CAT_LOOKUP_NAMES.test(target[1])) || assignsLookup(subscript) || assignsLookup(offset)) catTouched = true;
+    // That arithmetic can assign any variable, in its own text or through a name it reads (`${s:D++}`, `${a[D=1]}`,
+    // `${s:$n}`): only plain numbers keep what the parser tracks. A zsh modifier (`${D:h}`) reads as an offset in bash.
+    if (!ARITH_PLAIN.test(subscript.slice(1, -1)) || !ARITH_PLAIN.test(offset)) this.stopTracking();
     word.subs.push(...scratch.subs);
     if (content === "HOME") word.value += HOME;
     else if (content === "TMPDIR" && TMPDIR) word.value += TMPDIR;
@@ -1621,6 +1645,14 @@ function classCloses(chars) {
 
 /** Set per command: dotglob, GLOBIGNORE or zsh GLOB_DOTS lets a pattern character match a leading dot. */
 let dotGlob = false;
+/**
+ * Set per command: its text names a `GIT_` variable or holds a construct that can put one in the environment without
+ * writing its name (`export`, `declare`, `typeset`, `env`, `sudo`, `eval`, `source`, `.`, `allexport`, `set -a`).
+ */
+let gitRedirected = false;
+const GIT_REDIRECTING_TEXT = /GIT_|(?:^|[\s;&|(){}`/])(?:export|declare|typeset|env|eval|source|sudo|doas)(?:\s|$)|(?:^|[;&|(){}`\n]|\b(?:then|do|else|elif|command|builtin|time)\s)\s*\.\s|(?:^|[\s;&|(){}`])set\s+(?:[-+][A-Za-z]+\s+)*[-+][A-Za-z]*a/u;
+/** Environment variables that choose the repository, its objects, refs or configuration. */
+const GIT_REPOSITORY_ENV = /^GIT_(?:DIR|WORK_TREE|COMMON_DIR|NAMESPACE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|INDEX_FILE|CEILING_DIRECTORIES|DISCOVERY_ACROSS_FILESYSTEM|SHALLOW_FILE|GRAFT_FILE|REPLACE_REF_BASE|NO_REPLACE_OBJECTS|CONFIG.*)$/u;
 const ANY_TEXT = "\u0002";
 
 /**
@@ -1789,7 +1821,7 @@ function checkTarget(word, kind, ctx, effect) {
     ?? (loose === null ? null : protectedGlob(ctx.cwd === null && !isAbsolute(loose) ? null : resolve(ctx.cwd ?? ctx.scope, loose), loose, kind, targets));
   if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit}`);
   // find -execdir runs in each match's directory, where a relative name can be a link to any protected file.
-  if (docsGuard && ctx.execdir && !isAbsolute(text)) throw docsBlock(`${text} (relative to an unknown -execdir directory)`);
+  if (ctx.execdir && !isAbsolute(text)) throw blindBlock(`${text} (relative to an unknown -execdir directory)`);
   // `link/../notes.txt` opens the file next to the link's target, which can be (or link to) a docs file.
   const docs = docsTarget(word, absolute, kind, ctx)
     ?? (physical !== null && docsName(basename(physical)) ? `${text} (${physical})` : null);
@@ -1811,6 +1843,8 @@ const docsName = (name) => docsNames.some((/** @type {RegExp} */ pattern) => pat
  * code, and the installed instructions are protected write targets. With an empty list every docs check below is off.
  */
 const docsGuard = docsNames.length > 0;
+/** @param {string} shown */
+const blindBlock = (shown) => new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${shown}`);
 /** @param {string} shown */
 const docsBlock = (shown) => new Block("docs-config-write", `Editing, renaming or deleting a file the policy lists in docsConfigNames is blocked. Target: ${shown}`);
 /** Each protected name as glob tokens: its characters, case-folded, and `*` for any text. */
@@ -2261,6 +2295,18 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
     }
   };
   const shownWord = (/** @type {Word} */ each) => each.value.replaceAll(UNKNOWN, "$…");
+  /**
+   * Contents the guard cannot read, written below this target: blocked when guard configuration lies below the folder
+   * the target names. A target that starts with text the guard cannot read names no folder, and the write passes like
+   * any other the guard cannot read. @param {string} shown
+   */
+  const blindBelow = (shown) => {
+    // `~/.codex/$name` (a copy that keeps its source's name) is read as `~/.codex`: the folder written out in full.
+    const cut = word.value.indexOf(UNKNOWN);
+    const known = cut < 0 ? text : word.value.slice(0, word.value.lastIndexOf("/", cut) + 1);
+    if (known === "" || (ctx.cwd === null && !isAbsolute(known))) return;
+    guardBelow(resolve(ctx.cwd ?? ctx.scope, known), shown);
+  };
   const covered = (/** @type {string[]} */ files, /** @type {boolean} */ operands) => operands && files.every((file) => grantedDocsWrite(file));
   const targetKnown = grantable(word, text, ctx);
   if (effect.remove) {
@@ -2292,7 +2338,11 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
   if (effect.source) {
     const roots = operandPaths(effect.source, ctx);
     if (roots === null) {
-      if (!ctx.codeString) block(`${shownWord(effect.source)} (a source tree the guard cannot read)`);
+      if (!ctx.codeString) {
+        block(`${shownWord(effect.source)} (a source tree the guard cannot read)`);
+        // The copy can carry any name: it is blocked where a protected file lies below the destination.
+        blindBelow(`${shownWord(effect.source)}, a source tree the guard cannot read`);
+      }
       return;
     }
     const sourceText = effect.source.value.replaceAll(UNKNOWN, "x");
@@ -2301,7 +2351,10 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
       const all = [];
       const found = docsInside(root, effect.follow, null, all);
       if (found !== null) for (const rel of all) guard(join(absolute, rel), `${join(root, rel)} -> ${join(absolute, rel)}`);
-      if (found === null) block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or a broken or unreadable link" : ""})`);
+      if (found === null) {
+        block(`${root} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or a broken or unreadable link" : ""})`);
+        blindBelow(`${root}, a source tree of more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels${effect.follow ? ", or with a broken or unreadable link" : ""}`);
+      }
       else if (found.length > 0 && !covered(found.map((rel) => join(absolute, rel)), targetKnown && grantable(effect.source, sourceText, ctx))) {
         block(`${join(root, found[0])} -> ${join(absolute, found[0])}`);
       }
@@ -3526,12 +3579,14 @@ function findRoots(rest) {
  * point, option or tree the guard cannot read, so the caller fails closed.
  * @param {Word[]} rest @param {Context} ctx @param {number} action
  * `selected` tells whether the tests before the action pass a path.
- * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null, selected: (file: string) => boolean }}
+ * `blind` names what keeps the guard from bounding the selection at all (options it cannot read, an unknown starting
+ * point, a tree past the walk bounds read through links): protected files anywhere can then be among the matches.
+ * @returns {{ docs: { file: string, root: Word }[], guard: string[], unknown: string | null, blind: string | null, selected: (file: string) => boolean }}
  */
 function findSelection(rest, ctx, action) {
-  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null), selected: (/** @type {string} */ _file) => true };
+  const result = { docs: /** @type {{ file: string, root: Word }[]} */ ([]), guard: /** @type {string[]} */ ([]), unknown: /** @type {string | null} */ (null), blind: /** @type {string | null} */ (null), selected: (/** @type {string} */ _file) => true };
   const parsed = findRoots(rest);
-  if (parsed === null) { result.unknown = "find options"; return result; }
+  if (parsed === null) { result.unknown = result.blind = "find options"; return result; }
   result.selected = (file) => selected(file);
   const { roots, start, follow } = parsed;
   /** @type {{ glob: string | GlobSegment, fold: boolean }[]} */
@@ -3592,7 +3647,7 @@ function findSelection(rest, ctx, action) {
   };
   for (const root of roots) {
     const paths = operandPaths(root, ctx, true);
-    if (paths === null) { if (!ctx.codeString) result.unknown ??= root.value.replaceAll(UNKNOWN, "$…"); continue; }
+    if (paths === null) { if (!ctx.codeString) { result.unknown ??= root.value.replaceAll(UNKNOWN, "$…"); result.blind ??= result.unknown; } continue; }
     for (const path of paths) {
       // Everything in a protected directory is protected, so a starting point in one is reached whatever the tests.
       if (targets.some((target) => target.directory && protectedMatch(path, "write", [target]))) result.guard.push(path);
@@ -3611,10 +3666,7 @@ function findSelection(rest, ctx, action) {
       const links = [];
       // Following links, any entry can be guard configuration reached through a linked directory, so every one is visited.
       const all = follow ? /** @type {string[]} */ ([]) : null;
-      const found = docsInside(path, follow, links, all);
-      if (found === null) { result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`; continue; }
-      for (const rel of new Set([...found, ...links, ...(all ?? [])])) visit(join(path, rel), root);
-      // Guard files below a starting point are visited by their own names.
+      // Guard files below a starting point are visited by their own names, also when the tree is too large to walk.
       for (const target of targets) {
         if (target.directory) continue;
         for (const protectedPath of target.forms) {
@@ -3623,6 +3675,14 @@ function findSelection(rest, ctx, action) {
           if (forms(path).some((candidate) => protectedPath.startsWith(`${candidate}${sep}`)) && reached) result.guard.push(protectedPath);
         }
       }
+      const found = docsInside(path, follow, links, all);
+      if (found === null) {
+        result.unknown ??= `${path} (more than ${DOCS_WALK_ENTRIES} entries or ${DOCS_WALK_DEPTH} levels)`;
+        // Read through links, an unwalked tree can lead to any protected file; without them its own paths were just checked.
+        if (follow) result.blind ??= result.unknown;
+        continue;
+      }
+      for (const rel of new Set([...found, ...links, ...(all ?? [])])) visit(join(path, rel), root);
     }
   }
   return result;
@@ -3638,12 +3698,38 @@ function checkFindDelete(rest, ctx) {
   for (const action of findActionIndexes(rest, "-delete")) checkFindDeleteAt(rest, ctx, action);
 }
 
+/**
+ * Existing protected files that the tests of a `find` action pass, wherever they are: the files the policy names and the
+ * entries of its protected directories (one stand-in for a directory the guard cannot list). For a selection the guard
+ * cannot bound. @param {(file: string) => boolean} selected @param {Context} ctx @returns {string[]}
+ */
+function protectedSelected(selected, ctx) {
+  /** @type {string[]} */
+  const reached = [];
+  for (const target of [...protectedTargets, ...projectTargets(ctx.scope)]) {
+    for (const path of target.forms) {
+      if (reached.length > FIND_FILLS) return reached;
+      if (selected(path)) reached.push(path);
+      if (!target.directory) continue;
+      /** @type {string[]} */
+      const all = [];
+      if (docsInside(path, false, null, all) === null) reached.push(join(path, "unlisted"));
+      else reached.push(...all.map((rel) => join(path, rel)).filter((file) => selected(file)).slice(0, FIND_FILLS));
+    }
+  }
+  return reached;
+}
+
 /** @param {Word[]} rest @param {Context} ctx @param {number} action */
 function checkFindDeleteAt(rest, ctx, action) {
-  const { docs, guard, unknown } = findSelection(rest, ctx, action);
+  const { docs, guard, unknown, blind, selected } = findSelection(rest, ctx, action);
   if (guard.length > 0) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${guard[0]} (find -delete)`);
   const block = (/** @type {string} */ shown) => { if (docsGuard) throw docsBlock(`${shown} (find -delete)`); };
   if (unknown !== null) block(unknown);
+  if (blind !== null) {
+    const [reached] = protectedSelected(selected, ctx);
+    if (reached) throw blindBlock(`${reached} (find -delete over ${blind}, which the guard cannot read)`);
+  }
   const hit = docs.find(({ file, root }) => !(grantable(root, root.value, ctx) && grantedDocsWrite(file)));
   if (hit) block(hit.file);
 }
@@ -5170,7 +5256,9 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
       if (nested.some((word) => word.value.includes("{}"))) {
         const selection = findSelection(rest, ctx, i);
         const files = [...new Set([...selection.guard, ...selection.docs.map(({ file }) => file)])];
-        const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : [])];
+        const fills = [UNKNOWN, ...files.slice(0, FIND_FILLS), ...(selection.unknown !== null || files.length > FIND_FILLS ? ["AGENTS.md"] : []),
+          // A selection the guard cannot bound stands for every protected file its tests pass.
+          ...(selection.blind !== null ? protectedSelected(selection.selected, ctx).slice(0, FIND_FILLS) : [])];
         variants = fills.map((fill) => nested.map((word) => word.value.includes("{}")
           ? literalWord(word.value.replaceAll("{}", dir && fill !== UNKNOWN ? `./${basename(fill)}` : fill)) : word));
         // A word that adds text to `{}` (`{}.json`, `{}/hooks.json`) builds a new path from each file find visits: every file
@@ -5277,6 +5365,11 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   }
 
   if (name === "gh") checkMergeGate(rest);
+  // What a sensitive program writes through an option is a write target like any other (a protected file, a test file).
+  for (const operand of sensitiveWriteOperands(name, rest)) {
+    checkTarget(operand, "write", ctx);
+    checkTarget(operand, "tree", ctx, { unknownContents: true });
+  }
 
   if (viaXargs && isSensitive(name)) {
     // Appended (or replaced) words from stdin are only operands when they follow a literal -- separator.
@@ -5326,7 +5419,45 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
 function readOnlySensitive(name, rest) {
   const listed = readOnlySubcommands.get(name);
   if (!listed) return false;
-  return listed.some((form) => form.every((part, k) => rest[k]?.literal && !rest[k].glob && rest[k].value === part));
+  if (!listed.some((form) => form.every((part, k) => rest[k]?.literal && !rest[k].glob && rest[k].value === part))) return false;
+  const writes = sensitiveWriteOptions.get(name);
+  if (!writes) return true;
+  // The program has options that write a file or a folder (`pulumi preview --save-plan plan.json`). One written out makes
+  // the command a write; a word the guard cannot read passes only where it cannot be such an option: after a literal
+  // `--`, as the value of an option the policy lists as taking one (`-n "$ns"`, `--stack="$s"`), or starting with
+  // written text that is not a dash.
+  const values = sensitiveValueOptions.get(name) ?? [];
+  const end = rest.findIndex((word) => word.literal && word.value === "--");
+  return rest.every((word, k) => {
+    if (end >= 0 && k > end) return true;
+    if (word.literal) return !writes.some((option) => word.value === option || word.value.startsWith(`${option}=`));
+    if (word.glob) return false;
+    if (k > 0 && rest[k - 1].literal && values.includes(rest[k - 1].value)) return true;
+    const start = word.value.slice(0, Math.max(0, word.value.indexOf(UNKNOWN)));
+    if (start.startsWith("-")) return start.endsWith("=") && values.includes(start.slice(0, -1));
+    return start !== "";
+  });
+}
+
+/**
+ * The files and folders a sensitive program writes through the options the policy lists for it (`--save-plan plan.json`,
+ * `--output-directory=dump`), as words. @param {string} name @param {Word[]} rest @returns {Word[]}
+ */
+function sensitiveWriteOperands(name, rest) {
+  const writes = sensitiveWriteOptions.get(name);
+  if (!writes) return [];
+  /** @type {Word[]} */
+  const operands = [];
+  for (let k = 0; k < rest.length; k++) {
+    const { value } = rest[k];
+    if (value === "--") break;
+    const option = writes.find((each) => value === each || value.startsWith(`${each}=`));
+    if (!option) continue;
+    const operand = value === option ? rest[k + 1] : { ...rest[k], value: value.slice(option.length + 1), raw: value.slice(option.length + 1) };
+    // `--tracing=file:./trace` names its file after a scheme.
+    if (operand) operands.push(operand.value.startsWith("file:") ? { ...operand, value: operand.value.slice(5), raw: operand.value.slice(5) } : operand);
+  }
+  return operands;
 }
 
 const GIT_PROGRAM = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"].map((each) => join(each, "git")).find((candidate) => existsSync(candidate)) ?? null;
@@ -5350,7 +5481,9 @@ const REGENERABLE_ROOTS = [...new Set([
   ...(regenerableDelete.temporaryRoots ? TEMPORARY_ROOTS : []),
 ].flatMap((root) => [root, realpathOrNull(root) ?? root]))];
 const REGENERABLE_NAMES = new Set(regenerableDelete.names ?? []);
-const REGENERABLE_SCAN_ENTRIES = 400;
+const REGENERABLE_SCAN_ENTRIES = 200000;
+const REGENERABLE_SCAN_DEPTH = 32;
+const REGENERABLE_SCAN_MS = 1500;
 
 /** @param {string} absolute */
 function belowRegenerableRoot(absolute) {
@@ -5366,19 +5499,25 @@ function workTreeOf(absolute) {
 }
 
 /**
- * Whether a folder holds a repository at its top two levels, or cannot be read that far. A repository inside a scratch
- * folder may carry work that exists nowhere else. @param {string} absolute
+ * Whether a folder holds a repository at any depth (a `.git` entry, or a bare repository's `HEAD`, `objects` and `refs`),
+ * or cannot be read in full: a folder it cannot list, more than REGENERABLE_SCAN_ENTRIES entries or
+ * REGENERABLE_SCAN_DEPTH levels, or a walk longer than REGENERABLE_SCAN_MS. A repository inside a scratch folder may carry work that exists nowhere else, so a tree
+ * the guard did not read to the end is never taken as free of one. Links are not followed, as `rm -r` does not.
+ * @param {string} absolute
  */
 function holdsRepository(absolute) {
   let seen = 0;
+  const until = Math.min(deadline, Date.now() + REGENERABLE_SCAN_MS);
   /** @param {string} directory @param {number} depth @returns {boolean} */
   const scan = (directory, depth) => {
+    if (depth > REGENERABLE_SCAN_DEPTH || Date.now() > until) return true;
     let entries;
     try { entries = readdirSync(directory, { withFileTypes: true }); } catch { return true; }
+    const names = new Set(entries.map((entry) => entry.name));
+    if (names.has(".git") || (names.has("HEAD") && names.has("objects") && names.has("refs"))) return true;
     for (const entry of entries) {
       if (++seen > REGENERABLE_SCAN_ENTRIES) return true;
-      if (entry.name === ".git") return true;
-      if (depth < 2 && entry.isDirectory() && scan(join(directory, entry.name), depth + 1)) return true;
+      if (entry.isDirectory() && scan(join(directory, entry.name), depth + 1)) return true;
     }
     return false;
   };
@@ -5449,6 +5588,9 @@ function ownRegenerableDelete(rest, ctx) {
  * @param {Word[]} rest @param {Context} ctx
  */
 function mergedBranchDelete(rest, ctx) {
+  // The check below asks the repository of the command's directory. Anything that can point git elsewhere (GIT_DIR,
+  // GIT_WORK_TREE, GIT_NAMESPACE and the rest, in the environment or set anywhere in this command) ends the exception.
+  if (gitRedirected || Object.keys(process.env).some((key) => GIT_REPOSITORY_ENV.test(key))) return false;
   if (rest.some((word) => !word.literal || word.glob)) return false;
   const { subIndex } = parseGit(rest);
   let directory = ctx.cwd;
@@ -5663,6 +5805,8 @@ function evaluateCommandNow(command, options) {
   catRedefined = false;
   backupEnv = { values: [], unknown: false, options: new Set(), git: new Map() };
   dotGlob = /dotglob|globdots|globignore/iu.test(command.replaceAll("_", ""));
+  const unquoted = command.replace(/["'\\]/gu, "");
+  gitRedirected = GIT_REDIRECTING_TEXT.test(unquoted) || /allexport/iu.test(unquoted.replaceAll("_", ""));
   try {
     for (const rule of rawRules) if (rule.regex.test(command)) throw new Block(rule.id, rule.reason);
     const list = parseScript(command, 0);

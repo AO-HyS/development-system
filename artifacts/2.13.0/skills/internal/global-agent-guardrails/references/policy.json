@@ -123,10 +123,18 @@
     "vercel": ["ls", "list", "inspect", "logs", "whoami", "env ls", "domains ls", "project ls", "teams ls", "alias ls"],
     "kubectl": ["get", "describe", "logs", "top", "explain", "version", "api-resources", "api-versions", "cluster-info", "config get-contexts", "config current-context", "auth can-i"],
     "wrangler": ["whoami", "deployments list", "deployments status", "versions list", "versions view", "tail", "kv namespace list", "kv key list", "r2 bucket list", "d1 list", "d1 info", "pages project list", "pages deployment list"],
-    "terraform": ["show", "validate", "version", "providers", "graph", "state list", "state show"],
-    "tofu": ["show", "validate", "version", "providers", "graph", "state list", "state show"],
+    "terraform": ["show", "validate", "version", "graph", "state list", "state show"],
+    "tofu": ["show", "validate", "version", "graph", "state list", "state show"],
     "pulumi": ["preview", "stack ls", "whoami", "about", "version"],
     "diskutil": ["list", "info", "apfs list"]
+  },
+  "sensitiveWriteOptions": {
+    "pulumi": ["--save-plan", "--tracing", "--profiling"],
+    "kubectl": ["--output-directory", "--cache-dir", "--log-file", "--log-dir"]
+  },
+  "sensitiveValueOptions": {
+    "pulumi": ["-s", "--stack", "-C", "--cwd", "--config-file", "-t", "--target", "--color", "-p", "--parallel", "-m", "--message"],
+    "kubectl": ["-n", "--namespace", "-l", "--selector", "-o", "--output", "-c", "--container", "--context", "--cluster", "--user", "--kubeconfig", "--field-selector", "--since", "--since-time", "--tail", "--sort-by", "--request-timeout"]
   },
   "inertTools": ["TaskStop", "KillShell", "KillBash", "TaskOutput", "BashOutput"],
   "regenerableDelete": {
