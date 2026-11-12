@@ -10,15 +10,18 @@
 // Contract (plan 1.3), first match wins:
 //   valid review of a SHA   a Codex app review with that commit_id and a real body (`Codex Review|Reviewed commit`), or a
 //                           Codex app receipt or summary comment on this PR citing that SHA as completed
-//   blocking finding        an unresolved Codex thread (always), or a resolved one without a human (User) reply
+//   blocking finding        a Codex thread without a valid answer (codex-threads.mjs, 2.13.0): the coordinator's reply
+//                           cites a later commit of the PR that touches the thread's file, or rejects it with a
+//                           reason; nobody resolves threads. A rejected P0/P1, unprioritized or critical-domain thread
+//                           also needs a Sol round recorded after the rejection
 //   request state           answered (valid review of its SHA) > failed-terminal (an app comment after the request names a
 //                           terminal cause: usage limit, quota, not enabled, no access, couldn't/unable to review; and it
 //                           cites the request's SHA or is the first app reply before the next request) > running (summary
 //                           shows its SHA running) > unknown (older than 6 h) > requested; `pending` = no request and no
 //                           review for the head; unknown is never approval, never returns budget, never retries itself
 //   budget                  per PR: every "@codex review" comment by a human (User) account counts, marked or typed by
-//                           hand, retries included; with 2 published nothing is posted and siguiente is "decide el
-//                           dueño" unless satisfied
+//                           hand, retries included; with 2 published nothing more is posted. Toward develop a spent
+//                           budget is covered by Sol (a clean chained round at the head, its coverage, or the advance)
 //   budget-spent            2 published, the last answered by a valid review, no blocking finding
 //   coverage (Codex, Sol)   one routine walks the first-parent chain from the current head back to the reviewed head
 //                           (at most 20 first-parent commits; any API error fails closed). A clean base merge is covered:
@@ -28,22 +31,26 @@
 //                           of that review (Codex: only threads the review of that head opened) and touches only those
 //                           findings' paths, and a `fix-only` coverage record runs from the reviewed head to the current
 //                           head; out-of-scope or missing -> uncovered. Only clean base merges -> covered, no record.
-//                           Codex budget-spent coverage also accepts (2.9.0) a non-voided none/non-blocking Sol round
-//                           recorded at exactly the current head that is full, or fix-diff with `from` an
-//                           ancestor-or-equal of the Codex-reviewed head
 //   Sol                     records invalid or contradictory -> invalid; an exemption counts only for its exact head;
 //                           approval needs the last round's result to be none or non-blocking, on the head or covered
-//   lineage (2.9.0)         Sol rounds count per branch lineage (review-state.mjs); siguiente names the reservation,
-//                           the owner approval past the budget, or the redesign a fix-induced blocker needs
+//   Sol (2.13.0)            rounds run without approval, five per branch lineage and two more for a critical fix
+//                           (review-policy.mjs); rounds chain by complete intervals; after the last clean round only
+//                           prose docs, clean base merges and recorded cited fixes stay covered; at the cap an
+//                           `auto-advance` row lets the PR into develop with every later commit a cited fix
 //   routing (2.10.0)        the first unmet gate picks siguiente through review-gate-machine.mjs (XState); --diagram draws it
-//   mergeReady              Codex ok (no-findings, or budget-spent and covered) AND no blocking finding AND Sol ok AND
-//                           develop evidence
+//   mergeReady              Codex ok AND no blocking finding AND Sol ok AND develop evidence (asked first before the
+//                           first Sol round, then again for the final head)
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { ACCEPTED_EVIDENCE, evaluateEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
-import { readLineage, readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
-import { OWNER_DECIDES, gateNextAction, gateStep } from "./review-gate-machine.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
+import { readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
+import { lineageState, lineageSummary, resolveLineage } from "./review-state.mjs";
+import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
+import { codexThreads, roundsReservedAt, threadStates } from "./codex-threads.mjs";
+import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
+import { dispositionsOf } from "./review-advance.mjs";
+import { lineageNext, solNextStep } from "./review-next.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -60,8 +67,6 @@ const RUNNING = /running|progress|queued/i;
 
 /** @param {any} user REST user object */
 const isCodexApp = (user) => user?.type === "Bot" && user?.login === `${APP_LOGIN}[bot]`;
-/** @param {any} author GraphQL actor */
-const isCodexActor = (author) => author?.__typename === "Bot" && author?.login === APP_LOGIN;
 /** A cited SHA (7 to 40 hex) names this full SHA. @param {string} sha @param {string} cited */
 const cites = (sha, cited) => cited.length >= 7 && sha.startsWith(cited);
 
@@ -82,43 +87,15 @@ function gh(args) {
 /** @param {string} path @returns {any[]} */
 const ghList = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
 
-const THREADS_QUERY = `query($owner:String!,$repo:String!,$number:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{isResolved isOutdated path comments(first:100){pageInfo{hasNextPage}nodes{databaseId author{__typename login}body originalCommit{oid}pullRequestReview{commit{oid}}}}}}}}}`;
-
 /**
- * Every review thread whose first comment is from the Codex app, with `origin`: the commit its review read (the
- * review's commit, else the comment's original commit), or "" when GitHub does not say. Fails closed if a thread's
- * comments are truncated.
- */
-function codexThreads(/** @type {string} */ owner, /** @type {string} */ repo, /** @type {number} */ number) {
-  /** @type {any[]} */
-  const threads = [];
-  let after = null;
-  for (;;) {
-    const args = ["api", "graphql", "-f", `query=${THREADS_QUERY}`, "-F", `owner=${owner}`, "-F", `repo=${repo}`, "-F", `number=${number}`];
-    if (after) args.push("-f", `after=${after}`);
-    const page = JSON.parse(gh(args)).data.repository.pullRequest.reviewThreads;
-    for (const thread of page.nodes) {
-      if (thread.comments.pageInfo.hasNextPage) throw new Error(`A review thread on ${thread.path} has more than 100 comments; refusing to report a partial state`);
-      const first = thread.comments.nodes[0];
-      if (!isCodexActor(first?.author)) continue;
-      const origin = String(first.pullRequestReview?.commit?.oid ?? first.originalCommit?.oid ?? "");
-      threads.push({ ...thread, origin: /^[0-9a-f]{40}$/.test(origin) ? origin : "" });
-    }
-    if (!page.pageInfo.hasNextPage) return threads;
-    after = page.pageInfo.endCursor;
-  }
-}
-
-/** @param {any} file */
-const changedFile = (file) => ({ filename: String(file.filename), status: String(file.status), ...(file.previous_filename ? { previous_filename: String(file.previous_filename) } : {}) });
-
-/**
- * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely.
+ * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely or the head
+ * does not descend from that SHA (after a force-push the comparison hides what the new history dropped).
  * @param {string} base @param {string} from @param {string} to
  */
-function changedSince(base, from, to) {
+export function changedSince(base, from, to) {
   try {
     const compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`]));
+    if (compare.status !== "ahead" && compare.status !== "identical") return null;
     const files = Array.isArray(compare.files) ? compare.files : [];
     return files.length >= 300 ? null : files.map(changedFile);
   } catch { return null; }
@@ -153,6 +130,7 @@ function summaryStates(appComments) {
 
 /**
  * @typedef {{id: string, paths: string[]}} Finding
+ * @typedef {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} CodexState
  * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean}} CoveredCommit
  * @typedef {{from: string, to: string, covered: boolean, error: boolean, filtersPass: boolean, reason: string, commits: CoveredCommit[]}} Coverage
  */
@@ -264,48 +242,17 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
 }
 
 /**
- * B4 (a): the commits after Codex's last reviewed head are covered by a non-voided none/non-blocking Sol round
- * recorded at exactly the current head that is full, or fix-diff starting (`from`) at or before the Codex-reviewed
- * head. Null when no such round exists (the regular coverage rule then applies).
- * @param {{base: string, codexHead: string, head: string, rounds: import("./review-records.mjs").RoundRecord[]}} input @returns {Coverage | null}
+ * Where Codex's review stands for the current head. A request Codex has not answered yet keeps the review in flight
+ * whichever head it names: a hand-typed request names none until its review arrives, and one asked for an earlier head
+ * may still report. So two published requests count as spent only when none of them is still waiting.
+ * @param {{headReviewed: boolean, headRequest?: {state: CodexState}, headRunning: boolean, published: {state: CodexState}[]}} input
+ * @returns {CodexState}
  */
-function solCoversCodex({ base, codexHead, head, rounds }) {
-  const round = rounds.filter((candidate) => candidate.head === head).at(-1);
-  if (!round || (round.result !== "none" && round.result !== "non-blocking") || codexHead === head) return null;
-  const covered = (/** @type {string} */ reason) => ({ from: codexHead, to: head, covered: true, error: false, filtersPass: true, reason, commits: [] });
-  if (round.scope === "full") return covered(`Sol round ${round.round} (full, ${round.result}) read the current head`);
-  if (!round.from) return null;
-  try {
-    if (ancestorOrEqual(base, round.from, codexHead)) return covered(`Sol round ${round.round} (fix-diff from ${round.from.slice(0, 12)}, ${round.result}) read every commit after Codex's ${codexHead.slice(0, 12)}`);
-  } catch { return { from: codexHead, to: head, covered: false, error: true, filtersPass: false, reason: `GitHub could not compare ${round.from.slice(0, 12)} with ${codexHead.slice(0, 12)}`, commits: [] }; }
-  return null;
-}
-
-/**
- * The next Sol action for a PR whose Sol state is missing or blocking, from its branch lineage.
- * @param {{lineage: ReturnType<typeof readLineage> | null, lineageError: string, prKey: string, head: string, number: number}} input
- */
-function solNextStep({ lineage, lineageError, prKey, head, number }) {
-  /** @param {string} scope */
-  const record = (scope) => `development-system review record --pr ${prKey} --reviewer sol --head ${head} --scope ${scope} --result <blocking|non-blocking|none> --thread <hilo>${scope === "fix-diff" ? " [--from <head de la ronda anterior>] --finding <id>:<ruta>@<prior|fix-induced|new>[/<crítico>]" : ""}`;
-  /** @param {string} scope @param {string} [extra] */
-  const reserve = (scope, extra = "") => `development-system review reserve --pr ${prKey} --scope ${scope} --request-key <clave>${extra} (un delegate_task con "Review kind: pr" la reserva solo)`;
-  if (!lineage) return `no pude leer el linaje de la rama (${lineageError}): vuelve a correr pr-review-status; si persiste, decide el dueño`;
-  const mine = lineage.pending.find((reservation) => reservation.pr === prKey.toLowerCase());
-  if (mine) return `la ranura ${mine.slot} (${mine.scope}) del linaje ya está reservada para este PR: cuando Sol termine, regístrala con ${record(mine.scope)}`;
-  const other = lineage.pending[0];
-  if (other) return `la ranura ${other.slot} del linaje está reservada para ${other.pr} sin ronda registrada: regístrala allí o, con las palabras del dueño, libérala (development-system review release --pr ${other.pr} --reservation-id ${other.id} --reason <motivo> --quote "<palabras del dueño con #n>")`;
-  const slot = lineage.nextSlot;
-  if (slot === 1) return `reserva y pide la revisión full de Sol 6.1 High del head ${head.slice(0, 12)}: ${reserve("full")}; regístrala con ${record("full")}`;
-  const last = lineage.lastRound;
-  if (!last || last.result !== "blocking") return `${OWNER_DECIDES}: la última ronda de Sol del linaje (${last ? `${last.pr}, ${last.result}` : "ninguna registrada"}) no es bloqueante y el freno no admite otra ronda para este PR`;
-  const approve = `development-system review approve --pr ${prKey} --slot ${slot} --scope fix-diff --quote "<palabras del dueño>"`;
-  // An owner approval binds the PR it was recorded for; another lineage PR's approval does not apply here.
-  const approval = lineage.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr === prKey.toLowerCase());
-  if (last.fixInduced) return `la ronda de Sol de ${last.pr} (${last.slot ? `ranura ${last.slot}` : `ronda local ${last.round}`}) tiene un hallazgo bloqueante fix-induced: rediseña la corrección antes de otra ronda y resérvala con --redesign <ruta>#<sha256 de sus bytes> (línea "Redesign:" del paquete)${slot > BUDGET && !approval ? `; la ranura ${slot} además necesita la aprobación del dueño: ${approve}` : ""}`;
-  if (slot === 2) return `corrige los hallazgos bloqueantes de Sol y pide la ronda fix-diff: ${reserve("fix-diff")}; regístrala con ${record("fix-diff")}`;
-  if (approval) return `el dueño aprobó la ranura ${slot} (${approval.scope}): ${reserve(approval.scope, ` --approval-id ${approval.id}`)}; regístrala con ${record(approval.scope)}`;
-  return `${OWNER_DECIDES}: el presupuesto de Sol del linaje (${lineage.slotsUsed}/${lineage.budget}) está agotado; si aprueba otra ronda, regístrala con ${approve}`;
+export function codexHeadState({ headReviewed, headRequest, headRunning, published }) {
+  if (headReviewed) return "answered";
+  const own = headRequest ? headRequest.state : headRunning ? "running" : "pending";
+  if (own === "requested" || own === "running") return own;
+  return published.filter((entry) => entry.state === "requested" || entry.state === "running").at(-1)?.state ?? own;
 }
 
 /**
@@ -317,21 +264,40 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const base = `repos/${owner}/${repo}`;
   const pull = JSON.parse(gh(["api", `${base}/pulls/${number}`]));
   const head = String(pull.head.sha);
-  const threads = codexThreads(owner, repo, number);
+  const threads = codexThreads(gh, owner, repo, number);
   /** @type {(Finding & {origin: string})[]} */
   const codexFindings = threads.map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)], origin: String(thread.origin) }));
-  const open = threads.filter((thread) => !thread.isResolved).map((thread) => ({
-    id: `codex:${thread.comments.nodes[0].databaseId}`,
-    path: thread.path,
-    outdated: thread.isOutdated,
-    finding: String(thread.comments.nodes[0].body).replace(/<[^>]+>|!\[[^\]]*\]\([^)]*\)|\*\*/g, "").trim().split("\n")[0].slice(0, 160),
-  }));
-  // Clicking Resolve is not a fix: a resolved Codex thread with no human reply still counts as a finding.
-  // Only a reply from a human account (GraphQL __typename "User") answers a finding; bots and
-  // deleted or unknown authors do not.
-  const silentlyResolved = threads.filter((thread) => thread.isResolved && !thread.comments.nodes.slice(1).some((/** @type {any} */ comment) => comment.author?.__typename === "User"));
-  const resolvedWithoutReply = silentlyResolved.length;
-  const blockingIds = [...open.map((finding) => finding.id), ...silentlyResolved.map((thread) => `codex:${thread.comments.nodes[0].databaseId}`)];
+  // Sol: rounds, exemption and coverage records written by the coordinator; invalid or contradictory records fail closed.
+  /** @type {import("./review-records.mjs").ReviewRecord[]} */
+  let records = [];
+  let recordsError = "";
+  try { records = readReviewRecords(home, prKey); } catch (error) { recordsError = error instanceof Error ? error.message : String(error); }
+  const rounds = /** @type {import("./review-records.mjs").RoundRecord[]} */ (records.filter((record) => record.type === "round"));
+  // Answered, not resolved (2.13.0): a reply cites a later commit of this PR touching the thread's file, or rejects it.
+  /** @type {string[] | null} */
+  let prCommits = null;
+  const commitInfo = (/** @type {string} */ cited) => {
+    prCommits ??= ghList(`${base}/pulls/${number}/commits?per_page=100`).map((commit) => String(commit.sha));
+    const sha = prCommits.find((candidate) => candidate.startsWith(cited));
+    if (!sha) return null;
+    const files = JSON.parse(gh(["api", `${base}/commits/${sha}`])).files ?? [];
+    return { sha, files: files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]), after: (/** @type {string} */ origin) => origin !== sha && ancestorOrEqual(base, origin, sha) };
+  };
+  // The branch lineage Sol rounds count against: siguiente, the last round's slot and when each round was reserved.
+  /** @type {ReturnType<typeof lineageSummary> | null} */
+  let lineage = null;
+  let lineageError = "";
+  /** @type {number[]} */
+  let solRoundsAt = [];
+  try {
+    const state = lineageState(home, resolveLineage({ pr: prKey, home, pull }));
+    lineage = lineageSummary(state);
+    solRoundsAt = roundsReservedAt({ rounds, live: state.live, pr: prKey });
+  } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
+  const threadView = threadStates({ threads, commitInfo, solRoundsAt });
+  const open = threadView.filter((thread) => thread.state === "open" || thread.state === "unverified");
+  const rejectedNeedSol = threadView.filter((thread) => thread.state === "rejected-needs-sol");
+  const blockingIds = open.map((thread) => thread.id);
   /** One read of Codex reviews and PR comments and everything derived from it; `--request` repeats it under its lock. */
   const observe = () => {
     // Only a real Codex review counts: a reply inside a review thread also creates an empty
@@ -384,7 +350,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
           const namesSha = sha !== "" && [...body.matchAll(/\b[0-9a-f]{7,40}\b/g)].some((match) => cites(sha, match[0]));
           return namesSha || (reply === first && Date.parse(reply.created_at) < next);
         });
-        /** @type {"answered" | "failed-terminal" | "running" | "unknown" | "requested"} */
+        /** @type {CodexState} */
         let state;
         if (validReview(sha)) state = "answered";
         else if (terminal) state = "failed-terminal";
@@ -393,12 +359,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
         else state = "requested";
         return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
       });
-    const headRequest = published.filter((entry) => entry.sha === head).at(-1);
-    /** @type {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} */
-    let headState = "pending";
-    if (headReviewed) headState = "answered";
-    else if (headRequest) headState = headRequest.state;
-    else if (summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))) headState = "running";
+    let headState = codexHeadState({ headReviewed, headRequest: published.filter((entry) => entry.sha === head).at(-1),
+      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status)), published });
     const last = published.at(-1);
     const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
     /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
@@ -414,7 +376,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   /** @returns {string} */
   const decide = (/** @type {ReturnType<typeof observe>} */ view) => {
     if (view.headReviewed || view.budgetSpent) return `skipped-${view.state}`;
-    // Review budget: never post past two published requests; the owner decides.
+    // Review budget: never post past two published requests.
     if (view.published.length >= BUDGET) return "budget-exhausted";
     if (view.headState === "requested") return "already-requested-for-head";
     if (view.headState === "running") return "skipped-running";
@@ -434,75 +396,111 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   }, { waitMs: REQUEST_LOCK_WAIT_MS });
   const { reviews, published, headReviewed, last, budgetSpent, state } = view;
   const headState = view.headState;
+  const baseRef = String(pull.base?.ref ?? "");
+  const toDevelop = baseRef === "develop";
+  const inFlight = headState === "requested" || headState === "running";
+  // Toward develop two spent requests stop being a stop even when the last one never answered: Sol covers them.
+  const codexSpent = !headReviewed && published.length >= BUDGET && !inFlight && blockingIds.length === 0 && (toDevelop || last?.state === "answered");
   // Coverage after budget-spent admits only the threads the review of that head opened.
   const reviewedHead = budgetSpent && last ? last.sha : headReviewed ? head : "";
   const originUnknown = codexFindings.some((finding) => finding.origin === "");
   const admissibleFindings = originUnknown ? [] : codexFindings.filter((finding) => reviewedHead !== "" && finding.origin === reviewedHead);
-  // Sol: rounds, exemption and coverage records written by the coordinator; invalid or contradictory records fail closed.
-  /** @type {import("./review-records.mjs").ReviewRecord[]} */
-  let records = [];
-  let recordsError = "";
-  try { records = readReviewRecords(home, prKey); } catch (error) { recordsError = error instanceof Error ? error.message : String(error); }
-  const rounds = /** @type {import("./review-records.mjs").RoundRecord[]} */ (records.filter((record) => record.type === "round"));
   // A later exemption replaces an earlier one; it counts only for the exact head it names.
   const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
-  // Rounds past the second exist only with the operator's recorded approval.
-  const solMax = Math.max(rounds[0]?.result === "blocking" ? 2 : 1, rounds.length);
   const lastRound = rounds.at(-1);
-  const baseRef = String(pull.base?.ref ?? "");
-  /** @type {Coverage | null} */
-  let codexCoverage = null;
-  if (budgetSpent && last) {
-    codexCoverage = solCoversCodex({ base, codexHead: last.sha, head, rounds })
-      ?? (originUnknown
-        ? { from: last.sha, to: head, covered: false, error: true, filtersPass: false, reason: "GitHub did not report which commit a Codex thread reviewed", commits: [] }
-        : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: lastRound?.findings ?? [], records, baseRef }));
-  }
+  const solMax = rounds.length > SOL_BUDGET ? CRITICAL_LIMIT : SOL_BUDGET;
+  const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
+  const lineageLast = lineage?.lastRound;
+  const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
+  // What the last round left open, and the row that lets the PR advance past it at the cap.
+  const stillOpen = lastRound ? openFindings(lastRound, lastSlot) : { blockers: [], critical: false };
+  const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
+  let advanceRefused = false;
+  // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
+  let advanceNote = "";
+  /** @param {string} from @param {string} reason @param {boolean} covered @returns {Coverage} */
+  const verdict = (from, reason, covered) => ({ from, to: head, covered, error: false, filtersPass: covered, reason, commits: [] });
+  /** @param {string} from @param {Finding[]} findings */
+  const walk = (from, findings) => coverage({ base, from, to: head, findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
   /** @type {Coverage | null} */
   let solCoverage = null;
-  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered" | "waived"} */
+  /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered" | "waived" | "advanced"} */
   let solState;
+  const gap = chainGap(rounds);
   if (recordsError || (exemption && rounds.length)) solState = "invalid";
   else if (exemption) solState = exemption.head === head ? "exempt" : "exemption-stale";
   else if (!lastRound) solState = "missing";
-  else if (lastRound.result === "blocking") solState = "blocking";
+  // Rounds chain by complete intervals: a fix-diff that did not start at the previous round's head left commits unread.
+  else if (gap) { solState = "not-covered"; solCoverage = verdict(lastRound.head, gap, false); }
+  else if (lastRound.result === "blocking") {
+    solState = "blocking";
+    if (advance && toDevelop) {
+      // The advance stands in for the re-read only while every commit after the round is a cited fix of its findings
+      // or a clean base merge; a withdrawn change must be gone from the PR's files.
+      const after = lastRound.head === head ? null : walk(lastRound.head, lastRound.findings);
+      // The row is judged again against the ledger and the PR as they are now. First its authority (the real slot, what
+      // the policy says after that round, the findings and their dispositions), then, once every commit after the
+      // round is a cited fix or a clean base merge, whether the row accounts for each of them at the current head.
+      const judged = { advance, slot: lastSlot, open: stillOpen, dispositions: dispositionsOf(records, lastRound.round), roundHead: lastRound.head };
+      // The second question is also asked when the PR head is the round's own head (no commit after it): an advance
+      // recorded for another head, or a fix in a commit the PR no longer has, does not count.
+      advanceNote = advanceProblem({ ...judged, head: advance.head });
+      if (!advanceNote && (after === null || (!after.error && after.filtersPass))) advanceNote = advanceProblem({ ...judged, head, commits: after?.commits ?? [] });
+      const kept = advance.kind === "withdrawn" ? stillOpen.blockers.flatMap((finding) => finding.paths).filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
+      if (advanceNote) solCoverage = null;
+      else if (after?.error) solCoverage = after;
+      else if ((after === null || after.filtersPass) && kept.length === 0) solState = "advanced";
+      else { advanceRefused = true; solCoverage = after && !after.filtersPass ? after : verdict(lastRound.head, `the PR still changes the files of the withdrawn finding: ${kept.slice(0, 5).join(", ")}`, false); }
+    }
+  }
   // Approval needs an explicit none or non-blocking result; anything else is invalid.
   else if (lastRound.result !== "none" && lastRound.result !== "non-blocking") solState = "invalid";
   else if (lastRound.head === head) solState = "approved";
+  // After the last round only prose docs stay covered on their own (isNonFunctionalChange).
+  else if (onlyProse(changedSince(base, lastRound.head, head))) { solState = "covered"; solCoverage = verdict(lastRound.head, "only prose docs changed after the last round", true); }
   else {
     // Co-cited Codex ids only need to exist: any Codex finding with a known origin, not just the latest reviewed head's.
-    solCoverage = coverage({ base, from: lastRound.head, to: head, findings: lastRound.findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
+    solCoverage = walk(lastRound.head, lastRound.findings);
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
-  let ok = state === "no-findings" || (state === "budget-spent" && codexCoverage?.covered === true);
-  // The branch lineage that Sol rounds count against (informational for the gate; it drives siguiente).
-  /** @type {ReturnType<typeof readLineage> | null} */
-  let lineage = null;
-  let lineageError = "";
-  try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
-  // A round after a clean one is valid only through the owner approval the lineage proves; unreadable proof fails closed.
-  if (lineageError && rounds.some((round, index) => index > 0 && rounds[index - 1].result !== "blocking")) solState = "invalid";
+  // Sol read every commit of the PR (a clean chained round at the head, its coverage, or the advance at the cap).
+  const solReadAll = solState === "approved" || solState === "covered" || solState === "advanced";
+  /** @type {Coverage | null} */
+  let codexCoverage = null;
+  if (budgetSpent && last && !solReadAll) {
+    codexCoverage = originUnknown
+      ? { from: last.sha, to: head, covered: false, error: true, filtersPass: false, reason: "GitHub did not report which commit a Codex thread reviewed", commits: [] }
+      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: lastRound?.findings ?? [], records, baseRef });
+  }
+  let ok = state === "no-findings" || (codexSpent && (solReadAll || codexCoverage?.covered === true));
   // The owner stopped reviews for this exact head, in words the PR description quotes verbatim: no more Sol or Codex rounds.
   const waiver = recordsError ? undefined : /** @type {import("./review-records.mjs").WaiverRecord | undefined} */ (records.filter((record) => record.type === "waiver" && record.head === head && String(pull.body ?? "").includes(record.quote)).at(-1));
   if (waiver && solState !== "invalid") solState = "waived";
-  // A waiver also stands in for further Codex rounds; unresolved threads still block through blockingIds.
+  // A waiver also stands in for further Codex rounds; unanswered threads still block through blockingIds.
   if (waiver) ok = true;
-  const solOk = solState === "exempt" || solState === "approved" || solState === "covered" || solState === "waived";
+  const solOk = solState === "exempt" || solState === "approved" || solState === "covered" || solState === "waived" || solState === "advanced";
+  // A rejected critical Codex thread waits for Sol's read; only the owner's waiver stands in for it.
+  const pendingCritical = rejectedNeedSol.length > 0 && !waiver;
   const evidenceReceipts = readReceipts(home, prKey);
-  const latest = evidenceReceipts.at(-1)?.receipt;
-  const behavioralEvidence = evaluateEvidence({
-    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""),
-    changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(base, latest.verifiedSha, head) : undefined,
+  const behavioralEvidence = evaluatePullEvidence({
+    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
     // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
-    prFiles: pullFiles(base, number, Number(pull.changed_files)),
+    prFiles,
   });
   // Evidence is a develop-merge gate. From 2.12.0 a main merge whose gate passes does not wait for the owner (four-stop policy).
-  const evidenceRequired = baseRef === "develop";
+  const evidenceRequired = toDevelop;
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
-  const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk;
+  const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
   const contradictory = solState === "invalid" || (!waiver && (codexCoverage?.error === true || solCoverage?.error === true));
   const estado = contradictory ? "unknown" : headState;
+  // What the lineage does next when Sol, a rejected critical thread or a spent Codex still needs a read.
+  const needsSol = solState !== "invalid" && solState !== "exemption-stale" && (!solOk || pendingCritical || (!ok && codexSpent));
+  const exemptNeedsRound = needsSol && solState === "exempt";
+  const moved = solState !== "blocking";
+  /** @type {import("./review-policy.mjs").NextAction} */
+  const solNext = !needsSol ? "none" : exemptNeedsRound ? "round" : advanceRefused ? "split" : lineageNext({ lineage, moved, pendingCritical }).action;
   let mergeGate = null;
   if (gate) {
     const { path, ...pass } = writeMergeGate({ home, pr: prKey, head, base: baseRef, mergeReady, codex: state, behavioralEvidence: behavioralEvidence.state });
@@ -512,10 +510,14 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     mergeGate = path;
   }
   // The single next action, first unmet gate first: the review gate machine (2.10.0) picks the step.
-  const step = gateStep({ blocking: blockingIds.length > 0, codexOk: ok, codexCoverage, headState, published: published.length, budget: BUDGET,
-    solState, solCoverageError: solCoverage?.error === true, evidenceOk, mergeGate: Boolean(mergeGate) });
-  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head,
-    solNext: () => solNextStep({ lineage, lineageError, prKey, head, number }) });
+  const step = gateStep({ toDevelop, blocking: blockingIds.length > 0, codexOk: ok, codexCoverage, headState, published: published.length, budget: BUDGET,
+    solState, solCoverageError: solCoverage?.error === true, solNext, evidenceOk, mergeGate: Boolean(mergeGate) });
+  const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
+  const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
+  const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
+  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
+    open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
+    solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt }) });
   return {
     ok,
     operation: "pr-review-status",
@@ -525,6 +527,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     estado,
     codex: `${published.length}/${BUDGET}`,
     sol: `${rounds.length}/${solMax}${exemption ? ` (exempt ${exemption.exempt})` : ""}`,
+    solNext,
     evidencia: `${behavioralEvidence.state}${evidenceRequired ? "" : " (not required)"}`,
     siguiente,
     step,
@@ -536,12 +539,12 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     headReviewed,
     reviewedCommits: [...new Set(reviews.map((review) => String(review.commit_id).slice(0, 12)))],
     openFindings: open,
-    resolvedWithoutReply,
+    codexThreads: threadView,
     codexFindings,
     codexAdmissible: { head: reviewedHead, ids: admissibleFindings.map((finding) => finding.id), ...(originUnknown ? { error: "GitHub did not report which commit a Codex thread reviewed" } : {}) },
     codexRequests: published,
     ...(codexCoverage ? { codexCoverage } : {}),
-    solReview: { state: solState, rounds: rounds.length, max: solMax, ...(exemption ? { exemption } : {}), ...(lastRound ? { lastRound } : {}), ...(solCoverage ? { coverage: solCoverage } : {}), ...(recordsError ? { error: recordsError } : {}) },
+    solReview: { state: solState, rounds: rounds.length, max: solMax, ...(advanceNote ? { advanceNote } : {}), ...(exemption ? { exemption } : {}), ...(lastRound ? { lastRound } : {}), ...(solCoverage ? { coverage: solCoverage } : {}), ...(recordsError ? { error: recordsError } : {}) },
     lineage: lineage ?? { error: lineageError },
     requestedForHead: published.some((entry) => entry.sha === head),
     request: requestStatus,
@@ -553,8 +556,8 @@ export function formatPrReviewStatus(result) {
   const lines = [`estado ${result.estado} | Codex ${result.codex} | Sol ${result.sol} | evidencia ${result.evidencia} | siguiente: ${result.siguiente}`];
   lines.push(`${result.pr} head ${result.head.slice(0, 12)}: Codex ${result.state}${result.headReviewed ? "" : " (head not reviewed by Codex)"}.`);
   if (result.reviewedCommits.length) lines.push(`Reviewed commits: ${result.reviewedCommits.join(", ")}`);
-  for (const finding of result.openFindings) lines.push(`- open${finding.outdated ? " (outdated)" : ""} ${finding.id}: ${finding.path}: ${finding.finding}`);
-  if (result.resolvedWithoutReply) lines.push(`${result.resolvedWithoutReply} Codex thread(s) resolved without a written reply; resolving is not a fix.`);
+  for (const finding of result.openFindings) lines.push(`- ${finding.state}${finding.outdated ? " (outdated)" : ""} ${finding.id}: ${finding.path}: ${finding.finding} (${finding.detail})`);
+  for (const thread of result.codexThreads.filter((entry) => entry.state !== "open" && entry.state !== "unverified")) lines.push(`- ${thread.state} ${thread.id}${thread.priority === null ? "" : ` P${thread.priority}`}${thread.critical ? " critical" : ""}: ${thread.detail}`);
   if (result.codexFindings.length) lines.push(`Codex finding ids: ${result.codexFindings.map((finding) => `${finding.id} (${finding.paths.join("+")} @ ${finding.origin.slice(0, 12) || "?"})`).join(", ")}`);
   const admissible = result.codexAdmissible;
   if (admissible.head || admissible.error) lines.push(`Codex ids admissible for coverage${admissible.head ? ` at ${admissible.head.slice(0, 12)}` : ""}: ${admissible.error ?? (admissible.ids.join(", ") || "none")}`);

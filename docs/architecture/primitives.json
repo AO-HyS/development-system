@@ -73,18 +73,19 @@
       "id": "pr-review-gate",
       "category": "workflow",
       "status": "active",
-      "summary": "Codex review state of a PR's exact head, with one review request per head, plus the Sol lineage summary and coverage of post-Codex commits.",
-      "paths": ["src/pr-review-status.mjs"],
-      "symbols": ["src/pr-review-status.mjs#prReviewStatus"]
+      "summary": "The merge gate of a PR's exact head: Codex threads answered (not resolved), one review request per head, Sol rounds and coverage, evidence, and one next action in words. For a PR into develop no route ends in the owner.",
+      "paths": ["src/pr-review-status.mjs", "src/review-gate-machine.mjs", "src/codex-threads.mjs", "src/review-next.mjs"],
+      "symbols": ["src/pr-review-status.mjs#prReviewStatus", "src/review-gate-machine.mjs#gateStep"],
+      "guarantees": [{ "statement": "With base develop no combination of gate facts ends in ownerDecides.", "verifiedBy": "development-system pr-review-status --diagram" }]
     },
     {
       "id": "review-brake",
       "category": "workflow",
       "status": "active",
-      "summary": "One authority for PR Sol reviews: slots reserved per branch lineage, owner approvals bound to one round, verified records, voids and follow-up classification; the Claude delegate_task hook and codex-review reserve through it.",
-      "paths": ["src/review-state.mjs", "src/review-records.mjs", "claude/orchestration/roster-guard.mjs"],
-      "symbols": ["src/review-records.mjs#recordReview", "src/review-records.mjs#readReviewRecords"],
-      "guarantees": [{ "statement": "A Sol round past the lineage budget needs an approval bound to that PR and round.", "verifiedBy": "development-system review reserve --dry-run" }]
+      "summary": "One authority for PR Sol reviews: slots reserved per branch lineage with no owner approval, five rounds and up to seven for a critical finding, verified records, dispositions per finding, the advance at the cap, voids and follow-up classification; the Claude delegate_task hook and codex-review reserve through it.",
+      "paths": ["src/review-policy.mjs", "src/review-state.mjs", "src/review-records.mjs", "src/review-advance.mjs", "src/review-cli.mjs", "claude/orchestration/roster-guard.mjs"],
+      "symbols": ["src/review-records.mjs#recordReview", "src/review-records.mjs#readReviewRecords", "src/review-policy.mjs#nextReview", "src/review-advance.mjs#recordAdvance"],
+      "guarantees": [{ "statement": "No Sol round runs past the fifth unless a critical finding is open, and none past the seventh.", "verifiedBy": "development-system review reserve --dry-run" }]
     },
     {
       "id": "technical-document",

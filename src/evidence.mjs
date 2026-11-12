@@ -203,6 +203,23 @@ export function evaluateEvidence({ receipts, head, prBody = "", changedFiles, pr
   return { ...base, state: passing, reason: `head changed after the receipt only in prose docs: ${changedFiles.map((file) => file.filename).join(", ")}`, changedAfter: changedFiles.map((file) => file.filename) };
 }
 
+/** One file of a GitHub file list as the evidence rules read it. @param {any} file @returns {ChangedFile} */
+export const changedFile = (file) => ({ filename: String(file.filename), status: String(file.status), ...(file.previous_filename ? { previous_filename: String(file.previous_filename) } : {}) });
+
+/**
+ * `evaluateEvidence` for a PR's current head, shared by the gate and by the reservation of the first Sol round.
+ * `prFiles` are the PR's files (null when GitHub could not list them all); `changedSince(sha)` lists what changed
+ * between a receipt's verified SHA and the head (null when it cannot), and is asked only when the head moved.
+ * @param {{receipts: {path: string, receipt: Receipt}[], head: string, prBody?: string, prFiles: ChangedFile[] | null, changedSince: (from: string) => ChangedFile[] | null}} input
+ */
+export function evaluatePullEvidence({ receipts, head, prBody = "", prFiles, changedSince }) {
+  const latest = receipts.at(-1)?.receipt;
+  return evaluateEvidence({
+    receipts, head, prBody, prFiles,
+    changedFiles: latest && latest.verifiedSha !== head && ["ok", "nonvisual"].includes(latest.status) ? changedSince(latest.verifiedSha) : undefined,
+  });
+}
+
 /** States that let a develop merge proceed (review and authorization remain separate gates). */
 export const ACCEPTED_EVIDENCE = new Set(["ok", "waived", "nonvisual", "nonfunctional"]);
 
