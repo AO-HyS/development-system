@@ -72,11 +72,13 @@ const REJECTION = /^\s*(?:\*\*)?(?:rechazad[oa]|rejected|no aplica|won'?t fix)(?
 /**
  * When each recorded Sol round of the PR was reserved (ms): the moment its reviewer packet was handed over, so what a
  * round can have read. A round with no live reservation of its slot (a legacy row) has no known start and is left out.
+ * The PR reference matches in any letter case: reservations are stored under the lowercase key.
  * @param {{rounds: {round: number, slot?: number}[], live: {pr: string, slot: number, reservedAt: string}[], pr: string}} input
  */
 export function roundsReservedAt({ rounds, live, pr }) {
+  const key = pr.toLowerCase();
   return rounds.flatMap((round) => {
-    const reservation = live.find((entry) => entry.pr === pr && entry.slot === slotOf(round));
+    const reservation = live.find((entry) => entry.pr.toLowerCase() === key && entry.slot === slotOf(round));
     return reservation ? [Date.parse(reservation.reservedAt)] : [];
   });
 }
