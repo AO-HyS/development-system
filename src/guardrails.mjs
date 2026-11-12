@@ -9,10 +9,10 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Catalog 0.79.0 (unchanged guard since 0.78.0) ships policy 2.6.1 (2.6.0 blocks harm, not what it cannot read at a glance; 2.6.1 never trusts a negated command) from artifacts/2.13.1/skills/internal/global-agent-guardrails. */
-const guardCatalogVersion = "0.79.0";
+/** Catalog 0.80.0 (unchanged guard since 0.78.0) ships policy 2.6.1 (2.6.0 blocks harm, not what it cannot read at a glance; 2.6.1 never trusts a negated command) from artifacts/2.13.1/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.80.0";
 /** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
-const guardSetupVersion = "2.13.2";
+const guardSetupVersion = "2.14.0";
 /** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
 const legacyCodexCatalogVersion = "0.13.0";
 /**

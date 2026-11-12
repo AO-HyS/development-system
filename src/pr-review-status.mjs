@@ -5,7 +5,9 @@
 // again. `--request` asks for the current head while fewer than two requests are published; it holds a local per-PR
 // lock and re-reads GitHub inside it before posting, and never deletes a published request. `mergeReady` combines
 // every gate and `--gate` records the merge pass the command guard requires for `gh pr merge --match-head-commit
-// <head>`. Output always carries estado, Codex n/2, Sol n/max, evidencia and exactly one siguiente.
+// <head>`. Output always carries estado, Codex n/2, revisión n/max (JSON key `sol`), evidencia and exactly one
+// siguiente. Since 2.14.0 the review rounds run on Fable 5.2 by default and on Sol 6.1 High while the lineage records
+// Fable as unavailable (`reviewer` and `reviewerReason` in the JSON).
 //
 // Contract (plan 1.3), first match wins:
 //   valid review of a SHA   a Codex app review with that commit_id and a real body (`Codex Review|Reviewed commit`), or a
@@ -289,9 +291,14 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   let lineageError = "";
   /** @type {number[]} */
   let solRoundsAt = [];
+  // Who runs the next round (2.14.0): Fable 5.2 unless the lineage recorded it unavailable; an unreadable lineage
+  // keeps the default.
+  /** @type {{reviewer: "fable" | "sol", reason: string}} */
+  let reviewer = { reviewer: "fable", reason: "" };
   try {
     const state = lineageState(home, resolveLineage({ pr: prKey, home, pull }));
     lineage = lineageSummary(state);
+    reviewer = state.reviewer;
     solRoundsAt = roundsReservedAt({ rounds, live: state.live, pr: prKey });
   } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
   const threadView = threadStates({ threads, commitInfo, solRoundsAt });
@@ -517,7 +524,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
   const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
     open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
-    solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt }) });
+    solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
     ok,
     operation: "pr-review-status",
@@ -528,6 +535,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     codex: `${published.length}/${BUDGET}`,
     sol: `${rounds.length}/${solMax}${exemption ? ` (exempt ${exemption.exempt})` : ""}`,
     solNext,
+    reviewer: reviewer.reviewer,
+    reviewerReason: reviewer.reason,
     evidencia: `${behavioralEvidence.state}${evidenceRequired ? "" : " (not required)"}`,
     siguiente,
     step,
@@ -553,7 +562,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
 
 /** @param {ReturnType<typeof prReviewStatus>} result */
 export function formatPrReviewStatus(result) {
-  const lines = [`estado ${result.estado} | Codex ${result.codex} | Sol ${result.sol} | evidencia ${result.evidencia} | siguiente: ${result.siguiente}`];
+  const lines = [`estado ${result.estado} | Codex ${result.codex} | revisión ${result.sol} (${result.reviewer === "fable" ? "Fable" : "Sol"}) | evidencia ${result.evidencia} | siguiente: ${result.siguiente}`];
   lines.push(`${result.pr} head ${result.head.slice(0, 12)}: Codex ${result.state}${result.headReviewed ? "" : " (head not reviewed by Codex)"}.`);
   if (result.reviewedCommits.length) lines.push(`Reviewed commits: ${result.reviewedCommits.join(", ")}`);
   for (const finding of result.openFindings) lines.push(`- ${finding.state}${finding.outdated ? " (outdated)" : ""} ${finding.id}: ${finding.path}: ${finding.finding} (${finding.detail})`);
@@ -570,12 +579,12 @@ export function formatPrReviewStatus(result) {
   };
   coverageLines("Codex", result.codexCoverage);
   const sol = result.solReview;
-  lines.push(`Sol: ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
-  coverageLines("Sol", sol.coverage);
+  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : `Sol 6.1 High; ${result.reviewerReason}`}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
+  coverageLines("Review", sol.coverage);
   const lineage = result.lineage;
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);
   else {
-    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; Sol slots used ${lineage.slotsUsed}/${lineage.budget}${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
+    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed}/${lineage.budget}${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
     for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope}) of ${approval.pr}`);
     for (const reservation of lineage.pending) lines.push(`  - reserved, unrecorded: slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`);
   }

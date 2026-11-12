@@ -95,7 +95,7 @@
       "jev": false
     },
     "reviewer": {
-      "model": "opus",
+      "model": "claude-fable-5-2",
       "route": "specialist_review",
       "family": "review",
       "tier": "opus_high",
@@ -203,6 +203,16 @@
   },
   "review": {
     "engine": "codex",
+    "primary": {
+      "role": "reviewer",
+      "model": "claude-fable-5-2",
+      "kinds": [
+        "pr",
+        "plan",
+        "security",
+        "diff"
+      ]
+    },
     "model": "gpt-6.1-sol",
     "effort": "high",
     "maxParallel": 5,

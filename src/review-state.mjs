@@ -15,9 +15,9 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
-import { BUDGET, CRITICAL, NOT_CRITICAL, admission, openFindings, policyRecordProblem } from "./review-policy.mjs";
+import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
-export { BUDGET, CRITICAL, classifyFindings } from "./review-policy.mjs";
+export { BUDGET, CRITICAL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
 export const SHA = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -34,10 +34,12 @@ const DOMAINS = [...CRITICAL, NOT_CRITICAL];
 /** A reviewer thread reference a person can open again; rejects placeholders such as "x". */
 export const THREAD = /^(t3-thread:\/\/\S+|thread:\S{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|(codex|claude):\S{8,}|https:\/\/\S+)$/i;
 const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
+/** The model a Fable round observed at runtime (a model id or `unknown`): printable, no spaces. */
+export const OBSERVED_MODEL = /^[\x21-\x7e]{1,200}$/;
 
 /**
  * @typedef {{id: string, paths: string[], origin?: "prior" | "fix-induced" | "new", critical?: string}} Finding
- * @typedef {{type: "round", pr: string, reviewer: "sol", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string}} RoundRecord
+ * @typedef {{type: "round", pr: string, reviewer: "sol" | "fable", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string, observedModel?: string}} RoundRecord
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
  * @typedef {{type: "waiver", pr: string, head: string, quote: string, recordedAt: string}} WaiverRecord
@@ -247,6 +249,15 @@ export const slotOf = (record) => Number(record?.slot ?? record?.round);
 export function recordProblem(record, key) {
   if (record?.pr !== key) return `is not a review record for ${key}`;
   if (record.type === "round") {
+    // 2.14.0: a Fable round is a Sol-shaped row with reviewer "fable" and an optional observedModel; it is checked
+    // without that key, so a sol row validates exactly as before and never carries it.
+    if ("observedModel" in record && record.reviewer !== "fable") return "round observedModel is only for a fable round";
+    if (record.reviewer === "fable") {
+      if ("operatorApproval" in record) return "a fable round has no operator approval";
+      if ("observedModel" in record && (typeof record.observedModel !== "string" || !OBSERVED_MODEL.test(record.observedModel))) return "round observedModel is not a model id or unknown";
+      const { observedModel, ...rest } = record;
+      return recordProblem({ ...rest, reviewer: "sol" }, key);
+    }
     const keys = ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"];
     if (hasNewKeys(record) || (Number(record.round) > 2 && !("operatorApproval" in record))) {
       // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (a 2.9.0
@@ -263,7 +274,7 @@ export function recordProblem(record, key) {
       if (record.round > 2 && (!text(record.operatorApproval) || record.scope !== "full")) return "round past the second has no operator approval or is not full";
       if (!Array.isArray(record.findings) || !record.findings.every(isFinding)) return "round findings are not {id, paths[]}";
     }
-    if (record.reviewer !== "sol") return "round reviewer is not sol";
+    if (record.reviewer !== "sol") return `round reviewer is not ${REVIEWERS.join(" or ")}`;
     if (typeof record.head !== "string" || !SHA.test(record.head)) return "round head is not a 40-hex SHA";
     if (!SCOPES.includes(record.scope)) return "round scope is not full or fix-diff";
     if (!RESULTS.includes(record.result)) return "round result is not blocking, non-blocking or none";
@@ -303,8 +314,8 @@ export function recordProblem(record, key) {
  */
 export function sequenceProblem(records) {
   const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
-  if (rounds.length && records.some((record) => record.type === "exemption")) return "has both Sol rounds and an exemption";
-  if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
+  if (rounds.length && records.some((record) => record.type === "exemption")) return "has both review rounds and an exemption";
+  if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its review rounds out of order";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
   return "";
@@ -543,7 +554,10 @@ export function lineageState(home, lineage) {
   // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
   // slot its lineage used. The writer of an advance and the gate both read it from here.
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
-  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
+  // Who runs the next round (2.14.0): Fable unless a recent `fable-unavailable:` release of this sidecar is newer than
+  // the lineage's newest Fable round. Slots are shared: whichever reviewer runs a round binds the same reservation.
+  const reviewer = reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now() });
+  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer };
 }
 
 /** The gate's view of a lineage. @param {ReturnType<typeof lineageState>} state */

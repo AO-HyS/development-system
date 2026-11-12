@@ -13,7 +13,7 @@
 //   chain        each fix-diff starts exactly at the previous round's head; a gap breaks the chain.
 import { isNonFunctionalChange } from "./evidence.mjs";
 
-/** Sol rounds a branch lineage runs on its own. */
+/** Review rounds a branch lineage runs on its own, whichever reviewer runs them. */
 export const BUDGET = 5;
 /** Rounds 6 and 7 exist only to re-read the fix of a critical finding. */
 export const CRITICAL_LIMIT = 7;
@@ -30,6 +30,31 @@ const SHA = /^[0-9a-f]{40}$/;
  * @typedef {{type: "auto-advance", pr: string, round: number, slot: number, kind: "cap" | "withdrawn", head: string, findings: string[], fixCommits: string[], recordedAt: string}} AdvanceRecord
  * @typedef {"round" | "advance" | "withdraw" | "split" | "hold" | "none"} NextAction
  */
+
+/** The reviewers a round row may name; Fable 5.2 runs the rounds by default and Sol 6.1 High stands in (2.14.0). */
+export const REVIEWERS = ["sol", "fable"];
+/** The prefix of a release reason that records Fable as unavailable (quota or not offered). */
+export const FABLE_UNAVAILABLE = "fable-unavailable:";
+/** How long a recorded Fable unavailability sends the rounds to Sol. */
+export const FABLE_UNAVAILABLE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Who runs the next round of a lineage: Fable, unless the newest release whose reason starts with
+ * `fable-unavailable:` is newer than the newest Fable round row of the lineage and less than seven days old; then Sol,
+ * with the recorded reason (at most 160 characters). Pure: the caller passes the sidecar's releases, the lineage's
+ * round rows and the time.
+ * @param {{releases: {reason: string, recordedAt: string}[], rounds: {reviewer: string, recordedAt: string}[], now: number}} input
+ * @returns {{reviewer: "fable" | "sol", reason: string}}
+ */
+export function reviewerFor({ releases, rounds, now }) {
+  const at = (/** @type {{recordedAt: string}} */ row) => Date.parse(row.recordedAt);
+  const unavailable = releases.filter((release) => typeof release.reason === "string" && release.reason.startsWith(FABLE_UNAVAILABLE) && Number.isFinite(at(release)))
+    .sort((a, b) => at(a) - at(b)).at(-1);
+  if (!unavailable) return { reviewer: "fable", reason: "" };
+  const lastFable = Math.max(-Infinity, ...rounds.filter((round) => round.reviewer === "fable" && Number.isFinite(at(round))).map(at));
+  if (at(unavailable) <= lastFable || now - at(unavailable) >= FABLE_UNAVAILABLE_MS) return { reviewer: "fable", reason: "" };
+  return { reviewer: "sol", reason: unavailable.reason.replace(/\s+/g, " ").trim().slice(0, 160) };
+}
 
 /** Critical unless the reviewer said `none`: when in doubt, critical. @param {Finding} finding */
 export const isCritical = (finding) => finding.critical !== NOT_CRITICAL;
@@ -69,13 +94,13 @@ export function openFindings(round, slot) {
 
 /**
  * What the lineage does next, decided without anyone's permission.
- *   round     reserve and run the next Sol round (`scope`), inside the cap or as a critical re-read
+ *   round     reserve and run the next review round (`scope`), inside the cap or as a critical re-read
  *   advance   the cap is reached and nothing open is critical: fix, record, merge without another round
  *   withdraw  seven rounds and a critical finding is still open: take the disputed change out, or leave the PR out
  *   split     the cap is reached and unexplained commits arrived: they go to another PR
  *   hold      the lineage spent its rounds without one valid read: the PR stays out
  *   none      the last round is clean and nothing arrived after it
- * `pendingCritical` is a rejected critical Codex thread no Sol round has read yet; `moved` says commits arrived after
+ * `pendingCritical` is a rejected critical Codex thread no review round has read yet; `moved` says commits arrived after
  * the last round that coverage does not explain.
  * @param {{nextSlot: number, last?: {result: string, critical: boolean}, moved?: boolean, pendingCritical?: boolean}} input
  * @returns {{action: NextAction, scope?: "full" | "fix-diff", critical?: boolean}}
@@ -100,12 +125,12 @@ export function nextReview({ nextSlot, last, moved = false, pendingCritical = fa
  * @param {{slot: number, scope: string, last?: {result: string, critical: boolean, head: string}, head: string, approved?: boolean, pendingCritical?: boolean}} input
  */
 export function admission({ slot, scope, last, head, approved = false, pendingCritical = false }) {
-  if (slot === 1) return scope === "full" ? "" : "the first Sol round of a lineage must be --scope full";
+  if (slot === 1) return scope === "full" ? "" : "the first review round of a lineage must be --scope full";
   if (approved && slot <= BUDGET) return "";
   const next = nextReview({ nextSlot: slot, last, moved: Boolean(last) && last?.head !== head, pendingCritical });
   if (next.action === "round") return "";
   const gate = "run development-system pr-review-status <pr> --gate and do what it says";
-  if (next.action === "none") return `the last Sol round is clean and the head has not moved since: no other round runs; ${gate}`;
+  if (next.action === "none") return `the last review round is clean and the head has not moved since: no other round runs; ${gate}`;
   if (next.action === "advance") return `the lineage reached its ${BUDGET} rounds and nothing open is critical: no round ${slot} runs; ${gate} (it advances without another round)`;
   if (next.action === "withdraw") return `the lineage reached ${CRITICAL_LIMIT} rounds with a critical finding still open: no round ${slot} runs; ${gate} (the disputed change leaves the PR)`;
   if (next.action === "split") return `the lineage reached its ${BUDGET} rounds: commits that are not a cited fix or a clean base merge go to another PR; ${gate}`;

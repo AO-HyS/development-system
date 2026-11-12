@@ -1,5 +1,21 @@
 # Current work
 
+## 2.14.0 — orchestration enforced in code (candidate, 2026-11-12)
+
+- Owner request of 2026-11-12, verbatim: «Antes sí se hacía orquestación… Que utilice sus agentes, se utiliza Haiku para explorar, se utiliza Terra para computer reviews, se utiliza Sol 6.1 para revisiones, pero revisiones de cross review… ya tenemos hasta un nuevo modelo que se llama Fable 5.2, que es ta buenísimo para hacer reviews… que deje de preguntarme pendejadas». Closings: «visualmente alegre… que se entienda enseguida», inside the thread, with the status against the definition of done.
+- Diagnosis from the T3 history: time with two or more agents busy fell from 36% to 18%, Fable 5.2 was never used for a review, the parent ran 42% of the commands, and mappers could only use `git grep` (the Grep and Glob tools do not exist in this Claude Code build). Orchestration lived only in prose.
+- Plan v2 (sha256 `a579b3b7…0b12`), accepted by a fresh Fable 5.2 reviewer in round 2 (`VEREDICTO: SIN BLOQUEANTES`; round 1 blocked on the gate having no reviewer without Claude quota).
+- Change, four parts:
+  1. Reviews: the `reviewer` role runs on `claude-fable-5-2` as the primary native path (`Review kind: pr|plan|security|diff`, fresh, read-only; a `PR:` line reserves the lineage slot). The gate's `siguiente` orders the round to Fable; `review release --reason "fable-unavailable: <message>"` degrades that lineage to Sol 6.1 High through codex-review for seven days or until a newer Fable round. `review record --reviewer sol|fable`. Sol rows keep their bytes; the round budget is unchanged.
+  2. Exploration: the mapper Bash grammar admits `rg, grep, ls, wc, cat, head, tail, sed -n, find, shasum, stat, file` with pipes between readers and denies `--pre*`, `find -exec/-delete`, sed commands other than addresses plus `p`, and writes.
+  3. Coach in the Claude guard (`additionalContext`, never a block): ten consecutive parent reads without a mapper, a second writer in a row launched alone, the second secret request of a session.
+  4. Closing: the Stop hook (`artifacts/2.14.0/runtime/report-gate/stop-gate.mjs`) no longer asks for a report or a tunnel; it returns the closing format once when a turn changed files and the last message has no closing. Instructions, `visual-delivery` and four skills (flow-implement, coding-orchestration, cross-review, visual-explain) say the same.
+- Cut: `scripts/build-release-2140.mjs`, `manifests/2.14.0.json`, `catalog/0.80.0.json`.
+- Rule check: `check-agents-rules --base a8585e5` keeps every rule except four the owner replaced on 2026-11-12 (the durable report link, the three-part closing, the detail in the HTML report, the visual-explain closing line); each is passed with `--allow` and has its substitute in the same file.
+- Rollback: a ledger that holds a Fable round is invalid for the 2.13.2 reader. Reinstall 2.14.x, or annul that row with `review lines` and `review void` (the slot stays spent).
+- Not in this change: a coach for Codex, a recurrence inventory, the other six skills.
+- Not reached: the behavior of a real product thread on 2.14.0 (the owner launches those threads after the install), a real Fable PR round, and `last_assistant_message` in a real Stop payload (assumed; the transcript tail is the fallback).
+
 ## 2.13.2 — Planeta Aula joins the weekly Development Steward (released 2026-11-12)
 
 - Owner opt-in of 2026-11-12, verbatim «mete Planeta Aula al Steward». He had asked whether Planeta Aula, NutriPlan, Barber and the other official repositories had the new Development System; the shared installation already served the four (their PRs #83, #746 and #696 went through the installed gate), but Planeta Aula was outside the Steward allowlist.

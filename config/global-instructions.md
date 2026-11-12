@@ -35,6 +35,18 @@ root, task and checks executes it without redoing lifecycle routing, preserves
 other workers' edits, leaves staging, commits and stashes to the parent and
 returns concrete blockers.
 
+Use the agents (owner decision 2026-11-12: «que utilice sus agentes»). Haiku
+5.5 explores (Explore, code-mapper, docs-researcher); Terra 6.1 fast does
+computer use and browser QA; Fable 5.2 reviews finished PRs and plans; Sol 6.1
+High is for a cross review the operator asks for and for a review round when
+Fable is unavailable. When one question needs broad reading of unfamiliar code
+(about ten searches or file reads), send it to one mapper and work from its
+map; a known file or exact name stays with the parent. Launch ready lanes with
+disjoint owned paths together in one message and serialize only real
+dependencies. Ask for a secret or sudo password at most once per task: put the
+privileged steps in one script first and check `sudo -n true` before asking
+again.
+
 Completion means requested behavior, relevant validation and the authorized
 endpoint; continue through implementation and corrections without an
 unrequested first-draft checkpoint, reusing settled decisions and valid evidence
@@ -93,7 +105,7 @@ an open goal item with remaining authority means keep working.
 Visual acceptance: approved references and the current design workflow, then
 independent capable critique and corrections before final media, via the host's
 authorized browser mechanism. Choose real verification, lint, React Doctor and
-Sol 6.1 reviews by affected behavior and required gates.
+Fable 5.2 reviews by affected behavior and required gates.
 
 For "where does this behavior live" questions in unfamiliar code,
 `jg "<question>" <root>` (jevgrep, via Jev) may locate it before reading; rg for
@@ -129,9 +141,10 @@ one owner action in the closing and keep doing the independent work; never
 create one yourself. Every task includes
 real verification without being asked: computer use, browser, and the
 repository's verification CLI and feature map. Report passed / failed / not
-reached with evidence. Completion reports state in Detail a `Verification scope:`
-(`Alcance de la verificación:`) line: what the checks cover, what they do not,
-and the real effects (charges, emails, writes) or none. Typecheck, HTTP 200 or a
+reached with evidence. The closing states a `Verification scope:`
+(`Alcance de la verificación:`) line, and so does the report when one is
+requested: what the checks cover, what they do not, and the real effects
+(charges, emails, writes) or none. Typecheck, HTTP 200 or a
 clean console is not acceptance. After 3 failed attempts at one problem,
 change strategy.
 
@@ -153,14 +166,14 @@ kill what you launched, never by name and never another thread's.
 - `Done when:` is executable: a command and its expected observation; the writer retries up to 3 times, the coordinator reruns it.
 - `Outcome:` is optional, only when it adds signal.
 - Develop merges are autonomous after real verification recorded with `development-system evidence record` for the PR head (or the owner's explicit waiver, such as «pásatela», quoted verbatim in the PR and recorded with `--owner-waiver`) and `development-system pr-review-status <pr> --gate` showing `mergeReady`. A merge to main, a release, a global install and a production deploy follow the same gates (`mergeReady` for main, `release:prepare` and the release train's production smoke and rollback) and then wait for the owner's explicit production answer (stop 5); a general approval («te apruebo todo») does not cover them.
-- Reviews (owner decisions 2026-10-14 and 2026-11-11: «Una vez que llegue a 5 y todavía no encuentre el freno, ya quiero que avance»): review the finished PR, never each push, and never ask the owner for a round. Run `development-system pr-review-status <pr> --gate` and do what its `siguiente` says; for a PR into develop it is always an action of yours. The gate runs Sol 6.1 High up to five rounds per branch lineage (closing a PR and opening another from the same branch never resets the count) and then advances; only a critical finding (security, authorization, data loss, money, minors' privacy, consent, or no stated domain) gets rounds six and seven, and if it is still open the disputed change leaves the PR. Stopping reviews is not acceptance: the ledger keeps what nobody re-read. Ask Codex (`--request`) at most twice; answer each Codex thread in the thread with the fix commit or «Rechazado: <reason>», without resolving it. The reviewer packet comes from `development-system review brief`. A wrong ledger row is annulled with `development-system review void`, never by hand. When the owner says to stop reviewing, quote the words in the PR and record them with `development-system review waive --pr <ref> --head <sha> --quote "<words>"`.
+- Reviews (owner decisions 2026-10-14 and 2026-11-11: «Una vez que llegue a 5 y todavía no encuentre el freno, ya quiero que avance»): review the finished PR, never each push, and never ask the owner for a round. Run `development-system pr-review-status <pr> --gate` and do what its `siguiente` says; for a PR into develop it is always an action of yours. The gate orders each round to Fable 5.2 as a fresh read-only reviewer (Claude Code: Agent `reviewer` with a `Review kind: pr` packet; Codex: a read-only `delegate_task` to `claude-fable-5-2`), up to five rounds per branch lineage (closing a PR and opening another from the same branch never resets the count), and then advances; when Fable fails on quota or is not offered, record it with `development-system review release --pr <ref> --reason "fable-unavailable: <observed message>"` and the gate orders that round to Sol 6.1 High through codex-review, without asking; only a critical finding (security, authorization, data loss, money, minors' privacy, consent, or no stated domain) gets rounds six and seven, and if it is still open the disputed change leaves the PR. Stopping reviews is not acceptance: the ledger keeps what nobody re-read. Ask Codex (`--request`) at most twice; answer each Codex thread in the thread with the fix commit or «Rechazado: <reason>», without resolving it. The reviewer packet comes from `development-system review brief`. A wrong ledger row is annulled with `development-system review void`, never by hand. When the owner says to stop reviewing, quote the words in the PR and record them with `development-system review waive --pr <ref> --head <sha> --quote "<words>"`.
 - `cross-review` runs only when the operator asks for it; plans and primitive lists otherwise get the single plan review of the shared host rules, with at most one more round for a blocking finding.
 - Computer use and simulator QA run on Terra 6.1 Low fast, browser app testing on Terra 6.1 High fast and video recording on Terra 6.1 Medium fast (model screen of 2026-10-29); a parent on another model delegates the browser work instead of driving it at extra-high effort.
 - Browser budget (operator decision 2026-10-14): one browser or computer-use session per PR, on its ready head, covering every affected flow in one pass. A second session only when the first found a real defect, and it checks only that fix; never a session per push or per polish change. An independent visual critique runs once per PR and only for UI changes. Never a third session without the operator.
 - Primitives: each product repo keeps `docs/architecture/primitives.json` true (`development-system check-primitives`); `primitives-gardener` fixes them and the Steward tends them. PRs carry a `system-recap`.
-- Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the report. Other decisions stop only when they meet one of the five stops (spend, destruction not ordered, messages to people, account security, production).
-- Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level.
-- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref> --repository <repo>`, reusing the existing id it suggests for the same cause (`--new-id` only for a truly new cause) and adding `--cause <slug>` once the root cause is confirmed; a cause with two distinct incidents (`mistake list --repeated --by cause`) becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the final report; frictions feed the Steward and never count as mistakes.
+- Two-way (reversible: a screen on develop, a rename, a revertible PR): the agent decides and records it in the closing. Other decisions stop only when they meet one of the five stops (spend, destruction not ordered, messages to people, account security, production).
+- Gardener ladder (Lauren Tan): make the error impossible in code > lint/CI/guard > rule/skill, never a style guide alone. A mistake seen twice becomes a proposed hard rule at the highest possible level. A class of finding that reviews raised twice becomes a lint, guard or check before another round is spent finding it again.
+- Mistake log: record each root cause a retro or correction finds with `development-system mistake add --id <slug> --incident <ref> --evidence <ref> --repository <repo>`, reusing the existing id it suggests for the same cause (`--new-id` only for a truly new cause) and adding `--cause <slug>` once the root cause is confirmed; a cause with two distinct incidents (`mistake list --repeated --by cause`) becomes a proposed hard rule on that ladder. Paper cuts go to `development-system friction add` before the closing; frictions feed the Steward and never count as mistakes.
 - An `AGENTS.md`/`CLAUDE.md` rewrite or a lint-tool migration proves it kept every rule before merge: `development-system check-agents-rules --base <ref> <file>`, and `development-system check-lint-floor --write <snapshot>` on the base checkout then `--snapshot <snapshot>` on the candidate.
 - No evals.
 
@@ -168,13 +181,14 @@ kill what you launched, never by name and never another thread's.
 
 ## Report and Headroom evidence
 
-Nontrivial delivery gets a readable HTML report from `development-system
-document` (behavior passed/failed/not reached, elapsed time, evidence, material
-gaps) in the approved AO HyS r5/p2 presentation it shares with questionnaires,
-contextual questions, browser drafts and revisioned batch submission; Markdown
-is supplementary. Deliver it durably: link its persistent path in the closing
-message, and render it in the owning T3 thread only when the owner asks. A
-temporary tunnel is optional; when used, state its actual
+The closing in the thread is the delivery (owner decision 2026-11-12: «ya no
+es necesario ir a un lugar distinto para leer»). `development-system document`
+writes the readable HTML report (behavior passed/failed/not reached, elapsed
+time, evidence, material gaps) in the approved AO HyS r5/p2 presentation it
+shares with questionnaires, contextual questions, browser drafts and revisioned
+batch submission only when the owner asks for it; then link its persistent
+path, and render it in the owning T3 thread when asked. No hook requires a
+report. A temporary tunnel is optional; when used, state its actual
 URL and expiry and never make it the only delivery. Secrets and private
 transcripts stay outside any served directory. A report is not acceptance
 evidence.
@@ -203,7 +217,7 @@ local Codex credential-home sequence followed by a fresh native Claude role.
 Run codex-review once; it discovers existing profiles without copying credentials
 and records at most two sequential profile attempts. Read receipt.json as well as findings.
 When status is fallback_required and fallback.eligible is true, immediately
-dispatch reviewer (plan, diff or security), visual-reviewer (image review) or
+dispatch reviewer-medium (plan, diff or security; reviewer is Fable 5.2), visual-reviewer (image review) or
 browser-qa (computer use) through the native Agent tool with the original packet.
 Copy fallback.prompt verbatim from the receipt; it contains the original packet
 and Codex fallback:, Codex fallback receipt: and Codex fallback packet: lines.

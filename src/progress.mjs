@@ -3,7 +3,7 @@
 // PRs, read from what already exists, so a progress answer does not depend on what the agent remembers.
 //
 // It takes the explicit list of PRs (the current branch would leave the earlier ones out) and reads four things per
-// PR: its state on GitHub, the review gate's step when it is open, the Sol rounds in the ledger and the recorded
+// PR: its state on GitHub, the review gate's step when it is open, the review rounds in the ledger and the recorded
 // behavioral evidence. It prints only facts. What it could not read is printed as `desconocido`, never as a fact, and
 // one unreadable PR does not hide the others. It never says that something waits for the owner or that the work is
 // finished: the coordinator decides that, against the authorization it already has. Read-only: no merge pass is
@@ -64,7 +64,7 @@ export function progress({ prs, home = homedir(), readers = {} }) {
       const rounds = records.filter((record) => record.type === "round");
       const last = rounds.at(-1);
       const notes = [
-        ...new Set(records.filter((record) => record.type === "exemption").map((record) => `exento de Sol (${record.exempt})`)),
+        ...new Set(records.filter((record) => record.type === "exemption").map((record) => `exento de revisión (${record.exempt})`)),
         ...(records.some((record) => record.type === "waiver") ? ["dispensa registrada"] : []),
         ...(records.some((record) => record.type === "auto-advance") ? ["avance sin otra ronda registrado"] : []),
       ];
@@ -101,9 +101,9 @@ export function formatProgress(result) {
     const parts = [];
     if (row.github) parts.push(`${STATE[row.github.state]} (base ${row.github.base}, head ${row.github.head.slice(0, 12)}${row.github.state === "open" ? "" : `, ${row.github.at.slice(0, 10)}`})`);
     else parts.push(`estado ${UNKNOWN}`);
-    if (row.gate) parts.push(`puerta: paso ${STEP[row.gate.step] ?? row.gate.step}, Codex ${row.gate.codex}, Sol ${row.gate.sol}, evidencia ${row.gate.evidence}, pase de fusión ${row.gate.mergeReady ? "disponible" : "no disponible"}`);
+    if (row.gate) parts.push(`puerta: paso ${STEP[row.gate.step] ?? row.gate.step}, Codex ${row.gate.codex}, revisión ${row.gate.sol}, evidencia ${row.gate.evidence}, pase de fusión ${row.gate.mergeReady ? "disponible" : "no disponible"}`);
     else if (row.github?.state === "open") parts.push(`puerta ${UNKNOWN}`);
-    if (row.ledger) parts.push(`rondas de Sol ${row.ledger.rounds}${row.ledger.last ? ` (última: ${row.ledger.last})` : ""}${row.ledger.notes.length ? `; ${row.ledger.notes.join("; ")}` : ""}`);
+    if (row.ledger) parts.push(`rondas de revisión ${row.ledger.rounds}${row.ledger.last ? ` (última: ${row.ledger.last})` : ""}${row.ledger.notes.length ? `; ${row.ledger.notes.join("; ")}` : ""}`);
     else parts.push(`rondas ${UNKNOWN}`);
     if (row.evidence) parts.push(`evidencia registrada: ${row.evidence.receipts} ${row.evidence.receipts === 1 ? "recibo" : "recibos"}${row.evidence.receipts === 0 ? "" : row.evidence.forHead === null ? `, del head ${UNKNOWN}` : row.evidence.forHead ? ", uno del head" : ", ninguno del head"}`);
     else parts.push(`evidencia ${UNKNOWN}`);

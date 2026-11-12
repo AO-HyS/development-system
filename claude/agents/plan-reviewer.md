@@ -1,6 +1,6 @@
 ---
 name: plan-reviewer
-description: "Retired in 1.34.0: reviews run on Sol 6.1 High through codex-review; the roster guard refuses this role."
+description: "Retired: use reviewer (Fable 5.2) with a `Review kind: plan|security|diff|pr` line; the roster guard refuses this role."
 model: fable
 effort: high
 tools: Read, Grep, Glob, Bash
