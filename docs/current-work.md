@@ -1,13 +1,16 @@
 # Current work
 
-## 2.13.2 — Planeta Aula joins the weekly Development Steward (candidate, branch `feat/ds-2132-steward-planeta-aula`)
+## 2.13.2 — Planeta Aula joins the weekly Development Steward (released 2026-11-12)
 
 - Owner opt-in of 2026-11-12, verbatim «mete Planeta Aula al Steward». He had asked whether Planeta Aula, NutriPlan, Barber and the other official repositories had the new Development System; the shared installation already served the four (their PRs #83, #746 and #696 went through the installed gate), but Planeta Aula was outside the Steward allowlist.
 - Change: `primaryRepositoryAllowlist` in `src/development-steward.mjs` has seven repositories; the `development-steward` skill, its collection prompt and its Codex card (`artifacts/2.13.2/skills/internal/development-steward`) name Planeta Aula for sessions, primitives, merged-PR Codex findings and the PostHog-driven Emil pass. Cut: `scripts/build-release-2132.mjs`, `manifests/2.13.2.json`, `catalog/0.79.0.json`. The guard is unchanged (policy 2.6.1).
 - Observed: with the same private input, the installed 2.13.1 answers `repository not allowlisted: planeta-aula` and the candidate accepts the repository evidence and one session into an isolated ledger.
 - After the global install (never before, the installed ledger refuses an id it does not know): update the T3 scheduled task «Development Steward · retro semanal y PR revisado» so its focus list names Planeta Aula.
 - Not in this change: Planeta Aula in `src/linear-hygiene.mjs` (it needs its Linear team and was not asked), an `AGENTS.md` in Planeta Aula, and the old `git push` approval lines in the NutriPlan and Barber `AGENTS.md`.
-- Pending: merge to develop, then the owner's production answer for 2.13.2 (merge to main, release v2.13.2, global install).
+- Shipped: #205 to develop, owner's production answer of 2026-11-12 «Sí, lleva la 2.13.2 a producción», #206 merged to main at `1b3957c`, release [v2.13.2](https://github.com/AO-HyS/development-system/releases/tag/v2.13.2) (tarball sha256 `cdc04871…c2d0`). Isolated update and the global update are healthy (`doctor`: 2.13.2, catalog 0.79.0, `1b3957c8c9b1`); `guardrails-audit` healthy.
+- Observed after install: the installed `development-system development-steward --json` with the same private input answers `valid: true`, no errors, Planeta Aula accepted, in a fresh isolated home.
+- Not done: the T3 scheduled task prompt still names four focus repositories. `schedule_task` refused the update from this thread with `runtime_mode_escalation_denied` (the task runs in full-access, the thread in auto). The owner edits the task in T3, or reruns the update from a full-access thread; the replacement prompt is in `~/.development-system/private/verification/ds-2130/steward-task-prompt-2132.md`. Until then the Monday run reads the installed skill (which names Planeta Aula) but its task text keeps the old four-repo focus line.
+- Not verified: a real weekly run with Planeta Aula (next 2026-11-16) and Planeta Aula PostHog access.
 
 ## 2.13.1 — two fixes from the Codex review of the 2.13.0 release (released 2026-11-11)
 
