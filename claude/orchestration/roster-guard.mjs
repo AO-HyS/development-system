@@ -877,10 +877,18 @@ function mapperBash() {
   if (list.length > 1 && list.at(-1) === '') list.pop();
   if (list.some((part) => !part)) refuse('Empty command in the list.');
   // One leading `cd <path>`; a cd anywhere else is not a mapper command.
-  const cdMatch = list.length > 1 ? list[0].match(/^cd\s+("[^"]+"|'[^']+'|[^\s"']+)$/) : null;
+  const cdMatch = list.length > 1 ? leadingCd(list[0]) : null;
   const cdPath = cdMatch ? cdMatch[1] : null;
   for (const part of cdMatch ? list.slice(1) : list) mapperCommand(part, cdPath, refuse);
   allow(null, null);
+}
+// The leading `cd` of a list is exactly `cd` and one path word. It is not checked as a reader, so nothing else may
+// ride on it: a pipe, a redirect or a job in that segment (`cd .|x`, `cd .&>out`) makes it an ordinary command,
+// which the reader checks refuse.
+function leadingCd(part) {
+  const parsed = splitShell(part);
+  if (!parsed || parsed.segments.length !== 1) return null;
+  return part.match(/^cd\s+("[^"]+"|'[^']+'|[^\s"'|&;<>()]+)$/);
 }
 // One command of a mapper list: a reader, optionally piped into filters. Refuses (never returns) when it is not.
 function mapperCommand(text, cdPath, refuse) {
