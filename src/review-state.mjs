@@ -15,9 +15,9 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
-import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
+import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
-export { BUDGET, CRITICAL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
+export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
 export const SHA = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -34,8 +34,6 @@ const DOMAINS = [...CRITICAL, NOT_CRITICAL];
 /** A reviewer thread reference a person can open again; rejects placeholders such as "x". */
 export const THREAD = /^(t3-thread:\/\/\S+|thread:\S{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|(codex|claude):\S{8,}|https:\/\/\S+)$/i;
 const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
-/** The model a Fable round observed at runtime (a model id or `unknown`): printable, no spaces. */
-export const OBSERVED_MODEL = /^[\x21-\x7e]{1,200}$/;
 
 /**
  * @typedef {{id: string, paths: string[], origin?: "prior" | "fix-induced" | "new", critical?: string}} Finding
@@ -249,15 +247,9 @@ export const slotOf = (record) => Number(record?.slot ?? record?.round);
 export function recordProblem(record, key) {
   if (record?.pr !== key) return `is not a review record for ${key}`;
   if (record.type === "round") {
-    // 2.14.0: a Fable round is a Sol-shaped row with reviewer "fable" and an optional observedModel; it is checked
-    // without that key, so a sol row validates exactly as before and never carries it.
-    if ("observedModel" in record && record.reviewer !== "fable") return "round observedModel is only for a fable round";
-    if (record.reviewer === "fable") {
-      if ("operatorApproval" in record) return "a fable round has no operator approval";
-      if ("observedModel" in record && (typeof record.observedModel !== "string" || !OBSERVED_MODEL.test(record.observedModel))) return "round observedModel is not a model id or unknown";
-      const { observedModel, ...rest } = record;
-      return recordProblem({ ...rest, reviewer: "sol" }, key);
-    }
+    const fable = fableRound(record);
+    if ("problem" in fable) return fable.problem;
+    if (fable.row !== record) return recordProblem(fable.row, key);
     const keys = ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"];
     if (hasNewKeys(record) || (Number(record.round) > 2 && !("operatorApproval" in record))) {
       // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (a 2.9.0
@@ -554,8 +546,7 @@ export function lineageState(home, lineage) {
   // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
   // slot its lineage used. The writer of an advance and the gate both read it from here.
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
-  // Who runs the next round (2.14.0): Fable unless a recent `fable-unavailable:` release of this sidecar is newer than
-  // the lineage's newest Fable round. Slots are shared: whichever reviewer runs a round binds the same reservation.
+  // 2.14.0: who runs the next round; slots are shared between reviewers (see reviewerFor).
   const reviewer = reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now() });
   return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer };
 }

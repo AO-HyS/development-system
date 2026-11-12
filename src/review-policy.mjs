@@ -227,3 +227,21 @@ export function policyRecordProblem(record) {
   }
   return undefined;
 }
+
+/** The model a Fable round observed at runtime (a model id or `unknown`): printable, no spaces. */
+export const OBSERVED_MODEL = /^[\x21-\x7e]{1,200}$/;
+
+/**
+ * 2.14.0: a Fable round is a Sol-shaped row with reviewer "fable" and an optional observedModel. Returns a problem,
+ * or the row to validate with the Sol rules (the same object for a sol row, which never carries observedModel).
+ * @param {Record<string, unknown>} record
+ * @returns {{problem: string} | {row: Record<string, unknown>}}
+ */
+export function fableRound(record) {
+  if ("observedModel" in record && record.reviewer !== "fable") return { problem: "round observedModel is only for a fable round" };
+  if (record.reviewer !== "fable") return { row: record };
+  if ("operatorApproval" in record) return { problem: "a fable round has no operator approval" };
+  if ("observedModel" in record && (typeof record.observedModel !== "string" || !OBSERVED_MODEL.test(record.observedModel))) return { problem: "round observedModel is not a model id or unknown" };
+  const { observedModel, ...rest } = record;
+  return { row: { ...rest, reviewer: "sol" } };
+}

@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { probeCoach } from "./claude-orchestration-coach-probe.mjs";
 
 const guardRelative = ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs";
 const policyRelative = ".codex/development-system/runtime/claude-orchestration/policy.json";
@@ -22,7 +23,7 @@ export const managedEnv = /** @type {const} */ ({
 });
 const managedEvents = /** @type {const} */ ([
   // delegate_task reaches the guard so a T3 PR review reserves its lineage slot first (both MCP server spellings);
-  // reads, searches, Bash and request_secret reach it for the never-blocking orchestration coach.
+  // reads, Bash and request_secret feed the coach.
   { event: "PreToolUse", matcher: "Agent|Read|Grep|Glob|Bash|.*[Ss]creenshot.*|mcp__t3[-_]code__(delegate_task|request_secret)", timeout: 20, statusMessage: "Checking roster, image budget and review brake", target: "guard" },
   { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined, target: "guard" },
   { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined, target: "guard" },
@@ -275,58 +276,6 @@ function probe(home, guard, subagentType, delegate, prompt = "audit probe") {
   return { subagentType, status: result.status, denied: /"deny"/u.test(output) || /\bdeny\b/u.test(output), output: output.slice(0, 2000) };
 }
 
-/**
- * Feeds the installed guard a parent stream under a fresh session: five Reads, then Bash reads such as
- * `cd src && rg -n foo . | head` (one read each) mixed with `ls src; cat package.json` (a list: neutral), so the
- * coach hint must arrive exactly with the tenth counted read and never before. Then ten Reads carrying an agent_id
- * under another fresh session must print nothing. The guard never executes the commands.
- * Returns findings; empty when the coach behaves.
- * @param {string} home
- */
-function probeCoach(home) {
-  const { guard } = paths(home);
-  /** @type {NodeJS.ProcessEnv} */
-  const env = { ...process.env, HOME: home };
-  delete env.TYPESAFE_API_KEY;
-  delete env.CLAUDE_ROSTER_GUARD;
-  /** @param {string} session @param {string | undefined} agentId @param {string} [command] a Bash command instead of a Read */
-  const read = (session, agentId, command) => {
-    const input = JSON.stringify({ session_id: session, hook_event_name: "PreToolUse", tool_name: command ? "Bash" : "Read", cwd: home,
-      ...(agentId ? { agent_id: agentId, agent_type: "code-mapper" } : {}),
-      tool_input: command ? { command } : { file_path: `${home}/audit-coach-probe.txt` } });
-    const result = spawnSync(process.execPath, [guard], { input, env, encoding: "utf8", timeout: 30000 });
-    return { status: result.status, stdout: (result.stdout ?? "").trim() };
-  };
-  /** @param {string} stdout */
-  const coachContext = (stdout) => {
-    try { return String(JSON.parse(stdout)?.hookSpecificOutput?.additionalContext ?? "").startsWith("Orchestration coach:"); }
-    catch { return false; }
-  };
-  /** @type {string[]} */
-  const findings = [];
-  const parentSession = `audit-coach-${randomUUID()}`;
-  const search = "cd src && rg -n foo . | head";
-  const list = "ls src; cat package.json";
-  // [command or undefined for a Read, counted read number or 0 for neutral]
-  /** @type {Array<[string | undefined, number]>} */
-  const stream = [[undefined, 1], [undefined, 2], [undefined, 3], [undefined, 4], [undefined, 5], [list, 0],
-    [search, 6], [search, 7], [search, 8], [search, 9], [list, 0], [search, 10]];
-  for (const [index, [command, counted]] of stream.entries()) {
-    const label = `parent ${command ? `Bash ${JSON.stringify(command)}` : "Read"} (call ${index + 1})`;
-    const { status, stdout } = read(parentSession, undefined, command);
-    if (status !== 0) { findings.push(`Coach probe: ${label} exited ${status}`); break; }
-    if (counted === 10) {
-      if (!coachContext(stdout)) findings.push("Coach probe: the tenth counted parent read did not print an Orchestration coach hint (installed guard predates the coach)");
-    } else if (stdout !== "") { findings.push(`Coach probe: ${label} printed output before the tenth counted read`); break; }
-  }
-  const childSession = `audit-coach-${randomUUID()}`;
-  for (let i = 1; i <= 10; i += 1) {
-    const { status, stdout } = read(childSession, "audit-coach-agent");
-    if (status !== 0 || stdout !== "") { findings.push(`Coach probe: subagent Read ${i} was not passed silently`); break; }
-  }
-  return findings;
-}
-
 /** @param {{home: string}} options */
 export async function auditClaudeOrchestration({ home }) {
   const resolvedHome = resolve(home);
@@ -380,7 +329,7 @@ export async function auditClaudeOrchestration({ home }) {
     // `Review kind:` is denied before any reservation, so neither probe reaches GitHub or a ledger.
     const plainDelegate = probe(resolvedHome, managed.guard, "delegate_task:implementation", { task: "Objective: audit probe", role: "implementation" });
     const reviewDelegate = probe(resolvedHome, managed.guard, "delegate_task:review", { task: "Objective: audit probe", role: "review" });
-    // The native primary reviewer admits a fresh plan review with no reservation; retired plan-reviewer stays denied.
+    // Primary Fable reviewer admitted; retired plan-reviewer denied.
     const primaryReviewer = probe(resolvedHome, managed.guard, "reviewer", undefined, "Review kind: plan\nObjective: audit probe");
     const retiredReviewer = probe(resolvedHome, managed.guard, "plan-reviewer");
     probes.push(denied, allowed, plainDelegate, reviewDelegate, primaryReviewer, retiredReviewer);
@@ -388,10 +337,10 @@ export async function auditClaudeOrchestration({ home }) {
     if (allowed.status !== 0 || allowed.denied) findings.push("Guard probe did not allow code-mapper");
     if (plainDelegate.status !== 0 || plainDelegate.output.trim() !== "") findings.push("Guard probe did not pass a non-review delegate_task untouched");
     if (!reviewDelegate.denied) findings.push("Guard probe did not deny a review delegate_task without Review kind (installed guard predates the review brake)");
-    if (primaryReviewer.status !== 0 || primaryReviewer.denied) findings.push("Guard probe denied reviewer with Review kind: plan (installed guard or policy predates the primary Fable reviewer)");
+    if (primaryReviewer.status !== 0 || primaryReviewer.denied) findings.push("Guard probe denied reviewer with Review kind: plan (guard predates the Fable reviewer)");
     if (!retiredReviewer.denied) findings.push("Guard probe did not deny the retired plan-reviewer");
-    findings.push(...probeCoach(resolvedHome));
-    sideEffects.push(`Guard probes append ledger lines and two coach session directories under ${managed.ledger}`);
+    findings.push(...probeCoach(resolvedHome, managed.guard));
+    sideEffects.push(`Guard probes append ledger lines and coach sessions under ${managed.ledger}`);
   }
   const ok = findings.length === 0;
   return { ok, operation: "claude-orchestration-audit", status: ok ? "healthy" : "unhealthy", findings, probes, sideEffects };
