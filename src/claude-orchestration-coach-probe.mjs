@@ -1,12 +1,13 @@
 // @ts-check
 
-// Audit probe for the never-blocking orchestration coach of the Claude roster guard (2.14.0).
+// Audit probe for the never-blocking orchestration coach of the Claude roster guard (2.14.0; lists count as reads since 2.14.1).
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 
 /**
  * Feeds the installed guard a parent stream under a fresh session: five Reads, then Bash reads such as
- * `cd src && rg -n foo . | head` (one read each) mixed with `ls src; cat package.json` (a list: neutral), so the
+ * `cd src && rg -n foo . | head` (one read each) mixed with `ls src || cat package.json` (an alternative the coach
+ * does not parse: neutral in 2.14.0 and in 2.14.1, where a `;` list of reads counts as one read), so the
  * coach hint must arrive exactly with the tenth counted read and never before. Then ten Reads carrying an agent_id
  * under another fresh session must print nothing. The guard never executes the commands.
  * Returns findings; empty when the coach behaves.
@@ -35,7 +36,7 @@ export function probeCoach(home, guard) {
   const findings = [];
   const parentSession = `audit-coach-${randomUUID()}`;
   const search = "cd src && rg -n foo . | head";
-  const list = "ls src; cat package.json";
+  const list = "ls src || cat package.json";
   // [command or undefined for a Read, counted read number or 0 for neutral]
   /** @type {Array<[string | undefined, number]>} */
   const stream = [[undefined, 1], [undefined, 2], [undefined, 3], [undefined, 4], [undefined, 5], [list, 0],

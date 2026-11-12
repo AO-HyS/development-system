@@ -5,7 +5,7 @@
 // PRs are the unmerged PRs with that head created after the latest merged one (a merge ends a lineage). Slots, approvals,
 // reservations and releases live in a head sidecar <reviews>/<owner>/<repo>/branches/<hash>.jsonl shared by every
 // lineage of that head; only entries of the current lineage's PRs count, older ones are history. Which round runs next
-// is `review-policy.mjs` (2.13.0): five rounds without anyone's approval, two more only to re-read a critical fix. A
+// is `review-policy.mjs` (2.13.0; caps of 2.14.1): two rounds without anyone's approval, two more only to re-read a critical fix. A
 // round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a coordinator calling the
 // CLI) goes through the same brake. Every GitHub read that the brake depends on fails closed. A void annuls one ledger
 // line (even a malformed or fake one) but restores no budget.
