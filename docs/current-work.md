@@ -122,3 +122,33 @@ https://github.com/AO-HyS/development-system/blob/703fa478eda5f0cfe9667d6e2099e9
 - Browse updated 2026-11-08 at the owner's request («usa la ultima version»): CLI and relay 0.0.16 (doctor all ok); the Chrome extension stays 0.0.15 until the Web Store ships 0.0.16 (protocol 3 compatible). tools/list on 0.0.16 has the same 18 tools, so the browse policy entry is unchanged.
 - Sol R4 (fix-diff 0d6f511..HEAD) approved by the owner: «usa la ultima version y realiza otra revision solo de los ultimos cambios».
 - Sol R4 result: blocking (DS195-12 argv list concatenation; DS195-02a Node executor filter bypass). Fixed in 4fc97b9 (call-boundary reconstruction; expect/playwright stopped). Dry run 87/87 repo and isolated HOME (home-2120f). Gate: budget-spent, not mergeReady; a round 5 or a review waiver needs the owner's words.
+
+## 2.13.0 PR B — guards for real harm (in progress; its place is the 2.13.0 entry at the top once PR A merges)
+
+- Plan `ds-friction-plan-20261111` v5, change B. Branch `feat/ds-2130-guards` from develop 09be55e. PR A is #198 (review gate), PR C cuts the release.
+- This PR adds only `artifacts/2.13.0/skills/internal/global-agent-guardrails/` (policy 2.6.0), a copy of 2.12.0 with the changes below. No manifest or builder names it yet, so `release:prepare` stays green and the installed guard stays 2.12.0 until the cut in PR C.
+- B1 kept as it was: spend, disk and repository destruction, hard reset, clean, discard, force push, infrastructure destroy, download to shell, fork bomb, destructive git config, test files without a grant, guard configuration, the merge gate and the MCP stops.
+- B2 retired: `tmp-write` and `docs-config-write` with its grant (`docsConfigNames: []`; the installed instructions are `protectedWriteTargets`). The CLI commands `allow-docs` and `docs-grants` (`src/docs-grants.mjs`, `src/cli.mjs`) are removed in PR C, because PR A edits the same lines of `src/cli.mjs`.
+- B3 «la guarda nunca toma su propia ignorancia como permiso»: read-only subcommands of sensitive tools pass with a dynamic argument, mutating ones still block; variables are tracked when their value is written out and never re-assigned on a path the guard cannot follow; a program in a variable is judged as the program it names; a literal heredoc is read as text; programs that take text (sed, grep, rg, echo, printf, jq) do not have their arguments scanned as commands; parse failures still block.
+- B4: `broad-recursive-delete` lets through regenerable folders, the agent's scratch and temporary folders when the path is verified; `git-branch-delete-force` lets through a branch already merged into its base, never develop, main or master.
+- Verified (private folder `~/.development-system/private/verification/ds-2130/`, the guard only reads text; nothing is executed):
+  - `guard-replay.mjs`: of the 396 payloads the guard blocked in the two architecture thread trees, 268 pass now (67.7%, goal 264); 2.12.0 passes 6. The 4 inspection failures left are real shell syntax errors.
+  - `stops-and-harmless.mjs` (with the folder `fixtures-199.sh` builds): 120 commands that touch the five stops, written out and indirect, all block; 46 harmless dynamic forms all pass. Noted limit, same as 2.12.0: an unfinished `if` with nothing harmful inside is not reported as a syntax error (the shell rejects it; with a delete inside it blocks).
+- Sol round 1 on #199 (full, head fa7d923): blocking, seven regressions against 2.12.0, all fixed in the same three files and each payload added to `stops-and-harmless.mjs`:
+  - DS199-R1-1/-2: retiring the docs names had switched off checks that fail closed. A recursive copy, move or sync from a source the guard cannot read is blocked when guard configuration lies below the destination written out; a relative write under `find -execdir` is blocked; `find -delete`/`-exec` from a start the guard cannot read is judged by the protected files its tests pass.
+  - DS199-R1-3: `sensitiveWriteOptions` and `sensitiveValueOptions` in the policy. An option that writes a file makes a read-only subcommand a write and its file is a write target; an unreadable word passes only where it cannot be that option. `terraform providers` left the read-only list (`providers mirror` writes).
+  - DS199-R1-4/-5: `printf %n`, `print -f`, numeric conversions with non-numeric arguments, arithmetic subscripts and substring offsets, zsh `$s[…]` and `{name}>file` stop variable tracking.
+  - DS199-R1-6: the scratch exception walks the whole tree (200000 entries, 32 levels, 1.5 s; past a bound it counts as holding a repository) and knows bare repositories.
+  - DS199-R1-7: the merged-branch exception ends when a `GIT_` variable or a construct that can export one appears in the command or the environment.
+  - Replay after the fixes: 268 of 396 pass (goal 264).
+- Sol round 2 on #199 (fix diff fa7d923..4ba107a): blocking, four ways the round 1 mechanisms were still reachable (origin prior), fixed in `command-guard.mjs`:
+  - DS199-R2-1: contents the guard cannot read copied to a place it cannot read either (`cp -R "$S" "$D"/`) are blocked; a readable tree copied there passes.
+  - DS199-R2-2: a `find -exec` from a start the guard cannot read stands for every protected file whatever its tests ask for (a link can have any name). Same mechanism, found while fixing: the words `xargs` reads from standard input stood for the retired docs name only, so `echo ~/.claude/settings.json | xargs truncate -s 0` passed; they now stand for every protected file.
+  - DS199-R2-3: the merged-branch exception holds only in a command with no expansion at all (`E=export; "$E" …` spelled the redirect through variables).
+  - DS199-R2-4: an unreadable value of a listed option must be inside double quotes; unquoted it can split into the write option (`pulumi preview --stack $s`).
+  - Replay after these fixes: 265 of 396 pass (goal 264). The three that block again feed `git ls-files` to `xargs git rm`, which 2.12.0 blocked for the same reason.
+- Codex on 4ba107a, two P1 threads, both fixed in `command-guard.mjs`:
+  - 4545186638: an assignment right after `||` is never kept (`B=git; true || B=echo && "$B" reset --hard` was judged as `echo`).
+  - 4545186639: archive or remote contents into a directory the guard cannot read are judged by the folder written out (`tar -xf "$a" -C ~/.claude/"$dir"` blocks); with no folder written out they pass only when the archive can be listed and carries no name that can end a protected path.
+  - `stops-and-harmless.mjs` now holds 120 stops and 46 harmless forms; replay unchanged at 265.
+- Not reached: the guard installed in an isolated HOME on a real priority-repo PR (done-when 5), which needs the cut in PR C.
