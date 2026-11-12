@@ -68,6 +68,7 @@
 - From PR B's plan items: `allow-docs` and `docs-grants` are gone from the CLI (`src/docs-grants.mjs` deleted).
 - Also: `src/review-state.mjs` trusts a GitHub comparison for the evidence question only when it is `ahead` or `identical` (same flaw Codex found in `pr-review-status.mjs`).
 - Release cut: `scripts/build-release-2130.mjs` (skills under `skills/internal` and `skills/upstream`, the visual-delivery rule), `manifests/2.13.0.json`, `catalog/0.77.0.json`, `guardCatalogVersion` 0.77.0, `package.json` 2.13.0.
+- Visual (8d55a5e): one browser session captured the plan and delivery examples (728 and 390 px, light and dark, a stage selection); the independent critique (Opus 5.5) found no blockers and one important point, fixed: the closing now follows the drawing in the main text color and the written list marks the focused stage. A second session checked only that fix. The PR description draft is in the private verification folder (`ds-2130/pr-c-body-draft.md`).
 - Not reached yet: done-when 5 (the candidate installed in an isolated HOME on the next real priority-repo PR) and done-when 6 («¿cómo vas?» on Claude and on Codex with the candidate), which need the installed version; see the PR description for what was run.
 - Pending: merge A and B (owner's answer on the third round), open and review PR C, then one production question (merge to main, release v2.13.0, global install).
 
