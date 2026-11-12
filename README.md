@@ -4,11 +4,12 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.13.0**, shared skill catalog **0.77.0**. This
-candidate makes the review gate advance on its own toward develop (five Sol rounds, seven for a
-critical finding, the next action printed by `pr-review-status --gate`), makes the guard block harm
-instead of what it cannot read at a glance (guard policy 2.6.0), and gives progress and closings one
-text format with `development-system progress` for the facts. The previous candidate limited owner
+Current source candidate: **2.13.1**, shared skill catalog **0.78.0**. It fixes two findings of the
+2.13.0 release review (a negated command is never certain for the guard; Sol reservations match in any
+letter case). 2.13.0 made the review gate advance on its own toward develop (five Sol rounds, seven for a
+critical finding, the next action printed by `pr-review-status --gate`), made the guard block harm
+instead of what it cannot read at a glance (guard policy 2.6.0), and gave progress and closings one
+text format with `development-system progress` for the facts. 2.12.0 limited owner
 stops to five (incremental spend, destruction the owner did not order,
 messages to real people, account security, production), recognizes the owner's many ways of saying
 "do not ask me" for everything else, and adds an MCP spend guard (previous guard policy). The one before made

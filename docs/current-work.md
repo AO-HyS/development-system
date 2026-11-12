@@ -1,7 +1,20 @@
 # Current work
 
-## 2.13.0 — less friction: reviews that run alone, guards for real harm, one progress format (in progress)
+## 2.13.1 — two fixes from the Codex review of the 2.13.0 release (candidate, branch `fix/ds-2131-negation-and-case`)
 
+- Codex reviewed release PR #201 on its own after the merge and left two threads. Both reproduced on the installed 2.13.0.
+- P1, guard: `B=git; ! true && B=echo; "$B" reset --hard` passed, because the parser dropped `!` and trusted the assignment after `&&`. Policy 2.6.1 (`artifacts/2.13.1/skills/internal/global-agent-guardrails`): a pipeline with `!` is never certain; the payload stops as `dynamic-command-name`. Not a form anyone types by accident, but 2.12.0 stopped it. The replay of historical blocks gives the same rows on 2.13.0 and 2.13.1 (263 pass on 2026-11-11 after the merges; 264 when #199 was verified); the stops and harmless list passes.
+- P2, gate: `roundsReservedAt` compared the reference as typed (`AO-HyS/...`) with the lowercase reservation key, so a rejected critical Codex thread stayed `rejected-needs-sol` after Sol had reviewed it. `src/codex-threads.mjs` now matches in any letter case.
+- Cut: `scripts/build-release-2131.mjs`, `manifests/2.13.1.json`, `catalog/0.78.0.json`, `package.json` 2.13.1, `guardCatalogVersion` 0.78.0.
+- Pending: merge to develop, then the owner's production answer for 2.13.1 (merge to main, release v2.13.1, global install). The approval of 2.13.0 does not cover it.
+
+## 2.13.0 — less friction: reviews that run alone, guards for real harm, one progress format (released 2026-11-11)
+
+- Shipped 2026-11-11: the owner ended the reviews and gave the production answer, verbatim «Ya no quiero más revisiones. Ya llévala a la producción.» (waivers on #198, #199, #200 and #201). #198 (68a88aa), #199 (6634fb4) and #200 (9ec344b) merged to develop; release PR #201 merged to main (1667690); GitHub release v2.13.0 (tarball sha256 dabbf79f…); `update --version 2.13.0` checked first in an isolated HOME, then global install: doctor «2.13.0 healthy», guardrails-audit healthy. The install ran while three other threads were running (recorded with `--during-active-runs`, the owner's order quoted).
+- Observed after the install, in the installing thread: a loop over written numbers with a read-only `gh` and a write to `/tmp` pass (2.12.0 blocked both), `rm -rf` of an unreadable path still stops, the installed `progress` prints the four PRs, and the installed gate reads Barber #694 as `Sol 0/5` with its next action in words.
+- Done-when 6 («¿cómo vas?» in a fresh session): the Codex session (gpt-6.1-sol) answered in the new format and took its facts from `development-system progress`. The Claude session's answer is recorded in the release report.
+- Not reached: done-when 5, a real priority-repository PR from open to merge under 2.13.0 (the next one in Barber or NutriPlan is the observation).
+- Follow-up noted: `.husky/pre-commit` files already written into product repositories still format during merges; the new `setup-pre-commit` text applies when the hook is set up again.
 - Owner request 2026-11-11: the DS «está estorbando más de lo que está ayudando». Plan v5 accepted by Sol 6.1 High in cross review round 5: `~/.development-system/private/cross-review/ds-friction-plan-20261111/plan-v5.md` (sha256 `74cfc56a…5871994`). Owner approval, verbatim: «Implementa el plan.» Owner decision on rounds: «Una vez que llegue a 5 y todavía no encuentre el freno, ya quiero que avance.»
 - Three PRs into develop, one version (2.13.0, catalog 0.77.0): A review gate, B guards, C format. The release to main, the GitHub release and the global install are one production question at the end.
 - Packaging decision: `artifacts/` on develop are immutable, so each PR must keep `release:prepare` green. PR A carries only `src/` (gate and CLI). The written rule (`config/global-instructions.md` "Reviews" bullet, about 450 words down to about 180), the hooks' optional `Critical thread:` packet line (`claude/orchestration/roster-guard.mjs`, `codex-review.mjs`), the pre-commit skill that skips formatting during a merge (A5) and the 2.13.0 builder are cut once in PR C. The pending source edits are saved as `~/.development-system/private/verification/ds-2130/pr-c-sources.patch`.
