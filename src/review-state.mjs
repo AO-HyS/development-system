@@ -614,7 +614,7 @@ function evidenceBeforeFirstRound(home, lineage) {
  * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
  * is unrecorded: a retry gets the same reservation, after the same evidence and policy questions a new one answers;
  * once that slot has a recorded round the key is spent and the call refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
- * (the Codex wrapper keeps a launch claim per reservation). Refused while another slot of the lineage is reserved but
+ * (the Codex wrapper and, since 2.14.2, the Claude guard keep one launch claim per reservation). Refused while another slot of the lineage is reserved but
  * unrecorded, when the policy (`admission` in review-policy.mjs) has no round to run, or after a fix-induced blocker
  * without a verified redesign. `criticalThread` names a rejected critical Codex thread that needs Sol's read.
  * `dryRun` validates the same way and writes nothing.

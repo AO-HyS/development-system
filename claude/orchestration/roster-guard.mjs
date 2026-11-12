@@ -6,6 +6,7 @@
 // Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High. Security reviews and hard reviews run on the
 // native primary `reviewer` (Fable 5.2): fresh, read-only, with a `Review kind:` line and, unless the kind is
 // free (security), a `Review difficulty: hard: <why>` line; kind pr reserves the PR's lineage slot like delegate_task.
+// One reservation launches one review (2.14.2): a second reviewer on the same slot is denied.
 // Sol reviews and Terra computer use retain receipt-bound native fallback. A fresh
 // primary Opus visual critic needs no fallback envelope, never source ownership.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
@@ -399,8 +400,8 @@ const packetLine = (text, label) => new RegExp(`^\\s*(?:[-*]\\s+)?(?:\\*\\*)?${l
 
 // PR review reservation shared by delegate_task and the native primary reviewer: validates the PR and scope lines,
 // reserves the PR's next lineage slot through the installed CLI and denies on any refusal. requestKey defaults to the
-// packet hash.
-async function reservePrReview(text, entry, requestKey, via) {
+// packet hash. One reservation launches one review (2.14.2): see claimLaunch.
+async function reservePrReview(text, entry, requestKey, via, launchKey) {
   const pr = packetLine(text, 'PR');
   const scope = packetLine(text, 'Review scope');
   const approval = packetLine(text, 'Review approval');
@@ -415,7 +416,30 @@ async function reservePrReview(text, entry, requestKey, via) {
   const reservation = answer?.reservation;
   if (answer?.ok !== true || !reservation) deny(`Review brake refused ${pr}: ${String(answer?.error ?? 'no reservation returned').slice(0, 1500)}`, { ...entry, pr, scope, blockedBy: 'review-brake' });
   const slot = `${answer.reused ? 'reused' : 'reserved'} lineage slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`;
-  return { reservation, slot, logged: { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) } };
+  const logged = { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) };
+  claimLaunch(reservation, launchKey, via, logged);
+  return { reservation, slot, logged };
+}
+
+// Launch ownership of a reservation, in the file the Codex wrapper uses (launches/<reservationId>.json, created
+// exclusively), so a slot never runs two reviewers whichever launcher took it. The same launch key (the tool call, or
+// the T3 clientRequestId, which T3 answers with the same task) is a retry of one launch; any other key is a second
+// reviewer on the same slot and is denied. A release ends the reservation, so the next packet gets a new one.
+function claimLaunch(reservation, launchKey, via, entry) {
+  if (!/^[A-Za-z0-9-]{1,80}$/.test(String(reservation.id))) throw new Error(`unusable reservation id ${JSON.stringify(reservation.id)}`);
+  const dir = path.join(home(POLICY.review?.stateDir ?? '~/.development-system/private/runs/codex-review'), 'launches');
+  const file = path.join(dir, `${reservation.id}.json`);
+  const key = typeof launchKey === 'string' && launchKey ? launchKey : null;
+  try {
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(file, `${JSON.stringify({ reservationId: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope, launcher: via, launchKey: key, status: 'claimed', at: new Date().toISOString() })}\n`, { flag: 'wx', mode: 0o600 });
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error;
+    let existing = null;
+    try { existing = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { /* unreadable claim: counts as another launch */ }
+    if (key && existing?.launchKey === key) return;
+    deny(`Review brake: reservation ${reservation.id} (slot ${reservation.slot} of ${reservation.pr}) already launched a review${existing?.at ? ` at ${existing.at}` : ''}; one reservation launches one review, so nothing was started. If that review ran, record its round (development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ...). If it never ran or never answered, release the reservation (development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason <why>) and send the packet again.`, { ...entry, blockedBy: 'review-launch-claimed' });
+  }
 }
 
 // Every other review goes to codex-review on Sol 6.1 High; shared by the launch text and the difficulty denial.
@@ -443,7 +467,7 @@ async function primaryReview(type, ti, prompt, entry, primary) {
   // Any packet naming a PR takes that PR's lineage slot, whatever its kind; kind pr without a PR line is denied below.
   if (normalized !== 'pr' && packetLine(prompt, 'PR') === null) allow(null, reviewEntry);
   try {
-    const { reservation, slot, logged } = await reservePrReview(prompt, reviewEntry, null, `for ${type}`);
+    const { reservation, slot, logged } = await reservePrReview(prompt, reviewEntry, null, `for ${type}`, input.tool_use_id);
     allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --reviewer fable --scope ${reservation.scope} ... once the reviewer answers. If Fable fails on quota or is unavailable: development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason "fable-unavailable: <observed message>" and rerun the gate.`, logged);
   } catch (error) {
     // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.
@@ -1059,7 +1083,7 @@ async function delegateCall() {
     if (normalized === 'plan' || normalized === 'visual') allow(null, entry);
     if (normalized !== 'pr') deny(`Review kind must be pr, plan or visual (got "${kind}").`, { ...entry, blockedBy: 'review-kind' });
     const requestKey = typeof ti.clientRequestId === 'string' && ti.clientRequestId.trim() ? ti.clientRequestId.trim() : null;
-    const { reservation, slot, logged } = await reservePrReview(task, entry, requestKey, 'delegate_task');
+    const { reservation, slot, logged } = await reservePrReview(task, entry, requestKey, 'delegate_task', requestKey ?? input.tool_use_id);
     allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --scope ${reservation.scope} ... once the reviewer answers.`, logged);
   } catch (error) {
     // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.

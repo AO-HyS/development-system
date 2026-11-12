@@ -4,7 +4,7 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.14.1**, shared skill catalog **0.81.0**. It joins what the best measured version did
+Current source candidate: **2.14.2**, shared skill catalog **0.81.0**. 2.14.2 makes one review reservation launch one reviewer. 2.14.1 joins what the best measured version did
 with the current one: explorers may join read-only commands, the review gate runs two rounds per branch (two more
 only for a critical finding), and the coach flags an Opus writer without a written reason, helper 21 and the third PR of a session.
 2.14.0 enforced orchestration in code: the
