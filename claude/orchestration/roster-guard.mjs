@@ -439,7 +439,7 @@ async function primaryReview(type, ti, prompt, entry, primary) {
   if (normalized !== 'pr' && packetLine(prompt, 'PR') === null) allow(null, reviewEntry);
   try {
     const { reservation, slot, logged } = await reservePrReview(prompt, reviewEntry, null, `for ${type}`);
-    allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --reviewer fable --scope ${reservation.scope} ... once the reviewer answers. If Fable fails on quota or is unavailable: development-system review release --pr ${reservation.pr} --reason "fable-unavailable: <observed message>" and rerun the gate.`, logged);
+    allow(`Review brake: ${slot}. Record the round with development-system review record --pr ${reservation.pr} --reviewer fable --scope ${reservation.scope} ... once the reviewer answers. If Fable fails on quota or is unavailable: development-system review release --pr ${reservation.pr} --reservation-id ${reservation.id} --reason "fable-unavailable: <observed message>" and rerun the gate.`, logged);
   } catch (error) {
     // Inside the review branch an internal error denies; the global catch-and-allow is for every other call.
     deny(`Review brake error: ${String(error?.message ?? error).split('\n')[0].slice(0, 300)}`, { ...reviewEntry, blockedBy: 'review-brake-error' });
