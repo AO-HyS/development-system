@@ -29,6 +29,8 @@ const writerMarker = "Owned paths:";
 /** Ending on one of these means the turn is waiting, not closing: the rules say to end it without a message. */
 const waitPattern = /(?:^|__)(?:delegate_task|watch_pull_request|t3_background_wait|t3_thread_wait)$/u;
 /** T3 opens a delegated child with this sentence; such a session reports to its parent, not to the owner. */
+/** A delegation that only launched (still running) answers with this; a completed foreground one answers with its report. */
+const asyncLaunchPattern = /async agent launched|in the background/iu;
 const delegatedChildPattern = /^\s*Act as the [\w-]+ sub-agent for this task\./u;
 /** A redirect to a file (not `2>&1`, `>/dev/null`, `=>` or `->`), tee, in-place sed, commits, moves and copies. */
 const writePatterns = [
@@ -45,7 +47,7 @@ const writePatterns = [
  */
 
 /**
- * @typedef {{sawEdit: boolean, subagent: boolean, lastText: string | null, waiting: boolean}} TurnFlags
+ * @typedef {{sawEdit: boolean, subagent: boolean, lastText: string | null, waiting: boolean, waitingOn?: string | null}} TurnFlags
  */
 
 /** @param {string} text */
@@ -144,13 +146,24 @@ function scanEntry(entry, flags) {
   // Claude Code transcript.
   if (entry.type === "assistant" && !entry.isSidechain && Array.isArray(entry.message?.content)) {
     for (const block of entry.message.content) {
-      if (block?.type === "tool_use" && typeof block.name === "string") classifyCall({ name: block.name, input: block.input }, flags);
-      else if (block?.type === "text" && typeof block.text === "string" && block.text.trim()) flags.lastText = block.text;
+      if (block?.type === "tool_use" && typeof block.name === "string") {
+        classifyCall({ name: block.name, input: block.input }, flags);
+        // Remember a delegation that may be waiting: its result says whether it only launched or already finished.
+        flags.waitingOn = flags.waiting && delegationTools.has(block.name) && typeof block.id === "string" ? block.id : null;
+      } else if (block?.type === "text" && typeof block.text === "string" && block.text.trim()) flags.lastText = block.text;
     }
     return;
   }
   if (entry.type === "user" && !entry.isSidechain) {
     const content = entry.message?.content;
+    // A delegation whose result is its finished report was a foreground call: the turn is not waiting on it.
+    for (const block of Array.isArray(content) ? content : []) {
+      if (block?.type !== "tool_result" || !flags.waitingOn || block.tool_use_id !== flags.waitingOn) continue;
+      const text = typeof block.content === "string" ? block.content
+        : Array.isArray(block.content) ? block.content.map((/** @type {any} */ part) => (typeof part?.text === "string" ? part.text : "")).join("\n") : "";
+      if (!asyncLaunchPattern.test(text)) flags.waiting = false;
+      flags.waitingOn = null;
+    }
     const first = typeof content === "string" ? content : Array.isArray(content) ? content.find((/** @type {any} */ block) => block?.type === "text")?.text : null;
     if (typeof first === "string" && delegatedChildPattern.test(first)) flags.subagent = true;
     return;
