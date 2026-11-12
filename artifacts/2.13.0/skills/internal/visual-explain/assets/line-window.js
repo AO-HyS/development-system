@@ -8,6 +8,7 @@
   const windowBox = document.querySelector('.focus-window');
   const notes = document.getElementById('annotations');
   const connections = document.querySelector('.connections');
+  const written = [...document.querySelectorAll('.all-stages li')];
   const narrow = matchMedia('(max-width:640px)');
   let selected = data.selected;
   let dragging = false;
@@ -56,6 +57,7 @@
   function choose(index, focus = false) {
     selected = Math.max(0, Math.min(buttons.length - 1, index));
     buttons.forEach((button, i) => button.setAttribute('aria-pressed', String(i === selected)));
+    written.forEach((item, i) => { if (i === selected) item.setAttribute('aria-current', 'true'); else item.removeAttribute('aria-current'); });
     notes.setAttribute('aria-label', data.steps[selected].label);
     document.getElementById('include').textContent = data.steps[selected].include;
     document.getElementById('exclude').textContent = data.steps[selected].exclude;

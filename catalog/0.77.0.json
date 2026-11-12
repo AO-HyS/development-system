@@ -4933,7 +4933,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.13.0/skills/internal/visual-explain",
           "destination": ".agents/skills/visual-explain",
-          "folderSha256": "6a6dd84e83cb5f65b2d77aeddfec52d4fc47ee25e85df47477a9ca4036b6686a",
+          "folderSha256": "87eac8ebdc4cb2c32cb9c4c816daa0ae96b24c284c2039cd02c6c6dc2d2642cc",
           "expectedMirrorOf": null
         },
         {
@@ -4941,7 +4941,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.13.0/skills/internal/visual-explain",
           "destination": ".claude/skills/visual-explain",
-          "folderSha256": "6a6dd84e83cb5f65b2d77aeddfec52d4fc47ee25e85df47477a9ca4036b6686a",
+          "folderSha256": "87eac8ebdc4cb2c32cb9c4c816daa0ae96b24c284c2039cd02c6c6dc2d2642cc",
           "expectedMirrorOf": "visual-explain.codex",
           "install": "symlink"
         }

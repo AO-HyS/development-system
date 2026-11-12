@@ -5,6 +5,8 @@ earlier design rounds. No tables or tabs. Existing grill HTML remains intact.
 On 2026-11-11 the owner decided that a closing no longer needs this visual
 (plans, and deliveries on request) and that no visual hides content behind a
 click: below the drawing, every stage is written out with both annotations.
+The closing comes right after the drawing, in the main text color, and the
+written list follows it with a thin rule marking the focused stage.
 
 One work line carries meaningful stages and genuine authorization boundaries.
 A window focuses one stage; two connected annotations explain its scope or

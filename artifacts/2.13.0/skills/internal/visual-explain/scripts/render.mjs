@@ -69,8 +69,8 @@ const html = `<!doctype html>
 <section><h2>${escape(words.include)}</h2><p id="include">${escape(steps[selected].include)}</p></section>
 <section><h2>${escape(words.exclude)}</h2><p id="exclude">${escape(steps[selected].exclude)}</p></section></div>
 <noscript><p class="hint">${escape(words.static)}</p></noscript></figure>
-<section class="all-stages"><h2>${escape(words.all)}</h2><ol>${steps.map(step => `<li><h3>${escape(step.label)} <span>${escape(words[step.state])}</span></h3><p><b>${escape(words.include)}:</b> ${escape(step.include)}</p><p><b>${escape(words.exclude)}:</b> ${escape(step.exclude)}</p></li>`).join('')}</ol></section>
-<p class="closing">${escape(closing)}</p></main>
+<p class="closing">${escape(closing)}</p>
+<section class="all-stages"><h2>${escape(words.all)}</h2><ol>${steps.map((step, i) => `<li${i === selected ? ' aria-current="true"' : ''}><h3>${escape(step.label)} <span>${escape(words[step.state])}</span></h3><p><b>${escape(words.include)}:</b> ${escape(step.include)}</p><p><b>${escape(words.exclude)}:</b> ${escape(step.exclude)}</p></li>`).join('')}</ol></section></main>
 <script id="visual-data" type="application/json">${json}</script><script>${js}</script></body></html>\n`;
 await mkdir(dirname(output), { recursive: true });
 await writeFile(output, html);
