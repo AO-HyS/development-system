@@ -1,17 +1,20 @@
 # Current work
 
-## 2.14.2 — one reservation launches one review (candidate, 2026-11-12)
+## 2.14.2 — one reservation launches one review (released 2026-11-12, with 2.14.0 and 2.14.1)
 
+- Shipped 2026-11-12 with the owner's production answer, verbatim «Vamos a hacer todos los pendientes de forma rapida y luego llevamos todo a producción»: #208 (2.14.0), #210 (2.14.1, `2658c75`) and #211 (2.14.2, `fe8bdd0`) merged to develop; release PR #209 merged to main at `9f5b43a` (Codex twice, the second pass without findings; Sol rounds 1 and 2 without findings); release [v2.14.2](https://github.com/AO-HyS/development-system/releases/tag/v2.14.2) (tarball sha256 `5401d038…1386`). `update --version 2.14.2` checked first in an isolated HOME (doctor and the three audits healthy, the 23-case launch probe passes on the released guard), then the global install over 2.13.2: `doctor` «2.14.2 (catalog 0.81.0, `9f5b43aadb1a`): healthy», `claude-orchestration-audit`, `guardrails-audit` and `report-gate-audit` healthy, the installed guard byte-identical to its source.
+- Observed live under the installed 2.14.2: a `code-mapper` ran two lists of readers joined by `;` after `cd <path> &&` (refused by 2.13.2) and its `pnpm run -s typecheck` was refused as «not an allowed mapper command». The built-in `Explore` role does not carry the mapper hook, so its Bash is not limited by this grammar (the same before this release).
+- Rollback: `development-system rollback` returns to 2.13.2; its reader refuses a ledger with a Fable round or a lineage advanced at round two (annul with `review lines` and `review void`, or reinstall 2.14.x).
 - Owner, 2026-11-12, after the 2.14.1 closing asked for the production answer: «Vamos a hacer todos los pendientes de forma rapida y luego llevamos todo a producción». The one open item was the Codex P2 on release PR #209 (thread `codex:4556988328`), first rejected for that release and judged by Sol round 1 of #209 (the rejection held; no findings).
 - Problem: two identical PR review packets sent to the native Fable `reviewer` before the round was recorded both ran on one reserved lineage slot, because the reservation is reused per packet hash and the guard admitted every launch. A T3 `delegate_task` without a `clientRequestId` had the same gap.
 - Change (`claude/orchestration/roster-guard.mjs`, `claimLaunch`): after the reservation, the guard creates `launches/<reservationId>.json` exclusively, in the directory the Codex wrapper already uses, so the three launchers exclude each other. The same launch key (the tool call, or the T3 `clientRequestId`, which T3 answers with the same task) passes as a retry; any other is denied and says how to continue: record the round if the review ran, or `review release` and send the packet again if it never ran. A release ends the reservation, so the next packet gets a new one and a new claim.
 - Sol round 1 on #211 (blocking, one finding), fixed by widening an existing rule: R1-1 (prior, none): a `Codex fallback:` envelope skips `primaryReview`, so the receipt of a PR review admitted the native fallback reviewer any number of times. A receipt that carries a reservation is now consumed once, as a computer-use receipt already was (`native-fallback/<runId>.json`); only the same tool call may repeat. A fallback receipt without a reservation (a plan or a diff: no slot) is unchanged.
 - Cut: `scripts/build-release-2142.mjs`, `manifests/2.14.2.json`; the catalog stays 0.81.0 (no skill changes).
 - Verification (one-shot script outside the repository, isolated HOME, a stub CLI answering `review reserve`, no GitHub or ledger effects): `~/.development-system/private/verification/ds-2142/probe-claim.mjs`, 23 cases pass on the candidate; the 2.14.1 guard admits every duplicate launch (eight cases differ).
-- Not reached: a native Fable review launched for real under 2.14.2 (needs the global install).
-- Rollback: reinstall 2.14.1; claim files left under `private/runs/codex-review/launches/` are ignored by it for native launches.
+- Not reached: a native Fable review launched for real under 2.14.2 (no PR needed a security or hard review after the install), and a product thread on 2.14.x (the owner launches those; the weekly council of Monday 07:00 scores them).
+- Rollback of this version alone: reinstall 2.14.1; claim files left under `private/runs/codex-review/launches/` are ignored by it for native launches.
 
-## 2.14.1 — fewer refusals, fewer rounds, no needless questions (merged into develop 2026-11-12, #210 at `2658c75`)
+## 2.14.1 — fewer refusals, fewer rounds, no needless questions (released 2026-11-12 inside v2.14.2; #210 at `2658c75`)
 
 - Sol round 3 on #210 (fix-diff, none): R1-2 and R2-1 confirmed fixed by the deletion of the lint. Release PR #209: Codex once (the P2 that became 2.14.2) and Sol round 1 (full, none).
 
@@ -34,7 +37,7 @@
 - Not reached: a real product thread on 2.14.1 (the owner launches those after the install), and whether two rounds close as much as the measurements suggest (the weekly council scoreboard will say).
 - Rollback: reinstall 2.14.0. A lineage that advanced at round two under 2.14.1 holds an `auto-advance` row below the 2.14.0 cap, which the 2.14.0 reader refuses; annul it with `review lines` and `review void`.
 
-## 2.14.0 — orchestration enforced in code (candidate, 2026-11-12)
+## 2.14.0 — orchestration enforced in code (released 2026-11-12 inside v2.14.2; #208)
 
 - Owner request of 2026-11-12, verbatim: «Antes sí se hacía orquestación… Que utilice sus agentes, se utiliza Haiku para explorar, se utiliza Terra para computer reviews, se utiliza Sol 6.1 para revisiones, pero revisiones de cross review… ya tenemos hasta un nuevo modelo que se llama Fable 5.2, que es ta buenísimo para hacer reviews… que deje de preguntarme pendejadas». Closings: «visualmente alegre… que se entienda enseguida», inside the thread, with the status against the definition of done.
 - Diagnosis from the T3 history: time with two or more agents busy fell from 36% to 18%, Fable 5.2 was never used for a review, the parent ran 42% of the commands, and mappers could only use `git grep` (the Grep and Glob tools do not exist in this Claude Code build). Orchestration lived only in prose.
