@@ -775,7 +775,52 @@ function splitShell(command) {
   segments.push(current);
   return { segments: segments.map((s) => s.trim()), separators };
 }
-const shellWords = (segment) => (segment.match(/'[^']*'|"(?:\\.|[^"\\])*"|[^\s'"]+/g) ?? []).map((w) => w.replace(/^(['"])([\s\S]*)\1$/, '$2'));
+// Words as Bash builds them: adjacent quoted and unquoted pieces join into one word (`-ex'ec'` and `-ex\ec` are
+// `-exec`). Strict mode is the mapper grammar: it returns null for what that grammar does not model, so a checked
+// word can never differ from the one Bash runs: a backslash outside quotes, a `$` expansion outside single quotes,
+// brace expansion, a glob that could expand into an option, and an unterminated quote.
+const EXPANSION = /[\w@*#?!$({-]/;
+function bashWords(text, strict) {
+  const words = [];
+  let current = '';
+  let open = false;
+  let braces = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const c = text[i];
+    const next = text[i + 1] ?? '';
+    if (/\s/.test(c)) { if (open) words.push(current); current = ''; open = false; braces = 0; continue; }
+    open = true;
+    if (c === "'") {
+      const end = text.indexOf("'", i + 1);
+      if (end < 0 && strict) return null;
+      current += text.slice(i + 1, end < 0 ? text.length : end);
+      i = end < 0 ? text.length : end;
+    } else if (c === '"') {
+      for (i += 1; i < text.length && text[i] !== '"'; i += 1) {
+        if (text[i] === '\\' && '"\\$`'.includes(text[i + 1] ?? '')) i += 1;
+        else if (strict && text[i] === '$' && EXPANSION.test(text[i + 1] ?? '')) return null;
+        current += text[i];
+      }
+      if (i >= text.length && strict) return null;
+    } else if (c === '\\') {
+      if (strict) return null;
+      current += next;
+      i += 1;
+    } else {
+      if (strict) {
+        if (c === '$' && (EXPANSION.test(next) || next === "'" || next === '"')) return null;
+        if ('*?['.includes(c) && (current === '' || current[0] === '-')) return null;
+        if (c === '{') braces += 1;
+        else if (c === '}') braces = Math.max(0, braces - 1);
+        else if (braces > 0 && (c === ',' || (c === '.' && next === '.'))) return null;
+      }
+      current += c;
+    }
+  }
+  if (open) words.push(current);
+  return words;
+}
+const shellWords = (segment) => bashWords(segment, false);
 function mapperBash() {
   if (input.tool_name && input.tool_name !== 'Bash') process.exit(0);
   const command = String(input.tool_input?.command ?? '').trim();
@@ -783,6 +828,7 @@ function mapperBash() {
   const refuse = (why) => deny(`${why} ${MAPPER_HELP}`, entry);
   if (!command) refuse('Empty command.');
   if (/\$\(|\$\{|`/.test(command)) refuse('Command substitution is not allowed.');
+  if (bashWords(command, true) === null) refuse('A backslash outside quotes, a `$` or brace expansion, a glob that starts a word or an option, and an unterminated quote are not allowed: put the word in single quotes (a glob as `./*.md`).');
   const parsed = splitShell(command);
   if (!parsed) refuse('Command lists, subshells, input redirects and background jobs are not allowed.');
   let { segments, separators } = parsed;
