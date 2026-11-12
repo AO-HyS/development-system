@@ -1,6 +1,19 @@
 # Current work
 
-## 2.14.1 — fewer refusals, fewer rounds, no needless questions (candidate, 2026-11-12)
+## 2.14.2 — one reservation launches one review (candidate, 2026-11-12)
+
+- Owner, 2026-11-12, after the 2.14.1 closing asked for the production answer: «Vamos a hacer todos los pendientes de forma rapida y luego llevamos todo a producción». The one open item was the Codex P2 on release PR #209 (thread `codex:4556988328`), first rejected for that release and judged by Sol round 1 of #209 (the rejection held; no findings).
+- Problem: two identical PR review packets sent to the native Fable `reviewer` before the round was recorded both ran on one reserved lineage slot, because the reservation is reused per packet hash and the guard admitted every launch. A T3 `delegate_task` without a `clientRequestId` had the same gap.
+- Change (`claude/orchestration/roster-guard.mjs`, `claimLaunch`): after the reservation, the guard creates `launches/<reservationId>.json` exclusively, in the directory the Codex wrapper already uses, so the three launchers exclude each other. The same launch key (the tool call, or the T3 `clientRequestId`, which T3 answers with the same task) passes as a retry; any other is denied and says how to continue: record the round if the review ran, or `review release` and send the packet again if it never ran. A release ends the reservation, so the next packet gets a new one and a new claim.
+- Sol round 1 on #211 (blocking, one finding), fixed by widening an existing rule: R1-1 (prior, none): a `Codex fallback:` envelope skips `primaryReview`, so the receipt of a PR review admitted the native fallback reviewer any number of times. A receipt that carries a reservation is now consumed once, as a computer-use receipt already was (`native-fallback/<runId>.json`); only the same tool call may repeat. A fallback receipt without a reservation (a plan or a diff: no slot) is unchanged.
+- Cut: `scripts/build-release-2142.mjs`, `manifests/2.14.2.json`; the catalog stays 0.81.0 (no skill changes).
+- Verification (one-shot script outside the repository, isolated HOME, a stub CLI answering `review reserve`, no GitHub or ledger effects): `~/.development-system/private/verification/ds-2142/probe-claim.mjs`, 23 cases pass on the candidate; the 2.14.1 guard admits every duplicate launch (eight cases differ).
+- Not reached: a native Fable review launched for real under 2.14.2 (needs the global install).
+- Rollback: reinstall 2.14.1; claim files left under `private/runs/codex-review/launches/` are ignored by it for native launches.
+
+## 2.14.1 — fewer refusals, fewer rounds, no needless questions (merged into develop 2026-11-12, #210 at `2658c75`)
+
+- Sol round 3 on #210 (fix-diff, none): R1-2 and R2-1 confirmed fixed by the deletion of the lint. Release PR #209: Codex once (the P2 that became 2.14.2) and Sol round 1 (full, none).
 
 - Owner request of 2026-11-12, verbatim: «agarrar lo bueno de esa versión, más lo bueno que tenemos aquí, y asegurarnos de que todo mejore» and «Parte de los agentes es también para reducir costos y hacer las cosas en paralelo… ¿Cómo quedaría la versión nueva con todo en todos los aspectos?». He rejected PR counts as the measure; the measure is the task-eval council (asks closed and verified, minutes and cost per closed ask, his nudges, product per day).
 - Scoreboard 0–10 by era (59 judged product tasks): 2.9–2.11 scored 8.4 (the best: 91 % of asks closed, 19 agent minutes per closed ask, one PR for every two asks, 0.4 review runs per ask) and 2.12–2.13 scored 1.9 (87 minutes, 2.8 PRs and 4.2 review runs per closed ask). Across 43 larger tasks, 6–20 helpers closed the most per minute and per dollar, 21 or more doubled cost and time, and Opus writers cost about three times more per closed ask without being faster. Correlational, small samples.
