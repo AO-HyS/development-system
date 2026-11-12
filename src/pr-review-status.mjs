@@ -44,9 +44,10 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
-import { readLineage, readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
+import { readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
+import { lineageState, lineageSummary, resolveLineage } from "./review-state.mjs";
 import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
-import { codexThreads, threadStates } from "./codex-threads.mjs";
+import { codexThreads, roundsReservedAt, threadStates } from "./codex-threads.mjs";
 import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
 import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
@@ -87,12 +88,14 @@ function gh(args) {
 const ghList = (path) => JSON.parse(gh(["api", "--paginate", "--slurp", path])).flat();
 
 /**
- * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely.
+ * Files changed between a verified SHA and the head, or null when GitHub cannot list them completely or the head
+ * does not descend from that SHA (after a force-push the comparison hides what the new history dropped).
  * @param {string} base @param {string} from @param {string} to
  */
-function changedSince(base, from, to) {
+export function changedSince(base, from, to) {
   try {
     const compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`]));
+    if (compare.status !== "ahead" && compare.status !== "identical") return null;
     const files = Array.isArray(compare.files) ? compare.files : [];
     return files.length >= 300 ? null : files.map(changedFile);
   } catch { return null; }
@@ -280,7 +283,18 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     const files = JSON.parse(gh(["api", `${base}/commits/${sha}`])).files ?? [];
     return { sha, files: files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]), after: (/** @type {string} */ origin) => origin !== sha && ancestorOrEqual(base, origin, sha) };
   };
-  const threadView = threadStates({ threads, commitInfo, solRoundsAt: rounds.map((round) => Date.parse(round.recordedAt)) });
+  // The branch lineage Sol rounds count against: siguiente, the last round's slot and when each round was reserved.
+  /** @type {ReturnType<typeof lineageSummary> | null} */
+  let lineage = null;
+  let lineageError = "";
+  /** @type {number[]} */
+  let solRoundsAt = [];
+  try {
+    const state = lineageState(home, resolveLineage({ pr: prKey, home, pull }));
+    lineage = lineageSummary(state);
+    solRoundsAt = roundsReservedAt({ rounds, live: state.live, pr: prKey });
+  } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
+  const threadView = threadStates({ threads, commitInfo, solRoundsAt });
   const open = threadView.filter((thread) => thread.state === "open" || thread.state === "unverified");
   const rejectedNeedSol = threadView.filter((thread) => thread.state === "rejected-needs-sol");
   const blockingIds = open.map((thread) => thread.id);
@@ -396,11 +410,6 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const lastRound = rounds.at(-1);
   const solMax = rounds.length > SOL_BUDGET ? CRITICAL_LIMIT : SOL_BUDGET;
   const prFiles = pullFiles(base, number, Number(pull.changed_files));
-  // The branch lineage that Sol rounds count against: it drives siguiente and gives the last round its lineage slot.
-  /** @type {ReturnType<typeof readLineage> | null} */
-  let lineage = null;
-  let lineageError = "";
-  try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
   // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
   const lineageLast = lineage?.lastRound;
   const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
