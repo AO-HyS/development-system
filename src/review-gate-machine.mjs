@@ -3,7 +3,8 @@
 //
 // `pr-review-status` reads GitHub and the local records, reduces them to facts and sends them as one FACTS event.
 // The machine then walks the gates in order (Codex findings, Codex review, Sol, behavioral evidence, merge pass) and
-// stops in exactly one final state, which names the single next action (siguiente). Every cap and rule is a named
+// stops in exactly one final state, which names the single next action (siguiente). "Sol" in step and guard names is the
+// 2.13 name of the review round; since 2.14.0 Sol 6.1 High runs it and Fable 5.2 takes security and hard rounds (review-next.mjs). Every cap and rule is a named
 // guard, so a route the table does not allow cannot be taken. `development-system pr-review-status --diagram` prints
 // this machine as a Mermaid diagram.
 //
@@ -135,13 +136,13 @@ export function gateNextAction(step, { prKey, owner, repo, number, head, blockin
     case "awaitCodex": return `espera la revisión de Codex del head ${short}; vuelve a correr pr-review-status sin --request`;
     case "ownerDecides": return OWNER_DECIDES;
     case "requestCodex": return `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;
-    case "solRecordsInvalid": return `registros de Sol inválidos${recordsError ? ` (${recordsError})` : ""}: mira las filas con development-system review lines --pr ${prKey}, anula la mala con development-system review void --pr ${prKey} --line-hash <sha256> --reason <causa> y vuelve a correr la puerta`;
-    case "solExemptionStale": return `la exención de Sol es del head ${exemptionHead?.slice(0, 12)}, no del ${short}: si el PR sigue siendo docs-only o low-risk regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si ya no lo es, anúlala con development-system review void y corre la ronda full`;
+    case "solRecordsInvalid": return `registros de revisión inválidos${recordsError ? ` (${recordsError})` : ""}: mira las filas con development-system review lines --pr ${prKey}, anula la mala con development-system review void --pr ${prKey} --line-hash <sha256> --reason <causa> y vuelve a correr la puerta`;
+    case "solExemptionStale": return `la exención de revisión es del head ${exemptionHead?.slice(0, 12)}, no del ${short}: si el PR sigue siendo docs-only o low-risk regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si ya no lo es, anúlala con development-system review void y corre la ronda full`;
     case "solRound": return `${stale}${solNext()}`;
     case "advance": return `${stale}avanza: van ${BUDGET} rondas y nada de lo abierto es crítico, así que no hay otra ronda. Arregla lo que encontró la última (${ids}) en commits que lleven la línea «fixes: <id>», registra cada hallazgo con ${dispose}, registra el avance con development-system review advance --pr ${prKey} --head <head final>, dilo en una línea en el hilo y en el PR («llegué a ${BUDGET} revisiones; arreglé lo último y avanzo sin otra ronda») y vuelve a correr la puerta`;
     case "withdrawChange": return `${stale}retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, en un commit que lleve la línea «fixes: <id>», déjalo como seguimiento nombrando ese commit (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda> --commit <el commit que lo sacó>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y fusiona el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
     case "holdPr": return `#${number} se queda fuera: el linaje gastó sus rondas sin una ronda válida. No fusiones; dilo en tu siguiente avance y sigue con el trabajo independiente`;
-    case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de Sol y otra vez sobre el head final)`;
+    case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de revisión y otra vez sobre el head final)`;
     case "runGate": return `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}`;
     case "merge": return `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`;
   }

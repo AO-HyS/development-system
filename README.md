@@ -4,8 +4,11 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.13.2**, shared skill catalog **0.79.0**. It adds Planeta Aula to the weekly
-Development Steward allowlist (seven repositories). 2.13.1 fixed two findings of the
+Current source candidate: **2.14.0**, shared skill catalog **0.80.0**. It enforces orchestration in code: the
+review gate names the reviewer of each round (Sol 6.1 High; Fable 5.2 for security work and hard reviews),
+read-only mappers can search, the Claude guard coaches the parent with one
+sentence (never a block), and the Stop hook asks for a short closing in the thread instead of an HTML report.
+2.13.2 added Planeta Aula to the weekly Development Steward allowlist (seven repositories). 2.13.1 fixed two findings of the
 2.13.0 release review (a negated command is never certain for the guard; Sol reservations match in any
 letter case). 2.13.0 made the review gate advance on its own toward develop (five Sol rounds, seven for a
 critical finding, the next action printed by `pr-review-status --gate`), made the guard block harm

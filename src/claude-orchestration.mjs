@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { probeCoach, probeReviewDifficulty } from "./claude-orchestration-coach-probe.mjs";
 
 const guardRelative = ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs";
 const policyRelative = ".codex/development-system/runtime/claude-orchestration/policy.json";
@@ -21,8 +22,9 @@ export const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_AUTO_COMPACT_WINDOW: "300000",
 });
 const managedEvents = /** @type {const} */ ([
-  // delegate_task reaches the guard so a T3 PR review reserves its lineage slot first (both MCP server spellings).
-  { event: "PreToolUse", matcher: "Agent|Read|.*[Ss]creenshot.*|mcp__t3[-_]code__delegate_task", timeout: 20, statusMessage: "Checking roster, image budget and review brake", target: "guard" },
+  // delegate_task reaches the guard so a T3 PR review reserves its lineage slot first (both MCP server spellings);
+  // reads, Bash and request_secret feed the coach.
+  { event: "PreToolUse", matcher: "Agent|Read|Grep|Glob|Bash|.*[Ss]creenshot.*|mcp__t3[-_]code__(delegate_task|request_secret)", timeout: 20, statusMessage: "Checking roster, image budget and review brake", target: "guard" },
   { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined, target: "guard" },
   { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined, target: "guard" },
   { event: "Stop", matcher: undefined, timeout: 10, statusMessage: undefined, target: "stopGate" },
@@ -255,8 +257,9 @@ function parseState(contents) {
  * Runs the installed guard once on crafted PreToolUse input: an Agent dispatch of `subagentType`, or with `delegate`
  * a T3 delegate_task carrying that task text and role.
  * @param {string} home @param {string} guard @param {string} subagentType @param {{task: string, role?: string}} [delegate]
+ * @param {string} [prompt] the Agent prompt
  */
-function probe(home, guard, subagentType, delegate) {
+function probe(home, guard, subagentType, delegate, prompt = "audit probe") {
   /** @type {NodeJS.ProcessEnv} */
   const env = { ...process.env, HOME: home };
   delete env.TYPESAFE_API_KEY;
@@ -266,7 +269,7 @@ function probe(home, guard, subagentType, delegate) {
     hook_event_name: "PreToolUse",
     tool_name: delegate ? "mcp__t3-code__delegate_task" : "Agent",
     cwd: home,
-    tool_input: delegate ? { task: delegate.task, ...(delegate.role ? { role: delegate.role } : {}) } : { subagent_type: subagentType, description: "audit probe", prompt: "audit probe" },
+    tool_input: delegate ? { task: delegate.task, ...(delegate.role ? { role: delegate.role } : {}) } : { subagent_type: subagentType, description: "audit probe", prompt },
   });
   const result = spawnSync(process.execPath, [guard], { input, env, encoding: "utf8", timeout: 30000 });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
@@ -326,12 +329,18 @@ export async function auditClaudeOrchestration({ home }) {
     // `Review kind:` is denied before any reservation, so neither probe reaches GitHub or a ledger.
     const plainDelegate = probe(resolvedHome, managed.guard, "delegate_task:implementation", { task: "Objective: audit probe", role: "implementation" });
     const reviewDelegate = probe(resolvedHome, managed.guard, "delegate_task:review", { task: "Objective: audit probe", role: "review" });
-    probes.push(denied, allowed, plainDelegate, reviewDelegate);
+    // Fable reviewer admitted for security; retired plan-reviewer denied.
+    const primaryReviewer = probe(resolvedHome, managed.guard, "reviewer", undefined, "Review kind: security\nObjective: audit probe");
+    const retiredReviewer = probe(resolvedHome, managed.guard, "plan-reviewer");
+    probes.push(denied, allowed, plainDelegate, reviewDelegate, primaryReviewer, retiredReviewer);
     if (!denied.denied) findings.push("Guard probe did not deny general-purpose");
     if (allowed.status !== 0 || allowed.denied) findings.push("Guard probe did not allow code-mapper");
     if (plainDelegate.status !== 0 || plainDelegate.output.trim() !== "") findings.push("Guard probe did not pass a non-review delegate_task untouched");
     if (!reviewDelegate.denied) findings.push("Guard probe did not deny a review delegate_task without Review kind (installed guard predates the review brake)");
-    sideEffects.push(`Guard probes append ledger lines under ${managed.ledger}`);
+    if (primaryReviewer.status !== 0 || primaryReviewer.denied) findings.push("Guard probe denied reviewer with Review kind: security (guard predates the Fable reviewer)");
+    if (!retiredReviewer.denied) findings.push("Guard probe did not deny the retired plan-reviewer");
+    findings.push(...probeCoach(resolvedHome, managed.guard), ...probeReviewDifficulty(resolvedHome, managed.guard));
+    sideEffects.push(`Guard probes append ledger lines and coach sessions under ${managed.ledger}`);
   }
   const ok = findings.length === 0;
   return { ok, operation: "claude-orchestration-audit", status: ok ? "healthy" : "unhealthy", findings, probes, sideEffects };

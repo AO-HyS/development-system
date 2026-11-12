@@ -42,20 +42,24 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Configuración vigente (2.13.2)
+## Configuración vigente (2.14.0)
 
-La fuente generada de verdad es `artifacts/2.13.2/model-routing.md`; la página
+La fuente generada de verdad es `artifacts/2.14.0/model-routing.md`; la página
 `docs/model-routing.md` la resume. El modelo elegido al iniciar la conversación
 sigue siendo el orquestador y conserva la coordinación, la integración y las
 correcciones.
 
-- Sol 6.1 High planifica con un padre Anthropic y revisa el resultado integrado.
-- Opus 5.5 planifica con un padre OpenAI, implementa lo difícil y la interfaz, y hace la crítica independiente de planes y de lo visual.
+- Sol 6.1 High revisa los PR terminados y los planes por codex-review, y hace el cross review que pida el operador.
+- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura solo la seguridad y las revisiones difíciles; la puerta le ordena una ronda cuando hay un hallazgo crítico abierto o dos rondas no cerraron la revisión.
+- Opus 5.5 planifica, implementa lo difícil y la interfaz, y hace la crítica visual independiente.
 - Sonnet 5.5 ejecuta trabajo general acotado.
-- Haiku 5.5 Medium (`claude-haiku-5-5`) escribe lo exacto y mecánico y mapea código en solo lectura.
+- Haiku 5.5 Medium (`claude-haiku-5-5`) explora y mapea código en solo lectura, y escribe lo exacto y mecánico.
 - Terra 6.1 fast (prioridad): uso de computadora y simulador en Low, pruebas de navegador en High, video en Medium.
 
 Cada selección depende de la tarea; no activamos todos los roles en cada
 funcionalidad. Al terminar, se resuelve (settle) el hilo de cada hijo delegado
 tras integrar su resultado, y antes del primer `delegate_task` se lee
-`runtimeMode`. Las revisiones siguen el presupuesto por línea de rama.
+`runtimeMode`. Las revisiones siguen el presupuesto por línea de rama. El
+guard de Claude orienta al padre con una frase, sin bloquear: tras diez
+lecturas seguidas sin explorador, al lanzar solo un segundo escritor seguido y
+desde la segunda petición de secreto de la sesión.
