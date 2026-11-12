@@ -6,8 +6,7 @@ architecture, commands, verification and release policy.
 
 Current source candidate: **2.14.1**, shared skill catalog **0.81.0**. It joins what the best measured version did
 with the current one: explorers may join read-only commands, the review gate runs two rounds per branch (two more
-only for a critical finding), the Stop hook returns once a closing that asks the owner's leave for a chore that is already the agent's (a
-develop merge, a review round, a commit, carrying on), and the coach flags an Opus writer without a written reason, helper 21 and the third PR of a session.
+only for a critical finding), and the coach flags an Opus writer without a written reason, helper 21 and the third PR of a session.
 2.14.0 enforced orchestration in code: the
 review gate names the reviewer of each round (Sol 6.1 High; Fable 5.2 for security work and hard reviews),
 read-only mappers can search, the Claude guard coaches the parent with one

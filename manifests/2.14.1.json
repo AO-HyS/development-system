@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.14.1/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "7bf9c364700cf7e0e90a561d832eb505b657a4f141da8d2e1daeee0860a81429",
+      "sha256": "f2d2c05db3c104924e29a2aa724d8c6d2e343e61626afe22a642d08f9951ac74",
       "expectedMirrorOf": null
     },
     {
@@ -53,7 +53,7 @@
       "sourcePath": "config/2.14.1/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "607db799048eb1665688fc933e0b10c61091a16d74516ac6d77cf44cbff4bfef",
+      "sha256": "f21ed486909b1796c9e812873f182c34745610717b12bf81c41a9c1b7e4b1c44",
       "expectedMirrorOf": null
     },
     {
@@ -251,7 +251,7 @@
       "sourcePath": "artifacts/2.14.1/model-routing.md",
       "destination": ".codex/development-system/model-routing.md",
       "harness": "codex",
-      "sha256": "ab62712c9ef5b54e860bcd302798d0e8ebf6a301399c38f8656dd9db7bbdf79b",
+      "sha256": "cfd6e5c9ec7039d0f710c3d5cf269584f945225a10cd12e1679217cc0de9f6e9",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.14.1/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "ecce9d19ce55f536a39237e0d93ea7b2dac5d26e0361ef6397f2e140b58b6516",
+      "sha256": "ed3da9a6f9e967f45d4fc69dd55e5e18e9464e3c5e3c8aced235d71d335fbfb8",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.14.1/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "4653ea424cbb3c7fc9926fae13913eec5e4bcf47b9debbf69ec5c54aa8785898",
+      "sha256": "3b0ec49d07ecc7e963edc487083a323816ed6171d7f8762938ef0dc681797cbf",
       "expectedMirrorOf": null
     },
     {
@@ -806,10 +806,10 @@
     {
       "id": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
       "logicalName": "runtime--codex-development-system-runtime-report-gate-stop-gate-mjs",
-      "sourcePath": "artifacts/2.14.1/runtime/report-gate/stop-gate.mjs",
+      "sourcePath": "artifacts/2.14.0/runtime/report-gate/stop-gate.mjs",
       "destination": ".codex/development-system/runtime/report-gate/stop-gate.mjs",
       "harness": "codex",
-      "sha256": "05430a761b9415077c75a137f074de40ee59fa2e0b0bb10737518bb4dd1ee434",
+      "sha256": "8d9e1ea76719e4ca6e5c3950cb75b87615063a7a29ab06adc8f794e1bafed751",
       "expectedMirrorOf": null
     },
     {

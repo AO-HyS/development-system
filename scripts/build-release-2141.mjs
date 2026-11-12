@@ -79,7 +79,6 @@ Contract ${version} (catalog ${catalogVersion}). Owner request of 2026-11-12: ta
 - Explorers: six of every ten guard refusals since 2.13.0 were read-only commands joined by an explorer. The code-mapper grammar now admits a list joined by \`;\` or \`&&\` after one leading \`cd <path>\`, \`echo\` labels between commands and \`tr\` as a filter. Substitutions, variables, file redirects, \`||\`, loops, subshells, background jobs and every write stay denied. A typecheck is no longer an explorer command: it runs a script of the repository, so the parent or a writer runs it.
 - Writer packets: a refused \`Root:\` names the directory the session runs in; \`Owned paths:\` ignores a note in parentheses after a path and accepts \`;\` between paths; a writer may read with \`git check-ignore\`, \`check-attr\`, \`rev-list\`, \`show-ref\`, \`for-each-ref\`, \`diff-tree\`, \`name-rev\` and \`count-objects\`, and the refusal of an index command says to move files with plain \`mv\`, \`cp\` and \`rm\`.
 - Reviews: two rounds per branch lineage instead of five, then the gate advances; a critical finding gets rounds three and four (seven before) and, still open, the disputed change leaves the PR. Measured: the asks that closed took one or two rounds, and more rounds doubled the time without closing more. Ledger rows written under the old caps stay valid. The owner can restore five.
-- Closing: the Stop hook returns once a final message that asks the owner's leave for a chore the instructions give the agent (a develop merge, a review round, a commit, a push, a PR, a fix, carrying on with the task), to resolve PR threads or to run a command, when the sentence names none of the five stops (spend, destruction, messages to people, account security, production) nor a login or secret only he can give. Not during a skill that pauses on purpose (in-your-own-words, a grill, cross-review).
 - Coach (one sentence of context, never a block): an Opus writer other than ui-implementer launched without \`Opus reason:\`, helper 21 of a session and every ten after, and the third \`gh pr create\`. A list of read commands counts as one read.
 - Instructions: writers by cost (Haiku exact and mechanical, Sonnet general, Opus with a written reason), parallel lanes for different things the owner asked for, six to twenty helpers per task, one PR per thing asked.
 
@@ -165,11 +164,6 @@ for (const artifact of manifest.artifacts) {
       artifact.sourcePath = `${prefix}/claude/${generated[1]}/${generated[2]}`;
       await output(artifact.sourcePath, current);
     }
-  }
-
-  if (name === 'runtime--codex-development-system-runtime-report-gate-stop-gate-mjs') {
-    // Hand-written under the prefix, like a skill folder: the published 2.7.0 gate stays immutable.
-    artifact.sourcePath = `${prefix}/runtime/report-gate/stop-gate.mjs`;
   }
 
   if (name === 'visual-delivery-rule') {
