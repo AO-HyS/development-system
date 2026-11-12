@@ -4,7 +4,7 @@
 // `pr-review-status` reads GitHub and the local records, reduces them to facts and sends them as one FACTS event.
 // The machine then walks the gates in order (Codex findings, Codex review, Sol, behavioral evidence, merge pass) and
 // stops in exactly one final state, which names the single next action (siguiente). "Sol" in step and guard names is the
-// 2.13 name of the review round; since 2.14.0 Fable 5.2 runs it by default and Sol 6.1 High stands in (review-next.mjs). Every cap and rule is a named
+// 2.13 name of the review round; since 2.14.0 Sol 6.1 High runs it and Fable 5.2 takes security and hard rounds (review-next.mjs). Every cap and rule is a named
 // guard, so a route the table does not allow cannot be taken. `development-system pr-review-status --diagram` prints
 // this machine as a Mermaid diagram.
 //

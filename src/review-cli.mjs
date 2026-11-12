@@ -39,6 +39,7 @@ async function reviewBrief({ home, pr }) {
     prKey: status.pr, head: status.head, scope, from: scope === "fix-diff" ? last?.head : undefined, slot,
     receipt: ["ok", "nonvisual"].includes(status.behavioralEvidence.state) ? evidence.receipt : undefined,
     rejected: status.codexThreads.filter((thread) => thread.state === "rejected-needs-sol"),
+    hard: status.reviewer === "fable" ? status.reviewerReason : "",
   });
   return { ok: true, operation: "review-brief", pr: status.pr, round: true, slot, scope, reviewer: status.reviewer, brief };
 }

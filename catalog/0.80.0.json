@@ -1415,7 +1415,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.14.0/skills/internal/flow-implement",
           "destination": ".agents/skills/flow-implement",
-          "folderSha256": "e5d794b8a54e8b95d7452db778cd7dfb6059a85f1997031c3eedf46c469530b7",
+          "folderSha256": "3f5e57bc54ab8a49b0258f3f08f720366f638d76a846a4426ba446dc3b655f9a",
           "expectedMirrorOf": null
         },
         {
@@ -1423,7 +1423,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.14.0/skills/internal/flow-implement",
           "destination": ".claude/skills/flow-implement",
-          "folderSha256": "e5d794b8a54e8b95d7452db778cd7dfb6059a85f1997031c3eedf46c469530b7",
+          "folderSha256": "3f5e57bc54ab8a49b0258f3f08f720366f638d76a846a4426ba446dc3b655f9a",
           "expectedMirrorOf": "flow-implement.codex",
           "install": "symlink"
         }
@@ -1549,7 +1549,7 @@
           "destination": ".codex/skills/coding-orchestration",
           "expectedMirrorOf": null,
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "6d48b9cb9592fd96f26fba0a3f2929b726394dde3b24c10f636c5edb60b97f04"
+          "folderSha256": "584c95d86c8e8b0935278623d93a2600a5a339bc60adfd524e6f683b3a381cc0"
         },
         {
           "id": "coding-orchestration.agents",
@@ -1558,7 +1558,7 @@
           "destination": ".agents/skills/coding-orchestration",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "6d48b9cb9592fd96f26fba0a3f2929b726394dde3b24c10f636c5edb60b97f04"
+          "folderSha256": "584c95d86c8e8b0935278623d93a2600a5a339bc60adfd524e6f683b3a381cc0"
         },
         {
           "id": "coding-orchestration.claude",
@@ -1568,7 +1568,7 @@
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "install": "symlink",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "6d48b9cb9592fd96f26fba0a3f2929b726394dde3b24c10f636c5edb60b97f04"
+          "folderSha256": "584c95d86c8e8b0935278623d93a2600a5a339bc60adfd524e6f683b3a381cc0"
         }
       ]
     },
@@ -4864,7 +4864,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/2.14.0/skills/internal/cross-review",
           "destination": ".agents/skills/cross-review",
-          "folderSha256": "a064fcdbb3659690027883ab33bdcde17412e4cbde4fb7efe2b1a87d0aec60e1",
+          "folderSha256": "9a86ca0cfdde3c7a3d72b2738daf4df0d4881ea8f4fbe217d66376db951872c9",
           "expectedMirrorOf": null
         },
         {
@@ -4872,7 +4872,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/2.14.0/skills/internal/cross-review",
           "destination": ".claude/skills/cross-review",
-          "folderSha256": "a064fcdbb3659690027883ab33bdcde17412e4cbde4fb7efe2b1a87d0aec60e1",
+          "folderSha256": "9a86ca0cfdde3c7a3d72b2738daf4df0d4881ea8f4fbe217d66376db951872c9",
           "expectedMirrorOf": "cross-review.codex",
           "install": "symlink"
         }

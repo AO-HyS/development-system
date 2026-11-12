@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: "Fresh independent read-only reviewer (Fable 5.2) for a finished PR, a plan, a diff or security: an integrated change against its requirements (correctness, regressions, authorization and data boundaries, requirements quietly skipped), a plan before writers start, and security review of auth, roles and data boundaries. The packet needs a `Review kind: pr|plan|security|diff` line; a PR review also `PR: owner/repo#N` and `Review scope: full|fix-diff`. A receipt-bound `Codex fallback:` envelope stays accepted."
+description: "Fresh independent read-only reviewer (Fable 5.2) for security reviews and hard reviews only: security review of auth, roles and data boundaries, and a PR, plan or diff that is hard (a critical finding still open, a third round or later, a shared contract or primitive, an open architectural decision). Every other review runs on Sol 6.1 High through codex-review. The packet needs a `Review kind: pr|plan|security|diff` line and, unless the kind is security, `Review difficulty: hard: <why>`; a PR review also `PR: owner/repo#N` and `Review scope: full|fix-diff`. A receipt-bound `Codex fallback:` envelope stays accepted."
 model: claude-fable-5-2
 effort: high
 tools: Read, Grep, Glob, Bash

@@ -1,5 +1,5 @@
 // @ts-check
-// Review rounds (Fable 5.2 by default, Sol 6.1 High when Fable is recorded unavailable; 2.14.0), exemptions and
+// Review rounds (Sol 6.1 High, Fable 5.2 for security work and hard rounds; 2.14.0), exemptions and
 // coverage verdicts for one PR, appended as JSONL under
 // <home>/.development-system/private/reviews/<owner>/<repo>/<number>.jsonl. The coordinator writes them
 // (`review record`, `review coverage`); `pr-review-status` reads them for `mergeReady`. This module is the facade the

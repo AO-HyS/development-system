@@ -59,18 +59,22 @@ For a requested standalone completion report or a durable media package, read
 
 1. Write or refresh the `system-recap` block from the diff; update
    `docs/architecture/primitives.json` in the same PR when a primitive changes.
-2. Review the finished PR, never each push. One independent review of the
-   ready head by Fable 5.2 as a fresh read-only reviewer (Claude Code: Agent
-   `reviewer` with a `Review kind: pr` packet; Codex: read-only `delegate_task`
-   to `claude-fable-5-2`). `development-system pr-review-status <pr> --gate`
-   says the next action; follow its `siguiente`. The gate allows up to five
-   rounds per branch lineage and then advances; rounds six and seven only for
-   a critical finding; the agent never asks the owner for a round.
-   Non-blocking findings are fixed without re-review or recorded as
-   follow-ups. If Fable is unavailable (quota or not offered), record it with
-   `development-system review release --pr <pr> --reason "fable-unavailable:
-   <observed message>"` and run the gate again: it orders that round with
-   Sol 6.1 High through codex-review, with no question to the owner. The
+2. Review the finished PR, never each push. Reviews run on Sol 6.1 High
+   through codex-review. Fable 5.2 (the fresh read-only `reviewer` role; from
+   Codex a read-only `delegate_task` to `claude-fable-5-2`) reviews only
+   security work and hard reviews: authorization, roles, data boundaries,
+   money, minors' privacy or consent; a critical finding still open; a third
+   round or later on the same branch; a change to a shared contract or
+   primitive; a plan with open architectural decisions. A Fable packet says
+   `Review kind: security` or carries `Review difficulty: hard: <reason>`.
+   `development-system pr-review-status <pr> --gate` names the reviewer of
+   each round in `siguiente`; follow it. The gate allows up to five rounds per
+   branch lineage and then advances; rounds six and seven only for a critical
+   finding; the agent never asks the owner for a round. Non-blocking findings
+   are fixed without re-review or recorded as follow-ups. When Fable is
+   unavailable, run `development-system review release --pr <ref>
+   --reservation-id <id> --reason "fable-unavailable: <observed message>"` and
+   the gate orders that round to Sol, with no question to the owner. The
    browser budget stays: one Terra 6.1 High fast browser
    session on the ready head covering every affected flow, a second only to
    check the fix of a real defect it found, one visual critique for UI changes.
@@ -138,8 +142,10 @@ evidence, do not claim Headroom caused savings.
 
 Use [the shared definition contract](../coding-orchestration/references/spec-ticket-contract.md)
 for stable criteria, linked tickets, dependencies, rules and required evidence.
-Preserve the selected parent. The plan gets one review by a fresh Fable 5.2
-reviewer (`Review kind: plan`), and one more only for a blocking finding; a
+Preserve the selected parent. The plan gets one review (Sol 6.1 High through
+codex-review; a fresh Fable 5.2 `reviewer` with `Review kind: security` or
+`Review difficulty: hard: <reason>` when it is security work or has open
+architectural decisions), and one more only for a blocking finding; a
 cross-family contrast is not required to accept a plan. Use the existing
 read-only routes and honor provider restrictions; unresolved blocking
 objections prevent acceptance.

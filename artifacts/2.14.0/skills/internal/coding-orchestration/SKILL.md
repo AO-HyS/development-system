@@ -12,8 +12,10 @@ Preserve behavior, data boundaries and authorization.
 ## Coordinate the full feature
 
 Read [Jev advisory execution](references/jev-advisory.md) once for nontrivial work.
-Preserve the selected parent. The plan gets one review by a fresh Fable 5.2
-reviewer (`Review kind: plan`), and one more only for a blocking finding; a
+Preserve the selected parent. The plan gets one review (Sol 6.1 High through
+codex-review; a fresh Fable 5.2 `reviewer` with `Review kind: security` or
+`Review difficulty: hard: <reason>` when it is security work or has open
+architectural decisions), and one more only for a blocking finding; a
 cross-family contrast is not required to accept a plan. Use the existing
 read-only routes and honor provider restrictions; unresolved blocking
 objections prevent acceptance.
@@ -144,7 +146,7 @@ local Codex credential-home sequence followed by a fresh native Claude role.
 Run codex-review once; it discovers existing profiles without copying credentials
 and records at most two sequential profile attempts. Read receipt.json as well as findings.
 When status is fallback_required and fallback.eligible is true, immediately
-dispatch reviewer-medium (plan, diff or security; reviewer is Fable 5.2), visual-reviewer (image review) or
+dispatch reviewer-medium (Opus; plan, diff or security, never `reviewer`, which is Fable 5.2 and reserved for security work and hard reviews), visual-reviewer (image review) or
 browser-qa (computer use) through the native Agent tool with the original packet.
 Copy fallback.prompt verbatim from the receipt; it contains the original packet
 and Codex fallback:, Codex fallback receipt: and Codex fallback packet: lines.

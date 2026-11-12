@@ -4,13 +4,13 @@ The selected parent owns execution. Read this once for nontrivial work; workers
 execute bounded packets without repeating lifecycle selection.
 
 1. Pin the objective, authorized endpoint, root/revision, requirements and checks.
-2. Haiku 5.5 Medium collects bounded missing source facts through an observed available Claude read-only route. Follow coding-orchestration for plan review: one fresh Fable 5.2 reviewer (`Review kind: plan`) of requirements, rules, plan and evidence before writers start, one more only for a blocking finding; cross-family contrast is not required. Reuse accepted planning on resume.
+2. Haiku 5.5 Medium collects bounded missing source facts through an observed available Claude read-only route. Follow coding-orchestration for plan review: one review (Sol 6.1 High through codex-review; Fable 5.2 only for security work or hard reviews) of requirements, rules, plan and evidence before writers start, one more only for a blocking finding; cross-family contrast is not required. Reuse accepted planning on resume.
 3. Ask Jev at a meaningful routing or correction decision, using a small typed
    packet and current ownership. Record the parent's selected route and rationale.
    Do not call Jev on every read, file, wait, tool invocation or lifecycle event.
 4. Dispatch exact owned packets through the native host. The generated host profile chooses supported protected writers; Haiku 5.5 Medium uses only the protected mechanical-worker and exact-implementer roles; Sonnet 5.5 retains general implementation. Codex native Sol/Luna profiles remain explicit same-provider choices, never an automatic fallback. Run
    disjoint packets concurrently only when dependencies and capacity allow.
-5. Integrate, run relevant checks, receive the independent Fable 5.2 review the gate orders,
+5. Integrate, run relevant checks, receive the independent review the gate orders (Sol 6.1 High; Fable 5.2 only for security work or hard reviews),
    correct actual findings and verify behavior through the authorized endpoint.
 
 The installed CLI is

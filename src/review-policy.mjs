@@ -31,7 +31,7 @@ const SHA = /^[0-9a-f]{40}$/;
  * @typedef {"round" | "advance" | "withdraw" | "split" | "hold" | "none"} NextAction
  */
 
-/** The reviewers a round row may name; Fable 5.2 runs the rounds by default and Sol 6.1 High stands in (2.14.0). */
+/** The reviewers a round row may name; Sol 6.1 High runs the rounds and Fable 5.2 the hard ones (2.14.0). */
 export const REVIEWERS = ["sol", "fable"];
 /** The prefix of a release reason that records Fable as unavailable (quota or not offered). */
 export const FABLE_UNAVAILABLE = "fable-unavailable:";
@@ -39,21 +39,34 @@ export const FABLE_UNAVAILABLE = "fable-unavailable:";
 export const FABLE_UNAVAILABLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Who runs the next round of a lineage: Fable, unless the newest release whose reason starts with
- * `fable-unavailable:` is newer than the newest Fable round row of the lineage and less than seven days old; then Sol,
- * with the recorded reason (at most 160 characters). Pure: the caller passes the sidecar's releases, the lineage's
- * round rows and the time.
- * @param {{releases: {reason: string, recordedAt: string}[], rounds: {reviewer: string, recordedAt: string}[], now: number}} input
- * @returns {{reviewer: "fable" | "sol", reason: string}}
+ * Why the next round of a lineage is hard, first match wins, or "" for a normal round (owner decision of 2026-11-12:
+ * Fable reviews only security work and hard reviews). The gate computes it; nobody is asked.
+ * @param {{critical?: boolean, rejected?: boolean, nextSlot: number}} input
  */
-export function reviewerFor({ releases, rounds, now }) {
+export function hardReason({ critical = false, rejected = false, nextSlot }) {
+  if (critical) return "hallazgo crítico abierto";
+  if (rejected) return "rechazo de un hilo crítico de Codex";
+  return nextSlot >= 3 ? "dos rondas no cerraron la revisión" : "";
+}
+
+/**
+ * Who runs the next round of a lineage: Sol, unless the round is `hard` (a short reason from hardReason); then Fable
+ * with that reason, unless the newest release whose reason starts with `fable-unavailable:` is newer than the newest
+ * Fable round row of the lineage and less than seven days old; then Sol again, `degraded`, with the recorded reason
+ * (at most 160 characters). Pure: the caller passes the sidecar's releases, the lineage's round rows and the time.
+ * @param {{releases: {reason: string, recordedAt: string}[], rounds: {reviewer: string, recordedAt: string}[], now: number, hard?: string}} input
+ * @returns {{reviewer: "fable" | "sol", reason: string, degraded: boolean}}
+ */
+export function reviewerFor({ releases, rounds, now, hard = "" }) {
+  if (!hard) return { reviewer: "sol", reason: "", degraded: false };
   const at = (/** @type {{recordedAt: string}} */ row) => Date.parse(row.recordedAt);
   const unavailable = releases.filter((release) => typeof release.reason === "string" && release.reason.startsWith(FABLE_UNAVAILABLE) && Number.isFinite(at(release)))
     .sort((a, b) => at(a) - at(b)).at(-1);
-  if (!unavailable) return { reviewer: "fable", reason: "" };
+  const fable = { reviewer: /** @type {const} */ ("fable"), reason: hard, degraded: false };
+  if (!unavailable) return fable;
   const lastFable = Math.max(-Infinity, ...rounds.filter((round) => round.reviewer === "fable" && Number.isFinite(at(round))).map(at));
-  if (at(unavailable) <= lastFable || now - at(unavailable) >= FABLE_UNAVAILABLE_MS) return { reviewer: "fable", reason: "" };
-  return { reviewer: "sol", reason: unavailable.reason.replace(/\s+/g, " ").trim().slice(0, 160) };
+  if (at(unavailable) <= lastFable || now - at(unavailable) >= FABLE_UNAVAILABLE_MS) return fable;
+  return { reviewer: "sol", reason: unavailable.reason.replace(/\s+/g, " ").trim().slice(0, 160), degraded: true };
 }
 
 /** Critical unless the reviewer said `none`: when in doubt, critical. @param {Finding} finding */

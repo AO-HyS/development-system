@@ -6,8 +6,8 @@
 // lock and re-reads GitHub inside it before posting, and never deletes a published request. `mergeReady` combines
 // every gate and `--gate` records the merge pass the command guard requires for `gh pr merge --match-head-commit
 // <head>`. Output always carries estado, Codex n/2, revisión n/max (JSON key `sol`), evidencia and exactly one
-// siguiente. Since 2.14.0 the review rounds run on Fable 5.2 by default and on Sol 6.1 High while the lineage records
-// Fable as unavailable (`reviewer` and `reviewerReason` in the JSON).
+// siguiente. Since 2.14.0 the review rounds run on Sol 6.1 High and the hard ones (`hardReason`) on Fable 5.2, back
+// on Sol while the lineage records Fable as unavailable (`reviewer` and `reviewerReason` in the JSON).
 //
 // Contract (plan 1.3), first match wins:
 //   valid review of a SHA   a Codex app review with that commit_id and a real body (`Codex Review|Reviewed commit`), or a
@@ -291,14 +291,13 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   let lineageError = "";
   /** @type {number[]} */
   let solRoundsAt = [];
-  // Who runs the next round (2.14.0): Fable 5.2 unless the lineage recorded it unavailable; an unreadable lineage
-  // keeps the default.
-  /** @type {{reviewer: "fable" | "sol", reason: string}} */
-  let reviewer = { reviewer: "fable", reason: "" };
+  // Who runs the next round (2.14.0; review-policy.mjs reviewerFor); an unreadable lineage keeps Sol.
+  /** @type {(rejected: boolean) => ReturnType<typeof import("./review-policy.mjs").reviewerFor>} */
+  let reviewerWith = () => ({ reviewer: "sol", reason: "", degraded: false });
   try {
     const state = lineageState(home, resolveLineage({ pr: prKey, home, pull }));
     lineage = lineageSummary(state);
-    reviewer = state.reviewer;
+    reviewerWith = state.reviewerWith;
     solRoundsAt = roundsReservedAt({ rounds, live: state.live, pr: prKey });
   } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
   const threadView = threadStates({ threads, commitInfo, solRoundsAt });
@@ -489,6 +488,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const solOk = solState === "exempt" || solState === "approved" || solState === "covered" || solState === "waived" || solState === "advanced";
   // A rejected critical Codex thread waits for Sol's read; only the owner's waiver stands in for it.
   const pendingCritical = rejectedNeedSol.length > 0 && !waiver;
+  const reviewer = reviewerWith(pendingCritical);
   const evidenceReceipts = readReceipts(home, prKey);
   const behavioralEvidence = evaluatePullEvidence({
     receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
@@ -579,7 +579,7 @@ export function formatPrReviewStatus(result) {
   };
   coverageLines("Codex", result.codexCoverage);
   const sol = result.solReview;
-  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : `Sol 6.1 High; ${result.reviewerReason}`}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
+  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : "Sol 6.1 High"}${result.reviewerReason ? `; ${result.reviewerReason}` : ""}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
   coverageLines("Review", sol.coverage);
   const lineage = result.lineage;
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);

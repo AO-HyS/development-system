@@ -3,8 +3,9 @@
 // paths (one path token per entry) and a finish line and never share a path with an
 // active writer. Normal dispatch disables automatic Jev classification/tier calls;
 // the parent can use the separate advisory CLI at an unresolved decision.
-// Diff, plan, security and PR reviews run on the native primary `reviewer` (Fable 5.2): fresh,
-// read-only, with a `Review kind:` line; kind pr reserves the PR's lineage slot like delegate_task.
+// Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High. Security reviews and hard reviews run on the
+// native primary `reviewer` (Fable 5.2): fresh, read-only, with a `Review kind:` line and, unless the kind is
+// free (security), a `Review difficulty: hard: <why>` line; kind pr reserves the PR's lineage slot like delegate_task.
 // Sol reviews and Terra computer use retain receipt-bound native fallback. A fresh
 // primary Opus visual critic needs no fallback envelope, never source ownership.
 // PreToolUse Read/screenshot: per-agent image budget, with the coordinator nearly
@@ -412,16 +413,28 @@ async function reservePrReview(text, entry, requestKey, via) {
   return { reservation, slot, logged: { ...entry, pr, scope, reservation: reservation.id, slot: reservation.slot, reused: Boolean(answer.reused) } };
 }
 
-// Native primary reviewer (Fable 5.2): fresh, read-only, with a `Review kind:` line from POLICY.review.primary.kinds.
-// Kind pr reserves the PR's lineage slot exactly like delegate_task; an internal error there denies. Always exits.
+// Every other review goes to codex-review on Sol 6.1 High; shared by the launch text and the difficulty denial.
+const CODEX_REVIEW_LAUNCH = 'write the review packet to a file and run node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <mock> --image <capture>] with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep.';
+const REVIEW_ROUTES = `Reviews (diff, plan, PR) -> codex-review on Sol 6.1 High: ${CODEX_REVIEW_LAUNCH} Security reviews and hard reviews -> Agent reviewer (Fable 5.2, fresh, read-only) with \`Review kind: pr|plan|security|diff\` and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`).`;
+
+// Native primary reviewer (Fable 5.2), only for security reviews and hard reviews: fresh, read-only, with a
+// `Review kind:` line from POLICY.review.primary.kinds and, unless the kind is in POLICY.review.primary.freeKinds,
+// a `Review difficulty: hard: <reason>` line. Kind pr reserves the PR's lineage slot exactly like delegate_task;
+// an internal error there denies. Always exits.
 async function primaryReview(type, ti, prompt, entry, primary) {
   const kinds = (primary.kinds ?? []).map((k) => String(k).toLowerCase());
   const kind = packetLine(prompt, 'Review kind');
   const normalized = String(kind ?? '').toLowerCase();
   const reviewEntry = { ...entry, reviewKind: kind, jev: 'skipped', tier: null, why: 'fresh primary Fable review' };
-  if (!kinds.includes(normalized)) deny(`${type} (Fable 5.2) needs a \`Review kind: ${kinds.join('|')}\` line (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`); the only other admission is a receipt-bound "Codex fallback:" envelope.`, { ...reviewEntry, blockedBy: 'review-kind' });
+  if (!kinds.includes(normalized)) deny(`${type} (Fable 5.2) needs a \`Review kind: ${kinds.join('|')}\` line and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`); the only other admission is a receipt-bound "Codex fallback:" envelope.`, { ...reviewEntry, blockedBy: 'review-kind' });
   if (ti.resume !== undefined) deny(`${type} primary review requires a fresh Agent; resume is forbidden.`, { ...reviewEntry, blockedBy: 'primary-review-fresh' });
   if (/^\s*(Owned paths|Writer|Source writes):/mi.test(prompt) || ti.writer === true) deny(`${type} primary review is independent read-only review; source ownership is forbidden.`, { ...reviewEntry, blockedBy: 'primary-review-ownership' });
+  // Fable only for free kinds (security) or a hard review with a stated reason; checked before any PR reservation.
+  const freeKinds = (primary.freeKinds ?? ['security']).map((k) => String(k).toLowerCase());
+  const difficulty = packetLine(prompt, 'Review difficulty');
+  if (!freeKinds.includes(normalized) && !/^hard\s*[:\u2013\u2014-]\s*\S.{2,}$/i.test(String(difficulty ?? ''))) {
+    deny(`${type} (Fable 5.2) is for security reviews and hard reviews; add \`Review kind: security\`, or \`Review difficulty: hard: <why>\` (a critical finding still open, a third round or later, a shared contract or primitive, an open architectural decision); any other review runs on Sol 6.1 High through codex-review: ${CODEX_REVIEW_LAUNCH}`, { ...reviewEntry, difficulty, blockedBy: 'review-difficulty' });
+  }
   // Any packet naming a PR takes that PR's lineage slot, whatever its kind; kind pr without a PR line is denied below.
   if (normalized !== 'pr' && packetLine(prompt, 'PR') === null) allow(null, reviewEntry);
   try {
@@ -461,23 +474,23 @@ async function agentCall() {
       if (POLICY.otherAgentsRequireModel.includes(ti.model)) allow(null, entry);
       deny(`Plugin agent ${type} has no pinned model. Pass model: "opus" (or "sonnet" for read-only work) or use a roster role: ${rosterList}.`, entry);
     }
-    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, diff, plan, security and PR review -> Agent reviewer (Fable 5.2, fresh, read-only) with a \`Review kind: pr|plan|security|diff\` line (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`), codex-review on Sol 6.1 High only for an explicit cross review or when Fable is unavailable (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true); computer use (dashboards, tools, the real app) -> codex-review.mjs --computer-use [--flow browser-testing|video] --packet <file> --root <repo> (Bash run_in_background: true); reviewer-medium or browser-qa require an eligible receipt-bound fallback; visual-reviewer can be fresh primary read-only critique.`, entry);
+    deny(`"${type}" is not a roster role; it would run on the coordinator's model and effort. Use one of: ${rosterList}. Mapping/search -> code-mapper, docs/web research -> docs-researcher, fully specified edits -> mechanical-worker or exact-implementer, general code -> implementer, one UI screen -> ui-implementer, cross-cutting code -> senior-implementer, decisions/plans -> planner, reviews (diff, plan, PR) -> codex-review on Sol 6.1 High (node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <file>]..., Bash run_in_background: true), security reviews and hard reviews -> Agent reviewer (Fable 5.2, fresh, read-only) with \`Review kind: pr|plan|security|diff\` and, unless the kind is security, \`Review difficulty: hard: <why>\` (a PR review also \`PR: owner/repo#N\` and \`Review scope: full|fix-diff\`); computer use (dashboards, tools, the real app) -> codex-review.mjs --computer-use [--flow browser-testing|video] --packet <file> --root <repo> (Bash run_in_background: true); reviewer-medium or browser-qa require an eligible receipt-bound fallback; visual-reviewer can be fresh primary read-only critique.`, entry);
   }
   if (ti.model && ti.model !== role.model) {
     deny(`${type} runs on ${role.model}; do not override it with "${ti.model}". For more capability dispatch senior-implementer or planner (Opus high); for less, mechanical-worker or code-mapper (Sonnet, low effort).`, entry);
   }
   const prompt = String(ti.prompt ?? '');
-  // 2.14.0: diff, plan, security and PR reviews run on the native primary reviewer (Fable 5.2).
-  // codex-review on Sol 6.1 High stays for computer use, visual captures, an explicit cross
-  // review and the Fable-unavailable path; Claude fallback roles stay receipt-bound. These
-  // denials are not Jev refusals.
+  // Reviews (diff, plan, PR) run on codex-review on Sol 6.1 High, as do computer use and visual
+  // captures; security reviews and hard reviews run on the native primary reviewer (Fable 5.2,
+  // owner decision 2026-11-12). Claude fallback roles stay receipt-bound. These denials are not
+  // Jev refusals.
   if (POLICY.review?.engine === 'codex') {
-    const launch = 'Diff, plan, security and PR review -> Agent reviewer (Fable 5.2, fresh, read-only) with a `Review kind: pr|plan|security|diff` line (a PR review also `PR: owner/repo#N` and `Review scope: full|fix-diff`). codex-review on Sol 6.1 High only for an explicit cross review or when Fable is unavailable: write the review packet to a file and run node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --packet <file> --root <repo> [--image <mock> --image <capture>] with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use a Claude fallback role only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.';
+    const launch = `${REVIEW_ROUTES} Use a Claude fallback role only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`;
     const fallbackEnvelope = /^\s*Codex fallback(?: receipt| packet)?:/mi.test(prompt);
     const primary = POLICY.review.primary;
     // The primary reviewer skips Jev, the tier ladder and the Fable scope line: it returns through allow or deny here.
     if (primary?.role === type && !role.retired && !fallbackEnvelope) await primaryReview(type, ti, prompt, entry, primary);
-    if (role.retired) deny(`${type} is retired: use reviewer (Fable 5.2). ${launch}`, { ...entry, blockedBy: 'retired' });
+    if (role.retired) deny(`${type} is retired. ${launch}`, { ...entry, blockedBy: 'retired' });
     const fallbackLine = /^\s*Codex fallback:\s*\S/m.test(prompt);
     const primaryVisual = role.family === 'visual' && POLICY.primaryVisualReview?.enabled === true && POLICY.primaryVisualReview.role === type && !fallbackEnvelope;
     if (primaryVisual) {

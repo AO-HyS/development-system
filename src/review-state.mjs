@@ -15,7 +15,7 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
-import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
+import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, hardReason, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
 export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
@@ -546,9 +546,10 @@ export function lineageState(home, lineage) {
   // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
   // slot its lineage used. The writer of an advance and the gate both read it from here.
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
-  // 2.14.0: who runs the next round; slots are shared between reviewers (see reviewerFor).
-  const reviewer = reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now() });
-  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer };
+  // 2.14.0: who runs the next round (Sol, Fable when hard); slots are shared between reviewers. `rejected` (a pending
+  // critical Codex rejection) is known only to the gate. The round runs on the first reserved slot, else the next.
+  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected, nextSlot: pending[0]?.slot ?? slotsUsed + 1 }) });
+  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer: reviewerWith(), reviewerWith };
 }
 
 /** The gate's view of a lineage. @param {ReturnType<typeof lineageState>} state */

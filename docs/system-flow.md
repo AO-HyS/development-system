@@ -49,8 +49,8 @@ La fuente generada de verdad es `artifacts/2.14.0/model-routing.md`; la página
 sigue siendo el orquestador y conserva la coordinación, la integración y las
 correcciones.
 
-- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura los PR terminados, los planes y la seguridad.
-- Sol 6.1 High queda para el cross review que pida el operador y para una ronda cuando Fable no está disponible.
+- Sol 6.1 High revisa los PR terminados y los planes por codex-review, y hace el cross review que pida el operador.
+- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura solo la seguridad y las revisiones difíciles; la puerta le ordena una ronda cuando hay un hallazgo crítico abierto o dos rondas no cerraron la revisión.
 - Opus 5.5 planifica, implementa lo difícil y la interfaz, y hace la crítica visual independiente.
 - Sonnet 5.5 ejecuta trabajo general acotado.
 - Haiku 5.5 Medium (`claude-haiku-5-5`) explora y mapea código en solo lectura, y escribe lo exacto y mecánico.

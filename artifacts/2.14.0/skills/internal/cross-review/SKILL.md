@@ -8,8 +8,7 @@ description: Open a visible T3 review thread where a second model (Sol 6.1 High 
 The author keeps writing; the reviewer only proposes. The conversation lives in
 one ordinary T3 thread the owner can open, read and write in: the owner asked
 for one continuous visible thread, so this is the explicit exception to fresh
-review rounds. It does not replace the reviews a PR needs: the Fable 5.2 review and
-rounds the `development-system pr-review-status <pr> --gate` orders, and Codex
+review rounds. It does not replace the PR reviews: the rounds the `development-system pr-review-status <pr> --gate` orders, and Codex
 asked at most twice. The reviewer
 model is the owner's choice: Sol 6.1 High for a Claude author, Opus for a
 Codex author; the owner may name another.

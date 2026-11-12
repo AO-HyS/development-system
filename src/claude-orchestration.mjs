@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
-import { probeCoach } from "./claude-orchestration-coach-probe.mjs";
+import { probeCoach, probeReviewDifficulty } from "./claude-orchestration-coach-probe.mjs";
 
 const guardRelative = ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs";
 const policyRelative = ".codex/development-system/runtime/claude-orchestration/policy.json";
@@ -329,17 +329,17 @@ export async function auditClaudeOrchestration({ home }) {
     // `Review kind:` is denied before any reservation, so neither probe reaches GitHub or a ledger.
     const plainDelegate = probe(resolvedHome, managed.guard, "delegate_task:implementation", { task: "Objective: audit probe", role: "implementation" });
     const reviewDelegate = probe(resolvedHome, managed.guard, "delegate_task:review", { task: "Objective: audit probe", role: "review" });
-    // Primary Fable reviewer admitted; retired plan-reviewer denied.
-    const primaryReviewer = probe(resolvedHome, managed.guard, "reviewer", undefined, "Review kind: plan\nObjective: audit probe");
+    // Fable reviewer admitted for security; retired plan-reviewer denied.
+    const primaryReviewer = probe(resolvedHome, managed.guard, "reviewer", undefined, "Review kind: security\nObjective: audit probe");
     const retiredReviewer = probe(resolvedHome, managed.guard, "plan-reviewer");
     probes.push(denied, allowed, plainDelegate, reviewDelegate, primaryReviewer, retiredReviewer);
     if (!denied.denied) findings.push("Guard probe did not deny general-purpose");
     if (allowed.status !== 0 || allowed.denied) findings.push("Guard probe did not allow code-mapper");
     if (plainDelegate.status !== 0 || plainDelegate.output.trim() !== "") findings.push("Guard probe did not pass a non-review delegate_task untouched");
     if (!reviewDelegate.denied) findings.push("Guard probe did not deny a review delegate_task without Review kind (installed guard predates the review brake)");
-    if (primaryReviewer.status !== 0 || primaryReviewer.denied) findings.push("Guard probe denied reviewer with Review kind: plan (guard predates the Fable reviewer)");
+    if (primaryReviewer.status !== 0 || primaryReviewer.denied) findings.push("Guard probe denied reviewer with Review kind: security (guard predates the Fable reviewer)");
     if (!retiredReviewer.denied) findings.push("Guard probe did not deny the retired plan-reviewer");
-    findings.push(...probeCoach(resolvedHome, managed.guard));
+    findings.push(...probeCoach(resolvedHome, managed.guard), ...probeReviewDifficulty(resolvedHome, managed.guard));
     sideEffects.push(`Guard probes append ledger lines and coach sessions under ${managed.ledger}`);
   }
   const ok = findings.length === 0;

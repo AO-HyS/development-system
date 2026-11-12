@@ -55,3 +55,24 @@ export function probeCoach(home, guard) {
   }
   return findings;
 }
+
+/**
+ * Feeds the installed guard one fresh `reviewer` dispatch with `Review kind: plan` and no `Review difficulty:` line.
+ * Fable 5.2 reviews only security reviews and hard reviews (owner decision 2026-11-12), so the guard must deny it
+ * before any PR reservation. Returns findings; empty when the guard denies.
+ * @param {string} home
+ * @param {string} guard the installed guard path
+ */
+export function probeReviewDifficulty(home, guard) {
+  /** @type {NodeJS.ProcessEnv} */
+  const env = { ...process.env, HOME: home };
+  delete env.TYPESAFE_API_KEY;
+  delete env.CLAUDE_ROSTER_GUARD;
+  const input = JSON.stringify({ session_id: "audit", hook_event_name: "PreToolUse", tool_name: "Agent", cwd: home,
+    tool_input: { subagent_type: "reviewer", description: "audit probe", prompt: "Review kind: plan\nObjective: audit probe" } });
+  const result = spawnSync(process.execPath, [guard], { input, env, encoding: "utf8", timeout: 30000 });
+  let decision = null;
+  try { decision = JSON.parse((result.stdout ?? "").trim())?.hookSpecificOutput?.permissionDecision ?? null; }
+  catch { decision = null; }
+  return decision === "deny" ? [] : ["Guard probe did not deny reviewer with Review kind: plan and no Review difficulty line (installed guard predates the security-and-hard-review rule)"];
+}

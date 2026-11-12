@@ -26,7 +26,7 @@
       "sourcePath": "artifacts/2.14.0/contract.md",
       "destination": ".codex/development-system/contract.md",
       "harness": "codex",
-      "sha256": "295dc9ed1bc3767e0d0b4ade2a52901faa4b58e366b93dff469695a15453446e",
+      "sha256": "1f0247153685dc5f7a0944adefe98daa305147dc20a732d1cd75a0a4db1613b5",
       "expectedMirrorOf": null
     },
     {
@@ -53,7 +53,7 @@
       "sourcePath": "config/2.14.0/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "33861f14069c083e5c1081972d172f2194e53420215258394e1417ccea114efd",
+      "sha256": "379af00200e024e945879eabd8ee63d06a264b17f975462f0f3d266f978e11e2",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.80.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "8389ae3038adbc3565c4605002f39ea80fa60d43f340a874310dbce4326022f8",
+      "sha256": "e828dcab02129291bfe60b486eeac4cae3770ea8e0cfe9a0f9f25c569eb79851",
       "expectedMirrorOf": null
     },
     {
@@ -251,7 +251,7 @@
       "sourcePath": "artifacts/2.14.0/model-routing.md",
       "destination": ".codex/development-system/model-routing.md",
       "harness": "codex",
-      "sha256": "3c15e0cc25191f6e82eb14e1c81def0a05afe92cdafff6e51492d7bd1f7d290d",
+      "sha256": "86905546619693056993a54f70857e7eef010569fdad8ae3a15febee390fe843",
       "expectedMirrorOf": null
     },
     {
@@ -287,7 +287,7 @@
       "sourcePath": "artifacts/2.14.0/global-codex-instructions.md",
       "destination": ".codex/AGENTS.md",
       "harness": "codex",
-      "sha256": "3644bd102a18936acc8e5d9a693228b1b09c6f9a36f465b09180508aecfbfbe0",
+      "sha256": "8a7fcdc0853fcba66df3cf5c18dcc56cc1870488e4b1ffab5fe206020ba22ced",
       "expectedMirrorOf": null
     },
     {
@@ -296,7 +296,7 @@
       "sourcePath": "artifacts/2.14.0/orchestration-contract.md",
       "destination": ".codex/development-system/orchestration-contract.md",
       "harness": "codex",
-      "sha256": "5353da2258e1522daf66ee0c67e281254165ebad29cf0ca0266a911a3db4c96f",
+      "sha256": "da007dfb57c9a30ebaec2bc4fb4828344644cf6c869075b78300d2ece4fbf883",
       "expectedMirrorOf": null
     },
     {
@@ -620,7 +620,7 @@
       "sourcePath": "artifacts/2.14.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "b9072f12c746e2a8534f48f877268e249b934ff2520e42ea95ad16ac41b6f4ed",
+      "sha256": "3de177c27aa05e73e7a4858bdf79ec754dd8390de18f7394c5db2770fd3b6e3c",
       "expectedMirrorOf": null
     },
     {
@@ -629,7 +629,7 @@
       "sourcePath": "artifacts/2.14.0/runtime/claude-orchestration/policy.json",
       "destination": ".codex/development-system/runtime/claude-orchestration/policy.json",
       "harness": "claude",
-      "sha256": "a84efe03475cde5d2cb3189433ce369007335a44ba7a975d7a9e52a42fe0c6a1",
+      "sha256": "da7e06784f10cb76a706bb16d3a00e2e4842aac13b58e6ce47f44c21df0c69a2",
       "expectedMirrorOf": null
     },
     {
@@ -662,10 +662,10 @@
     {
       "id": "claude-agent-code-mapper.claude",
       "logicalName": "claude-agent-code-mapper",
-      "sourcePath": "artifacts/2.1.2/claude/agents/code-mapper.md",
+      "sourcePath": "artifacts/2.14.0/claude/agents/code-mapper.md",
       "destination": ".claude/agents/code-mapper.md",
       "harness": "claude",
-      "sha256": "5fd1a628023344e727af6692f3b01f8942a8ef8b164d02eda9d11435e5a3e8b8",
+      "sha256": "5a5ac03aff488032c2e9552f758c7c0b83320828ffc0e7c3a88ade73a3a21da0",
       "expectedMirrorOf": null
     },
     {
@@ -716,10 +716,10 @@
     {
       "id": "claude-agent-plan-reviewer.claude",
       "logicalName": "claude-agent-plan-reviewer",
-      "sourcePath": "artifacts/1.37.0/claude/agents/plan-reviewer.md",
+      "sourcePath": "artifacts/2.14.0/claude/agents/plan-reviewer.md",
       "destination": ".claude/agents/plan-reviewer.md",
       "harness": "claude",
-      "sha256": "bd90f1bef9b87c85e43b5ab7aab0685bb113aefe015b6112a116205c9329f4c7",
+      "sha256": "045be0aba1fdae13cd1ff504d055dced9dcdb92e58564694629170277aa0b9e6",
       "expectedMirrorOf": null
     },
     {
@@ -743,10 +743,10 @@
     {
       "id": "claude-agent-reviewer.claude",
       "logicalName": "claude-agent-reviewer",
-      "sourcePath": "artifacts/1.39.0/claude/agents/reviewer.md",
+      "sourcePath": "artifacts/2.14.0/claude/agents/reviewer.md",
       "destination": ".claude/agents/reviewer.md",
       "harness": "claude",
-      "sha256": "8cd5b621369b1f2583160c52f191bea51ab49a72a6d5ca88f564eb9e6a3222e6",
+      "sha256": "cfaae11e14b7d39d77acf23fb9e6d28fd57aa2b0b9bacfb37f4a2621e81ea947",
       "expectedMirrorOf": null
     },
     {
@@ -761,10 +761,10 @@
     {
       "id": "claude-agent-security-reviewer.claude",
       "logicalName": "claude-agent-security-reviewer",
-      "sourcePath": "artifacts/1.37.0/claude/agents/security-reviewer.md",
+      "sourcePath": "artifacts/2.14.0/claude/agents/security-reviewer.md",
       "destination": ".claude/agents/security-reviewer.md",
       "harness": "claude",
-      "sha256": "8921713391e605416221ced2c2f4dfb83a9f1f281f2d86c6b2d3fbc346fdb705",
+      "sha256": "31cf4fc2986bd0d4ecfa6be2fc983ac9885aebf0d1cc438393c150a1b9523775",
       "expectedMirrorOf": null
     },
     {

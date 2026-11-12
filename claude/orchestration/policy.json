@@ -211,6 +211,9 @@
         "plan",
         "security",
         "diff"
+      ],
+      "freeKinds": [
+        "security"
       ]
     },
     "model": "gpt-6.1-sol",
