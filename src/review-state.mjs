@@ -596,7 +596,9 @@ function evidenceBeforeFirstRound(home, lineage) {
     prFiles: files && files.length === Number(pull?.changed_files) ? files.map(changedFile) : null,
     changedSince: (from) => {
       const compare = read(["api", `${api}/compare/${from}...${head}`]);
-      return compare && Array.isArray(compare.files) && compare.files.length < 300 ? compare.files.map(changedFile) : null;
+      // A diverged or behind comparison lists files of a history the head no longer has: unknown, never "no change".
+      if (!compare || (compare.status !== "ahead" && compare.status !== "identical")) return null;
+      return Array.isArray(compare.files) && compare.files.length < 300 ? compare.files.map(changedFile) : null;
     },
   });
   return ACCEPTED_EVIDENCE.has(evidence.state) ? "" : `the behavioral evidence of ${lineage.key} is ${evidence.state} (${evidence.reason}): record it with development-system evidence record before the first Sol round`;
