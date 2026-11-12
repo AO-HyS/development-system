@@ -2373,7 +2373,33 @@ function checkDocsEffect(word, text, absolute, effect, ctx) {
   if (effect.patches || effect.pathspecs) {
     const roots = operandPaths(word, ctx);
     if (roots === null || roots.length !== 1) {
-      if (!ctx.codeString) block(`${shownWord(word)} (${effect.patches ? "a patch applied in" : "Git paths restored in"} an unknown directory)`);
+      if (!ctx.codeString) {
+        const what = effect.patches ? "a patch applied in" : "Git paths restored in";
+        block(`${shownWord(word)} (${what} an unknown directory)`);
+        const cut = word.value.indexOf(UNKNOWN);
+        // A folder written out before the unknown part (`-d ~/.claude/"$dir"`): guard configuration below it blocks.
+        if (cut !== 0 && !(ctx.cwd === null && !isAbsolute(cut < 0 ? text : word.value.slice(0, cut)))) {
+          blindBelow(`${what} a directory the guard cannot read`);
+          return;
+        }
+        // No folder at all (`-d "$dir"`). Git restores only what the repository tracks, so its paths pass unless one
+        // can select guard configuration (a path the guard cannot read selects anything).
+        if (effect.pathspecs) {
+          const reach = protectedReach(ctx).flatMap((file) => { const parts = file.split(sep).filter(Boolean); return parts.map((_, k) => parts.slice(k).join("/")); });
+          const spec = effect.pathspecs.specs.find((each) => reach.some((file) => pathspecSelects(each, file)));
+          if (spec !== undefined) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${spec ?? "a path the guard cannot read"} (Git paths restored in a directory the guard cannot read)`);
+        }
+        // A patch the guard can read passes unless a name in it can end a protected path; one it cannot read is blocked.
+        const listed = (effect.patches ?? []).map((patch) => patch && patchMembers(patch, ctx));
+        if (listed.some((members) => !members)) throw blindBlock(`${shownWord(word)} (a patch the guard cannot read, applied in a directory it cannot read either)`);
+        for (const member of listed.flatMap((members) => members || [])) {
+          const parts = member.split("/").filter((part) => part !== "" && part !== ".");
+          for (let k = 0; k < parts.length; k++) {
+            const hit = protectedTail(parts.slice(k).join("/"), "write", targets);
+            if (hit) throw new Block("guard-config-write", `${structural["guard-config-write"]} Target: ${hit} (${member}, patched in a directory the guard cannot read)`);
+          }
+        }
+      }
       return;
     }
     const [root] = roots;
