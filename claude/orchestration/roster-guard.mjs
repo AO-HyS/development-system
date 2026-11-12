@@ -691,17 +691,27 @@ function sedRefusal(step) {
   if (step.slice(i + 1).some((w) => w.startsWith('-'))) return 'After the sed -n script only file paths are allowed.';
   return null;
 }
-// tail -f/-F/--follow never ends.
-const tailFollows = (step) => step[0] === 'tail' && step.some((w) => /^--follow/.test(w) || /^-[^-]*[fF]/.test(w));
+// Options that run a program, write a file or never end: [long names, short letters] per command. getopt accepts
+// any unique prefix of a long option and clusters short ones, so a word is forbidden when it abbreviates or extends
+// a listed long name, or is a single-dash word that holds a listed letter. `git --text` is its own exact option.
+const MAPPER_FORBIDDEN = {
+  rg: [['--pre', '--hostname-bin'], ''], grep: [['--pre', '--hostname-bin'], ''], file: [['--compile'], 'C'], tail: [['--follow'], 'fF'],
+  sort: [['--output', '--compress-program'], 'o'], git: [['--output', '--ext-diff', '--textconv', '--open-files-in-pager'], ''],
+};
+function forbiddenOption(step, [longs, shorts] = MAPPER_FORBIDDEN[step[0]] ?? [[], '']) {
+  return step.slice(1).find((w) => {
+    if (!w.startsWith('--')) return w.length > 1 && w[0] === '-' && [...shorts].some((letter) => w.includes(letter));
+    const name = w.split('=')[0];
+    return name.length > 2 && name !== '--text' && longs.some((long) => long.startsWith(name) || name.startsWith(long));
+  });
+}
 // Null when a first-step search command (shell words) is read-only, else why not.
 function searchRefusal(step) {
   const name = step[0];
-  if ((name === 'rg' || name === 'grep') && step.some((w) => /^--(pre|hostname-bin)/.test(w))) return `\`${name}\` with --pre, --pre-glob or --hostname-bin is not allowed.`;
+  const option = forbiddenOption(step);
+  if (option) return `\`${name} ${option}\` is not allowed (it runs a program, writes a file or never ends).`;
   if (name === 'find') { const action = step.find((w) => FIND_ACTIONS.has(w)); if (action) return `\`find ${action}\` is not allowed.`; }
-  if (name === 'file' && step.some((w) => w === '--compile' || /^-[A-Za-z]*C/.test(w))) return '`file -C` writes a compiled magic file and is not allowed.';
-  if (name === 'sed') return sedRefusal(step);
-  if (tailFollows(step)) return '`tail -f`, `-F` and `--follow` are not allowed.';
-  return null;
+  return name === 'sed' ? sedRefusal(step) : null;
 }
 // jevgrep for the mapper: null when allowed, else why not. Works on raw shell words
 // (quotes kept) so the question must be one quoted word and the root stays a plain
@@ -797,14 +807,14 @@ function bashWords(text, strict) {
       i = end < 0 ? text.length : end;
     } else if (c === '"') {
       for (i += 1; i < text.length && text[i] !== '"'; i += 1) {
-        if (text[i] === '\\' && '"\\$`'.includes(text[i + 1] ?? '')) i += 1;
+        if (text[i] === '\\' && '"\\$`\n'.includes(text[i + 1] ?? '')) { i += 1; if (text[i] === '\n') continue; }
         else if (strict && text[i] === '$' && EXPANSION.test(text[i + 1] ?? '')) return null;
         current += text[i];
       }
       if (i >= text.length && strict) return null;
     } else if (c === '\\') {
       if (strict) return null;
-      current += next;
+      if (next !== '\n') current += next;
       i += 1;
     } else {
       if (strict) {
@@ -828,6 +838,7 @@ function mapperBash() {
   const refuse = (why) => deny(`${why} ${MAPPER_HELP}`, entry);
   if (!command) refuse('Empty command.');
   if (/\$\(|\$\{|`/.test(command)) refuse('Command substitution is not allowed.');
+  if (/[\n\r]/.test(command)) refuse('A mapper command is one line.');
   if (bashWords(command, true) === null) refuse('A backslash outside quotes, a `$` or brace expansion, a glob that starts a word or an option, and an unterminated quote are not allowed: put the word in single quotes (a glob as `./*.md`).');
   const parsed = splitShell(command);
   if (!parsed) refuse('Command lists, subshells, input redirects and background jobs are not allowed.');
@@ -862,8 +873,9 @@ function mapperBash() {
   } else if (first[0] === 'git') {
     let i = 1;
     while (first[i] === '--no-pager' || first[i] === '-C') i += first[i] === '-C' ? 2 : 1;
+    // `git grep -O<pager>` opens the matches in a program; -O also hides inside a short cluster.
     ok = ['show', 'log', 'diff', 'blame', 'status', 'rev-parse', 'ls-files', 'grep'].includes(first[i])
-      && !first.some((w) => /^(--output|--ext-diff|--textconv|--open-files-in-pager|-O)/.test(w));
+      && !forbiddenOption(first, [MAPPER_FORBIDDEN.git[0], first[i] === 'grep' ? 'O' : '']) && !first.some((w) => w.startsWith('-O'));
   } else if (MAPPER_SEARCH.has(first[0])) {
     const why = searchRefusal(first);
     if (why) refuse(why);
@@ -875,19 +887,11 @@ function mapperBash() {
   if (!ok) refuse(`\`${first.slice(0, 3).join(' ')}\` is not an allowed mapper command.`);
   for (const step of rest) {
     if (!MAPPER_FILTERS.has(step[0])) refuse(`Piping into \`${step[0]}\` is not allowed.`);
-    if (step.some((w) => /^--pre/.test(w) || (['rg', 'grep'].includes(step[0]) && /^--hostname-bin/.test(w)) || (step[0] === 'sort' && /^(-[A-Za-z]*o|--output|--compress-program)/.test(w)))) refuse(`\`${step[0]}\` with that flag is not allowed.`);
+    const option = forbiddenOption(step);
+    if (option) refuse(`\`${step[0]} ${option}\` is not allowed (it runs a program, writes a file or never ends).`);
     if (step[0] === 'sed') { const why = sedRefusal(step); if (why) refuse(why); }
-    if (tailFollows(step)) refuse('`tail -f`, `-F` and `--follow` are not allowed.');
-    if (step[0] === 'uniq') {
-      // `uniq INPUT OUTPUT` writes OUTPUT; -f, -s and -w take a separate numeric argument.
-      const operands = [];
-      for (let i = 1; i < step.length; i += 1) {
-        if (step[i] === '--') { operands.push(...step.slice(i + 1)); break; }
-        if (/^-[fsw]$/.test(step[i])) { i += 1; continue; }
-        if (!step[i].startsWith('-') || step[i] === '-') operands.push(step[i]);
-      }
-      if (operands.length >= 2) refuse('`uniq` with an output file operand is not allowed.');
-    }
+    // After a pipe uniq reads stdin: `uniq INPUT OUTPUT` writes OUTPUT and a glob can expand into both.
+    if (step[0] === 'uniq' && step.slice(1).some((w, i, rest) => w === '--' || (!w.startsWith('-') && !/^-[fsw]$/.test(rest[i - 1] ?? '')))) refuse('`uniq` after a pipe takes no file operands.');
   }
   allow(null, null);
 }
