@@ -42,9 +42,9 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Configuración vigente (2.14.0)
+## Configuración vigente (2.14.1)
 
-La fuente generada de verdad es `artifacts/2.14.0/model-routing.md`; la página
+La fuente generada de verdad es `artifacts/2.14.1/model-routing.md`; la página
 `docs/model-routing.md` la resume. El modelo elegido al iniciar la conversación
 sigue siendo el orquestador y conserva la coordinación, la integración y las
 correcciones.
@@ -61,5 +61,8 @@ funcionalidad. Al terminar, se resuelve (settle) el hilo de cada hijo delegado
 tras integrar su resultado, y antes del primer `delegate_task` se lee
 `runtimeMode`. Las revisiones siguen el presupuesto por línea de rama. El
 guard de Claude orienta al padre con una frase, sin bloquear: tras diez
-lecturas seguidas sin explorador, al lanzar solo un segundo escritor seguido y
-desde la segunda petición de secreto de la sesión.
+lecturas seguidas sin explorador, al lanzar solo un segundo escritor seguido,
+desde la segunda petición de secreto de la sesión, al lanzar un escritor Opus
+sin `Opus reason:`, en el ayudante 21 y en el tercer PR de la sesión. Las
+revisiones son dos rondas por línea de rama y dos más solo si hay un hallazgo
+crítico.

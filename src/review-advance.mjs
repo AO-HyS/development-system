@@ -2,8 +2,9 @@
 // What happens to each review finding and the advance at the round cap (2.13.0, plan A2, A3 and A8).
 //   review dispose   one row per finding of a round: fixed (with its commit), rejected (with the reason) or follow-up
 //                    (with where it went). The ledger can then say how much of what a review finds ends in a change.
-//   review advance   the `auto-advance` row: round 5 came back blocking with nothing critical open, so no round 6
-//                    runs; or (`--withdrawn`) round 7 still has a critical finding open and the disputed change left
+//   review advance   the `auto-advance` row: the last round of the cap (2 since 2.14.1) came back blocking with nothing
+//                    critical open, so no further round runs; or (`--withdrawn`) the last critical re-read (round 4)
+//                    still has a critical finding open and the disputed change left
 //                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop; the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.

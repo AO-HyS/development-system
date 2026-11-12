@@ -35,7 +35,7 @@
 //                           head; out-of-scope or missing -> uncovered. Only clean base merges -> covered, no record.
 //   Sol                     records invalid or contradictory -> invalid; an exemption counts only for its exact head;
 //                           approval needs the last round's result to be none or non-blocking, on the head or covered
-//   Sol (2.13.0)            rounds run without approval, five per branch lineage and two more for a critical fix
+//   Sol (2.13.0)            rounds run without approval, two per branch lineage (2.14.1; five before) and two more for a critical fix
 //                           (review-policy.mjs); rounds chain by complete intervals; after the last clean round only
 //                           prose docs, clean base merges and recorded cited fixes stay covered; at the cap an
 //                           `auto-advance` row lets the PR into develop with every later commit a cited fix

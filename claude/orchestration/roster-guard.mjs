@@ -14,7 +14,8 @@
 // Every read-modify-write of active-writers.json runs under one session lock directory.
 // CLI mode `mapper-bash` (code-mapper frontmatter hook): PreToolUse Bash limited to
 // read-only search (rg, grep, ls, cat, sed -n, find without actions...), read-only git
-// commands, typechecks and jevgrep (`jg "<question>" <relative root>`).
+// commands, typechecks and jevgrep (`jg "<question>" <relative root>`); since 2.14.1 several
+// of them may be joined by `;` or `&&` after one leading `cd <path>`.
 // Orchestration coach (parent PreToolUse only, plus secret requests anywhere): never denies;
 // it appends one sentence of context after long read streaks, repeated solo writers and
 // repeated secret requests, and logs only the kind and the count.
@@ -79,7 +80,10 @@ const agentsForRoute = (route) => Object.entries(POLICY.roster).filter(([, r]) =
 // outside it they stay absolute (held, but not sent to Jev, which takes repo paths only).
 // "none" is an empty list except for Owned paths.
 const LIST_HEADER = /^[A-Z][\w /-]*:/;
-const OWNED_FORMAT = 'Owned paths must be one path per entry: `Owned paths: src/a.ts, src/b/**` or one `- path` line each.';
+const OWNED_FORMAT = 'Owned paths must be one path per entry: `Owned paths: src/a.ts, src/b/**` or one `- path` line each (a note in parentheses after a path is ignored; say the rest in Settled decisions).';
+// 2.14.1: `src/new/ (new directory)` is the path `src/new/`. Only a parenthesis after whitespace that closes the entry
+// is a note, so a route group such as `app/(auth)/page.tsx` stays a path.
+const withoutNotes = (text) => text.replace(/\s+\([^()\n]*\)(?=\s*(?:[,;]|$))/g, '');
 function listPath(token, cwd) {
   if (!token || /[\s`[\]?{}\\]/.test(token)) return null;
   let p = token.replace(/\/\*\*$/, '');
@@ -100,11 +104,11 @@ function packetList(prompt, label, cwd) {
     if (at < 0) return { paths: [], rejected: [] };
     first = lines[at].slice(lines[at].indexOf(`${label}:`) + label.length + 1);
   }
-  const entries = first.split(',');
+  const entries = withoutNotes(first).split(/[,;]/);
   const rejected = [];
   for (const line of lines.slice(at + 1)) {
     if (!line.trim() || LIST_HEADER.test(line)) break;
-    if (/^\s*- /.test(line)) entries.push(...line.replace(/^\s*- /, '').split(','));
+    if (/^\s*- /.test(line)) entries.push(...withoutNotes(line.replace(/^\s*- /, '')).split(/[,;]/));
     else rejected.push(line.trim());
   }
   const paths = [];
@@ -542,7 +546,7 @@ async function agentCall() {
       canonicalRoot = path.isAbsolute(packetRoot) && fs.statSync(packetRoot).isDirectory() ? fs.realpathSync(packetRoot) : null;
       canonicalCwd = fs.realpathSync(input.cwd ?? process.cwd());
     } catch { canonicalRoot = null; }
-    if (!canonicalRoot || canonicalRoot !== canonicalCwd) deny('Writer Root must be an existing absolute directory matching invocation cwd after realpath resolution.', { ...entry, blockedBy: 'execution-contract-root' });
+    if (!canonicalRoot || canonicalRoot !== canonicalCwd) deny(`Writer Root must be an existing absolute directory matching invocation cwd after realpath resolution. This session runs in ${canonicalCwd ?? 'an unreadable directory'}: write \`Root: ${canonicalCwd ?? '<that directory>'}\`. A writer for another checkout is launched from a session of that checkout.`, { ...entry, blockedBy: 'execution-contract-root' });
     if (!/^[a-fA-F0-9]{40}$/.test(field('Revision'))) deny('Writer Revision must be an exact 40-character Git SHA.', { ...entry, blockedBy: 'execution-contract-revision' });
     const done = field('Done when');
     const arrow = done.indexOf('->');
@@ -657,20 +661,21 @@ function imageCall() {
   allow(null, entry);
 }
 
-// mapper-bash: an optional `cd <path> &&` prefix, then a read-only search command (rg/grep
+// mapper-bash: an optional leading `cd <path>`, then one or more commands joined by `;` or `&&` (2.14.1: a list of
+// readers is as read-only as each reader; `echo <words>` may separate their output). Each command is a read-only search (rg/grep
 // without --pre, --pre-glob or --hostname-bin; ls, wc, cat, head, tail, shasum, stat; file
 // without -C; tail without -f/-F/--follow; find without -exec/-execdir/-ok/-okdir/-delete/
 // -fprint*/-fls; sed only as `sed -n [-E] '<addresses>p' [file...]`), git show/log/diff/blame/status/
 // rev-parse/ls-files/grep, a typecheck, or jevgrep (`jg --version`, or `jg "<question>"
 // [relative root] [--max-source-bytes N] [--concurrency N] [--no-cache]`), optionally
-// piped into head/tail/wc/sort/uniq/cut/rg/grep or `sed -n`. jg subcommands (auth, doctor, skill,
+// piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or `sed -n`. jg subcommands (auth, doctor, skill,
 // cache) and help/version words are denied even when quoted, a double-quoted question may
 // not hold $, ` or \, and a cd before jg and the jg root must be plain relative paths (no
 // quotes, -, ..) that resolve inside the working directory with symlinks followed.
-// Filter-disabling flags, substitutions, file redirects and command lists are denied too.
-const MAPPER_HELP = 'code-mapper Bash runs only read-only search (rg or grep without --pre/--pre-glob/--hostname-bin; ls, wc, cat, head, shasum, stat; tail without -f/-F/--follow; file without -C; find without -exec/-execdir/-ok/-okdir/-delete/-fprint/-fprint0/-fprintf/-fls; sed -n [-E] with one script of line, $ or /regex/ addresses and p, e.g. sed -n \'10,40p\' file), git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), after at most one `cd <path> &&`, optionally piped into head/tail/wc/sort/uniq/cut/rg/grep or sed -n (same rules). No command substitution, file redirects, command lists, subshells or background jobs. Use Grep, Glob and Read for everything else.';
+// Filter-disabling flags, substitutions, file redirects, `||`, loops, subshells and background jobs are denied too.
+const MAPPER_HELP = 'code-mapper Bash runs only read-only search (rg or grep without --pre/--pre-glob/--hostname-bin; ls, wc, cat, head, shasum, stat; tail without -f/-F/--follow; file without -C; find without -exec/-execdir/-ok/-okdir/-delete/-fprint/-fprint0/-fprintf/-fls; sed -n [-E] with one script of line, $ or /regex/ addresses and p, e.g. sed -n \'10,40p\' file), git show/log/diff/blame/status/rev-parse/ls-files/grep, a typecheck (pnpm typecheck, pnpm exec tsc --noEmit, npx tsc --noEmit) or jevgrep (jg --version, or jg "<question>" [relative root] with only --max-source-bytes N, --concurrency N, --no-cache; no subcommands, and $ ` \\ only inside a single-quoted question), each optionally piped into head/tail/wc/sort/uniq/cut/tr/rg/grep or sed -n (same rules). Several such commands may be joined by `;` or `&&` after at most one leading `cd <path>`, with `echo <words>` between them to label the output. No command substitution, variables, file redirects, `||`, loops, subshells or background jobs. Use Grep, Glob and Read for everything else.';
 const MAPPER_SEARCH = new Set(['rg', 'grep', 'ls', 'wc', 'cat', 'head', 'tail', 'sed', 'find', 'shasum', 'stat', 'file']);
-const MAPPER_FILTERS = new Set(['head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'rg', 'grep', 'sed']);
+const MAPPER_FILTERS = new Set(['head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'tr', 'rg', 'grep', 'sed']);
 const FIND_ACTIONS = new Set(['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprint', '-fprint0', '-fprintf', '-fls']);
 // A sed -n script (allowlist): `;`-separated commands, each an optional address or comma range (line number, $ or
 // /regex/), an optional !, then p. Any other command (w, r, e, s, ...) does not match.
@@ -756,6 +761,28 @@ function jgRefusal(step, dir = JG_BASE ?? '.') {
     }
   }
   return null;
+}
+// The commands of a list: splits on unquoted `;` and `&&`. Null for an unterminated quote. What each command may be
+// is decided per command, so a list is never wider than its parts.
+function splitList(command) {
+  const parts = [];
+  let current = '';
+  let quote = null;
+  for (let i = 0; i < command.length; i += 1) {
+    const c = command[i];
+    if (quote) {
+      current += c;
+      if (c === '\\' && quote === '"') { current += command[i + 1] ?? ''; i += 1; } else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === "'" || c === '"') { quote = c; current += c; continue; }
+    if (c === '\\') { current += c + (command[i + 1] ?? ''); i += 1; continue; }
+    if (c === ';' || (c === '&' && command[i + 1] === '&')) { parts.push(current.trim()); current = ''; if (c === '&') i += 1; continue; }
+    current += c;
+  }
+  if (quote) return null;
+  parts.push(current.trim());
+  return parts;
 }
 // Splits on unquoted | and &&; null for any other unquoted list, subshell, input redirect
 // or background job.
@@ -845,26 +872,22 @@ function mapperBash() {
   if (/\$\(|\$\{|`/.test(command)) refuse('Command substitution is not allowed.');
   if (/[\n\r]/.test(command)) refuse('A mapper command is one line.');
   if (bashWords(command, true) === null) refuse('A backslash outside quotes, a `$` or brace expansion, a glob that starts a word or an option, and an unterminated quote are not allowed: put the word in single quotes (a glob as `./*.md`).');
-  const parsed = splitShell(command);
-  if (!parsed) refuse('Command lists, subshells, input redirects and background jobs are not allowed.');
-  let { segments, separators } = parsed;
-  const cdMatch = separators[0] === '&&' ? segments[0].match(/^cd\s+("[^"]+"|'[^']+'|[^\s"']+)$/) : null;
+  const list = splitList(command);
+  if (!list) refuse('Unterminated quote.');
+  if (list.length > 1 && list.at(-1) === '') list.pop();
+  if (list.some((part) => !part)) refuse('Empty command in the list.');
+  // One leading `cd <path>`; a cd anywhere else is not a mapper command.
+  const cdMatch = list.length > 1 ? list[0].match(/^cd\s+("[^"]+"|'[^']+'|[^\s"']+)$/) : null;
+  const cdPath = cdMatch ? cdMatch[1] : null;
+  for (const part of cdMatch ? list.slice(1) : list) mapperCommand(part, cdPath, refuse);
+  allow(null, null);
+}
+// One command of a mapper list: a reader, optionally piped into filters. Refuses (never returns) when it is not.
+function mapperCommand(text, cdPath, refuse) {
+  const parsed = splitShell(text);
+  if (!parsed) refuse('`||`, subshells, input redirects and background jobs are not allowed.');
+  const { segments } = parsed;
   let jgDir = JG_BASE ?? '.';
-  if (cdMatch) {
-    // jg reads a whole tree, so its cd prefix must stay inside the working directory.
-    const next = shellWords(segments[1] ?? '');
-    const cdPath = cdMatch[1];
-    if (next[0] === 'jg' && !(next.length === 2 && next[1] === '--version')) {
-      if (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..')
-        || !jgInside(path.resolve(JG_BASE ?? '.', cdPath))) {
-        refuse(`\`cd ${cdPath}\` before jg must be a plain relative path that resolves inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment; symlinks are followed).`);
-      }
-      jgDir = path.resolve(JG_BASE ?? '.', cdPath);
-    }
-    segments = segments.slice(1);
-    separators = separators.slice(1);
-  }
-  if (separators.includes('&&')) refuse('Only one leading `cd <path> &&` is allowed.');
   if (segments.some((s) => !s)) refuse('Empty pipeline step.');
   // Output may go to /dev/null or another descriptor, never into a file.
   const steps = segments.map((s) => s.replace(/(^|\s)\d*>>?\s*(&\d|\/dev\/null)(?=\s|$)/g, ' '));
@@ -872,8 +895,19 @@ function mapperBash() {
   const [first, ...rest] = steps.map(shellWords);
   let ok = false;
   if (first[0] === 'jg') {
+    // jg reads a whole tree, so a cd before it must stay inside the working directory.
+    if (cdPath !== null && !(first.length === 2 && first[1] === '--version')) {
+      if (!/^[\w@%+=:,.\/-]+$/.test(cdPath) || /^[-\/~$]/.test(cdPath) || cdPath.split('/').includes('..')
+        || !jgInside(path.resolve(JG_BASE ?? '.', cdPath))) {
+        refuse(`\`cd ${cdPath}\` before jg must be a plain relative path that resolves inside the working directory (no quotes, backslashes, leading -, /, ~ or $, no .. segment; symlinks are followed).`);
+      }
+      jgDir = path.resolve(JG_BASE ?? '.', cdPath);
+    }
     const why = jgRefusal(steps[0], jgDir);
     if (why) refuse(why);
+    ok = true;
+  } else if (first[0] === 'echo') {
+    // A label between commands: its words are literal (no `$`, no substitution) and it writes to no file.
     ok = true;
   } else if (first[0] === 'git') {
     let i = 1;
@@ -905,15 +939,15 @@ function mapperBash() {
       }
     }
   }
-  allow(null, null);
 }
 
 // writer-bash: every command runs except a git invocation whose subcommand can change the
 // index, refs, config or worktree. Not a security boundary (`sh -c`, aliases and scripts
 // get around it); it stops the habit of a writer staging or committing what the
 // coordinator owns.
-const WRITER_GIT_HELP = 'The coordinator owns the Git index and commits: report the files you changed and the coordinator stages them.';
-const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'blame', 'rev-parse', 'ls-files', 'grep', 'shortlog', 'describe', 'cat-file', 'ls-tree', 'merge-base']);
+const WRITER_GIT_HELP = 'The coordinator owns the Git index, branches and commits: report the files you changed and the coordinator stages them. Move, copy or delete files with plain mv, cp and rm; read with git status, diff, log, show, ls-files, grep, check-ignore.';
+const GIT_READ = new Set(['status', 'diff', 'log', 'show', 'blame', 'rev-parse', 'ls-files', 'grep', 'shortlog', 'describe', 'cat-file', 'ls-tree', 'merge-base',
+  'check-ignore', 'check-attr', 'rev-list', 'show-ref', 'for-each-ref', 'diff-tree', 'name-rev', 'count-objects']);
 const GIT_BRANCH_READ = new Set(['--show-current', '--list', '-a', '-r', '-v', '-vv']);
 const GIT_CONFIG_READ = new Set(['--get', '--get-all', '--list', '-l']);
 const GIT_CONFIG_FLAGS = new Set([...GIT_CONFIG_READ, '--global', '--local', '--system', '--show-origin', '--show-scope', '--name-only', '-z', '--null']);
@@ -1043,22 +1077,38 @@ function coachStepIsRead(words) {
   while (words[i] === '--no-pager' || words[i] === '-C') i += words[i] === '-C' ? 2 : 1;
   return COACH_GIT_READS.has(words[i]);
 }
-// 'read', 'reset' or null (neutral). A Bash command counts as one read when every pipeline or && step after an
-// optional leading `cd <path> &&` is a read; one the splitter cannot parse (lists, subshells) is neutral.
+// 'read', 'reset' or null (neutral). A Bash command counts as one read when every command of its list (`;`, `&&`)
+// and every pipeline step, after an optional leading `cd <path>`, is a read; one the splitter cannot parse
+// (subshells, `||`) is neutral.
 function coachKind(tool) {
   if (['Read', 'Grep', 'Glob'].includes(tool)) return 'read';
   if (tool === 'Agent' || /^mcp__t3[-_]code__delegate_task$/.test(tool)) return 'reset';
   if (tool !== 'Bash') return null;
-  const parsed = splitShell(String(input.tool_input?.command ?? '').trim());
-  if (!parsed) return null;
-  let steps = parsed.segments.map(shellWords);
-  if (parsed.separators[0] === '&&' && steps[0]?.[0] === 'cd' && steps[0].length === 2) steps = steps.slice(1);
-  return steps.length && steps.every((words) => words.length && coachStepIsRead(words)) ? 'read' : null;
+  let parts = splitList(String(input.tool_input?.command ?? '').trim());
+  if (!parts) return null;
+  if (parts.length > 1 && parts.at(-1) === '') parts.pop();
+  if (parts.length > 1 && /^cd\s+\S+$/.test(parts[0])) parts = parts.slice(1);
+  const steps = [];
+  for (const part of parts) {
+    const parsed = splitShell(part);
+    if (!parsed) return null;
+    steps.push(...parsed.segments.map(shellWords));
+  }
+  return steps.length && steps.every((words) => words.length && (coachStepIsRead(words) || words[0] === 'echo')) ? 'read' : null;
 }
+// 2.14.1, from the council's measurements of October and November 2026 (owner asks closed and verified): tasks with
+// 6 to 20 helpers closed the most per minute and per dollar and past 20 they cost and took twice as much; Opus
+// writers cost about three times more per closed ask without being faster; the best week opened one PR for every
+// two asks and the worst almost three per ask. Hints only.
+const COACH_HELPERS = 20;
+const OPUS_REASON = /^\s*(?:[-*]\s+)?Opus reason:\s*\S/mi;
+const coachOpusWriter = (type) => type !== 'ui-implementer' && POLICY.roster[type]?.writer === true && /opus/i.test(String(POLICY.roster[type]?.model ?? ''));
+const PR_CREATE = /(?:^|[\s;&|(])gh\s+pr\s+create\b/;
 function coachUpdate(change) {
   let state = {};
   try { state = JSON.parse(fs.readFileSync(COACH, 'utf8')); } catch { /* first call of the session */ }
-  const counts = { reads: Number(state.reads) || 0, soloWriters: Number(state.soloWriters) || 0, secrets: Number(state.secrets) || 0 };
+  const counts = { reads: Number(state.reads) || 0, soloWriters: Number(state.soloWriters) || 0, secrets: Number(state.secrets) || 0,
+    helpers: Number(state.helpers) || 0, prs: Number(state.prs) || 0 };
   const note = change(counts);
   fs.mkdirSync(sessionDir, { recursive: true });
   const temporary = `${COACH}.${process.pid}-${crypto.randomBytes(4).toString('hex')}.tmp`;
@@ -1088,19 +1138,41 @@ function coach() {
       return c.reads % 10 === 0 ? coachEmit('reads', c.reads, `Orchestration coach: 10 consecutive reads or searches by the parent without a mapper (${c.reads} so far). If this is one open question about unfamiliar code, send it now to Explore or code-mapper (Haiku 5.5) and work from its map; if you are reading files you already know you need, continue. This is a hint, not a block; never ask the owner about it.`) : null;
     });
   } else if (kind === 'reset') coachUpdate((c) => { c.reads = 0; return null; });
-  // A writer launch counts once the guard allows it: solo when no other live writer of this session holds paths.
-  // The active-writer map is only read here (no lock, no pruning).
-  if (tool === 'Agent' && POLICY.roster[input.tool_input?.subagent_type]?.writer === true) {
-    coachOnAllow = () => {
+  if (tool === 'Bash' && PR_CREATE.test(String(input.tool_input?.command ?? ''))) {
+    coachNote = coachUpdate((c) => {
+      c.prs += 1;
+      return c.prs === 3 || (c.prs > 3 && c.prs % 5 === 0) ? coachEmit('prs', c.prs, `Orchestration coach: PR ${c.prs} opened in this session. One PR per thing the owner asked: the best measured week opened one PR for every two asks, the worst almost three per ask. Open a new PR only for a different thing he asked for; a fix or a follow-up of the same thing goes as commits on its open PR. This is a hint, not a block.`) : null;
+    });
+  }
+  // A launch counts once the guard allows it. Helpers: every Agent or delegate_task of the parent. Writers: solo when
+  // no other live writer of this session holds paths (the active-writer map is only read here: no lock, no pruning).
+  if (kind !== 'reset') return;
+  const type = String(input.tool_input?.subagent_type ?? '');
+  const writer = tool === 'Agent' && POLICY.roster[type]?.writer === true;
+  const opusNote = tool === 'Agent' && coachOpusWriter(type) && !OPUS_REASON.test(String(input.tool_input?.prompt ?? ''))
+    ? () => coachEmit('opus-writer', 1, `Orchestration coach: ${type} writes on Opus, which cost about three times more per closed ask and was not faster. Exact or mechanical edits go to exact-implementer or mechanical-worker (Haiku 5.5) and general bounded work to implementer (Sonnet 5.5). When the work needs Opus (open cross-cutting decisions, a shared primitive, two failed rounds with a cheaper writer), say so in a packet line \`Opus reason: <why>\`. This launch is not blocked.`)
+    : () => null;
+  coachOnAllow = () => {
+    let others = 0;
+    if (writer) {
       let active = {};
       try { active = JSON.parse(fs.readFileSync(ACTIVE, 'utf8')); } catch { /* no writer holds paths */ }
-      const others = Object.entries(active).filter(([key, w]) => key !== input.tool_use_id && !staleReason(w)).length;
-      return coachUpdate((c) => {
+      others = Object.entries(active).filter(([key, w]) => key !== input.tool_use_id && !staleReason(w)).length;
+    }
+    const notes = coachUpdate((c) => {
+      c.helpers += 1;
+      const found = [];
+      if (c.helpers === COACH_HELPERS + 1 || (c.helpers > COACH_HELPERS + 1 && (c.helpers - COACH_HELPERS - 1) % 10 === 0)) {
+        found.push(coachEmit('helpers', c.helpers, `Orchestration coach: helper ${c.helpers} of this session. Measured tasks closed the most per minute and per dollar with 6 to ${COACH_HELPERS} helpers; past ${COACH_HELPERS} they cost and took twice as much per closed ask. Launch another only for a different thing the owner asked for, not for one more pass over the same thing. This is a hint, not a block.`));
+      }
+      if (writer) {
         c.soloWriters = others ? 0 : c.soloWriters + 1;
-        return c.soloWriters >= 2 ? coachEmit('solo-writer', c.soloWriters, 'Orchestration coach: second writer in a row launched alone. If other lanes with disjoint owned paths are ready, launch them in the same message; if the work is truly serial, continue.') : null;
-      });
-    };
-  }
+        if (c.soloWriters >= 2) found.push(coachEmit('solo-writer', c.soloWriters, 'Orchestration coach: second writer in a row launched alone. If other lanes with disjoint owned paths are ready, launch them in the same message; if the work is truly serial, continue.'));
+      }
+      return found;
+    });
+    return [...notes, opusNote()].filter(Boolean).join(' ') || null;
+  };
 }
 
 function writerBash() {

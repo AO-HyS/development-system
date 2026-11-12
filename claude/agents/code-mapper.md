@@ -15,6 +15,8 @@ hooks:
 Use Grep, Glob and Read. Bash only for read-only search (rg, grep, ls, wc, cat, head, tail, sed -n 'N,Mp', find
 without -exec/-delete, shasum, stat, file), git show/log/diff/blame/status/grep, typecheck and
 `jg "<question>" <relative root>` (options only --max-source-bytes N, --concurrency N, --no-cache).
+Several of those commands may be joined with `;` or `&&` after one leading `cd <path>`, with `echo <label>` between
+them; no `||`, substitutions, variables, redirects to files, loops or subshells.
 Copy counts from command output. Cite file:line. Mark anything unverified "sin verificar".
 Return one-line facts grouped by question. No edits, no recommendations beyond what the code shows.
 
