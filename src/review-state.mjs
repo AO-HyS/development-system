@@ -4,17 +4,20 @@
 // brake counts Sol rounds per branch lineage, not per PR: a lineage is owner/repo + head repository + head ref, and its
 // PRs are the unmerged PRs with that head created after the latest merged one (a merge ends a lineage). Slots, approvals,
 // reservations and releases live in a head sidecar <reviews>/<owner>/<repo>/branches/<hash>.jsonl shared by every
-// lineage of that head; only entries of the current lineage's PRs count, older ones are history. Slot 1 is full;
-// slot 2 is fix-diff after a blocking round; slot 3 and later also need an unused owner approval bound to (PR, slot,
-// scope). A round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a
-// coordinator calling the CLI) goes through the same brake. Every GitHub read that the brake depends on fails closed.
-// A void annuls one ledger line (even a malformed or fake one) but restores no budget.
+// lineage of that head; only entries of the current lineage's PRs count, older ones are history. Which round runs next
+// is `review-policy.mjs` (2.13.0): five rounds without anyone's approval, two more only to re-read a critical fix. A
+// round is recorded only against a reservation, so every host (Claude hook, Codex wrapper or a coordinator calling the
+// CLI) goes through the same brake. Every GitHub read that the brake depends on fails closed. A void annuls one ledger
+// line (even a malformed or fake one) but restores no budget.
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
-import { parsePrReference } from "./evidence.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
+import { BUDGET, CRITICAL, NOT_CRITICAL, admission, openFindings, policyRecordProblem } from "./review-policy.mjs";
+
+export { BUDGET, CRITICAL, classifyFindings } from "./review-policy.mjs";
 
 export const SHA = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -27,9 +30,7 @@ export const RESULTS = ["blocking", "non-blocking", "none"];
 export const EXEMPTIONS = ["docs-only", "low-risk"];
 export const VERDICTS = ["fix-only", "out-of-scope"];
 export const ORIGINS = ["prior", "fix-induced", "new"];
-export const CRITICAL = ["security", "authorization", "data-loss", "money", "minors-privacy", "consent"];
-/** Sol rounds a lineage gets without the owner: one full, one fix-diff after a blocking round. */
-export const BUDGET = 2;
+const DOMAINS = [...CRITICAL, NOT_CRITICAL];
 /** A reviewer thread reference a person can open again; rejects placeholders such as "x". */
 export const THREAD = /^(t3-thread:\/\/\S+|thread:\S{8,}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|(codex|claude):\S{8,}|https:\/\/\S+)$/i;
 const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
@@ -40,11 +41,11 @@ const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
  * @typedef {{type: "waiver", pr: string, head: string, quote: string, recordedAt: string}} WaiverRecord
- * @typedef {RoundRecord | ExemptionRecord | CoverageRecord | WaiverRecord} ReviewRecord
- * @typedef {{type: "void", pr: string, lineHash: string, reason: string, quote: string, recordedAt: string}} VoidRecord
+ * @typedef {RoundRecord | ExemptionRecord | CoverageRecord | WaiverRecord | import("./review-policy.mjs").DispositionRecord | import("./review-policy.mjs").AdvanceRecord} ReviewRecord
+ * @typedef {{type: "void", pr: string, lineHash: string, reason: string, quote?: string, recordedAt: string}} VoidRecord
  * @typedef {{type: "approval", id: string, lineage: string, pr: string, slot: number, scope: "full" | "fix-diff", quote: string, sourceRef?: string, recordedAt: string}} Approval
- * @typedef {{type: "reservation", id: string, lineage: string, pr: string, slot: number, scope: "full" | "fix-diff", requestKey: string, packetHash?: string, approvalId?: string, redesign?: string, reservedAt: string}} Reservation
- * @typedef {{type: "release", reservationId: string, reason: string, quote: string, recordedAt: string}} Release
+ * @typedef {{type: "reservation", id: string, lineage: string, pr: string, slot: number, scope: "full" | "fix-diff", requestKey: string, packetHash?: string, approvalId?: string, redesign?: string, criticalThread?: string, reservedAt: string}} Reservation
+ * @typedef {{type: "release", reservationId: string, reason: string, quote?: string, recordedAt: string}} Release
  * @typedef {{number: number, key: string, state: string, merged: boolean}} LineagePr
  * @typedef {{id: string, hash: string, key: string, owner: string, repo: string, number: number, headRepo: string, headRef: string, file: string, prs: LineagePr[], pull: any}} Lineage
  */
@@ -188,7 +189,7 @@ const SUFFIX = /^(.*[^/])@([a-z-]+)(?:\/([a-z-]+))?$/;
 
 /**
  * "<id>:<path>[+<path>...][@<origin>[/<critical>]]" -> {id, paths, origin?, critical?}. Origin is prior, fix-induced or
- * new; critical is one of the protected domains.
+ * new; critical is one of the protected domains or `none` (a finding that does not say counts as critical at the cap).
  * @param {string} value @returns {Finding}
  */
 export function parseFinding(value) {
@@ -202,7 +203,7 @@ export function parseFinding(value) {
   const suffix = SUFFIX.exec(rest);
   if (suffix) {
     if (!ORIGINS.includes(suffix[2])) throw new Error(`Finding origin must be ${ORIGINS.join(", ")}: ${value}`);
-    if (suffix[3] !== undefined && !CRITICAL.includes(suffix[3])) throw new Error(`Finding critical domain must be ${CRITICAL.join(", ")}: ${value}`);
+    if (suffix[3] !== undefined && !DOMAINS.includes(suffix[3])) throw new Error(`Finding critical domain must be ${DOMAINS.join(", ")}: ${value}`);
     rest = suffix[1];
     origin = /** @type {Finding["origin"]} */ (suffix[2]);
     critical = suffix[3];
@@ -210,25 +211,6 @@ export function parseFinding(value) {
   const paths = rest.split("+").map((path) => path.trim()).filter(Boolean);
   if (!FINDING_ID.test(id) || paths.length === 0 || paths.some((path) => path.includes(".."))) throw new Error(`Finding must be <id>:<path>[+<path>...][@prior|fix-induced|new[/<critical>]]: ${value}`);
   return { id, paths, ...(origin ? { origin } : {}), ...(critical ? { critical } : {}) };
-}
-
-/**
- * From slot 2 on, a finding with origin `new` and no critical domain is a follow-up; anything else (prior,
- * fix-induced, unknown origin, any critical domain) blocks. The effective result is blocking iff a blocker exists; a
- * blocking result whose findings are all follow-ups becomes non-blocking. A blocking result that names no finding at
- * all stays blocking (it errs toward stopping). Slot 1 keeps the result as given.
- * @param {Finding[]} findings @param {number} slot @param {RoundRecord["result"]} result
- */
-export function classifyFindings(findings, slot, result) {
-  if (slot < 2) return { result, blockers: findings.map((finding) => finding.id), followUps: /** @type {string[]} */ ([]) };
-  const followUp = (/** @type {Finding} */ finding) => finding.origin === "new" && !finding.critical;
-  const blockers = findings.filter((finding) => !followUp(finding)).map((finding) => finding.id);
-  const followUps = findings.filter(followUp).map((finding) => finding.id);
-  /** @type {RoundRecord["result"]} */
-  let effective = result;
-  if (blockers.length) effective = "blocking";
-  else if (result === "blocking" && followUps.length) effective = "non-blocking";
-  return { result: effective, blockers, followUps };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -248,7 +230,7 @@ const isFinding = (value) => hasKeys(value, ["id", "paths"]) && typeof value.id 
 const isClassifiedFinding = (value) => hasShape(value, ["id", "paths"], ["origin", "critical"])
   && isFinding({ id: value.id, paths: value.paths })
   && (value.origin === undefined || ORIGINS.includes(value.origin))
-  && (value.critical === undefined || (value.origin !== undefined && CRITICAL.includes(value.critical)));
+  && (value.critical === undefined || (value.origin !== undefined && DOMAINS.includes(value.critical)));
 
 /** Keys only 2.9.0 writes; a row without them is legacy-shaped and validates exactly as in 2.8.1. @param {any} record */
 const isSlotRow = (record) => record && typeof record === "object" && ("slot" in record || "approvalId" in record);
@@ -266,13 +248,14 @@ export function recordProblem(record, key) {
   if (record?.pr !== key) return `is not a review record for ${key}`;
   if (record.type === "round") {
     const keys = ["type", "pr", "reviewer", "round", "head", "scope", "result", "thread", "findings", "recordedAt"];
-    if (hasNewKeys(record)) {
-      // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (slot 3+).
+    if (hasNewKeys(record) || (Number(record.round) > 2 && !("operatorApproval" in record))) {
+      // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (a 2.9.0
+      // owner approval; no round needs one since 2.13.0).
       if (!hasShape(record, keys, ["slot", "from", "approvalId"])) return "round has missing or unknown fields";
       if (!Number.isInteger(record.round) || record.round < 1) return "round number is not a positive integer";
       if ("slot" in record && (!Number.isInteger(record.slot) || record.slot <= record.round)) return "round slot is not an integer past its local round number";
       if ("from" in record && (typeof record.from !== "string" || !SHA.test(record.from) || record.scope !== "fix-diff")) return "round from is not a 40-hex SHA on a fix-diff round";
-      if (slotOf(record) >= 3 ? !text(record.approvalId) : "approvalId" in record) return "round past the lineage budget has no approval id, or an approval id inside the budget";
+      if ("approvalId" in record && (!text(record.approvalId) || slotOf(record) < 3)) return "round approval id is empty or names a slot before the third";
       if (!Array.isArray(record.findings) || !record.findings.every(isClassifiedFinding)) return "round findings are not {id, paths[], origin?, critical?}";
     } else {
       if (!hasKeys(record, Number(record.round) > 2 ? [...keys, "operatorApproval"] : keys)) return "round has missing or unknown fields";
@@ -304,48 +287,40 @@ export function recordProblem(record, key) {
     if (!hasKeys(record, ["type", "pr", "head", "quote", "recordedAt"])) return "waiver has missing or unknown fields";
     if (typeof record.head !== "string" || !SHA.test(record.head)) return "waiver head is not a 40-hex SHA";
     if (!text(record.quote)) return "waiver has no owner words";
-  } else return "has an unknown record type";
+  } else {
+    const problem = policyRecordProblem(record);
+    if (problem !== "") return problem ?? "has an unknown record type";
+  }
   return isDate(record.recordedAt) ? "" : "has no valid recordedAt";
 }
 
 /**
- * The first sequence problem, or "". Legacy files (no 2.9.0 slot rows): round 1 full; round 2 only fix-diff after a
- * blocking round 1; a third or later only full, after a blocking round, with the operator's approval. With slot rows
- * (2.9.0, lineage-wide): local rounds stay numbered 1..n, each after a blocking local round, lineage slots strictly
- * increase, slot 1 is full and slot 2 fix-diff; the lineage-wide checks (previous round blocking, approvals) ran when
- * the slot was reserved; an owner-approved round may follow a clean one. Rounds and exemptions never mix (a later exemption replaces an earlier one).
+ * The first sequence problem, or "": local rounds numbered 1..n, lineage slots strictly increasing and slot 1 full.
+ * Which round may run is decided once, when its slot is reserved (`admission`): a second round on the head a clean
+ * round already read is legitimate when a rejected critical Codex thread needs Sol's read, and a rejection changes no
+ * code. Rounds and exemptions never mix (a later exemption replaces an earlier one).
  * @param {ReviewRecord[]} records @returns {string}
  */
 export function sequenceProblem(records) {
   const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
   if (rounds.length && records.some((record) => record.type === "exemption")) return "has both Sol rounds and an exemption";
-  if (!rounds.some(isSlotRow)) {
-    if (rounds.some((round, index) => index >= 2 && rounds[index - 1].result !== "blocking")) return "has a Sol round past the second after a non-blocking round";
-    if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
-    if (rounds[0] && rounds[0].scope !== "full") return "has a first Sol round that is not full";
-    if (rounds[1] && (rounds[0].result !== "blocking" || rounds[1].scope !== "fix-diff")) return "has a second Sol round that is not a fix-diff after a blocking first round";
-    return "";
-  }
   if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
-  // An owner-approved slot (its round carries the approval id from its reservation) may follow a clean round.
-  if (rounds.some((round, index) => index >= 1 && rounds[index - 1].result !== "blocking" && !round.approvalId)) return "has a Sol round after a non-blocking round without the owner's approval";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
-  if (rounds.some((round) => slotOf(round) === 2 && round.scope !== "fix-diff")) return "has a lineage slot 2 that is not fix-diff";
   return "";
 }
 
 /** @param {any} record @param {string} key @param {number} number */
 function voidProblem(record, key, number) {
-  if (!hasKeys(record, ["type", "pr", "lineHash", "reason", "quote", "recordedAt"]) || record.type !== "void") return "void has missing or unknown fields";
+  if (!hasShape(record, ["type", "pr", "lineHash", "reason", "recordedAt"], ["quote"]) || record.type !== "void") return "void has missing or unknown fields";
   if (record.pr !== key) return `is not a void for ${key}`;
   if (typeof record.lineHash !== "string" || !SHA256.test(record.lineHash)) return "void lineHash is not a sha256";
   if (!text(record.reason)) return "void has no reason";
-  if (!ownerWords(record.quote)) return "void has no owner words";
+  if ("quote" in record && !ownerWords(record.quote)) return "void quote is empty";
   return isDate(record.recordedAt) ? "" : "void has no valid recordedAt";
 }
 
-/** The owner's voids of one PR ledger, validated; a malformed void file fails closed. @param {string} home @param {string} pr @returns {VoidRecord[]} */
+/** The voids of one PR ledger, validated; a malformed void file fails closed. @param {string} home @param {string} pr @returns {VoidRecord[]} */
 export function readVoids(home, pr) {
   const { key, number, file } = locate(home, pr);
   const path = voidsFile(file);
@@ -477,16 +452,16 @@ function sidecarProblem(record, lineage) {
     if (!text(record.quote) || ("sourceRef" in record && !text(record.sourceRef))) return "approval has no quote or an empty sourceRef";
     if (!isDate(record.recordedAt)) return "approval has no valid recordedAt";
   } else if (record?.type === "reservation") {
-    if (!hasShape(record, ["type", "id", "lineage", "pr", "slot", "scope", "requestKey", "reservedAt"], ["packetHash", "approvalId", "redesign"])) return "reservation has missing or unknown fields";
+    if (!hasShape(record, ["type", "id", "lineage", "pr", "slot", "scope", "requestKey", "reservedAt"], ["packetHash", "approvalId", "redesign", "criticalThread"])) return "reservation has missing or unknown fields";
     if (!Number.isInteger(record.slot) || record.slot < 1) return "reservation slot is not a positive integer";
     if (typeof record.requestKey !== "string" || !REQUEST_KEY.test(record.requestKey)) return "reservation requestKey is not a printable key";
     if ("packetHash" in record && (typeof record.packetHash !== "string" || !SHA256.test(record.packetHash))) return "reservation packetHash is not a sha256";
-    if (record.slot >= 3 ? !text(record.approvalId) : "approvalId" in record) return "reservation approval does not match its slot";
-    if ("redesign" in record && !text(record.redesign)) return "reservation redesign is empty";
+    if ("approvalId" in record && (!text(record.approvalId) || record.slot < 3)) return "reservation approval does not match its slot";
+    if (("redesign" in record && !text(record.redesign)) || ("criticalThread" in record && !text(record.criticalThread))) return "reservation redesign or critical thread is empty";
     if (!isDate(record.reservedAt)) return "reservation has no valid reservedAt";
   } else if (record?.type === "release") {
-    if (!hasKeys(record, ["type", "reservationId", "reason", "quote", "recordedAt"])) return "release has missing or unknown fields";
-    if (!text(record.reservationId) || !text(record.reason) || !text(record.quote)) return "release has no reservation id, reason or quote";
+    if (!hasShape(record, ["type", "reservationId", "reason", "recordedAt"], ["quote"])) return "release has missing or unknown fields";
+    if (!text(record.reservationId) || !text(record.reason) || ("quote" in record && !text(record.quote))) return "release has no reservation id or reason, or an empty quote";
     return isDate(record.recordedAt) ? "" : "release has no valid recordedAt";
   } else return "has an unknown record type";
   if (record.lineage !== lineage) return `belongs to another lineage (${record.lineage})`;
@@ -559,27 +534,15 @@ export function lineageState(home, lineage) {
   const slotsUsed = live.length + legacy.length;
   // An approval is used once any reservation (of any lineage in the sidecar) names it.
   const used = new Set(allReservations.flatMap((reservation) => (reservation.approvalId ? [reservation.approvalId] : [])));
-  // A round that follows a clean round is valid only through a real owner approval: the approval row for that PR, slot
-  // and scope, used by exactly one live reservation of the same PR, slot and scope (review DS188-R6-01).
-  for (const entry of prs) {
-    entry.rounds.forEach((round, index) => {
-      if (index === 0 || entry.rounds[index - 1].result === "blocking" || !isSlotRow(round)) return;
-      const slot = slotOf(round);
-      const approval = allApprovals.find((candidate) => candidate.id === round.approvalId);
-      const holders = allReservations.filter((reservation) => reservation.approvalId === round.approvalId);
-      const bound = live.some((reservation) => reservation.pr === entry.key && reservation.slot === slot && reservation.scope === round.scope && reservation.approvalId === round.approvalId);
-      if (!approval || approval.pr !== entry.key || approval.slot !== slot || approval.scope !== round.scope || holders.length !== 1 || !bound) {
-        throw new Error(`${entry.key} slot ${slot} follows a non-blocking round without a matching owner approval and reservation`);
-      }
-    });
-  }
   const approvalsUnused = approvals.filter((approval) => !used.has(approval.id));
   const recorded = prs.flatMap((entry) => entry.rounds.map((round) => ({ pr: entry.key, round })))
     .sort((a, b) => Date.parse(a.round.recordedAt) - Date.parse(b.round.recordedAt) || slotOf(a.round) - slotOf(b.round));
   const last = recorded.at(-1);
   // A legacy last round (no reservation) has a local round number but no known lineage slot.
   const lastBound = last && live.some((reservation) => reservation.pr === last.pr && reservation.slot === slotOf(last.round));
-  const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced") } : undefined;
+  // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
+  // slot its lineage used. The writer of an advance and the gate both read it from here.
+  const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
   return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
 }
 
@@ -593,7 +556,7 @@ export function lineageSummary(state) {
     nextSlot: state.nextSlot,
     approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, pr: approval.pr, slot: approval.slot, scope: approval.scope })),
     pending: state.pending.map((reservation) => ({ id: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope })),
-    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced } } : {}),
+    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, effectiveSlot: state.lastRound.effectiveSlot, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced, critical: state.lastRound.critical, head: state.lastRound.record.head } } : {}),
   };
 }
 
@@ -613,16 +576,45 @@ function verifyRedesign(value, cwd) {
 const numberOf = (key) => Number(key.slice(key.lastIndexOf("#") + 1));
 
 /**
- * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
- * is unrecorded: a retry gets the same reservation; once that slot has a recorded round the key is spent and the call
- * refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
- * (the Codex wrapper keeps a launch claim per reservation). Past the budget only an unused owner approval recorded
- * for this same PR counts. Refused while another slot of the lineage is reserved but unrecorded, past the budget without an
- * unused owner approval for that slot and scope, after a non-blocking round, or after a fix-induced blocker without a
- * verified redesign. `dryRun` validates the same way and writes nothing.
- * @param {{home: string, pr?: string, scope?: string, requestKey?: string, packetHash?: string, approvalId?: string, redesign?: string, dryRun?: boolean, cwd?: string}} options
+ * Evidence comes before the first Sol round of a PR into develop: the reservation applies the evaluation the gate
+ * uses, with its exceptions (a docs-only PR, the owner's waiver, a nonvisual receipt). Other bases are not asked.
+ * Returns "" or why the round does not start yet.
+ * @param {string} home @param {Lineage} lineage
  */
-export function reserveReview({ home, pr, scope, requestKey, packetHash, approvalId, redesign, dryRun = false, cwd = process.cwd() }) {
+function evidenceBeforeFirstRound(home, lineage) {
+  const pull = lineage.pull;
+  if (String(pull?.base?.ref ?? "") !== "develop") return "";
+  if (readReviewRecords(home, lineage.key).some((record) => record.type === "round")) return "";
+  const head = String(pull?.head?.sha ?? "");
+  const api = `repos/${lineage.owner}/${lineage.repo}`;
+  /** @param {string[]} args @returns {any} */
+  const read = (args) => { try { return JSON.parse(gh(args)); } catch { return null; } };
+  const listed = read(["api", "--paginate", "--slurp", `${api}/pulls/${lineage.number}/files`]);
+  const files = Array.isArray(listed) ? listed.flat() : null;
+  const evidence = evaluatePullEvidence({
+    receipts: readReceipts(home, lineage.key), head, prBody: String(pull?.body ?? ""),
+    prFiles: files && files.length === Number(pull?.changed_files) ? files.map(changedFile) : null,
+    changedSince: (from) => {
+      const compare = read(["api", `${api}/compare/${from}...${head}`]);
+      // A diverged or behind comparison lists files of a history the head no longer has: unknown, never "no change".
+      if (!compare || (compare.status !== "ahead" && compare.status !== "identical")) return null;
+      return Array.isArray(compare.files) && compare.files.length < 300 ? compare.files.map(changedFile) : null;
+    },
+  });
+  return ACCEPTED_EVIDENCE.has(evidence.state) ? "" : `the behavioral evidence of ${lineage.key} is ${evidence.state} (${evidence.reason}): record it with development-system evidence record before the first Sol round`;
+}
+
+/**
+ * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
+ * is unrecorded: a retry gets the same reservation, after the same evidence and policy questions a new one answers;
+ * once that slot has a recorded round the key is spent and the call refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
+ * (the Codex wrapper keeps a launch claim per reservation). Refused while another slot of the lineage is reserved but
+ * unrecorded, when the policy (`admission` in review-policy.mjs) has no round to run, or after a fix-induced blocker
+ * without a verified redesign. `criticalThread` names a rejected critical Codex thread that needs Sol's read.
+ * `dryRun` validates the same way and writes nothing.
+ * @param {{home: string, pr?: string, scope?: string, requestKey?: string, packetHash?: string, approvalId?: string, redesign?: string, criticalThread?: string, dryRun?: boolean, cwd?: string}} options
+ */
+export function reserveReview({ home, pr, scope, requestKey, packetHash, approvalId, redesign, criticalThread, dryRun = false, cwd = process.cwd() }) {
   if (!scope || !SCOPES.includes(scope)) throw new Error("--scope must be full or fix-diff");
   if (!requestKey || !REQUEST_KEY.test(requestKey)) throw new Error("review reserve needs --request-key <printable key, at most 200 characters> (the T3 clientRequestId or Task-Id + packet hash)");
   if (packetHash !== undefined && !SHA256.test(packetHash)) throw new Error("--packet-hash must be a sha256");
@@ -630,46 +622,44 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
   const lineage = resolveLineage({ pr, home });
   const work = () => {
     const state = lineageState(home, lineage);
+    const last = state.lastRound;
+    /** @param {NonNullable<typeof last>} round */
+    const where = (round) => `${round.pr}, ${round.slot ? `slot ${round.slot}` : `legacy round ${round.record.round}`}`;
+    // Whether the policy runs a round at `slot` now. Asked for a new reservation and again for one a retry gets back:
+    // a reservation made before a rule changed, or before the PR moved, does not carry its old answer.
+    /** @param {number} slot @param {boolean} approved @param {boolean} critical */
+    const refused = (slot, approved, critical) => {
+      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical });
+      return refusal ? `slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}` : "";
+    };
     const existing = state.live.find((reservation) => reservation.requestKey === requestKey);
     if (existing) {
       if (existing.pr !== lineage.key || existing.scope !== scope) throw new Error(`request key ${requestKey} already reserved slot ${existing.slot} (${existing.scope}) for ${existing.pr}; use a new key for a different round`);
       if (state.roundOf(existing)) throw new Error(`request key ${requestKey} reserved slot ${existing.slot} (reservation ${existing.id}) and slot ${existing.slot} already recorded its round; reserve the next slot with a new request key (a new Task-Id or packet)`);
+      const unproven = evidenceBeforeFirstRound(home, lineage);
+      if (unproven) throw new Error(unproven);
+      const gone = refused(existing.slot, Boolean(existing.approvalId), Boolean(existing.criticalThread));
+      if (gone) throw new Error(`reservation ${existing.id} is no longer a round the policy runs (${gone}): release it with development-system review release --pr ${existing.pr} --reservation-id ${existing.id} --reason <why>`);
       return { ok: true, operation: "review-reserve", reused: true, path: lineage.file, reservation: existing, lineage: lineageSummary(state), ...(dryRun ? { dryRun: true } : {}) };
     }
     const waiting = state.pending[0];
-    if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} (reservation ${waiting.id}) but has no recorded round: record it (development-system review record --pr ${waiting.pr} ...) or, with the owner's words, release it (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why> --quote "<owner's words>")`);
+    if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} (reservation ${waiting.id}) but has no recorded round: record it (development-system review record --pr ${waiting.pr} ...) or, if that round never ran, release it (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why>)`);
     const slot = state.nextSlot;
-    const last = state.lastRound;
-    /** @param {NonNullable<typeof last>} round */
-    const where = (round) => `${round.pr}, ${round.slot ? `slot ${round.slot}` : `legacy round ${round.record.round}`}`;
-    if (slot === 1 && scope !== "full") throw new Error("the first Sol round of a lineage must be --scope full");
-    if (slot >= 2) {
-      if (!last) throw new Error(`slot ${slot} needs a recorded blocking round before it; this lineage has ${state.slotsUsed} slot(s) used and no recorded round: decide el dueño`);
-      // An owner approval for this slot is the owner's decision: it runs the round even after a clean one (operator
-      // decision 2026-11-03). Without one, a round only follows a blocking round.
-      const approved = state.approvalsUnused.some((candidate) => candidate.slot === slot && candidate.pr === lineage.key && candidate.scope === scope);
-      if (last.record.result !== "blocking" && !approved) throw new Error(`slot ${slot} needs a blocking previous round or the owner's approval; the last recorded round of this lineage (${where(last)}) was ${last.record.result}: decide el dueño`);
-      if (slot === 2 && scope !== "fix-diff") throw new Error("the second Sol round of a lineage must be --scope fix-diff");
-    }
-    /** @type {Approval | undefined} */
-    let approval;
-    if (slot >= 3) {
-      // The owner's words authorize one PR: an approval recorded for another PR of the lineage never transfers.
-      const candidates = state.approvalsUnused.filter((candidate) => candidate.slot === slot && candidate.pr === lineage.key);
-      approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates.length === 1 ? candidates[0] : undefined;
-      if (!approval) {
-        const elsewhere = state.approvalsUnused.find((candidate) => candidate.slot === slot && candidate.pr !== lineage.key && (!approvalId || candidate.id === approvalId));
-        const why = elsewhere ? `approval ${elsewhere.id} for slot ${slot} was recorded for ${elsewhere.pr}, not ${lineage.key}; an approval does not transfer to another PR` : approvalId ? `approval ${approvalId} is not an unused approval for slot ${slot} of ${lineage.key}` : candidates.length > 1 ? `${candidates.length} unused approvals exist for slot ${slot}; name one with --approval-id` : `slot ${slot} is past the lineage budget (${BUDGET}) and has no unused owner approval`;
-        throw new Error(`${why}: decide el dueño; record the owner's words with development-system review approve --pr ${lineage.key} --slot ${slot} --scope fix-diff --quote "<owner's words>"`);
-      }
-      if (approval.scope !== scope) throw new Error(`approval ${approval.id} for slot ${slot} is --scope ${approval.scope}, not ${scope}`);
-    } else if (approvalId !== undefined) throw new Error(`--approval-id applies only past the budget (slot 3 or later); this is slot ${slot}`);
+    // An unused 2.9.0 owner approval for this PR and slot still admits its round; no round needs one (2.13.0).
+    const candidates = slot >= 3 ? state.approvalsUnused.filter((candidate) => candidate.slot === slot && candidate.pr === lineage.key && candidate.scope === scope) : [];
+    const approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates[0];
+    if (approvalId !== undefined && !approval) throw new Error(`approval ${approvalId} is not an unused approval for slot ${slot} (${scope}) of ${lineage.key}; no round needs an approval since 2.13.0, so drop --approval-id`);
+    if (!last && slot >= 2 && scope !== "full") throw new Error(`slot ${slot} has no recorded round to diff from: reserve it with --scope full`);
+    const unproven = evidenceBeforeFirstRound(home, lineage);
+    if (unproven) throw new Error(unproven);
+    const refusal = refused(slot, Boolean(approval), Boolean(criticalThread));
+    if (refusal) throw new Error(refusal);
     if (last?.fixInduced && !redesign) throw new Error(`the last round of this lineage (${where(last)}) has a fix-induced blocking finding: redesign the fix before another round and pass --redesign <path>#<sha256 of its bytes> (packet line "Redesign: <path>#<sha256>")`);
     const verified = redesign === undefined ? undefined : verifyRedesign(redesign, cwd);
     /** @type {Reservation} */
     const reservation = {
       type: "reservation", id: randomUUID(), lineage: lineage.id, pr: lineage.key, slot, scope: /** @type {Reservation["scope"]} */ (scope), requestKey,
-      ...(packetHash ? { packetHash } : {}), ...(approval ? { approvalId: approval.id } : {}), ...(verified ? { redesign: verified } : {}), reservedAt: new Date().toISOString(),
+      ...(packetHash ? { packetHash } : {}), ...(approval ? { approvalId: approval.id } : {}), ...(verified ? { redesign: verified } : {}), ...(text(criticalThread) ? { criticalThread: text(criticalThread) } : {}), reservedAt: new Date().toISOString(),
     };
     const problem = sidecarProblem(reservation, lineage.id);
     if (problem) throw new Error(`refusing to reserve: ${problem}`);
@@ -706,8 +696,8 @@ export function approveReview({ home, pr, slot, scope = "fix-diff", quote, sourc
 }
 
 /**
- * Releases, with the owner's words, a reservation whose round never ran or was never recorded; that slot returns to
- * the lineage. A reservation with any recorded line (voided or not) cannot be released: a void restores no budget.
+ * Releases a reservation whose round never ran or was never recorded, citing why; that slot returns to the lineage
+ * (the owner's words are optional since 2.13.0). A reservation with any recorded line (voided or not) cannot be released: a void restores no budget.
  * @param {{home: string, pr?: string, reservationId?: string, reason?: string, quote?: string}} options
  */
 export function releaseReservation({ home, pr, reservationId, reason, quote }) {
@@ -715,7 +705,6 @@ export function releaseReservation({ home, pr, reservationId, reason, quote }) {
   if (!text(reason)) throw new Error("review release needs --reason <why the round did not run>");
   const words = text(quote);
   const lineage = resolveLineage({ pr, home });
-  if (!ownerWords(words)) throw new Error("review release needs --quote <the owner's words>");
   return withFileLock(`${lineage.file}.lock`, () => {
     const state = lineageState(home, lineage);
     const reservation = state.reservations.find((candidate) => candidate.id === reservationId);
@@ -727,27 +716,26 @@ export function releaseReservation({ home, pr, reservationId, reason, quote }) {
     if (!state.live.includes(reservation)) throw new Error(`reservation ${reservationId} is already released`);
     if (state.everBound(reservation)) throw new Error(`reservation ${reservationId} (slot ${reservation.slot}) has a recorded round; a void restores no budget, so it cannot be released`);
     /** @type {Release} */
-    const release = { type: "release", reservationId: reservation.id, reason: /** @type {string} */ (text(reason)), quote: /** @type {string} */ (words), recordedAt: new Date().toISOString() };
+    const release = { type: "release", reservationId: reservation.id, reason: /** @type {string} */ (text(reason)), ...(words ? { quote: words } : {}), recordedAt: new Date().toISOString() };
     append(lineage.file, release);
     return { ok: true, operation: "review-release", path: lineage.file, release, reservation, lineage: { ...lineageSummary(state), slotsUsed: state.slotsUsed - 1, nextSlot: state.nextSlot - 1 } };
   });
 }
 
 /**
- * Annuls one line of a PR ledger by the sha256 of its raw text, with the owner's words. The line stays
- * in the file; readers drop it before parsing. A void restores no budget.
+ * Annuls one line of a PR ledger by the sha256 of its raw text, citing the cause (the owner's words are optional
+ * since 2.13.0). The line stays in the file; readers drop it before parsing. A void restores no budget.
  * @param {{home: string, pr?: string, lineHash?: string, reason?: string, quote?: string}} options
  */
 export function voidReviewLine({ home, pr, lineHash, reason, quote }) {
   const { key, number, file } = locate(home, pr);
   if (!lineHash || !SHA256.test(lineHash)) throw new Error("review void needs --line-hash <sha256 of the raw ledger line>");
   if (!text(reason)) throw new Error("review void needs --reason <why the line is wrong>");
-  if (!ownerWords(quote)) throw new Error("review void needs --quote <the owner's words>");
   return withFileLock(`${file}.lock`, () => {
     if (!rawLines(file).some((line) => sha256(line) === lineHash)) throw new Error(`${file} has no line with sha256 ${lineHash}`);
     if (readVoids(home, key).some((record) => record.lineHash === lineHash)) throw new Error(`line ${lineHash} of ${key} is already voided`);
     /** @type {VoidRecord} */
-    const record = { type: "void", pr: key, lineHash, reason: /** @type {string} */ (text(reason)), quote: /** @type {string} */ (text(quote)), recordedAt: new Date().toISOString() };
+    const record = { type: "void", pr: key, lineHash, reason: /** @type {string} */ (text(reason)), ...(text(quote) ? { quote: text(quote) } : {}), recordedAt: new Date().toISOString() };
     append(voidsFile(file), record);
     let remaining = "";
     try { readReviewRecords(home, key); } catch (error) { remaining = message(error); }

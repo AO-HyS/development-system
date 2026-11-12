@@ -334,6 +334,7 @@ function parseThreadHealthArguments(argv) {
 
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json] | --diagram";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
+const PROGRESS_USAGE = "<owner/repo#number | PR URL>... [--home <dir>] [--json] (facts only: GitHub state, gate step, Sol rounds, recorded evidence; unread = desconocido)";
 
 const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
 /** Governance subcommands and usage; the dispatcher rejects any subcommand absent here. */
@@ -400,8 +401,6 @@ const COMMAND_TABLE = [
   ["check-no-tests", `[--root <dir>] ${COMMON_OPTIONS}`],
   ["allow-tests", "<directory> [--hours N] [--reason text] | --revoke <directory> [--home <dir>] [--json]"],
   ["test-grants", COMMON_OPTIONS],
-  ["allow-docs", "<repo> --task <slug> [--hours N] [--reason text] | --revoke <repo> [--home <dir>] [--json]"],
-  ["docs-grants", COMMON_OPTIONS],
   ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
   ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
   ["clean-cache", "<cache entry> [--dry-run] [--home <dir>] [--json] (allowlisted regenerable caches; moves to the Trash)"],
@@ -413,15 +412,20 @@ const COMMAND_TABLE = [
   ["friction add", "--id <slug> --incident <ref> --evidence <ref> [--summary <text>] [--fix <text>] [--control <text>] [--repository <repo>] [--topic <t>] [--cause <slug>] [--new-id] [--home <dir>] [--json]"],
   ["friction list", COMMON_OPTIONS],
   ["evidence record", EVIDENCE_USAGE],
-  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <t3-thread://...|thread:<id>|<uuid>|codex:<id>|claude:<id>|https://...> [--from <sha> (fix-diff)] [--finding <id>:<path>[+<path>][@prior|fix-induced|new[/security|authorization|data-loss|money|minors-privacy|consent]]]... | --exempt docs-only|low-risk --reason <text> [--dry-run] [--home <dir>] [--json] (a round needs the PR's oldest unrecorded reservation; --operator-approval was replaced by review approve)"],
-  ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--approval-id <id>] [--redesign <path>#<sha256>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol slot of the branch lineage before launch; slot 3+ needs an owner approval)"],
-  ["review approve", "--pr <ref> --slot <n>=3+ --scope fix-diff|full --quote <owner's words, as said; --pr and --slot name the PR and round> [--source-ref <ref>] [--home <dir>] [--json]"],
-  ["review void", "--pr <ref> --line-hash <sha256 of the ledger line> --reason <text> --quote <owner's words> [--home <dir>] [--json] (restores no budget)"],
-  ["review release", "--pr <ref> --reservation-id <id> --reason <text> --quote <owner's words> [--home <dir>] [--json] (only a reservation with no recorded round)"],
+  ["review record", "--pr <ref> --reviewer sol --head <sha> --scope full|fix-diff --result blocking|non-blocking|none --thread <t3-thread://...|thread:<id>|<uuid>|codex:<id>|claude:<id>|https://...> [--finding <id>:<path>[+<path>][@prior|fix-induced|new[/security|authorization|data-loss|money|minors-privacy|consent|none]]]... | --exempt docs-only|low-risk --reason <text> [--dry-run] [--home <dir>] [--json] (a round needs the PR's oldest unrecorded reservation; a fix-diff starts at the previous round's head)"],
+  ["review reserve", "--pr <ref> --scope full|fix-diff --request-key <key> [--packet-hash <sha256>] [--redesign <path>#<sha256>] [--critical-thread codex:<id>] [--dry-run] [--home <dir>] [--json] (reserves the next Sol round of the branch lineage; five run on their own, two more only to re-read a critical fix)"],
+  ["review brief", "--pr <ref> [--home <dir>] [--json] (the reviewer packet for the next round: scope, diff start, evidence receipt, rules)"],
+  ["review dispose", "--pr <ref> --finding <id> --outcome fixed|rejected|follow-up [--commit <sha>] [--note <text>] [--round <n>] [--home <dir>] [--json]"],
+  ["review advance", "--pr <ref> --head <sha> [--withdrawn] [--dry-run] [--home <dir>] [--json] (at the round cap: advance into develop without another round)"],
+  ["review approve", "--pr <ref> --slot <n>=3+ --scope fix-diff|full --quote <owner's words> [--source-ref <ref>] [--home <dir>] [--json] (optional since 2.13.0: no round needs it)"],
+  ["review lines", "--pr <ref> [--home <dir>] [--json] (ledger lines with the sha256 a void names)"],
+  ["review void", "--pr <ref> --line-hash <sha256 of the ledger line> --reason <cause> [--quote <owner's words>] [--home <dir>] [--json] (restores no budget)"],
+  ["review release", "--pr <ref> --reservation-id <id> --reason <text> [--quote <owner's words>] [--home <dir>] [--json] (only a reservation with no recorded round)"],
   ["review waive", "--pr <ref> --head <sha> --quote <owner's words stopping reviews, as said; quote them verbatim in the PR description> [--home <dir>] [--json] (counts as Sol and Codex review for that head only)"],
   ["review coverage", "--pr <ref> --from <sha> --to <sha> --findings <id,...> --verdict fix-only|out-of-scope --note <text> [--home <dir>] [--json]"],
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
+  ["progress", PROGRESS_USAGE],
   ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
   ...BROWSER_POOL_TABLE,
   ["commands", "[--json]"],
@@ -612,89 +616,17 @@ async function runCommand(argv) {
     const paths = COMMAND_TABLE.map(([path]) => path);
     return { result: { ok: true, operation: "commands", commands: paths }, output: json ? JSON.stringify(paths) : paths.join("\n"), json };
   }
-  if (argv[0] === "allow-docs" || argv[0] === "docs-grants") {
+  if (argv[0] === "progress") {
     const json = argv.includes("--json");
-    /** @type {Record<string, string>} */
-    const values = {};
-    /** @type {string[]} */
-    const roots = [];
-    let revoke = false;
-    for (let index = 1; index < argv.length; index += 1) {
-      const arg = argv[index];
-      if (arg === "--json") continue;
-      if (arg === "--revoke" && argv[0] === "allow-docs") { revoke = true; continue; }
-      if (["--home", "--hours", "--reason", "--task"].includes(arg) && (arg === "--home" || argv[0] === "allow-docs")) {
-        const value = argv[++index];
-        if (value === undefined || value.startsWith("--")) throw new Error(`${arg} requires a value`);
-        values[arg.slice(2)] = value;
-        continue;
-      }
-      if (arg.startsWith("--") || argv[0] === "docs-grants") throw new Error(`Unknown option for ${argv[0]}: ${arg}`);
-      roots.push(arg);
-    }
-    const { allowDocs, confirmOperatorDocsGrant, listDocsGrants, formatDocsGrants } = await import("./docs-grants.mjs");
-    const home = values.home ?? homedir();
-    if (argv[0] === "allow-docs" && (roots.length !== 1 || (!revoke && values.task === undefined))) throw new Error("Usage: development-system allow-docs <repo> --task <slug> [--hours N] [--reason text] | --revoke <repo>");
-    const result = argv[0] === "allow-docs"
-      ? await allowDocs({ home, root: roots[0], task: values.task, hours: values.hours === undefined ? undefined : Number(values.hours), reason: values.reason, revoke, confirm: confirmOperatorDocsGrant })
-      : listDocsGrants({ home });
-    return { result, output: json ? JSON.stringify(result) : formatDocsGrants(result), json };
+    const homeIndex = argv.indexOf("--home");
+    const home = homeIndex > 0 ? argv[homeIndex + 1] : homedir();
+    const rest = (homeIndex > 0 ? [...argv.slice(1, homeIndex), ...argv.slice(homeIndex + 2)] : argv.slice(1)).filter((arg) => arg !== "--json");
+    if (!home || home.startsWith("--") || rest.length === 0 || rest.some((arg) => arg.startsWith("--"))) throw new Error(`Usage: development-system progress ${PROGRESS_USAGE}`);
+    const { progress, formatProgress } = await import("./progress.mjs");
+    const result = progress({ prs: rest, home });
+    return { result, output: json ? JSON.stringify(result) : formatProgress(result), json };
   }
-  if (argv[0] === "review") {
-    const subcommand = argv[1];
-    /** @type {Record<string, Record<string, string>>} */
-    const flagsBySubcommand = {
-      record: { "--home": "home", "--pr": "pr", "--reviewer": "reviewer", "--head": "head", "--scope": "scope", "--result": "result", "--thread": "thread", "--exempt": "exempt", "--reason": "reason", "--from": "from", "--operator-approval": "operatorApproval" },
-      coverage: { "--home": "home", "--pr": "pr", "--from": "from", "--to": "to", "--findings": "findings", "--verdict": "verdict", "--note": "note" },
-      reserve: { "--home": "home", "--pr": "pr", "--scope": "scope", "--request-key": "requestKey", "--packet-hash": "packetHash", "--approval-id": "approvalId", "--redesign": "redesign" },
-      approve: { "--home": "home", "--pr": "pr", "--slot": "slot", "--scope": "scope", "--quote": "quote", "--source-ref": "sourceRef" },
-      void: { "--home": "home", "--pr": "pr", "--line-hash": "lineHash", "--reason": "reason", "--quote": "quote" },
-      release: { "--home": "home", "--pr": "pr", "--reservation-id": "reservationId", "--reason": "reason", "--quote": "quote" },
-      waive: { "--home": "home", "--pr": "pr", "--head": "head", "--quote": "quote" },
-    };
-    const valueFlags = subcommand !== undefined && Object.hasOwn(flagsBySubcommand, subcommand) ? flagsBySubcommand[subcommand] : undefined;
-    if (!valueFlags) throw new Error(`Usage: development-system review <${Object.keys(flagsBySubcommand).join("|")}> [options]`);
-    const json = argv.includes("--json");
-    // --dry-run validates exactly like the real call (GitHub reads included) and writes nothing.
-    const dryRunAllowed = subcommand === "record" || subcommand === "reserve";
-    let dryRun = false;
-    /** @type {Record<string, string>} */
-    const values = {};
-    /** @type {string[]} */
-    const findings = [];
-    for (let index = 2; index < argv.length; index += 1) {
-      const arg = argv[index];
-      if (arg === "--json") continue;
-      if (arg === "--dry-run" && dryRunAllowed) { dryRun = true; continue; }
-      const isFinding = arg === "--finding" && subcommand === "record";
-      const key = Object.hasOwn(valueFlags, arg) ? valueFlags[arg] : undefined;
-      if (!key && !isFinding) throw new Error(`Unknown option for review ${subcommand}: ${arg}`);
-      const value = argv[++index];
-      if (value === undefined || value.startsWith("--")) throw new Error(`Missing value for ${arg}`);
-      if (isFinding || !key) findings.push(value); else values[key] = value;
-    }
-    const home = values.home ?? homedir();
-    const reviews = await import("./review-records.mjs");
-    if (subcommand === "record" && values.operatorApproval !== undefined) throw new Error(reviews.OPERATOR_APPROVAL_MOVED);
-    if (subcommand === "record" || subcommand === "coverage") {
-      const result = subcommand === "record"
-        ? reviews.recordReview({ home, pr: values.pr, reviewer: values.reviewer, head: values.head, scope: values.scope, result: values.result, thread: values.thread, findings, exempt: values.exempt, reason: values.reason, from: values.from, dryRun })
-        : reviews.recordCoverage({ home, pr: values.pr, from: values.from, to: values.to, findings: values.findings === undefined ? [] : values.findings.split(",").map((item) => item.trim()).filter(Boolean), verdict: values.verdict, note: values.note });
-      return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
-    }
-    if (subcommand === "waive") {
-      const result = reviews.waiveReview({ home, pr: values.pr, head: values.head, quote: values.quote });
-      return { result, output: json ? JSON.stringify(result) : reviews.formatReviewRecord(result), json };
-    }
-    const result = subcommand === "reserve"
-      ? reviews.reserveReview({ home, pr: values.pr, scope: values.scope, requestKey: values.requestKey, packetHash: values.packetHash, approvalId: values.approvalId, redesign: values.redesign, dryRun })
-      : subcommand === "approve"
-        ? reviews.approveReview({ home, pr: values.pr, slot: values.slot, scope: values.scope, quote: values.quote, sourceRef: values.sourceRef })
-        : subcommand === "void"
-          ? reviews.voidReviewLine({ home, pr: values.pr, lineHash: values.lineHash, reason: values.reason, quote: values.quote })
-          : reviews.releaseReservation({ home, pr: values.pr, reservationId: values.reservationId, reason: values.reason, quote: values.quote });
-    return { result, output: json ? JSON.stringify(result) : reviews.formatReviewState(result), json };
-  }
+  if (argv[0] === "review") return (await import("./review-cli.mjs")).runReviewCommand(argv);
   if (argv[0] === "check-primitives") {
     const json = argv.includes("--json");
     /** @type {Record<string, string>} */
