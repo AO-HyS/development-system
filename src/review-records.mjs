@@ -15,6 +15,7 @@ import {
   COVERAGE_ID, EXEMPTIONS, RESULTS, SCOPES, SHA, THREAD, VERDICTS,
   append, classifyFindings, lineageState, lineageSummary, list, locate, parseFinding, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, slotOf, text, verifyHead, withFileLock,
 } from "./review-state.mjs";
+import { admission } from "./review-policy.mjs";
 
 export { approveReview, classifyFindings, ledgerLines, parseFinding, readReviewRecords, releaseReservation, reserveReview, voidReviewLine, withFileLock } from "./review-state.mjs";
 
@@ -101,6 +102,10 @@ export function recordReview({ home, pr, reviewer, head, scope, result, thread, 
     const reservation = state.pending.find((candidate) => candidate.pr === key);
     if (!reservation) throw new Error(`${key} has no unrecorded Sol reservation: reserve the round before launching it (development-system review reserve --pr ${key} --scope ${scope} --request-key <key>; a T3 dispatch with "Review kind: pr" reserves it), then record it`);
     if (reservation.scope !== scope) throw new Error(`the reservation for slot ${reservation.slot} (${reservation.id}) is --scope ${reservation.scope}, not ${scope}`);
+    // The policy is asked again for the head that was read: a reservation carries no authority of its own.
+    const before = state.lastRound;
+    const refusal = admission({ slot: reservation.slot, scope, last: before && { result: before.record.result, critical: before.critical, head: before.record.head }, head, approved: Boolean(reservation.approvalId), pendingCritical: Boolean(reservation.criticalThread) });
+    if (refusal) throw new Error(`reservation ${reservation.id} (slot ${reservation.slot}) is not a round the policy runs: ${refusal}. Release it with development-system review release --pr ${key} --reservation-id ${reservation.id} --reason <why>`);
     const rounds = /** @type {RoundRecord[]} */ (existing.filter((record) => record.type === "round"));
     const round = rounds.length + 1;
     // A fix-diff starts exactly at the head of the previous round, so the rounds chain without a gap.

@@ -295,9 +295,10 @@ export function recordProblem(record, key) {
 }
 
 /**
- * The first sequence problem, or "": local rounds numbered 1..n, lineage slots strictly increasing, slot 1 full, and no
- * round re-reading the head a clean round already read (2.9.0 owner-approved rounds excepted). Which round may run is
- * decided when its slot is reserved. Rounds and exemptions never mix (a later exemption replaces an earlier one).
+ * The first sequence problem, or "": local rounds numbered 1..n, lineage slots strictly increasing and slot 1 full.
+ * Which round may run is decided once, when its slot is reserved (`admission`): a second round on the head a clean
+ * round already read is legitimate when a rejected critical Codex thread needs Sol's read, and a rejection changes no
+ * code. Rounds and exemptions never mix (a later exemption replaces an earlier one).
  * @param {ReviewRecord[]} records @returns {string}
  */
 export function sequenceProblem(records) {
@@ -306,7 +307,6 @@ export function sequenceProblem(records) {
   if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its Sol rounds out of order";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
-  if (rounds.some((round, index) => index >= 1 && rounds[index - 1].result !== "blocking" && rounds[index - 1].head === round.head && !round.approvalId && !round.operatorApproval)) return "has a Sol round re-reading the head a clean round already read";
   return "";
 }
 
@@ -540,7 +540,9 @@ export function lineageState(home, lineage) {
   const last = recorded.at(-1);
   // A legacy last round (no reservation) has a local round number but no known lineage slot.
   const lastBound = last && live.some((reservation) => reservation.pr === last.pr && reservation.slot === slotOf(last.round));
-  const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
+  // `effectiveSlot` is the slot that round counts as for the policy: its bound slot, or for a legacy round the last
+  // slot its lineage used. The writer of an advance and the gate both read it from here.
+  const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
   return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound };
 }
 
@@ -554,7 +556,7 @@ export function lineageSummary(state) {
     nextSlot: state.nextSlot,
     approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, pr: approval.pr, slot: approval.slot, scope: approval.scope })),
     pending: state.pending.map((reservation) => ({ id: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope })),
-    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced, critical: state.lastRound.critical, head: state.lastRound.record.head } } : {}),
+    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, effectiveSlot: state.lastRound.effectiveSlot, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced, critical: state.lastRound.critical, head: state.lastRound.record.head } } : {}),
   };
 }
 
@@ -602,8 +604,8 @@ function evidenceBeforeFirstRound(home, lineage) {
 
 /**
  * Reserves the next lineage slot for one Sol round before it is launched. Idempotent per requestKey while its round
- * is unrecorded: a retry gets the same reservation; once that slot has a recorded round the key is spent and the call
- * refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
+ * is unrecorded: a retry gets the same reservation, after the same evidence and policy questions a new one answers;
+ * once that slot has a recorded round the key is spent and the call refuses (reserve the next slot with a new key). Launch ownership of a reservation is single-use in the launchers
  * (the Codex wrapper keeps a launch claim per reservation). Refused while another slot of the lineage is reserved but
  * unrecorded, when the policy (`admission` in review-policy.mjs) has no round to run, or after a fix-induced blocker
  * without a verified redesign. `criticalThread` names a rejected critical Codex thread that needs Sol's read.
@@ -618,18 +620,29 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
   const lineage = resolveLineage({ pr, home });
   const work = () => {
     const state = lineageState(home, lineage);
+    const last = state.lastRound;
+    /** @param {NonNullable<typeof last>} round */
+    const where = (round) => `${round.pr}, ${round.slot ? `slot ${round.slot}` : `legacy round ${round.record.round}`}`;
+    // Whether the policy runs a round at `slot` now. Asked for a new reservation and again for one a retry gets back:
+    // a reservation made before a rule changed, or before the PR moved, does not carry its old answer.
+    /** @param {number} slot @param {boolean} approved @param {boolean} critical */
+    const refused = (slot, approved, critical) => {
+      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical });
+      return refusal ? `slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}` : "";
+    };
     const existing = state.live.find((reservation) => reservation.requestKey === requestKey);
     if (existing) {
       if (existing.pr !== lineage.key || existing.scope !== scope) throw new Error(`request key ${requestKey} already reserved slot ${existing.slot} (${existing.scope}) for ${existing.pr}; use a new key for a different round`);
       if (state.roundOf(existing)) throw new Error(`request key ${requestKey} reserved slot ${existing.slot} (reservation ${existing.id}) and slot ${existing.slot} already recorded its round; reserve the next slot with a new request key (a new Task-Id or packet)`);
+      const unproven = evidenceBeforeFirstRound(home, lineage);
+      if (unproven) throw new Error(unproven);
+      const gone = refused(existing.slot, Boolean(existing.approvalId), Boolean(existing.criticalThread));
+      if (gone) throw new Error(`reservation ${existing.id} is no longer a round the policy runs (${gone}): release it with development-system review release --pr ${existing.pr} --reservation-id ${existing.id} --reason <why>`);
       return { ok: true, operation: "review-reserve", reused: true, path: lineage.file, reservation: existing, lineage: lineageSummary(state), ...(dryRun ? { dryRun: true } : {}) };
     }
     const waiting = state.pending[0];
     if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} (reservation ${waiting.id}) but has no recorded round: record it (development-system review record --pr ${waiting.pr} ...) or, if that round never ran, release it (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why>)`);
     const slot = state.nextSlot;
-    const last = state.lastRound;
-    /** @param {NonNullable<typeof last>} round */
-    const where = (round) => `${round.pr}, ${round.slot ? `slot ${round.slot}` : `legacy round ${round.record.round}`}`;
     // An unused 2.9.0 owner approval for this PR and slot still admits its round; no round needs one (2.13.0).
     const candidates = slot >= 3 ? state.approvalsUnused.filter((candidate) => candidate.slot === slot && candidate.pr === lineage.key && candidate.scope === scope) : [];
     const approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates[0];
@@ -637,8 +650,8 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     if (!last && slot >= 2 && scope !== "full") throw new Error(`slot ${slot} has no recorded round to diff from: reserve it with --scope full`);
     const unproven = evidenceBeforeFirstRound(home, lineage);
     if (unproven) throw new Error(unproven);
-    const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved: Boolean(approval), pendingCritical: Boolean(criticalThread) });
-    if (refusal) throw new Error(`slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}`);
+    const refusal = refused(slot, Boolean(approval), Boolean(criticalThread));
+    if (refusal) throw new Error(refusal);
     if (last?.fixInduced && !redesign) throw new Error(`the last round of this lineage (${where(last)}) has a fix-induced blocking finding: redesign the fix before another round and pass --redesign <path>#<sha256 of its bytes> (packet line "Redesign: <path>#<sha256>")`);
     const verified = redesign === undefined ? undefined : verifyRedesign(redesign, cwd);
     /** @type {Reservation} */

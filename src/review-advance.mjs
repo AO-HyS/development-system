@@ -31,7 +31,7 @@ export function dispositionsOf(records, round) {
   return latest;
 }
 
-/** Every commit a fixed disposition of one round names, the replaced rows included: a finding may take several commits. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round @param {string[]} findings */
+/** Every commit a disposition of one round names (the fix, or for a follow-up the commit that took the change out), the replaced rows included: a finding may take several commits. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round @param {string[]} findings */
 export function dispositionCommits(records, round, findings) {
   return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round === round && record.commit && findings.includes(record.finding) ? [record.commit] : []))];
 }
@@ -44,7 +44,7 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
   const { key, file } = locate(home, pr);
   if (!text(finding)) throw new Error("review dispose needs --finding <id>");
   if (!outcome || !OUTCOMES.includes(outcome)) throw new Error(`--outcome must be ${OUTCOMES.join(", ")}`);
-  if (outcome === "fixed" ? !(commit && SHA.test(commit)) : !text(note)) throw new Error("--outcome fixed needs --commit <40-hex fix commit>; rejected and follow-up need --note <reason, or where the follow-up lives>");
+  if (outcome === "fixed" ? !(commit && SHA.test(commit)) : !text(note)) throw new Error("--outcome fixed needs --commit <40-hex fix commit>; rejected and follow-up need --note <reason, or where the follow-up lives> (a follow-up whose change left the PR also names that commit with --commit)");
   if (commit !== undefined && !SHA.test(commit)) throw new Error("--commit must be a 40-hex SHA");
   // A fix commit belongs to the PR; GitHub failures refuse.
   if (commit) verifyHead(resolveLineage({ pr: key, home }), commit);
@@ -79,7 +79,7 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
     if (waiting) throw new Error(`slot ${waiting.slot} of this lineage is reserved for ${waiting.pr} without a recorded round: record or release it first`);
     const last = state.lastRound;
     if (!last || last.pr !== key || last.record.result !== "blocking") throw new Error(`the last Sol round of this lineage (${last ? `${last.pr}, ${last.record.result}` : "none"}) is not a blocking round of ${key}: nothing to advance past`);
-    const slot = last.slot ?? state.slotsUsed;
+    const slot = last.effectiveSlot;
     const next = nextReview({ nextSlot: state.nextSlot, last: { result: last.record.result, critical: last.critical } });
     const wanted = withdrawn ? "withdraw" : "advance";
     if (next.action !== wanted) {
@@ -96,6 +96,8 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
     const kept = withdrawn ? open.filter((finding) => dispositions.get(finding.id)?.outcome !== "follow-up").map((finding) => finding.id) : [];
     if (kept.length) throw new Error(`--withdrawn means the disputed change left the PR as a follow-up, but ${kept.join(", ")} ${kept.length === 1 ? "is" : "are"} not recorded as follow-up`);
     const fixCommits = dispositionCommits(records, last.record.round, open.map((finding) => finding.id));
+    // A fix the PR no longer has (a rewritten branch) is not a fix of what would be merged.
+    for (const finding of open) { const disposition = dispositions.get(finding.id); if (disposition?.outcome === "fixed" && disposition.commit) verifyHead(lineage, disposition.commit); }
     /** @type {AdvanceRecord} */
     const record = { type: "auto-advance", pr: key, round: last.record.round, slot, kind: withdrawn ? "withdrawn" : "cap", head, findings: open.map((finding) => finding.id), fixCommits, recordedAt: new Date().toISOString() };
     // The same check the gate repeats on every read; the commits after the round are walked there, against GitHub.

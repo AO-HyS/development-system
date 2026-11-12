@@ -131,11 +131,13 @@ export function chainGap(rounds) {
  * Why an `auto-advance` row does not let the PR advance, or "". Checked when the row is written and again every time
  * the gate reads it, against the ledger and the PR as they are then: a row that contradicts its own history has no
  * authority. `slot` is the real lineage slot of the row's round, `open` what that round left open, `dispositions` the
- * latest disposition of each of its findings, `commits` the first-parent commits after the round's head (newest
- * first) and `roundHead` that head.
- * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean}[]}} input
+ * latest disposition of each of its findings, `roundHead` that round's head and `commits` the first-parent commits
+ * after it up to `head` (newest first). The writer has not walked them and passes none; the gate always passes them
+ * (an empty list when the PR head is the round's head), and then every fix must be among them.
+ * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean}[]}} input
  */
-export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits = [] }) {
+export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits: walked }) {
+  const commits = walked ?? [];
   if (advance.slot !== slot) return `the advance says slot ${advance.slot}, but its round is slot ${slot}`;
   const wanted = advance.kind === "withdrawn" ? "withdraw" : "advance";
   const next = nextReview({ nextSlot: slot + 1, last: { result: "blocking", critical: open.critical } });
@@ -151,10 +153,16 @@ export function advanceProblem({ advance, slot, open, dispositions, head, roundH
   if (advance.head !== head) {
     // Only clean merges of the base may arrive after the advance; anything else needs the advance recorded again.
     const at = advance.head === roundHead ? commits.length : commits.findIndex((commit) => commit.sha === advance.head);
-    if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)} and commits arrived after it: record it again for the current head`;
+    if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)}, and the PR is now at ${head.slice(0, 12)} with more than clean base merges in between: record it again for the current head`;
   }
   const unlisted = commits.filter((commit) => !commit.baseMerge && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
-  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record a fixed disposition with each commit, then the advance again`;
+  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>: the fix, or for a follow-up the commit that took the change out), then the advance again`;
+  if (walked) {
+    // A finding recorded as fixed in a commit the PR no longer has is not fixed in what would be merged.
+    const present = new Set(commits.map((commit) => commit.sha));
+    const absent = ids.filter((id) => { const disposition = dispositions.get(id); return disposition?.outcome === "fixed" && !present.has(String(disposition.commit)); });
+    if (absent.length) return `${absent.join(", ")} ${absent.length === 1 ? "is" : "are"} recorded as fixed in a commit that is not among the PR's commits after the round: record the disposition again with the commit that is, then the advance`;
+  }
   return "";
 }
 

@@ -385,8 +385,16 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const lastRound = rounds.at(-1);
   const solMax = rounds.length > SOL_BUDGET ? CRITICAL_LIMIT : SOL_BUDGET;
   const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  // The branch lineage that Sol rounds count against: it drives siguiente and gives the last round its lineage slot.
+  /** @type {ReturnType<typeof readLineage> | null} */
+  let lineage = null;
+  let lineageError = "";
+  try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
+  // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
+  const lineageLast = lineage?.lastRound;
+  const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
   // What the last round left open, and the row that lets the PR advance past it at the cap.
-  const stillOpen = lastRound ? openFindings(lastRound, Number(lastRound.slot ?? lastRound.round)) : { blockers: [], critical: false };
+  const stillOpen = lastRound ? openFindings(lastRound, lastSlot) : { blockers: [], critical: false };
   const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
   let advanceRefused = false;
   // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
@@ -414,9 +422,11 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
       // The row is judged again against the ledger and the PR as they are now. First its authority (the real slot, what
       // the policy says after that round, the findings and their dispositions), then, once every commit after the
       // round is a cited fix or a clean base merge, whether the row accounts for each of them at the current head.
-      const judged = { advance, slot: Number(lastRound.slot ?? lastRound.round), open: stillOpen, dispositions: dispositionsOf(records, lastRound.round), roundHead: lastRound.head };
+      const judged = { advance, slot: lastSlot, open: stillOpen, dispositions: dispositionsOf(records, lastRound.round), roundHead: lastRound.head };
+      // The second question is also asked when the PR head is the round's own head (no commit after it): an advance
+      // recorded for another head, or a fix in a commit the PR no longer has, does not count.
       advanceNote = advanceProblem({ ...judged, head: advance.head });
-      if (!advanceNote && after !== null && !after.error && after.filtersPass) advanceNote = advanceProblem({ ...judged, head, commits: after.commits });
+      if (!advanceNote && (after === null || (!after.error && after.filtersPass))) advanceNote = advanceProblem({ ...judged, head, commits: after?.commits ?? [] });
       const kept = advance.kind === "withdrawn" ? stillOpen.blockers.flatMap((finding) => finding.paths).filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
       if (advanceNote) solCoverage = null;
       else if (after?.error) solCoverage = after;
@@ -444,11 +454,6 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
       : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: lastRound?.findings ?? [], records, baseRef });
   }
   let ok = state === "no-findings" || (codexSpent && (solReadAll || codexCoverage?.covered === true));
-  // The branch lineage that Sol rounds count against (informational for the gate; it drives siguiente).
-  /** @type {ReturnType<typeof readLineage> | null} */
-  let lineage = null;
-  let lineageError = "";
-  try { lineage = readLineage({ home, pr: prKey, pull }); } catch (error) { lineageError = error instanceof Error ? error.message : String(error); }
   // The owner stopped reviews for this exact head, in words the PR description quotes verbatim: no more Sol or Codex rounds.
   const waiver = recordsError ? undefined : /** @type {import("./review-records.mjs").WaiverRecord | undefined} */ (records.filter((record) => record.type === "waiver" && record.head === head && String(pull.body ?? "").includes(record.quote)).at(-1));
   if (waiver && solState !== "invalid") solState = "waived";
