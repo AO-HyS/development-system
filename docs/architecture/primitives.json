@@ -99,9 +99,10 @@
       "id": "visual-plan-delivery",
       "category": "agent-tools",
       "status": "active",
-      "summary": "One packet renderer supplies the approved line-and-window presentation for substantive plans and deliveries; the existing report and questionnaire renderers remain separate.",
-      "paths": ["artifacts/2.5.0/skills/internal/visual-explain/scripts/render.mjs", "artifacts/2.5.0/skills/internal/visual-explain/assets", "config/visual-delivery.md"],
-      "docs": ["docs/adr/0072-visual-plans-and-deliveries.md"]
+      "summary": "One text format for progress answers and closings, with the facts of an initiative's PRs printed by `development-system progress`; the line-and-window renderer is for substantive plans and on request and writes every stage out, and the report and questionnaire renderers remain separate.",
+      "paths": ["config/visual-delivery.md", "src/progress.mjs", "artifacts/2.13.0/skills/internal/visual-explain/scripts/render.mjs", "artifacts/2.13.0/skills/internal/visual-explain/assets"],
+      "symbols": ["src/progress.mjs#progress", "src/progress.mjs#formatProgress"],
+      "docs": ["docs/adr/0072-visual-plans-and-deliveries.md", "docs/adr/0074-one-progress-format.md"]
     },
     {
       "id": "development-steward",
