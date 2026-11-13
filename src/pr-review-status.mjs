@@ -559,7 +559,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // GitHub retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and
   // head, not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none
   // here; its merge is the owner's production stop, which the gate's next action says.
-  const evidenceRequired = !productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
+  const production = productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
+  const evidenceRequired = !production;
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
@@ -585,7 +586,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
-  const siguiente = gateNextAction(step, { toDevelop, prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
+  const siguiente = gateNextAction(step, { toDevelop, production, prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
     open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
