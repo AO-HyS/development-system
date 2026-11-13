@@ -123,20 +123,24 @@ const ASK_OWNER = (/** @type {string} */ merge) => `listo para producción, no f
 // Any other base: a stack the lookup could not resolve (a failed read, a base branch with no open PR or with two), or
 // a staging or preview branch, which merges without the owner once its gates pass.
 const NOT_A_STACK = "la base del PR no es develop, no lleva a develop por una cadena de PRs abiertos (un solo PR abierto por rama) y su nombre no es de producción (main, master, production, prod, release ni la rama por defecto)";
-const RETARGET = "vuelve a correr la puerta por si la lectura de la pila falló; si sigue igual, reapunta el PR a develop o a la rama de un PR abierto que lleve a develop (o cierra el PR duplicado de esa rama) y vuelve a correr la puerta";
+const RETARGET = "vuelve a correr la puerta por si la lectura de la pila falló; si sigue igual, reapunta el PR a develop o a la rama de un PR abierto que lleve a develop (o cierra el PR duplicado de esa rama) y vuelve a correr la puerta; si la pila termina en un PR abierto hacia producción (un arreglo urgente), no lo reapuntes: espera a que se fusione el PR de abajo y vuelve a correr la puerta";
 const OTHER_BASE = (/** @type {string} */ merge) => `${NOT_A_STACK}: si es una rama de tarea, no fusiones todavía y ${RETARGET}; si es una rama de staging o preview, ${merge}; si aun así es la rama que despliega a producción, no fusiones y haz al dueño la única pregunta de producción`;
 const OTHER_BASE_STOPPED = `${NOT_A_STACK}, así que la puerta no puede avanzar sola: no promuevas el candidato. Si es una rama de tarea, ${RETARGET}; si es una rama de staging o preview, el PR se queda fuera: dilo en tu siguiente avance y sigue con el trabajo independiente; si aun así es la rama que despliega a producción, súmalo a la única pregunta de producción`;
+// A stacked PR: its base counts as a step of a stack only because one open PR starts from it toward develop. A
+// production branch whose name the gate does not know does that too while a back-merge into develop is open.
+const STACK_STEP = (/** @type {string} */ base) => `; la base «${base}» cuenta como paso de una pila solo porque de ella sale un PR abierto hacia develop: si es la rama que despliega a producción, no fusiones y haz al dueño la única pregunta de producción`;
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
 /**
  * The siguiente text for a final step: always an action the agent takes; toward develop it never asks anyone.
  * @param {GateStep} step
- * @param {{toDevelop: boolean, production: boolean, prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
+ * @param {{toDevelop: boolean, production: boolean, stackBase?: string, prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
  */
-export function gateNextAction(step, { toDevelop, production, prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
+export function gateNextAction(step, { toDevelop, production, stackBase = "", prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
   const short = head.slice(0, 12);
   // The merge order of a ready PR that does not lead to develop: the owner's stop for a production base, else by base.
   const elsewhere = production ? ASK_OWNER : OTHER_BASE;
+  const stacked = toDevelop && stackBase ? STACK_STEP(stackBase) : "";
   // A recorded advance that does not count is said first, with its reason, so the agent records it again or runs the round.
   const stale = advanceNote ? `el avance registrado no cuenta (${advanceNote}). ` : "";
   const ids = open.map((finding) => finding.id).join(", ") || "el hallazgo crítico";
@@ -156,8 +160,8 @@ export function gateNextAction(step, { toDevelop, production, prKey, owner, repo
     case "withdrawChange": return `${stale}retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, en un commit que lleve la línea «fixes: <id>», déjalo como seguimiento nombrando ese commit (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda> --commit <el commit que lo sacó>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y fusiona el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
     case "holdPr": return `#${number} se queda fuera: el linaje gastó sus rondas sin una ronda válida. No fusiones; dilo en tu siguiente avance y sigue con el trabajo independiente`;
     case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de revisión y otra vez sobre el head final)`;
-    case "runGate": return toDevelop ? `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}` : `corre development-system pr-review-status ${prKey} --gate; ${elsewhere(`fusiona con --match-head-commit ${head}`)}`;
-    case "merge": return toDevelop ? `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}` : elsewhere(`fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`);
+    case "runGate": return toDevelop ? `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}${stacked}` : `corre development-system pr-review-status ${prKey} --gate; ${elsewhere(`fusiona con --match-head-commit ${head}`)}`;
+    case "merge": return toDevelop ? `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}${stacked}` : elsewhere(`fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`);
   }
 }
 

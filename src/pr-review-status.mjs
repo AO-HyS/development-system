@@ -586,7 +586,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
-  const siguiente = gateNextAction(step, { toDevelop, production, prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
+  const siguiente = gateNextAction(step, { toDevelop, production, stackBase: toDevelop && baseRef !== "develop" ? baseRef : "", prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
     open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
