@@ -5,11 +5,13 @@
 //   review advance   the `auto-advance` row: the last round of the cap (2 since 2.14.1) came back blocking with nothing
 //                    critical open, so no further round runs; or (`--withdrawn`) the last critical re-read (round 4)
 //                    still has a critical finding open and the disputed change left
-//                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop; the gate
+//                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop or stacked on open
+//                    PRs that end in develop (2.14.3, review-stack.mjs); the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
 import { advanceProblem, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
 import { SHA, append, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
+import { towardDevelop } from "./review-stack.mjs";
 
 /**
  * @typedef {import("./review-state.mjs").RoundRecord} RoundRecord
@@ -32,9 +34,17 @@ export function dispositionsOf(records, round) {
   return latest;
 }
 
-/** Every commit a disposition of one round names (the fix, or for a follow-up the commit that took the change out), the replaced rows included: a finding may take several commits. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round @param {string[]} findings */
-export function dispositionCommits(records, round, findings) {
-  return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round === round && record.commit && findings.includes(record.finding) ? [record.commit] : []))];
+/**
+ * Every commit a disposition recorded after one round names (the fix, or for a follow-up the commit that took the
+ * change out), the replaced rows included: a finding may take several commits. Since 2.14.3 it reads the findings of
+ * that round and of the rounds before it, not only what the round left open: coverage accepts a fix of any recorded
+ * round, so the advance must be able to list that commit under the finding it really fixes (`review dispose --round
+ * <n>`). Rows written before the round are left out: the round read their commits.
+ * @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round
+ */
+export function dispositionCommits(records, round) {
+  const at = records.map((record) => record.type === "round" && record.round === round).lastIndexOf(true);
+  return [...new Set(records.slice(at + 1).flatMap((record) => record.type === "disposition" && record.round <= round && record.commit ? [record.commit] : []))];
 }
 
 /**
@@ -62,7 +72,7 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
 }
 
 /**
- * Records that the PR advances without another review round. Refused unless the PR goes into develop, `head` is its
+ * Records that the PR advances without another review round. Refused unless the PR leads to develop, `head` is its
  * current head, the lineage's last round is this PR's and blocking, the policy says advance (or, with `withdrawn`,
  * withdraw), no reserved round is waiting, and every finding that round left open has a disposition.
  * @param {{home: string, pr?: string, head?: string, withdrawn?: boolean, dryRun?: boolean}} options
@@ -72,7 +82,8 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
   if (!head || !SHA.test(head)) throw new Error("review advance needs --head <40-hex PR head>");
   const lineage = resolveLineage({ pr: key, home });
   const base = String(lineage.pull?.base?.ref ?? "");
-  if (base !== "develop") throw new Error(`${key} goes into ${base || "an unknown branch"}: advancing without another round applies only to a PR into develop`);
+  const [owner = "", repo = ""] = String(lineage.pull?.base?.repo?.full_name ?? "").split("/");
+  if (!towardDevelop({ owner, repo, baseRef: base, defaultBranch: String(lineage.pull?.base?.repo?.default_branch ?? "") })) throw new Error(`${key} goes into ${base || "an unknown branch"}, which is not develop or a stack of open PRs that ends in develop: advancing without another round does not apply`);
   if (String(lineage.pull?.head?.sha) !== head) throw new Error(`${head} is not the current head of ${key} (${String(lineage.pull?.head?.sha)}); advance the head you are about to merge`);
   const work = () => {
     const state = lineageState(home, lineage);
@@ -96,7 +107,7 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
     if (missing.length) throw new Error(`round ${last.record.round} left ${missing.join(", ")} open without a disposition: record each with development-system review dispose --pr ${key} --finding <id> --outcome fixed|rejected|follow-up`);
     const kept = withdrawn ? open.filter((finding) => dispositions.get(finding.id)?.outcome !== "follow-up").map((finding) => finding.id) : [];
     if (kept.length) throw new Error(`--withdrawn means the disputed change left the PR as a follow-up, but ${kept.join(", ")} ${kept.length === 1 ? "is" : "are"} not recorded as follow-up`);
-    const fixCommits = dispositionCommits(records, last.record.round, open.map((finding) => finding.id));
+    const fixCommits = dispositionCommits(records, last.record.round);
     // A fix the PR no longer has (a rewritten branch) is not a fix of what would be merged.
     for (const finding of open) { const disposition = dispositions.get(finding.id); if (disposition?.outcome === "fixed" && disposition.commit) verifyHead(lineage, disposition.commit); }
     /** @type {AdvanceRecord} */

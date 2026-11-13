@@ -176,8 +176,10 @@ export function chainGap(rounds) {
  * authority. `slot` is the real lineage slot of the row's round, `open` what that round left open, `dispositions` the
  * latest disposition of each of its findings, `roundHead` that round's head and `commits` the first-parent commits
  * after it up to `head` (newest first). The writer has not walked them and passes none; the gate always passes them
- * (an empty list when the PR head is the round's head), and then every fix must be among them.
- * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean}[]}} input
+ * (an empty list when the PR head is the round's head), and then every fix must be among them. A `settled` commit
+ * (2.14.3: it leaves no net change, or only takes files out of the PR) is nobody's fix and needs no disposition; an
+ * `undone` one (every file back as the round read it) fixes nothing, so a finding recorded as fixed there is not.
+ * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean, settled?: boolean, undone?: boolean, fixes?: string[]}[]}} input
  */
 export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits: walked }) {
   const commits = walked ?? [];
@@ -198,13 +200,15 @@ export function advanceProblem({ advance, slot, open, dispositions, head, roundH
     const at = advance.head === roundHead ? commits.length : commits.findIndex((commit) => commit.sha === advance.head);
     if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)}, and the PR is now at ${head.slice(0, 12)} with more than clean base merges in between: record it again for the current head`;
   }
-  const unlisted = commits.filter((commit) => !commit.baseMerge && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
-  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>: the fix, or for a follow-up the commit that took the change out), then the advance again`;
+  // A commit that cites only Codex threads is accounted for in those threads' answers; `review dispose` takes round findings only.
+  const codexOnly = (/** @type {{fixes?: string[]}} */ commit) => Boolean(commit.fixes?.length) && /** @type {string[]} */ (commit.fixes).every((id) => id.startsWith("codex:"));
+  const unlisted = commits.filter((commit) => !commit.baseMerge && !commit.settled && !codexOnly(commit) && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
+  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>, with --round <n> for a finding of an earlier round, and again when it was recorded before the round: the fix, or for a follow-up the commit that took the change out), then the advance again`;
   if (walked) {
     // A finding recorded as fixed in a commit the PR no longer has is not fixed in what would be merged.
-    const present = new Set(commits.map((commit) => commit.sha));
+    const present = new Set(commits.filter((commit) => !commit.undone).map((commit) => commit.sha));
     const absent = ids.filter((id) => { const disposition = dispositions.get(id); return disposition?.outcome === "fixed" && !present.has(String(disposition.commit)); });
-    if (absent.length) return `${absent.join(", ")} ${absent.length === 1 ? "is" : "are"} recorded as fixed in a commit that is not among the PR's commits after the round: record the disposition again with the commit that is, then the advance`;
+    if (absent.length) return `${absent.join(", ")} ${absent.length === 1 ? "is" : "are"} recorded as fixed in a commit that is not among the PR's commits after the round, or whose changes later commits undid: record the disposition again with the commit that fixes it, then the advance`;
   }
   return "";
 }
