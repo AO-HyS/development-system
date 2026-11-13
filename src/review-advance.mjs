@@ -34,9 +34,15 @@ export function dispositionsOf(records, round) {
   return latest;
 }
 
-/** Every commit a disposition of one round names (the fix, or for a follow-up the commit that took the change out), the replaced rows included: a finding may take several commits. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round @param {string[]} findings */
-export function dispositionCommits(records, round, findings) {
-  return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round === round && record.commit && findings.includes(record.finding) ? [record.commit] : []))];
+/**
+ * Every commit a disposition names up to one round (the fix, or for a follow-up the commit that took the change out),
+ * the replaced rows included: a finding may take several commits. Since 2.14.3 it reads every finding of that round
+ * and of the rounds before it, not only what the round left open: coverage accepts a fix of any recorded round, so
+ * the advance must be able to list that commit under the finding it really fixes (`review dispose --round <n>`).
+ * @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round
+ */
+export function dispositionCommits(records, round) {
+  return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round <= round && record.commit ? [record.commit] : []))];
 }
 
 /**
@@ -99,7 +105,7 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
     if (missing.length) throw new Error(`round ${last.record.round} left ${missing.join(", ")} open without a disposition: record each with development-system review dispose --pr ${key} --finding <id> --outcome fixed|rejected|follow-up`);
     const kept = withdrawn ? open.filter((finding) => dispositions.get(finding.id)?.outcome !== "follow-up").map((finding) => finding.id) : [];
     if (kept.length) throw new Error(`--withdrawn means the disputed change left the PR as a follow-up, but ${kept.join(", ")} ${kept.length === 1 ? "is" : "are"} not recorded as follow-up`);
-    const fixCommits = dispositionCommits(records, last.record.round, open.map((finding) => finding.id));
+    const fixCommits = dispositionCommits(records, last.record.round);
     // A fix the PR no longer has (a rewritten branch) is not a fix of what would be merged.
     for (const finding of open) { const disposition = dispositions.get(finding.id); if (disposition?.outcome === "fixed" && disposition.commit) verifyHead(lineage, disposition.commit); }
     /** @type {AdvanceRecord} */

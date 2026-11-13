@@ -200,7 +200,7 @@ export function advanceProblem({ advance, slot, open, dispositions, head, roundH
     if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)}, and the PR is now at ${head.slice(0, 12)} with more than clean base merges in between: record it again for the current head`;
   }
   const unlisted = commits.filter((commit) => !commit.baseMerge && !commit.settled && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
-  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>: the fix, or for a follow-up the commit that took the change out), then the advance again`;
+  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>, with --round <n> for a finding of an earlier round: the fix, or for a follow-up the commit that took the change out), then the advance again`;
   if (walked) {
     // A finding recorded as fixed in a commit the PR no longer has is not fixed in what would be merged.
     const present = new Set(commits.map((commit) => commit.sha));
