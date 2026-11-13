@@ -116,14 +116,16 @@ export function gateStep(facts) {
 
 // Only a PR whose base does not lead to develop reaches this (2.13.0); its merge is the owner's production stop anyway.
 export const OWNER_DECIDES = "el PR no va a develop y la puerta no puede decidir sola: no promuevas el candidato; registra el bloqueo, sigue con trabajo independiente y súmalo a la única pregunta de producción";
+// A PR that does not lead to develop and passed every gate: its merge is production (stop 5), never the gate's order.
+const ASK_OWNER = (/** @type {string} */ merge) => `listo para producción, no fusiones todavía: haz al dueño la única pregunta de producción nombrando el PR, el head y qué llega a producción; solo con su respuesta explícita para ese paso, ${merge}`;
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
 /**
  * The siguiente text for a final step: always an action the agent takes; toward develop it never asks anyone.
  * @param {GateStep} step
- * @param {{prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
+ * @param {{toDevelop?: boolean, prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
  */
-export function gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
+export function gateNextAction(step, { toDevelop = true, prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
   const short = head.slice(0, 12);
   // A recorded advance that does not count is said first, with its reason, so the agent records it again or runs the round.
   const stale = advanceNote ? `el avance registrado no cuenta (${advanceNote}). ` : "";
@@ -144,8 +146,8 @@ export function gateNextAction(step, { prKey, owner, repo, number, head, blockin
     case "withdrawChange": return `${stale}retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, en un commit que lleve la línea «fixes: <id>», déjalo como seguimiento nombrando ese commit (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda> --commit <el commit que lo sacó>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y fusiona el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
     case "holdPr": return `#${number} se queda fuera: el linaje gastó sus rondas sin una ronda válida. No fusiones; dilo en tu siguiente avance y sigue con el trabajo independiente`;
     case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de revisión y otra vez sobre el head final)`;
-    case "runGate": return `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}`;
-    case "merge": return `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`;
+    case "runGate": return toDevelop ? `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}` : `corre development-system pr-review-status ${prKey} --gate; ${ASK_OWNER(`fusiona con --match-head-commit ${head}`)}`;
+    case "merge": return toDevelop ? `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}` : ASK_OWNER(`fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`);
   }
 }
 

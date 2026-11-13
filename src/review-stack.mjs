@@ -4,7 +4,8 @@
 // A PR into develop is reviewed and advanced without the owner (2.13.0). A PR stacked on another open PR used to be
 // read as "not develop", so the gate sent it to the owner as if it were a production merge (frictions
 // stacked-pr-review-coverage and the Barber stack of 2026-11-13: develop <- #694 <- #699 <- #701). Its merge lands in
-// a task branch, and the PR at the bottom of the stack still passes its own gate, with evidence, before develop.
+// a task branch; it still needs its own behavioral evidence, because GitHub retargets it to develop with the same head
+// when the PR below merges.
 import { execFileSync } from "node:child_process";
 
 const MAX_STACK = 10;

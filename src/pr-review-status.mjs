@@ -456,8 +456,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const { reviews, published, headReviewed, last, budgetSpent, state } = view;
   const headState = view.headState;
   const baseRef = String(pull.base?.ref ?? "");
-  // develop, or a stack of open PRs that ends in develop (2.14.3): the review runs and advances the same way; behavioral
-  // evidence is still asked only where the stack lands in develop.
+  // develop, or a stack of open PRs that ends in develop (2.14.3): the review runs and advances the same way, and behavioral
+  // evidence is required the same way.
   const toDevelop = towardDevelop({ owner, repo, baseRef, defaultBranch: String(pull.base?.repo?.default_branch ?? "") });
   const inFlight = headState === "requested" || headState === "running";
   // Toward develop two spent requests stop being a stop even when the last one never answered: Sol covers them.
@@ -554,8 +554,11 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
     prFiles,
   });
-  // Evidence is a develop-merge gate. From 2.12.0 a main merge whose gate passes does not wait for the owner (four-stop policy).
-  const evidenceRequired = baseRef === "develop";
+  // Evidence is required of every PR that leads to develop, a stacked one included: when the PR below merges, GitHub
+  // retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and head,
+  // not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none here; its
+  // merge is the owner's production stop, which the gate's next action says.
+  const evidenceRequired = toDevelop;
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
@@ -581,7 +584,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
-  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
+  const siguiente = gateNextAction(step, { toDevelop, prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
     open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
