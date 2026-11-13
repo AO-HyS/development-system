@@ -176,8 +176,9 @@ export function chainGap(rounds) {
  * authority. `slot` is the real lineage slot of the row's round, `open` what that round left open, `dispositions` the
  * latest disposition of each of its findings, `roundHead` that round's head and `commits` the first-parent commits
  * after it up to `head` (newest first). The writer has not walked them and passes none; the gate always passes them
- * (an empty list when the PR head is the round's head), and then every fix must be among them.
- * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean}[]}} input
+ * (an empty list when the PR head is the round's head), and then every fix must be among them. A `settled` commit
+ * (2.14.3: it leaves no net change, or only takes files out of the PR) is nobody's fix and needs no disposition.
+ * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean, settled?: boolean}[]}} input
  */
 export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits: walked }) {
   const commits = walked ?? [];
@@ -198,7 +199,7 @@ export function advanceProblem({ advance, slot, open, dispositions, head, roundH
     const at = advance.head === roundHead ? commits.length : commits.findIndex((commit) => commit.sha === advance.head);
     if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)}, and the PR is now at ${head.slice(0, 12)} with more than clean base merges in between: record it again for the current head`;
   }
-  const unlisted = commits.filter((commit) => !commit.baseMerge && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
+  const unlisted = commits.filter((commit) => !commit.baseMerge && !commit.settled && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
   if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>: the fix, or for a follow-up the commit that took the change out), then the advance again`;
   if (walked) {
     // A finding recorded as fixed in a commit the PR no longer has is not fixed in what would be merged.

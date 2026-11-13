@@ -5,11 +5,13 @@
 //   review advance   the `auto-advance` row: the last round of the cap (2 since 2.14.1) came back blocking with nothing
 //                    critical open, so no further round runs; or (`--withdrawn`) the last critical re-read (round 4)
 //                    still has a critical finding open and the disputed change left
-//                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop; the gate
+//                    the PR. It lists the fix commits nobody re-read. Only for a PR into develop or stacked on open
+//                    PRs that end in develop (2.14.3, review-stack.mjs); the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
 import { advanceProblem, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
 import { SHA, append, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
+import { towardDevelop } from "./review-stack.mjs";
 
 /**
  * @typedef {import("./review-state.mjs").RoundRecord} RoundRecord
@@ -62,7 +64,7 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
 }
 
 /**
- * Records that the PR advances without another review round. Refused unless the PR goes into develop, `head` is its
+ * Records that the PR advances without another review round. Refused unless the PR leads to develop, `head` is its
  * current head, the lineage's last round is this PR's and blocking, the policy says advance (or, with `withdrawn`,
  * withdraw), no reserved round is waiting, and every finding that round left open has a disposition.
  * @param {{home: string, pr?: string, head?: string, withdrawn?: boolean, dryRun?: boolean}} options
@@ -72,7 +74,8 @@ export function recordAdvance({ home, pr, head, withdrawn = false, dryRun = fals
   if (!head || !SHA.test(head)) throw new Error("review advance needs --head <40-hex PR head>");
   const lineage = resolveLineage({ pr: key, home });
   const base = String(lineage.pull?.base?.ref ?? "");
-  if (base !== "develop") throw new Error(`${key} goes into ${base || "an unknown branch"}: advancing without another round applies only to a PR into develop`);
+  const [owner = "", repo = ""] = String(lineage.pull?.base?.repo?.full_name ?? "").split("/");
+  if (!towardDevelop({ owner, repo, baseRef: base, defaultBranch: String(lineage.pull?.base?.repo?.default_branch ?? "") })) throw new Error(`${key} goes into ${base || "an unknown branch"}, which is not develop or a stack of open PRs that ends in develop: advancing without another round does not apply`);
   if (String(lineage.pull?.head?.sha) !== head) throw new Error(`${head} is not the current head of ${key} (${String(lineage.pull?.head?.sha)}); advance the head you are about to merge`);
   const work = () => {
     const state = lineageState(home, lineage);

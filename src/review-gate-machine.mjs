@@ -12,6 +12,7 @@
 // budget is covered by a Sol round; at the Sol cap the PR advances, loses the disputed change or stays out, and
 // unexplained commits go to another PR (`review-policy.mjs` decides which). `ownerDecides` remains only for a PR
 // into another base (main), where the merge is the owner's anyway. Evidence is asked before the first Sol round (A9).
+// 2.14.3: a PR stacked on open PRs that end in develop counts as toward develop (review-stack.mjs).
 //
 // Reversal: the routing was a first-match if/else chain in pr-review-status.mjs until 2.10.0; restoring it and
 // removing src/vendor/xstate/ undoes the pilot. The Steward measures it weekly (plan v5 1.4 criteria).
@@ -20,7 +21,7 @@ import { BUDGET, CRITICAL_LIMIT } from "./review-policy.mjs";
 
 /**
  * @typedef {object} GateFacts
- * @property {boolean} toDevelop         the PR's base is develop
+ * @property {boolean} toDevelop         the PR's base is develop, or a stack of open PRs that ends in develop
  * @property {boolean} blocking          a Codex thread without a valid answer (a fix commit or a reasoned rejection)
  * @property {boolean} codexOk           Codex no-findings, or its requests are spent and the commits after are covered
  * @property {null | {error: boolean}} codexCoverage  coverage of commits after a budget-spent Codex review
@@ -113,7 +114,7 @@ export function gateStep(facts) {
   return /** @type {GateStep} */ (snapshot.value);
 }
 
-// Only a PR into a base other than develop reaches this (2.13.0); its merge is the owner's production stop anyway.
+// Only a PR whose base does not lead to develop reaches this (2.13.0); its merge is the owner's production stop anyway.
 export const OWNER_DECIDES = "el PR no va a develop y la puerta no puede decidir sola: no promuevas el candidato; registra el bloqueo, sigue con trabajo independiente y súmalo a la única pregunta de producción";
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
@@ -132,7 +133,7 @@ export function gateNextAction(step, { prKey, owner, repo, number, head, blockin
   switch (step) {
     case "codexFindings": return `contesta cada hilo de Codex pendiente (${blockingIds.slice(0, 5).join(", ")}${blockingIds.length > 5 ? ", …" : ""}): responde en el hilo citando el commit de este PR que lo arregla, o con «Rechazado: <razón>»; no hace falta resolver el hilo`;
     case "retryRead": return RETRY_READ;
-    case "outOfScope": return `saca a otro PR lo que no es arreglo citado ni merge limpio de la base${uncovered.length ? ` (${uncovered.slice(0, 5).join("; ")}${uncovered.length > 5 ? "; …" : ""})` : ""} y vuelve a correr la puerta`;
+    case "outOfScope": return `saca a otro PR lo que no es arreglo citado ni merge limpio de la base${uncovered.length ? ` (${uncovered.slice(0, 5).join("; ")}${uncovered.length > 5 ? "; …" : ""})` : ""} y vuelve a correr la puerta. Un arreglo que ya subió sin su línea no se reescribe: añade después un commit vacío con «fixes: <id>» y «covers: <sha del arreglo>»`;
     case "awaitCodex": return `espera la revisión de Codex del head ${short}; vuelve a correr pr-review-status sin --request`;
     case "ownerDecides": return OWNER_DECIDES;
     case "requestCodex": return `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;
