@@ -136,7 +136,7 @@ function summaryStates(appComments) {
 /**
  * @typedef {{id: string, paths: string[]}} Finding
  * @typedef {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} CodexState
- * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean, settled?: boolean}} CoveredCommit
+ * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean, settled?: boolean, undone?: boolean}} CoveredCommit
  * @typedef {{from: string, to: string, covered: boolean, error: boolean, filtersPass: boolean, reason: string, commits: CoveredCommit[]}} Coverage
  */
 
@@ -186,12 +186,16 @@ function cleanBaseMerge(base, entry, baseRef) {
  * 2.14.3, from five stalls in one day (frictions fixes-line-needs-amend, gate-per-commit-scope-no-net-diff,
  * gate-codex-coverage-ignores-fable-fixes, review-coverage-fix-diff-rounds):
  *   settled files   a file needs no citation when the interval leaves it as the reviewer read it (it is not in the
- *                   diff from the reviewed head to the current head) or when the PR no longer changes it (`prChanged`
- *                   does not list it: the change left the PR). A commit made only of such files, an empty commit
- *                   included, is covered without a `fixes:` line.
+ *                   diff from the reviewed head to the current head, and no clean base merge of the interval brought
+ *                   it in: undoing a base merge also leaves that diff empty, and merging it would delete the base's
+ *                   work) or when the PR no longer changes it (`prChanged` does not list it: the change left the PR).
+ *                   A commit made only of such files, an empty commit included, is covered without a `fixes:` line.
+ *                   A commit whose every file the interval left as it was read is also marked `undone`: a finding
+ *                   recorded as fixed there is not fixed (review-policy.mjs advanceProblem).
  *   covers          a later commit of the interval lends its `fixes:` ids to an earlier one it names with
  *                   `covers: <sha>` (7 to 40 hex). Pushed history cannot be amended, so this repairs a fix that was
- *                   pushed without its line or with a wrong id; the lent ids replace the commit's own.
+ *                   pushed without its line or with a wrong id; the lent ids replace the commit's own and the newest
+ *                   `covers:` wins, so a mistyped repair is repaired by another.
  *   record          a `fix-only` coverage record is no longer required: it was the coordinator's word about its own
  *                   commits and added nothing to the citation. An `out-of-scope` record for the head still vetoes.
  * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
@@ -210,11 +214,19 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
   /** @type {Map<string, string[]>} */
   const known = new Map();
   for (const finding of [...peers, ...findings]) known.set(finding.id, [...(known.get(finding.id) ?? []), ...finding.paths]);
-  // The interval's net diff; null when GitHub lists it partially, and then no file counts as untouched by the interval.
-  const listed = Array.isArray(compare.files) ? compare.files : [];
-  const net = listed.length >= 300 ? null : new Set(listed.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]));
+  // The interval's net diff; null when GitHub does not list it or lists it partially, and then no file counts as
+  // untouched by the interval.
+  /** @type {Set<string> | null} */
+  let net = Array.isArray(compare.files) && compare.files.length < 300 ? new Set(compare.files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])])) : null;
+  // What the clean base merges of the interval brought in: never "untouched", whatever the net diff says.
+  /** @type {Set<string>} */
+  const merged = new Set();
+  /** The interval left the file as the reviewer read it. @param {string} name */
+  const untouched = (name) => net !== null && !net.has(name) && !merged.has(name);
   /** A file the reviewer has nothing new to read in. @param {string} name */
-  const settled = (name) => (net !== null && !net.has(name)) || (prChanged !== null && !prChanged.has(name));
+  const settled = (name) => untouched(name) || (prChanged !== null && !prChanged.has(name));
+  /** Commits that are not clean base merges, judged after the walk: a base merge is older than the commit that undoes it. @type {{commit: CoveredCommit, merge: ReturnType<typeof cleanBaseMerge>, parents: number}[]} */
+  const judged = [];
   /** `covers:` lines seen so far, newest commit first: [sha prefix, the ids that commit cites]. @type {[string, string[]][]} */
   const lent = [];
   let filtersPass = true;
@@ -231,36 +243,45 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
     const merge = cleanBaseMerge(base, detail, baseRef);
     if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
     if (merge.clean) {
+      // GitHub lists a merge's files against its first parent; an unlisted or partial list means "every file".
+      if (Array.isArray(detail.files) && detail.files.length < 300) for (const file of detail.files) { merged.add(String(file.filename)); if (file.previous_filename) merged.add(String(file.previous_filename)); }
+      else net = null;
       commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
       baseMerges += 1;
       sha = parents[0];
       continue;
     }
     const own = [...message.matchAll(/^fixes:\s*(.+)$/gim)].flatMap((match) => match[1].split(/[\s,]+/)).filter(Boolean);
-    const borrowed = [...new Set(lent.filter(([prefix]) => sha.startsWith(prefix)).flatMap(([, ids]) => ids))];
+    // Newest first, so the latest `covers:` naming this commit wins.
+    const borrowed = lent.find(([prefix]) => sha.startsWith(prefix))?.[1] ?? [];
     const fixes = borrowed.length ? borrowed : own;
     for (const match of message.matchAll(/^covers:\s*(.+)$/gim)) for (const prefix of match[1].split(/[\s,]+/)) if (/^[0-9a-f]{7,40}$/.test(prefix)) lent.push([prefix, own]);
-    const files = Array.isArray(detail.files) ? detail.files : [];
-    if (files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
+    const files = detail.files;
+    if (!Array.isArray(files) || files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
     const names = files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
-    // Only the files the interval really changes, and the PR still changes, need a cited finding.
-    const pending = names.filter((/** @type {string} */ name) => !settled(name));
-    const allowed = new Set(fixes.flatMap((id) => known.get(id) ?? []));
-    const unknown = fixes.filter((id) => !known.has(id));
-    const outside = pending.filter((/** @type {string} */ name) => !allowed.has(name));
     /** @type {CoveredCommit} */
-    const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names, ...(pending.length === 0 ? { settled: true } : {}) };
+    const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names };
+    judged.push({ commit, merge, parents: parents.length });
+    commits.push(commit);
+    sha = parents[0];
+  }
+  for (const { commit, merge, parents } of judged) {
+    // Only the files the interval really changes, and the PR still changes, need a cited finding.
+    const pending = commit.files.filter((name) => !settled(name));
+    const allowed = new Set(commit.fixes.flatMap((id) => known.get(id) ?? []));
+    const unknown = commit.fixes.filter((id) => !known.has(id));
+    const outside = pending.filter((name) => !allowed.has(name));
+    if (pending.length === 0) commit.settled = true;
+    if (commit.files.length > 0 && commit.files.every(untouched)) commit.undone = true;
     if (pending.length === 0) { /* nothing left to read: no citation needed */ }
-    else if (fixes.length === 0) commit.problem = "no `fixes: <id>` line";
+    else if (commit.fixes.length === 0) commit.problem = "no `fixes: <id>` line";
     else if (unknown.length) commit.problem = `cites ids that are not findings of this PR's reviews: ${unknown.join(", ")}`;
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
     // Only a verified clean base merge may skip its side parents; any other merge brings in history this walk never
     // inspects, so it fails closed instead of being covered by the merge commit's own fixes lines.
-    if (!commit.problem && parents.length > 1) commit.problem = `a merge that is not a verified clean base merge (${merge.reason ?? "side history not from the base"}); its side-parent commits are unreviewed`;
+    if (!commit.problem && parents > 1) commit.problem = `a merge that is not a verified clean base merge (${merge.reason ?? "side history not from the base"}); its side-parent commits are unreviewed`;
     if (commit.problem) filtersPass = false;
-    commits.push(commit);
-    sha = parents[0];
   }
   if (commits.length === 0) return uncovered("no commits after the reviewed head");
   if (!filtersPass) return { ...uncovered("a commit after the reviewed head is not a cited fix of its findings"), commits };

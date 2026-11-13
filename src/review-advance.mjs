@@ -35,14 +35,16 @@ export function dispositionsOf(records, round) {
 }
 
 /**
- * Every commit a disposition names up to one round (the fix, or for a follow-up the commit that took the change out),
- * the replaced rows included: a finding may take several commits. Since 2.14.3 it reads every finding of that round
- * and of the rounds before it, not only what the round left open: coverage accepts a fix of any recorded round, so
- * the advance must be able to list that commit under the finding it really fixes (`review dispose --round <n>`).
+ * Every commit a disposition recorded after one round names (the fix, or for a follow-up the commit that took the
+ * change out), the replaced rows included: a finding may take several commits. Since 2.14.3 it reads the findings of
+ * that round and of the rounds before it, not only what the round left open: coverage accepts a fix of any recorded
+ * round, so the advance must be able to list that commit under the finding it really fixes (`review dispose --round
+ * <n>`). Rows written before the round are left out: the round read their commits.
  * @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round
  */
 export function dispositionCommits(records, round) {
-  return [...new Set(records.flatMap((record) => record.type === "disposition" && record.round <= round && record.commit ? [record.commit] : []))];
+  const at = records.map((record) => record.type === "round" && record.round === round).lastIndexOf(true);
+  return [...new Set(records.slice(at + 1).flatMap((record) => record.type === "disposition" && record.round <= round && record.commit ? [record.commit] : []))];
 }
 
 /**
