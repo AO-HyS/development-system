@@ -28,8 +28,8 @@ function ghApi(args) {
 /**
  * True when `baseRef` is develop, or the head branch of exactly one open PR of the same repository whose own base
  * leads to develop, at most ten PRs deep. A production branch, the repository's default branch (unless it is develop),
- * a branch that two open PRs start from, a loop and anything GitHub cannot answer are not toward develop: the caller
- * then keeps the owner's route.
+ * a branch that two open PRs start from, a loop and anything GitHub cannot answer are not toward develop: the gate then
+ * does not advance on its own (a production base goes to the owner's question, any other base is told to retarget).
  * @param {{owner: string, repo: string, baseRef: string, defaultBranch?: string, gh?: (args: string[]) => string}} input
  */
 export function towardDevelop({ owner, repo, baseRef, defaultBranch = "", gh = ghApi }) {

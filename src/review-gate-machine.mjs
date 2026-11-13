@@ -125,7 +125,7 @@ const ASK_OWNER = (/** @type {string} */ merge) => `listo para producción, no f
 const NOT_A_STACK = "la base del PR no es develop, no lleva a develop por una cadena de PRs abiertos (un solo PR abierto por rama) y su nombre no es de producción (main, master, production, prod, release ni la rama por defecto)";
 const RETARGET = "vuelve a correr la puerta por si la lectura de la pila falló; si sigue igual, reapunta el PR a develop o a la rama de un PR abierto que lleve a develop (o cierra el PR duplicado de esa rama) y vuelve a correr la puerta";
 const OTHER_BASE = (/** @type {string} */ merge) => `${NOT_A_STACK}: si es una rama de tarea, no fusiones todavía y ${RETARGET}; si es una rama de staging o preview, ${merge}; si aun así es la rama que despliega a producción, no fusiones y haz al dueño la única pregunta de producción`;
-const OTHER_BASE_STOPPED = `${NOT_A_STACK}, así que la puerta no puede avanzar sola: no promuevas el candidato; ${RETARGET}; si aun así es la rama que despliega a producción, súmalo a la única pregunta de producción`;
+const OTHER_BASE_STOPPED = `${NOT_A_STACK}, así que la puerta no puede avanzar sola: no promuevas el candidato. Si es una rama de tarea, ${RETARGET}; si es una rama de staging o preview, el PR se queda fuera: dilo en tu siguiente avance y sigue con el trabajo independiente; si aun así es la rama que despliega a producción, súmalo a la única pregunta de producción`;
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
 /**

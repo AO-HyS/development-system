@@ -1,6 +1,6 @@
 // @ts-check
 // The review gate for one PR head: Codex (the chatgpt-codex-connector GitHub app), Sol review records
-// (`src/review-records.mjs`) and, for a PR into develop, behavioral evidence (`src/evidence.mjs`). Codex reviews only
+// (`src/review-records.mjs`) and, unless the base is production, behavioral evidence (`src/evidence.mjs`). Codex reviews only
 // when a PR is opened, marked ready, or asked with "@codex review", so later commits go unreviewed unless someone asks
 // again. `--request` asks for the current head while fewer than two requests are published; it holds a local per-PR
 // lock and re-reads GitHub inside it before posting, and never deletes a published request. `mergeReady` combines
