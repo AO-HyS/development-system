@@ -42,7 +42,7 @@
 //                           prose docs, clean base merges and recorded cited fixes stay covered; at the cap an
 //                           `auto-advance` row lets the PR into develop with every later commit a cited fix
 //   routing (2.10.0)        the first unmet gate picks siguiente through review-gate-machine.mjs (XState); --diagram draws it
-//   mergeReady              Codex ok AND no blocking finding AND Sol ok AND develop evidence (asked first before the
+//   mergeReady              Codex ok AND no blocking finding AND Sol ok AND behavioral evidence unless the base is production (asked first before the
 //                           first Sol round, then again for the final head)
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";

@@ -11,7 +11,8 @@
 // 2.13.0 (plan ds-friction-plan-20261111 v5, A6): for a PR into develop no route ends in the owner. A spent Codex
 // budget is covered by a Sol round; at the Sol cap the PR advances, loses the disputed change or stays out, and
 // unexplained commits go to another PR (`review-policy.mjs` decides which). `ownerDecides` remains only for a PR
-// into another base (main), where the merge is the owner's anyway. Evidence is asked before the first Sol round (A9).
+// that does not lead to develop: into a production base the merge is the owner's anyway, and any other base is told
+// to retarget (2.14.3). Evidence is asked before the first Sol round (A9).
 // 2.14.3: a PR stacked on open PRs that end in develop counts as toward develop (review-stack.mjs).
 //
 // Reversal: the routing was a first-match if/else chain in pr-review-status.mjs until 2.10.0; restoring it and
@@ -121,10 +122,10 @@ export const OWNER_DECIDES = "el PR no va a develop y la puerta no puede decidir
 const ASK_OWNER = (/** @type {string} */ merge) => `listo para producción, no fusiones todavía: haz al dueño la única pregunta de producción nombrando el PR, el head y qué llega a producción; solo con su respuesta explícita para ese paso, ${merge}`;
 // Any other base: a stack the lookup could not resolve (a failed read, a base branch with no open PR or with two), or
 // a staging or preview branch, which merges without the owner once its gates pass.
-const NOT_A_STACK = "la base del PR no es develop, no lleva a develop por una cadena de PRs abiertos (un solo PR abierto por rama) y tampoco es de producción";
+const NOT_A_STACK = "la base del PR no es develop, no lleva a develop por una cadena de PRs abiertos (un solo PR abierto por rama) y su nombre no es de producción (main, master, production, prod, release ni la rama por defecto)";
 const RETARGET = "vuelve a correr la puerta por si la lectura de la pila falló; si sigue igual, reapunta el PR a develop o a la rama de un PR abierto que lleve a develop (o cierra el PR duplicado de esa rama) y vuelve a correr la puerta";
-const OTHER_BASE = (/** @type {string} */ merge) => `${NOT_A_STACK}: si es una rama de tarea, no fusiones todavía y ${RETARGET}; si es una rama de staging o preview, ${merge}`;
-const OTHER_BASE_STOPPED = `${NOT_A_STACK}, así que la puerta no puede avanzar sola: no promuevas el candidato; ${RETARGET}`;
+const OTHER_BASE = (/** @type {string} */ merge) => `${NOT_A_STACK}: si es una rama de tarea, no fusiones todavía y ${RETARGET}; si es una rama de staging o preview, ${merge}; si aun así es la rama que despliega a producción, no fusiones y haz al dueño la única pregunta de producción`;
+const OTHER_BASE_STOPPED = `${NOT_A_STACK}, así que la puerta no puede avanzar sola: no promuevas el candidato; ${RETARGET}; si aun así es la rama que despliega a producción, súmalo a la única pregunta de producción`;
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
 /**
