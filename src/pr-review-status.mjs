@@ -55,7 +55,7 @@ import { codexThreads, roundsReservedAt, threadStates } from "./codex-threads.mj
 import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
 import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
-import { towardDevelop } from "./review-stack.mjs";
+import { productionBase, towardDevelop } from "./review-stack.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -554,11 +554,12 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
     prFiles,
   });
-  // Evidence is required of every PR that leads to develop, a stacked one included: when the PR below merges, GitHub
-  // retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and head,
-  // not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none here; its
-  // merge is the owner's production stop, which the gate's next action says.
-  const evidenceRequired = toDevelop;
+  // Evidence is required of every PR whose base is not positively production, so a stacked PR needs it, and so does one
+  // whose stack could not be resolved (a failed lookup, a base branch without an open PR): when the PR below merges,
+  // GitHub retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and
+  // head, not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none
+  // here; its merge is the owner's production stop, which the gate's next action says.
+  const evidenceRequired = !productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
   const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.

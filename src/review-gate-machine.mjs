@@ -116,16 +116,17 @@ export function gateStep(facts) {
 
 // Only a PR whose base does not lead to develop reaches this (2.13.0); its merge is the owner's production stop anyway.
 export const OWNER_DECIDES = "el PR no va a develop y la puerta no puede decidir sola: no promuevas el candidato; registra el bloqueo, sigue con trabajo independiente y súmalo a la única pregunta de producción";
-// A PR that does not lead to develop and passed every gate: its merge is production (stop 5), never the gate's order.
-const ASK_OWNER = (/** @type {string} */ merge) => `listo para producción, no fusiones todavía: haz al dueño la única pregunta de producción nombrando el PR, el head y qué llega a producción; solo con su respuesta explícita para ese paso, ${merge}`;
+// A PR that does not lead to develop and passed every gate: its merge is never the gate's order. Into a production
+// base it is the owner's production stop (stop 5); on a task branch without an open PR toward develop it is retargeted.
+const ASK_OWNER = (/** @type {string} */ merge) => `el PR no va a develop, no fusiones todavía: si su base es de producción, haz al dueño la única pregunta de producción nombrando el PR, el head y qué llega a producción, y solo con su respuesta explícita para ese paso ${merge}; si su base es una rama de tarea sin PR abierto hacia develop, reapúntalo y vuelve a correr la puerta`;
 const RETRY_READ = "GitHub no respondió completo: espera unos minutos y vuelve a correr pr-review-status; si persiste, reporta el bloqueo en tu avance y sigue con otro trabajo";
 
 /**
  * The siguiente text for a final step: always an action the agent takes; toward develop it never asks anyone.
  * @param {GateStep} step
- * @param {{toDevelop?: boolean, prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
+ * @param {{toDevelop: boolean, prKey: string, owner: string, repo: string, number: number, head: string, blockingIds: string[], exemptionHead?: string, recordsError?: string, uncovered?: string[], advanceNote?: string, open?: {id: string, paths: string[]}[], solNext: () => string}} info
  */
-export function gateNextAction(step, { toDevelop = true, prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
+export function gateNextAction(step, { toDevelop, prKey, owner, repo, number, head, blockingIds, exemptionHead, recordsError, uncovered = [], advanceNote = "", open = [], solNext }) {
   const short = head.slice(0, 12);
   // A recorded advance that does not count is said first, with its reason, so the agent records it again or runs the round.
   const stale = advanceNote ? `el avance registrado no cuenta (${advanceNote}). ` : "";

@@ -12,6 +12,14 @@ const MAX_STACK = 10;
 // Never a step of a stack, whatever open PR starts from them (a back-merge of main into develop has main as its head).
 const PRODUCTION = new Set(["main", "master", "production", "prod", "release"]);
 
+/**
+ * True only for a base that is positively production: one of the names above, or the repository's default branch when
+ * it is not develop. Behavioral evidence is skipped only there (its merge is the owner's production stop); a base the
+ * stack lookup could not resolve is not production, so it fails closed.
+ * @param {string} ref @param {string} [defaultBranch]
+ */
+export const productionBase = (ref, defaultBranch = "") => PRODUCTION.has(ref) || (ref !== "develop" && ref !== "" && ref === defaultBranch);
+
 /** @param {string[]} args */
 function ghApi(args) {
   return execFileSync("gh", args, { encoding: "utf8", maxBuffer: 32 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
@@ -30,7 +38,7 @@ export function towardDevelop({ owner, repo, baseRef, defaultBranch = "", gh = g
   let ref = baseRef;
   for (let depth = 0; depth <= MAX_STACK; depth += 1) {
     if (ref === "develop") return true;
-    if (!owner || !repo || !ref || seen.has(ref) || PRODUCTION.has(ref) || ref === defaultBranch) return false;
+    if (!owner || !repo || !ref || seen.has(ref) || productionBase(ref, defaultBranch)) return false;
     seen.add(ref);
     /** @type {any} */
     let pulls;
