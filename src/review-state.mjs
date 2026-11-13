@@ -15,6 +15,7 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
+import { productionBase } from "./review-stack.mjs";
 import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, hardReason, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
 export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
@@ -582,14 +583,15 @@ function verifyRedesign(value, cwd) {
 const numberOf = (key) => Number(key.slice(key.lastIndexOf("#") + 1));
 
 /**
- * Evidence comes before the first Sol round of a PR into develop: the reservation applies the evaluation the gate
- * uses, with its exceptions (a docs-only PR, the owner's waiver, a nonvisual receipt). Other bases are not asked.
+ * Evidence comes before the first round of every PR whose base is not positively production (develop, a stack, a
+ * task branch): the reservation applies the evaluation the gate uses, with its exceptions (a docs-only PR, the owner's
+ * waiver, a nonvisual receipt). A production base is not asked.
  * Returns "" or why the round does not start yet.
  * @param {string} home @param {Lineage} lineage
  */
 function evidenceBeforeFirstRound(home, lineage) {
   const pull = lineage.pull;
-  if (String(pull?.base?.ref ?? "") !== "develop") return "";
+  if (productionBase(String(pull?.base?.ref ?? ""), String(pull?.base?.repo?.default_branch ?? ""))) return "";
   if (readReviewRecords(home, lineage.key).some((record) => record.type === "round")) return "";
   const head = String(pull?.head?.sha ?? "");
   const api = `repos/${lineage.owner}/${lineage.repo}`;
