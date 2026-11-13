@@ -179,7 +179,7 @@ export function chainGap(rounds) {
  * (an empty list when the PR head is the round's head), and then every fix must be among them. A `settled` commit
  * (2.14.3: it leaves no net change, or only takes files out of the PR) is nobody's fix and needs no disposition; an
  * `undone` one (every file back as the round read it) fixes nothing, so a finding recorded as fixed there is not.
- * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean, settled?: boolean, undone?: boolean}[]}} input
+ * @param {{advance: AdvanceRecord, slot: number, open: {blockers: Finding[], critical: boolean}, dispositions: Map<string, {outcome: string, commit?: string}>, head: string, roundHead: string, commits?: {sha: string, baseMerge?: boolean, settled?: boolean, undone?: boolean, fixes?: string[]}[]}} input
  */
 export function advanceProblem({ advance, slot, open, dispositions, head, roundHead, commits: walked }) {
   const commits = walked ?? [];
@@ -200,8 +200,10 @@ export function advanceProblem({ advance, slot, open, dispositions, head, roundH
     const at = advance.head === roundHead ? commits.length : commits.findIndex((commit) => commit.sha === advance.head);
     if (at < 0 || commits.slice(0, at).some((commit) => !commit.baseMerge)) return `the advance was recorded for head ${advance.head.slice(0, 12)}, and the PR is now at ${head.slice(0, 12)} with more than clean base merges in between: record it again for the current head`;
   }
-  const unlisted = commits.filter((commit) => !commit.baseMerge && !commit.settled && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
-  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>, with --round <n> for a finding of an earlier round: the fix, or for a follow-up the commit that took the change out), then the advance again`;
+  // A commit that cites only Codex threads is accounted for in those threads' answers; `review dispose` takes round findings only.
+  const codexOnly = (/** @type {{fixes?: string[]}} */ commit) => Boolean(commit.fixes?.length) && /** @type {string[]} */ (commit.fixes).every((id) => id.startsWith("codex:"));
+  const unlisted = commits.filter((commit) => !commit.baseMerge && !commit.settled && !codexOnly(commit) && !advance.fixCommits.includes(commit.sha)).map((commit) => commit.sha.slice(0, 12));
+  if (unlisted.length) return `the advance does not list ${unlisted.join(", ")} among the commits nobody re-read: record each with its finding (development-system review dispose --finding <id> --commit <sha>, with --round <n> for a finding of an earlier round, and again when it was recorded before the round: the fix, or for a follow-up the commit that took the change out), then the advance again`;
   if (walked) {
     // A finding recorded as fixed in a commit the PR no longer has is not fixed in what would be merged.
     const present = new Set(commits.filter((commit) => !commit.undone).map((commit) => commit.sha));

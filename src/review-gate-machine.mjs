@@ -133,7 +133,7 @@ export function gateNextAction(step, { prKey, owner, repo, number, head, blockin
   switch (step) {
     case "codexFindings": return `contesta cada hilo de Codex pendiente (${blockingIds.slice(0, 5).join(", ")}${blockingIds.length > 5 ? ", …" : ""}): responde en el hilo citando el commit de este PR que lo arregla, o con «Rechazado: <razón>»; no hace falta resolver el hilo`;
     case "retryRead": return RETRY_READ;
-    case "outOfScope": return `saca a otro PR lo que no es arreglo citado ni merge limpio de la base${uncovered.length ? ` (${uncovered.slice(0, 5).join("; ")}${uncovered.length > 5 ? "; …" : ""})` : ""} y vuelve a correr la puerta. Un arreglo que ya subió sin su línea no se reescribe: añade después un commit vacío con «fixes: <id>» y «covers: <sha del arreglo>»`;
+    case "outOfScope": return `saca a otro PR lo que no es arreglo citado ni merge limpio de la base${uncovered.length ? ` (${uncovered.slice(0, 5).join("; ")}${uncovered.length > 5 ? "; …" : ""})` : ""} y vuelve a correr la puerta. Un arreglo que ya subió sin su línea no se reescribe: añade después un commit vacío con «fixes: <id>» (todos los ids de ese arreglo en el mismo commit) y «covers: <sha del arreglo>»`;
     case "awaitCodex": return `espera la revisión de Codex del head ${short}; vuelve a correr pr-review-status sin --request`;
     case "ownerDecides": return OWNER_DECIDES;
     case "requestCodex": return `pide la revisión de Codex del head ${short}: development-system pr-review-status ${prKey} --request`;

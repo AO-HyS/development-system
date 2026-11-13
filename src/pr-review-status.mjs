@@ -191,11 +191,14 @@ function cleanBaseMerge(base, entry, baseRef) {
  *                   work) or when the PR no longer changes it (`prChanged` does not list it: the change left the PR).
  *                   A commit made only of such files, an empty commit included, is covered without a `fixes:` line.
  *                   A commit whose every file the interval left as it was read is also marked `undone`: a finding
- *                   recorded as fixed there is not fixed (review-policy.mjs advanceProblem).
+ *                   recorded as fixed there is not fixed (review-policy.mjs advanceProblem). Best effort: it needs
+ *                   the net diff, and another change to the same file hides it; the revert then needs its own
+ *                   citation, so the only loss is a wrong "fixed" in the ledger.
  *   covers          a later commit of the interval lends its `fixes:` ids to an earlier one it names with
  *                   `covers: <sha>` (7 to 40 hex). Pushed history cannot be amended, so this repairs a fix that was
  *                   pushed without its line or with a wrong id; the lent ids replace the commit's own and the newest
- *                   `covers:` wins, so a mistyped repair is repaired by another.
+ *                   `covers:` that carries ids wins, so a mistyped repair is repaired by another. Ids are not joined
+ *                   across repair commits: one repair commit carries every id of the fix.
  *   record          a `fix-only` coverage record is no longer required: it was the coordinator's word about its own
  *                   commits and added nothing to the citation. An `out-of-scope` record for the head still vetoes.
  * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
@@ -243,8 +246,8 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
     const merge = cleanBaseMerge(base, detail, baseRef);
     if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
     if (merge.clean) {
-      // GitHub lists a merge's files against its first parent; an unlisted or partial list means "every file".
-      if (Array.isArray(detail.files) && detail.files.length < 300) for (const file of detail.files) { merged.add(String(file.filename)); if (file.previous_filename) merged.add(String(file.previous_filename)); }
+      // GitHub lists a merge's files against its first parent; an unlisted, empty or partial list means "every file".
+      if (Array.isArray(detail.files) && detail.files.length > 0 && detail.files.length < 300) for (const file of detail.files) { merged.add(String(file.filename)); if (file.previous_filename) merged.add(String(file.previous_filename)); }
       else net = null;
       commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
       baseMerges += 1;
@@ -255,7 +258,7 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
     // Newest first, so the latest `covers:` naming this commit wins.
     const borrowed = lent.find(([prefix]) => sha.startsWith(prefix))?.[1] ?? [];
     const fixes = borrowed.length ? borrowed : own;
-    for (const match of message.matchAll(/^covers:\s*(.+)$/gim)) for (const prefix of match[1].split(/[\s,]+/)) if (/^[0-9a-f]{7,40}$/.test(prefix)) lent.push([prefix, own]);
+    for (const match of message.matchAll(/^covers:\s*(.+)$/gim)) for (const prefix of match[1].split(/[\s,]+/)) if (own.length && /^[0-9a-f]{7,40}$/.test(prefix)) lent.push([prefix, own]);
     const files = detail.files;
     if (!Array.isArray(files) || files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
     const names = files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
