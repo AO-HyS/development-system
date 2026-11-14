@@ -49,6 +49,8 @@ export const reviewGateMachine = setup({
     codexCoverageUnreadable: ({ context }) => !context.codexOk && context.codexCoverage?.error === true,
     codexUncoveredToMain: ({ context }) => !context.toDevelop && !context.codexOk && context.codexCoverage !== null,
     codexInFlight: ({ context }) => !context.codexOk && (context.headState === "requested" || context.headState === "running"),
+    // 2.15.0: Codex may start on its own when the PR opens; before the first round the cases are recorded meanwhile, not waited on.
+    evidenceWhileCodexRuns: ({ context }) => !context.codexOk && !context.evidenceOk && context.solState === "missing" && (context.headState === "requested" || context.headState === "running"),
     codexSpentToMain: ({ context }) => !context.toDevelop && !context.codexOk && context.published >= context.budget,
     // Toward develop a spent Codex budget is not a stop: a Sol round that reads the head covers it.
     codexSpent: ({ context }) => !context.codexOk && context.published >= context.budget,
@@ -79,6 +81,7 @@ export const reviewGateMachine = setup({
         { guard: "blockingFindings", target: "codexFindings" },
         { guard: "codexCoverageUnreadable", target: "retryRead" },
         { guard: "codexUncoveredToMain", target: "outOfScope" },
+        { guard: "evidenceWhileCodexRuns", target: "recordEvidence" },
         { guard: "codexInFlight", target: "awaitCodex" },
         { guard: "codexSpentToMain", target: "ownerDecides" },
         { guard: "codexSpent", target: "sol" },
