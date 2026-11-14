@@ -138,7 +138,7 @@ export function recordReview({ home, pr, reviewer, observedModel, head, scope, r
       if (disposition?.outcome !== "fixed" || !disposition.commit) throw new Error(`--closes ${entry.id} needs its disposition as fixed (with the commit) or rejected; it is ${disposition?.outcome ?? "not recorded"}`);
       if (!containedIn(lineage, disposition.commit, head)) throw new Error(`--closes ${entry.id}: GitHub does not show its fix commit ${disposition.commit} in the history of the head this round read (${head}); the reviewer did not read that fix`);
       // A commit the round that found it already read fixes nothing new.
-      if (before && containedIn(lineage, disposition.commit, before.record.head)) throw new Error(`--closes ${entry.id}: its fix commit ${disposition.commit} is already part of the head the round that found it read (${before.record.head}), so it is not a fix made after that round: record the disposition again with the commit that fixes it`);
+      if (before && containedIn(lineage, disposition.commit, before.record.head)) throw new Error(`--closes ${entry.id}: its fix commit ${disposition.commit} is already part of the head the round that found it read (${before.record.head}), so it is not a fix made after that round: release this reservation (development-system review release --pr ${key} --reservation-id ${reservation.id} --reason <why>), record the disposition again with the commit that fixes it and run the confirmation on a new reservation`);
     }
     const closures = closes.map((id) => { const entry = /** @type {(typeof listed)[number]} */ (listed.find((candidate) => candidate.id === id)); return { round: entry.round, id, ...(entry.pr !== key ? { pr: entry.pr } : {}) }; });
     const classified = classifyFindings(parsed, reservation.slot, /** @type {RoundRecord["result"]} */ (result));
@@ -228,7 +228,7 @@ export function formatReviewRecord(result) {
 /** Human output for review reserve, approve, void and release. @param {any} result */
 export function formatReviewState(result) {
   const prefix = result.dryRun ? "Dry run (nothing written): " : "";
-  const lineage = result.lineage ? `Lineage ${result.lineage.id}: PRs ${result.lineage.prs.map((/** @type {number} */ n) => `#${n}`).join(", ")}; review slots used ${result.lineage.slotsUsed} (budget ${result.lineage.budget}, one more only to confirm a live critical fix).` : "";
+  const lineage = result.lineage ? `Lineage ${result.lineage.id}: PRs ${result.lineage.prs.map((/** @type {number} */ n) => `#${n}`).join(", ")}; review slots used ${result.lineage.slotsUsed} (budget ${result.lineage.budget}, ${result.lineage.budget > 1 ? "a PR into a production base" : "one more only to confirm a live critical fix"}).` : "";
   if (result.operation === "review-reserve") {
     const r = result.reservation;
     return [`${prefix}${result.reused ? "Reused" : "Reserved"} lineage slot ${r.slot} (${r.scope}) for ${r.pr}: reservation ${r.id}${r.approvalId ? `, approval ${r.approvalId}` : ""}${r.redesign ? `, redesign ${r.redesign}` : ""}.`, lineage, `Record: ${result.path}`].filter(Boolean).join("\n");

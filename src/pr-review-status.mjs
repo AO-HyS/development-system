@@ -52,7 +52,7 @@ import { readReviewRecords, requestLockPath, withFileLock } from "./review-recor
 import { lineageState, lineageSummary, resolveLineage } from "./review-state.mjs";
 import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
 import { codexThreads, roundsReservedAt, threadStates } from "./codex-threads.mjs";
-import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
+import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, isCritical, onlyProse, openFindings } from "./review-policy.mjs";
 import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
 import { productionBase, towardDevelop } from "./review-stack.mjs";
@@ -182,12 +182,25 @@ function cleanBaseMerge(base, entry, baseRef) {
   const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
   let written;
   let conflicts = false;
-  try { written = git(["merge-tree", "--write-tree", first, second]).split("\n")[0].trim(); } catch (error) {
+  try { written = git(["merge-tree", "--write-tree", "--name-only", first, second]).split("\n")[0].trim(); } catch (error) {
     const failed = /** @type {{status?: number, stdout?: string}} */ (error);
     if (failed.status !== 1) return { merge: true, clean: false, reason: unbuilt };
-    // With conflicts git still prints the tree of the automatic merge, conflict markers included.
+    // With conflicts git still prints the tree of the automatic merge, conflict markers included, then the
+    // conflicted paths up to the first empty line.
     conflicts = true;
-    written = String(failed.stdout ?? "").split("\n")[0].trim();
+    const printed = String(failed.stdout ?? "").split("\n");
+    written = printed[0].trim();
+    const end = printed.indexOf("", 1);
+    // A conflict git cannot mark in the file (one side deleted it, a binary, a submodule) leaves that file in the
+    // automatic tree as one side had it, so keeping it does not show as a change by hand: every conflicted path
+    // must itself be prose.
+    const listed = printed.slice(1, end < 0 ? printed.length : end);
+    const code = listed.filter((name) => !isNonFunctionalChange({ filename: name, status: "modified" }));
+    if (end < 0 || !listed.length || code.length) return { merge: true, clean: false, reason: `git merge-tree reports conflicts outside prose documentation (${code.slice(0, 5).join(", ") || "paths not listed"})` };
+    // git labels its markers with what was merged, so a commit that kept them differs from the automatic tree only in
+    // those labels and would read as a resolution in prose.
+    const marked = listed.filter((name) => { try { const text = git(["show", `${tree}:${name}`]); return /^<{7} /m.test(text) && /^>{7} /m.test(text); } catch { return false; } });
+    if (marked.length) return { merge: true, clean: false, reason: `the commit keeps conflict markers in ${marked.slice(0, 5).join(", ")}` };
   }
   if (written === tree) return conflicts ? { merge: true, clean: false, reason: "git merge-tree reports conflicts and the commit keeps them unresolved" } : { merge: true, clean: true };
   // What was changed by hand on top of the automatic merge.
@@ -195,7 +208,7 @@ function cleanBaseMerge(base, entry, baseRef) {
   let byHand;
   try {
     if (!/^[0-9a-f]{40}$/.test(written)) throw new Error("no tree");
-    byHand = git(["diff", "--name-status", "--no-renames", written, tree]).split("\n").filter(Boolean).map((line) => { const [status, ...name] = line.split("\t"); return { filename: name.join("\t"), status: status === "A" ? "added" : status === "D" ? "removed" : "modified" }; });
+    byHand = git(["diff", "--name-status", "--no-renames", "--ignore-submodules=none", written, tree]).split("\n").filter(Boolean).map((line) => { const [status, ...name] = line.split("\t"); return { filename: name.join("\t"), status: status === "A" ? "added" : status === "D" ? "removed" : "modified" }; });
   } catch { return { merge: true, clean: false, reason: unbuilt }; }
   if (byHand.length && byHand.every(isNonFunctionalChange)) return { merge: true, clean: true };
   const names = byHand.map((file) => file.filename).slice(0, 5).join(", ");
@@ -532,10 +545,11 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const stillOpen = lastRound ? openFindings(lastRound, lastSlot) : { blockers: [], critical: false };
   const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
   let advanceRefused = false;
-  // 2.15.0: a confirmation that closed a finding and found its fix broke something critical disputes that fix too, so
-  // the withdrawal takes the closed finding's files out with it; otherwise the defect would stay in the PR as closed.
-  const undoneClosures = lastRound && stillOpen.blockers.some((finding) => finding.origin === "fix-induced")
-    ? (lastRound.closes ?? []).filter((entry) => !entry.pr).flatMap((entry) => rounds.find((round) => round.round === entry.round)?.findings.find((finding) => finding.id === entry.id)?.paths ?? []) : [];
+  // 2.15.0: a confirmation that closed a finding by its fix and found that fix broke something critical disputes the
+  // fix too, so the withdrawal takes the closed finding's files out with it; otherwise the defect would stay in the PR
+  // as closed. A finding closed because its rejection held has no fix to dispute.
+  const undoneClosures = lastRound && stillOpen.blockers.some((finding) => finding.origin === "fix-induced" && isCritical(finding))
+    ? (lastRound.closes ?? []).filter((entry) => !entry.pr && dispositionsOf(records, entry.round).get(entry.id)?.outcome === "fixed").flatMap((entry) => rounds.find((round) => round.round === entry.round)?.findings.find((finding) => finding.id === entry.id)?.paths ?? []) : [];
   // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
   let advanceNote = "";
   /** @param {string} from @param {string} reason @param {boolean} covered @returns {Coverage} */
@@ -695,7 +709,7 @@ export function formatPrReviewStatus(result) {
   const lineage = result.lineage;
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);
   else {
-    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed} (budget ${lineage.budget}, one more only to confirm a live critical fix)${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
+    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed} (budget ${lineage.budget}, ${lineage.budget > SOL_BUDGET ? "a PR into a production base" : "one more only to confirm a live critical fix"})${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
     for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope}) of ${approval.pr}`);
     for (const reservation of lineage.pending) lines.push(`  - reserved, unrecorded: slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`);
   }

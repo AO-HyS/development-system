@@ -738,6 +738,9 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     const unsettled = () => {
       const listed = confirmationList(home, state);
       const open = listed.filter((entry) => entry.disposition?.outcome !== "fixed" && entry.disposition?.outcome !== "rejected");
+      // A commit the round that found the finding already read fixes nothing: said here, before the round runs.
+      const stale = last ? listed.filter((entry) => entry.disposition?.outcome === "fixed" && entry.disposition.commit && containedIn(lineage, entry.disposition.commit, last.record.head)) : [];
+      if (stale.length && last) return `${stale.map((entry) => entry.id).join(", ")} ${stale.length === 1 ? "is" : "are"} recorded as fixed in a commit that round ${last.record.round} of ${last.pr} already read (its head ${last.record.head} contains it): record the disposition again with the commit that fixes it (development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit>) before the confirmation round`;
       if (!open.length && listed.length && last) {
         const dispositions = dispositionsOf(readReviewRecords(home, last.pr), last.record.round);
         const loose = last.record.findings.filter((finding) => finding.exposure === "live" && !dispositions.has(finding.id)).map((finding) => finding.id);
