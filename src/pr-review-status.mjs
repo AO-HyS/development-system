@@ -61,8 +61,12 @@ import { productionBase, towardDevelop } from "./review-stack.mjs";
 // reports the bare login with __typename "Bot". A user account can never have either shape.
 const APP_LOGIN = "chatgpt-codex-connector";
 const REQUEST_MARKER = "ds-codex-review-request";
-const BUDGET = 2;
+// 2.15.0: Codex is asked once per PR (twice until 2.14.3); rows of PRs with more requests still read.
+const BUDGET = 1;
 const UNKNOWN_HOURS = 6;
+// 2.15.0: toward develop Codex cannot hold a PR. Measured over 52 requests of the three product repositories, every
+// answer arrived within 5 minutes; a request this old without a valid review reads `unknown`, even if a status says running.
+const DEVELOP_WAIT_MINUTES = 30;
 const MAX_COVERAGE_COMMITS = 20;
 // Only causes that end the request; a bare "error" is ambiguous and leaves it requested/unknown.
 const TERMINAL = /usage limit|quota|not enabled|no access|couldn['’]?t review|could not review|unable to review/i;
@@ -413,13 +417,16 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
         let state;
         if (validReview(sha)) state = "answered";
         else if (terminal) state = "failed-terminal";
+        else if (toDevelop && now - at > DEVELOP_WAIT_MINUTES * 60_000) state = "unknown";
         else if (sha && summaries.some((summary) => cites(sha, summary.sha) && RUNNING.test(summary.status))) state = "running";
         else if (now - at > UNKNOWN_HOURS * 3_600_000) state = "unknown";
         else state = "requested";
         return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
       });
     let headState = codexHeadState({ headReviewed, headRequest: published.filter((entry) => entry.sha === head).at(-1),
-      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status)), published });
+      // Toward develop a running status counts only while some request is younger than the wait.
+      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))
+        && !(toDevelop && published.length > 0 && published.every((entry) => now - Date.parse(entry.createdAt) > DEVELOP_WAIT_MINUTES * 60_000)), published });
     const last = published.at(-1);
     const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
     /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
@@ -431,14 +438,37 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     else state = "pending";
     return { reviews, published, headReviewed, headState, last, budgetSpent, state };
   };
+  const baseRef = String(pull.base?.ref ?? "");
+  // develop, or a stack of open PRs that ends in develop (2.14.3): the review runs and advances the same way, and behavioral
+  // evidence is required the same way.
+  const toDevelop = towardDevelop({ owner, repo, baseRef, defaultBranch: String(pull.base?.repo?.default_branch ?? "") });
+  const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  const evidenceReceipts = readReceipts(home, prKey);
+  const behavioralEvidence = evaluatePullEvidence({
+    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
+    // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
+    prFiles,
+  });
+  // Evidence is required of every PR whose base is not positively production, so a stacked PR needs it, and so does one
+  // whose stack could not be resolved (a failed lookup, a base branch without an open PR): when the PR below merges,
+  // GitHub retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and
+  // head, not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none
+  // here; its merge is the owner's production stop, which the gate's next action says.
+  // 2.15.0 (cases first): it is read before anything is asked of a reviewer, so no Codex request is posted and no
+  // round is reserved for a head whose cases have not run.
+  const production = productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
+  const evidenceRequired = !production;
+  const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   let requestStatus = "not-requested";
   /** @returns {string} */
   const decide = (/** @type {ReturnType<typeof observe>} */ view) => {
     if (view.headReviewed || view.budgetSpent) return `skipped-${view.state}`;
-    // Review budget: never post past two published requests.
+    // Review budget: never post past the published requests of the budget.
     if (view.published.length >= BUDGET) return "budget-exhausted";
     if (view.headState === "requested") return "already-requested-for-head";
     if (view.headState === "running") return "skipped-running";
+    // The cases run before anyone is asked to read: without accepted evidence for this head nothing is posted.
+    if (!evidenceOk) return "evidence-first";
     return "";
   };
   const view = !request ? observe() : withFileLock(requestLockPath(home, prKey), () => {
@@ -455,12 +485,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   }, { waitMs: REQUEST_LOCK_WAIT_MS });
   const { reviews, published, headReviewed, last, budgetSpent, state } = view;
   const headState = view.headState;
-  const baseRef = String(pull.base?.ref ?? "");
-  // develop, or a stack of open PRs that ends in develop (2.14.3): the review runs and advances the same way, and behavioral
-  // evidence is required the same way.
-  const toDevelop = towardDevelop({ owner, repo, baseRef, defaultBranch: String(pull.base?.repo?.default_branch ?? "") });
   const inFlight = headState === "requested" || headState === "running";
-  // Toward develop two spent requests stop being a stop even when the last one never answered: Sol covers them.
+  // Toward develop a spent request budget stops being a stop even when the last request never answered: the round covers it.
   const codexSpent = !headReviewed && published.length >= BUDGET && !inFlight && blockingIds.length === 0 && (toDevelop || last?.state === "answered");
   // Coverage after budget-spent admits only the threads the review of that head opened.
   const reviewedHead = budgetSpent && last ? last.sha : headReviewed ? head : "";
@@ -469,8 +495,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A later exemption replaces an earlier one; it counts only for the exact head it names.
   const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
   const lastRound = rounds.at(-1);
-  const solMax = rounds.length > SOL_BUDGET ? CRITICAL_LIMIT : SOL_BUDGET;
-  const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  const solMax = rounds.length > SOL_BUDGET ? Math.max(CRITICAL_LIMIT, rounds.length) : SOL_BUDGET;
   // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
   const lineageLast = lineage?.lastRound;
   const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
@@ -484,7 +509,10 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const verdict = (from, reason, covered) => ({ from, to: head, covered, error: false, filtersPass: covered, reason, commits: [] });
   // Every recorded round's findings are citable, not only the last round's: a fix-diff round does not repeat the
   // findings of the rounds before it.
-  const roundFindings = rounds.flatMap((round) => round.findings);
+  // 2.15.0: a finding a confirmation round closed is not citable any more: nothing reopens it, so a later commit
+  // about it is not a fix of this PR and goes to its own PR.
+  const closed = new Set(rounds.flatMap((round) => (round.closes ?? []).filter((entry) => !entry.pr).map((entry) => `${entry.round}#${entry.id}`)));
+  const roundFindings = rounds.flatMap((round) => round.findings.filter((finding) => !closed.has(`${round.round}#${finding.id}`)));
   const prChanged = prFiles === null ? null : new Set(prFiles.flatMap((file) => [file.filename, ...(file.previous_filename ? [file.previous_filename] : [])]));
   /** @param {string} from */
   const walk = (from) => coverage({ base, from, to: head, findings: roundFindings, peers: originUnknown ? [] : codexFindings, records, baseRef, prChanged });
@@ -548,20 +576,6 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A rejected critical Codex thread waits for Sol's read; only the owner's waiver stands in for it.
   const pendingCritical = rejectedNeedSol.length > 0 && !waiver;
   const reviewer = reviewerWith(pendingCritical);
-  const evidenceReceipts = readReceipts(home, prKey);
-  const behavioralEvidence = evaluatePullEvidence({
-    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
-    // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
-    prFiles,
-  });
-  // Evidence is required of every PR whose base is not positively production, so a stacked PR needs it, and so does one
-  // whose stack could not be resolved (a failed lookup, a base branch without an open PR): when the PR below merges,
-  // GitHub retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and
-  // head, not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none
-  // here; its merge is the owner's production stop, which the gate's next action says.
-  const production = productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
-  const evidenceRequired = !production;
-  const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
   const contradictory = solState === "invalid" || (!waiver && (codexCoverage?.error === true || solCoverage?.error === true));
@@ -643,12 +657,12 @@ export function formatPrReviewStatus(result) {
   };
   coverageLines("Codex", result.codexCoverage);
   const sol = result.solReview;
-  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : "Sol 6.1 High"}${result.reviewerReason ? `; ${result.reviewerReason}` : ""}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
+  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : "Sol 6.1 High"}${result.reviewerReason && sol.state !== "approved" ? `; ${result.reviewerReason}` : ""}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
   coverageLines("Review", sol.coverage);
   const lineage = result.lineage;
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);
   else {
-    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed}/${lineage.budget}${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
+    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed} (budget ${lineage.budget}, one more only to confirm a live critical fix)${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
     for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope}) of ${approval.pr}`);
     for (const reservation of lineage.pending) lines.push(`  - reserved, unrecorded: slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`);
   }

@@ -2,6 +2,9 @@
 // What happens to each review finding and the advance at the round cap (2.13.0, plan A2, A3 and A8).
 //   review dispose   one row per finding of a round: fixed (with its commit), rejected (with the reason) or follow-up
 //                    (with where it went). The ledger can then say how much of what a review finds ends in a change.
+//                    2.15.0: a live critical finding is fixed or rejected; follow-up only names the commit that took
+//                    the change out. Its disposition is frozen while the confirmation round is reserved and after a
+//                    round closed it: nothing reopens a closed finding.
 //   review advance   the `auto-advance` row: the last round of the cap (2 since 2.14.1) came back blocking with nothing
 //                    critical open, so no further round runs; or (`--withdrawn`) the last critical re-read (round 4)
 //                    still has a critical finding open and the disputed change left
@@ -9,8 +12,8 @@
 //                    PRs that end in develop (2.14.3, review-stack.mjs); the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
-import { advanceProblem, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
-import { SHA, append, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
+import { advanceProblem, liveCritical, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
+import { SHA, append, closedBy, dispositionsOf, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
 import { towardDevelop } from "./review-stack.mjs";
 
 /**
@@ -26,13 +29,7 @@ function appendChecked(home, key, file, record) {
   append(file, record);
 }
 
-/** The latest disposition of each finding of one round. @param {import("./review-state.mjs").ReviewRecord[]} records @param {number} round */
-export function dispositionsOf(records, round) {
-  /** @type {Map<string, DispositionRecord>} */
-  const latest = new Map();
-  for (const record of records) if (record.type === "disposition" && record.round === round) latest.set(record.finding, record);
-  return latest;
-}
+export { dispositionsOf };
 
 /**
  * Every commit a disposition recorded after one round names (the fix, or for a follow-up the commit that took the
@@ -57,18 +54,36 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
   if (!outcome || !OUTCOMES.includes(outcome)) throw new Error(`--outcome must be ${OUTCOMES.join(", ")}`);
   if (outcome === "fixed" ? !(commit && SHA.test(commit)) : !text(note)) throw new Error("--outcome fixed needs --commit <40-hex fix commit>; rejected and follow-up need --note <reason, or where the follow-up lives> (a follow-up whose change left the PR also names that commit with --commit)");
   if (commit !== undefined && !SHA.test(commit)) throw new Error("--commit must be a 40-hex SHA");
+  /** @param {import("./review-state.mjs").ReviewRecord[]} records */
+  const targetOf = (records) => {
+    const rounds = /** @type {RoundRecord[]} */ (records.filter((record) => record.type === "round"));
+    return round === undefined ? rounds.at(-1) : rounds.find((candidate) => candidate.round === Number(round));
+  };
+  // 2.15.0: a live critical finding is read with its lineage (frozen while its confirmation is reserved, closed for good once a round closed it).
+  const guarded = Boolean(targetOf(readReviewRecords(home, key)) && liveCritical(/** @type {RoundRecord} */ (targetOf(readReviewRecords(home, key)))).some((candidate) => candidate.id === finding));
   // A fix commit belongs to the PR; GitHub failures refuse.
-  if (commit) verifyHead(resolveLineage({ pr: key, home }), commit);
-  return withFileLock(`${file}.lock`, () => {
-    const rounds = /** @type {RoundRecord[]} */ (readReviewRecords(home, key).filter((record) => record.type === "round"));
-    const target = round === undefined ? rounds.at(-1) : rounds.find((candidate) => candidate.round === Number(round));
+  const lineage = commit || guarded ? resolveLineage({ pr: key, home }) : undefined;
+  if (commit && lineage) verifyHead(lineage, commit);
+  const work = () => {
+    const target = targetOf(readReviewRecords(home, key));
     if (!target) throw new Error(`${key} has no ${round === undefined ? "recorded review round" : `review round ${round}`}`);
     if (!target.findings.some((candidate) => candidate.id === finding)) throw new Error(`round ${target.round} of ${key} has no finding ${finding} (it has: ${target.findings.map((candidate) => candidate.id).join(", ") || "none"})`);
+    if (liveCritical(target).some((candidate) => candidate.id === finding)) {
+      if (!guarded || !lineage) throw new Error(`${key} changed while this disposition was being recorded: run it again`);
+      if (outcome === "follow-up" && !commit) throw new Error(`${finding} is a live critical finding: it is fixed (--outcome fixed --commit <fix commit>) or rejected with the reason, never left for later. --outcome follow-up applies only when the disputed change left the PR, and then names that commit with --commit`);
+      const state = lineageState(home, lineage);
+      const closure = closedBy(state, key, target.round, /** @type {string} */ (text(finding)));
+      if (closure) throw new Error(`round ${closure.round.round} of ${closure.pr} closed ${finding}: a closed finding is not reopened; a later change about it goes to its own PR`);
+      const waiting = state.pending[0];
+      if (waiting) throw new Error(`the confirmation round of this lineage is reserved (reservation ${waiting.id}, slot ${waiting.slot}) with ${finding} as it stands: record that round first, or release the reservation if the round never ran (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why>)`);
+    }
     /** @type {DispositionRecord} */
     const record = { type: "disposition", pr: key, round: target.round, finding: /** @type {string} */ (text(finding)), outcome: /** @type {DispositionRecord["outcome"]} */ (outcome), ...(commit ? { commit } : {}), ...(text(note) ? { note: text(note) } : {}), recordedAt: new Date().toISOString() };
     appendChecked(home, key, file, record);
     return { ok: true, operation: "review-dispose", path: file, record };
-  });
+  };
+  // Lineage lock first, then the PR lock (the order every writer uses).
+  return lineage && guarded ? withFileLock(`${lineage.file}.lock`, () => withFileLock(`${file}.lock`, work)) : withFileLock(`${file}.lock`, work);
 }
 
 /**

@@ -13,12 +13,14 @@
 // unexplained commits go to another PR (`review-policy.mjs` decides which). `ownerDecides` remains only for a PR
 // that does not lead to develop: into a production base the merge is the owner's anyway, and any other base is told
 // to retarget (2.14.3). Evidence is asked before the first Sol round (A9).
+// 2.15.0 (cases first): the cases run before anyone is asked to read. Toward develop the evidence of the head comes
+// before the Codex request and before every round, the confirmation included.
 // 2.14.3: a PR stacked on open PRs that end in develop counts as toward develop (review-stack.mjs).
 //
 // Reversal: the routing was a first-match if/else chain in pr-review-status.mjs until 2.10.0; restoring it and
 // removing src/vendor/xstate/ undoes the pilot. The Steward measures it weekly (plan v5 1.4 criteria).
 import { assign, createActor, setup } from "./vendor/xstate/xstate.esm.js";
-import { BUDGET, CRITICAL_LIMIT } from "./review-policy.mjs";
+import { CRITICAL_LIMIT } from "./review-policy.mjs";
 
 /**
  * @typedef {object} GateFacts
@@ -50,10 +52,12 @@ export const reviewGateMachine = setup({
     codexSpentToMain: ({ context }) => !context.toDevelop && !context.codexOk && context.published >= context.budget,
     // Toward develop a spent Codex budget is not a stop: a Sol round that reads the head covers it.
     codexSpent: ({ context }) => !context.codexOk && context.published >= context.budget,
+    // 2.15.0: no Codex request for a head whose cases have not run (evidenceOk is true when the base asks for none).
+    evidenceBeforeCodex: ({ context }) => !context.codexOk && !context.evidenceOk,
     codexMissing: ({ context }) => !context.codexOk,
     solInvalid: ({ context }) => context.solState === "invalid",
     solExemptionStale: ({ context }) => context.solState === "exemption-stale",
-    evidenceBeforeFirstRound: ({ context }) => context.solState === "missing" && !context.evidenceOk,
+    evidenceBeforeRound: ({ context }) => !context.evidenceOk && (context.solState === "missing" || context.solNext === "round"),
     solCoverageUnreadable: ({ context }) => context.solState === "not-covered" && context.solCoverageError,
     solRoundNext: ({ context }) => context.solNext === "round",
     solStopToMain: ({ context }) => !context.toDevelop && STOPS.includes(context.solNext),
@@ -78,6 +82,7 @@ export const reviewGateMachine = setup({
         { guard: "codexInFlight", target: "awaitCodex" },
         { guard: "codexSpentToMain", target: "ownerDecides" },
         { guard: "codexSpent", target: "sol" },
+        { guard: "evidenceBeforeCodex", target: "recordEvidence" },
         { guard: "codexMissing", target: "requestCodex" },
         { target: "sol" },
       ],
@@ -86,7 +91,7 @@ export const reviewGateMachine = setup({
       always: [
         { guard: "solInvalid", target: "solRecordsInvalid" },
         { guard: "solExemptionStale", target: "solExemptionStale" },
-        { guard: "evidenceBeforeFirstRound", target: "recordEvidence" },
+        { guard: "evidenceBeforeRound", target: "recordEvidence" },
         { guard: "solCoverageUnreadable", target: "retryRead" },
         { guard: "solRoundNext", target: "solRound" },
         { guard: "solStopToMain", target: "ownerDecides" },
@@ -146,6 +151,8 @@ export function gateNextAction(step, { toDevelop, production, stackBase = "", pr
   const ids = open.map((finding) => finding.id).join(", ") || "el hallazgo crítico";
   const paths = [...new Set(open.flatMap((finding) => finding.paths))].slice(0, 8).join(", ");
   const dispose = `development-system review dispose --pr ${prKey} --finding <id> --outcome fixed|rejected|follow-up [--commit <sha> | --note <razón>]`;
+  // Only rejected critical Codex threads are open and no round is left to read the rejection (2.15.0).
+  const codexOnly = open.length > 0 && open.every((finding) => finding.id.startsWith("codex:"));
   switch (step) {
     case "codexFindings": return `contesta cada hilo de Codex pendiente (${blockingIds.slice(0, 5).join(", ")}${blockingIds.length > 5 ? ", …" : ""}): responde en el hilo citando el commit de este PR que lo arregla, o con «Rechazado: <razón>»; no hace falta resolver el hilo`;
     case "retryRead": return RETRY_READ;
@@ -156,10 +163,12 @@ export function gateNextAction(step, { toDevelop, production, stackBase = "", pr
     case "solRecordsInvalid": return `registros de revisión inválidos${recordsError ? ` (${recordsError})` : ""}: mira las filas con development-system review lines --pr ${prKey}, anula la mala con development-system review void --pr ${prKey} --line-hash <sha256> --reason <causa> y vuelve a correr la puerta`;
     case "solExemptionStale": return `la exención de revisión es del head ${exemptionHead?.slice(0, 12)}, no del ${short}: si el PR sigue siendo docs-only o low-risk regístrala para este head (development-system review record --pr ${prKey} --reviewer sol --head ${head} --exempt <docs-only|low-risk> --reason <motivo>); si ya no lo es, anúlala con development-system review void y corre la ronda full`;
     case "solRound": return `${stale}${solNext()}`;
-    case "advance": return `${stale}avanza: van ${BUDGET} rondas y nada de lo abierto es crítico, así que no hay otra ronda. Arregla lo que encontró la última (${ids}) en commits que lleven la línea «fixes: <id>», registra cada hallazgo con ${dispose}, registra el avance con development-system review advance --pr ${prKey} --head <head final>, dilo en una línea en el hilo y en el PR («llegué a ${BUDGET} revisiones; arreglé lo último y avanzo sin otra ronda») y vuelve a correr la puerta`;
-    case "withdrawChange": return `${stale}retira el cambio disputado: van ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, en un commit que lleve la línea «fixes: <id>», déjalo como seguimiento nombrando ese commit (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda> --commit <el commit que lo sacó>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y vuelve a correr la puerta, que da la orden para el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${CRITICAL_LIMIT} rondas y sigue abierto ${ids}» y sigue con el trabajo independiente`;
+    case "advance": return `${stale}avanza: la revisión encontró ${ids} y nada de eso es crítico, así que no hay otra ronda. Cada hallazgo es un caso que faltaba: súmalo a la guía de verificación del área en este PR, arréglalo en commits que lleven la línea «fixes: <id>», vuelve a correr los casos, registra cada hallazgo con ${dispose}, registra el avance con development-system review advance --pr ${prKey} --head <head final>, dilo en una línea en el PR («arreglé lo que encontró la revisión y avanzo sin otra ronda») y vuelve a correr la puerta, que pide la evidencia del head final`;
+    case "withdrawChange": return codexOnly
+      ? `el rechazo de ${ids} (hilo crítico de Codex) no tiene ronda que lo lea: las rondas de este linaje ya se usaron. Arréglalo en esta misma tarea: sube a este PR el commit que lo corrige o que saca el cambio de ese archivo y contesta de nuevo en el hilo citando ese commit (decide la respuesta más nueva), luego vuelve a correr la puerta. Si no se puede aquí, no fusiones: di en tu siguiente avance «#${number} se queda fuera: ${ids} sigue abierto» y sigue el arreglo en su propio PR dentro de esta tarea, que no termina hasta fusionarlo`
+      : `${stale}retira el cambio disputado: se acabaron las rondas (${CRITICAL_LIMIT}) y sigue abierto ${ids}. Un hallazgo crítico no se deja para después: si el defecto ya está en develop, este PR solo retira su intento y el arreglo sigue en su propio PR desde develop dentro de esta misma tarea, que no termina hasta fusionarlo. Saca del PR el cambio completo${paths ? ` (${paths})` : ""}, en un commit que lleve la línea «fixes: <id>», déjalo como seguimiento nombrando ese commit (development-system review dispose --pr ${prKey} --finding <id> --outcome follow-up --note <dónde queda> --commit <el commit que lo sacó>), regístralo con development-system review advance --pr ${prKey} --head <head final> --withdrawn y vuelve a correr la puerta, que da la orden para el resto. Si no se puede separar, no fusiones: di en tu siguiente avance «#${number} se queda fuera: sigue abierto ${ids}» y sigue con el trabajo independiente`;
     case "holdPr": return `#${number} se queda fuera: el linaje gastó sus rondas sin una ronda válida. No fusiones; dilo en tu siguiente avance y sigue con el trabajo independiente`;
-    case "recordEvidence": return `graba la evidencia de comportamiento del head ${short} con development-system evidence record (va antes de la primera ronda de revisión y otra vez sobre el head final)`;
+    case "recordEvidence": return `corre cada caso de tu lista sobre el head ${short} y grábalos: development-system evidence record --pr ${prKey} --verified-sha ${head} --deployed-sha <sha servido> --environment <url> --tool quicke2e --run <run.json> --allowed pass|fail --denied pass|fail --effects pass|fail --case "<pass|fail>: <qué se probó> => <qué se observó>" (un --case por caso; un cambio sin pantalla: --exception nonvisual --reason <por qué> --checks <qué se corrió>, con sus --case). Va antes de pedir cualquier revisión, de Codex o de ronda, y otra vez sobre el head final; un caso que falla se arregla antes de pedirla`;
     case "runGate": return toDevelop ? `corre development-system pr-review-status ${prKey} --gate y fusiona con --match-head-commit ${head}${stacked}` : `corre development-system pr-review-status ${prKey} --gate; ${elsewhere(`fusiona con --match-head-commit ${head}`)}`;
     case "merge": return toDevelop ? `avanza: fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}${stacked}` : elsewhere(`fusiona con gh pr merge ${number} -R ${owner}/${repo} --match-head-commit ${head}`);
   }

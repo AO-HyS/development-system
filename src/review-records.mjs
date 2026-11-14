@@ -13,10 +13,10 @@
 // under an exclusive lock, so a hand-edited or racing file can never pass as approval. A record states what a reviewer
 // or the coordinator concluded; it never authorizes a merge by itself.
 import {
-  COVERAGE_ID, EXEMPTIONS, OBSERVED_MODEL, RESULTS, REVIEWERS, SCOPES, SHA, THREAD, VERDICTS,
-  append, classifyFindings, lineageState, lineageSummary, list, locate, parseFinding, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, slotOf, text, verifyHead, withFileLock,
+  COVERAGE_ID, EXEMPTIONS, FINDING_FORM, OBSERVED_MODEL, RESULTS, REVIEWERS, SCOPES, SHA, THREAD, VERDICTS,
+  append, classifyFindings, confirmationList, containedIn, lineageState, lineageSummary, list, locate, parseFinding, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, slotOf, text, verifyHead, withFileLock,
 } from "./review-state.mjs";
-import { admission } from "./review-policy.mjs";
+import { admission, isCritical } from "./review-policy.mjs";
 
 export { approveReview, classifyFindings, ledgerLines, parseFinding, readReviewRecords, releaseReservation, reserveReview, voidReviewLine, withFileLock } from "./review-state.mjs";
 
@@ -56,9 +56,12 @@ function appendChecked(home, key, file, record) {
  * Records one review round (Fable or Sol) against its reservation, or an exemption (Sol only) instead of any round.
  * Both reviewers share the lineage slots: a round binds its reservation by slot whoever ran it. `dryRun` runs the same
  * validation (GitHub reads included) and writes nothing: no record, no lock, no directory.
- * @param {{home: string, pr?: string, reviewer?: string, observedModel?: string, head?: string, scope?: string, result?: string, thread?: string, findings?: string[] | string, exempt?: string, reason?: string, operatorApproval?: string, from?: string, dryRun?: boolean}} options
+ * 2.15.0: every finding says live or latent, and that mark decides the result. When the round before left live
+ * critical findings open, this one is their confirmation: each is named in `closes` (its fix is in the head that was
+ * read, or its rejection stands) or repeated with the same id as a live critical finding; anything else is refused.
+ * @param {{home: string, pr?: string, reviewer?: string, observedModel?: string, head?: string, scope?: string, result?: string, thread?: string, findings?: string[] | string, closes?: string[], exempt?: string, reason?: string, operatorApproval?: string, from?: string, dryRun?: boolean}} options
  */
-export function recordReview({ home, pr, reviewer, observedModel, head, scope, result, thread, findings, exempt, reason, operatorApproval, from, dryRun = false }) {
+export function recordReview({ home, pr, reviewer, observedModel, head, scope, result, thread, findings, closes = [], exempt, reason, operatorApproval, from, dryRun = false }) {
   if (operatorApproval !== undefined) throw new Error(OPERATOR_APPROVAL_MOVED);
   const { key, file } = locate(home, pr);
   if (reviewer !== "sol" && reviewer !== "fable") throw new Error(`review record needs --reviewer ${REVIEWERS.join(" or --reviewer ")}`);
@@ -80,6 +83,10 @@ export function recordReview({ home, pr, reviewer, observedModel, head, scope, r
   const parsed = list(findings).map(parseFinding);
   const ids = parsed.map((finding) => finding.id);
   if (new Set(ids).size !== ids.length) throw new Error("finding ids must be unique");
+  const unmarked = parsed.filter((finding) => !finding.exposure).map((finding) => finding.id);
+  if (unmarked.length) throw new Error(`every finding says whether it is live (something reachable at this head can harm a user, their data, their money or a secret) or latent (nothing reaches it today): ${unmarked.join(", ")} ${unmarked.length === 1 ? "does" : "do"} not. Use ${FINDING_FORM}`);
+  if (new Set(closes).size !== closes.length) throw new Error("--closes ids must be unique");
+  if (closes.length && exempt !== undefined) throw new Error("--closes applies only to a review round");
   const lineage = resolveLineage({ pr: key, home });
   verifyHead(lineage, head);
   const recordedAt = new Date().toISOString();
@@ -117,12 +124,27 @@ export function recordReview({ home, pr, reviewer, observedModel, head, scope, r
     const previous = state.lastRound?.record.head;
     if (scope === "fix-diff" && previous && from !== undefined && from !== previous) throw new Error(`a fix-diff starts exactly at the head of the previous round (${previous}); --from ${from} would leave commits nobody read`);
     const start = scope === "fix-diff" ? from ?? previous : undefined;
+    // The confirmation: every live critical finding the last round left open is closed or repeated, nothing else.
+    const listed = confirmationList(home, state);
+    const strangers = closes.filter((id) => !listed.some((entry) => entry.id === id));
+    if (strangers.length) throw new Error(`--closes names ${strangers.join(", ")}, which ${strangers.length === 1 ? "is" : "are"} not among the live critical findings the last round left open (${listed.map((entry) => entry.id).join(", ") || "none"})`);
+    for (const entry of listed) {
+      const closed = closes.includes(entry.id);
+      const repeated = parsed.some((finding) => finding.id === entry.id && finding.exposure === "live" && isCritical(finding));
+      if (closed === repeated) throw new Error(closed ? `${entry.id} is both closed and repeated: say one` : `round ${entry.round} of ${entry.pr} left the live critical finding ${entry.id} open and this round does not account for it: pass --closes ${entry.id} when its fix or its rejection holds, or repeat it with the same id as a live critical finding (--finding "${entry.id}:<path>@prior/<domain>/live")`);
+      if (!closed) continue;
+      const disposition = entry.disposition;
+      if (disposition?.outcome === "rejected") continue;
+      if (disposition?.outcome !== "fixed" || !disposition.commit) throw new Error(`--closes ${entry.id} needs its disposition as fixed (with the commit) or rejected; it is ${disposition?.outcome ?? "not recorded"}`);
+      if (!containedIn(lineage, disposition.commit, head)) throw new Error(`--closes ${entry.id}: GitHub does not show its fix commit ${disposition.commit} in the history of the head this round read (${head}); the reviewer did not read that fix`);
+    }
+    const closures = closes.map((id) => { const entry = /** @type {(typeof listed)[number]} */ (listed.find((candidate) => candidate.id === id)); return { round: entry.round, id, ...(entry.pr !== key ? { pr: entry.pr } : {}) }; });
     const classified = classifyFindings(parsed, reservation.slot, /** @type {RoundRecord["result"]} */ (result));
     /** @type {RoundRecord} */
     const record = {
       type: "round", pr: key, reviewer: /** @type {RoundRecord["reviewer"]} */ (reviewer), round, head, scope: /** @type {RoundRecord["scope"]} */ (scope), result: classified.result, thread: /** @type {string} */ (text(thread)), findings: parsed, recordedAt,
       ...(reservation.slot !== round ? { slot: reservation.slot } : {}), ...(start ? { from: start } : {}), ...(reservation.approvalId ? { approvalId: reservation.approvalId } : {}),
-      ...(reviewer === "fable" && observedModel !== undefined ? { observedModel } : {}),
+      ...(reviewer === "fable" && observedModel !== undefined ? { observedModel } : {}), ...(closures.length ? { closes: closures } : {}),
     };
     if (slotOf(record) !== reservation.slot) throw new Error(`refusing to record: slot ${slotOf(record)} does not match reservation slot ${reservation.slot}`);
     if (dryRun) {
@@ -190,10 +212,11 @@ export function formatReviewRecord(result) {
   if (record.type === "waiver") return `${record.pr}: owner stopped reviews at head ${short(record.head)}: «${record.quote}».\nRecord: ${result.path}`;
   if (record.type === "exemption") return `${prefix}${record.pr}: Sol exempt (${record.exempt}) at head ${short(record.head)}: ${record.reason}.\nRecord: ${result.path}`;
   if (record.type === "round") {
-    const findings = record.findings.map((finding) => `- ${finding.id}: ${finding.paths.join(", ")}${finding.origin ? ` (${finding.origin}${finding.critical ? `/${finding.critical}` : ""})` : ""}`);
+    const findings = record.findings.map((finding) => `- ${finding.id}: ${finding.paths.join(", ")}${finding.origin ? ` (${finding.origin}${finding.critical ? `/${finding.critical}` : ""}${finding.exposure ? `/${finding.exposure}` : ""})` : ""}`);
     const lines = [`${prefix}${record.pr}: ${record.reviewer === "fable" ? "Fable" : "Sol"} round ${record.round}${result.slot !== undefined ? ` (lineage slot ${result.slot})` : ""} (${record.scope}, ${record.result}${record.observedModel ? `, model ${record.observedModel}` : ""}) at head ${short(record.head)}, thread ${record.thread}, ${record.findings.length} finding(s).`, ...findings];
-    if (result.requestedResult) lines.push(`Result ${result.requestedResult} becomes ${record.result} from the findings' origin.`);
-    if (result.followUps?.length) lines.push(`Follow-ups (new, non-critical; not blocking): ${result.followUps.join(", ")}.`);
+    if (record.closes?.length) lines.push(`Closes: ${record.closes.map((entry) => `${entry.id} (round ${entry.round}${entry.pr ? ` of ${entry.pr}` : ""})`).join(", ")}.`);
+    if (result.requestedResult) lines.push(`Result ${result.requestedResult} becomes ${record.result} from what the findings say.`);
+    if (result.followUps?.length) lines.push(`Notes (not blocking): ${result.followUps.join(", ")}.`);
     lines.push(`Record: ${result.path}`);
     return lines.join("\n");
   }
@@ -203,7 +226,7 @@ export function formatReviewRecord(result) {
 /** Human output for review reserve, approve, void and release. @param {any} result */
 export function formatReviewState(result) {
   const prefix = result.dryRun ? "Dry run (nothing written): " : "";
-  const lineage = result.lineage ? `Lineage ${result.lineage.id}: PRs ${result.lineage.prs.map((/** @type {number} */ n) => `#${n}`).join(", ")}; review slots used ${result.lineage.slotsUsed}/${result.lineage.budget}.` : "";
+  const lineage = result.lineage ? `Lineage ${result.lineage.id}: PRs ${result.lineage.prs.map((/** @type {number} */ n) => `#${n}`).join(", ")}; review slots used ${result.lineage.slotsUsed} (budget ${result.lineage.budget}, one more only to confirm a live critical fix).` : "";
   if (result.operation === "review-reserve") {
     const r = result.reservation;
     return [`${prefix}${result.reused ? "Reused" : "Reserved"} lineage slot ${r.slot} (${r.scope}) for ${r.pr}: reservation ${r.id}${r.approvalId ? `, approval ${r.approvalId}` : ""}${r.redesign ? `, redesign ${r.redesign}` : ""}.`, lineage, `Record: ${result.path}`].filter(Boolean).join("\n");

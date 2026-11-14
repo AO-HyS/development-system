@@ -42,15 +42,15 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Configuración vigente (2.14.3)
+## Configuración vigente (2.15.0)
 
-La fuente generada de verdad es `artifacts/2.14.3/model-routing.md`; la página
+La fuente generada de verdad es `artifacts/2.15.0/model-routing.md`; la página
 `docs/model-routing.md` la resume. El modelo elegido al iniciar la conversación
 sigue siendo el orquestador y conserva la coordinación, la integración y las
 correcciones.
 
 - Sol 6.1 High revisa los PR terminados y los planes por codex-review, y hace el cross review que pida el operador.
-- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura solo la seguridad y las revisiones difíciles; la puerta le ordena una ronda cuando hay un hallazgo crítico abierto o dos rondas no cerraron la revisión.
+- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura solo la seguridad y las revisiones difíciles; la puerta le ordena la ronda de confirmación cuando hay un hallazgo crítico vivo.
 - Opus 5.5 planifica, implementa lo difícil y la interfaz, y hace la crítica visual independiente.
 - Sonnet 5.5 ejecuta trabajo general acotado.
 - Haiku 5.5 Medium (`claude-haiku-5-5`) explora y mapea código en solo lectura, y escribe lo exacto y mecánico.
@@ -63,6 +63,8 @@ tras integrar su resultado, y antes del primer `delegate_task` se lee
 guard de Claude orienta al padre con una frase, sin bloquear: tras diez
 lecturas seguidas sin explorador, al lanzar solo un segundo escritor seguido,
 desde la segunda petición de secreto de la sesión, al lanzar un escritor Opus
-sin `Opus reason:`, en el ayudante 21 y en el tercer PR de la sesión. Las
-revisiones son dos rondas por línea de rama y dos más solo si hay un hallazgo
-crítico.
+sin `Opus reason:`, en el ayudante 21 y en el tercer PR de la sesión. Desde
+2.15.0 los casos van primero: el hilo lista sus casos, los corre y los graba
+(`evidence record --case`) antes de pedir cualquier revisión; un revisor lee
+una vez buscando el caso que falta; solo bloquea un hallazgo vivo, y uno
+crítico se arregla en la misma tarea y se confirma en una ronda más.
