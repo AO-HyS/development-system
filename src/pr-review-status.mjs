@@ -47,7 +47,7 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, isNonFunctionalChange, readReceipts, writeMergeGate } from "./evidence.mjs";
 import { readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
 import { lineageState, lineageSummary, resolveLineage } from "./review-state.mjs";
 import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
@@ -64,8 +64,13 @@ const REQUEST_MARKER = "ds-codex-review-request";
 // 2.15.0: Codex is asked once per PR (twice until 2.14.3); rows of PRs with more requests still read.
 const BUDGET = 1;
 const UNKNOWN_HOURS = 6;
-/** The area's verification guide (2.15.0): a Markdown file with a path segment that contains `verif`. */
-const VERIFICATION_GUIDE = /(^|\/)[^/]*verif[^/]*(\/[^/]+)*\.mdx?$/i;
+/**
+ * The area's verification guide (2.15.0), prose only: a `.md` under `docs/` with a path segment that contains
+ * `verif`, or the `SKILL.md` of a `verify-*` skill directory. Never an instruction file.
+ */
+const VERIFICATION_GUIDE = /^(docs\/([^/]+\/)*[^/]*verif[^/]*(\/[^/]+)*\.md|([^/]+\/)*verify-[^/]+\/SKILL\.md)$/i;
+/** @param {string} name */
+const verificationGuide = (name) => VERIFICATION_GUIDE.test(name) && !/(^|\/)(AGENTS|CLAUDE)\.md$/i.test(name);
 // 2.15.0: toward develop Codex cannot hold a PR. Measured over 52 requests of the three product repositories, every
 // answer arrived within 5 minutes; a request this old without a valid review reads `unknown`, even if a status says running.
 const DEVELOP_WAIT_MINUTES = 30;
@@ -155,7 +160,10 @@ function ancestorOrEqual(base, ancestor, descendant) {
 /**
  * Whether one first-parent commit (GitHub commit detail) is a clean merge of the base branch: exactly 2 parents, the second an ancestor-or-equal
  * of `baseRef` (GitHub compare), and `git merge-tree --write-tree p1 p2` in the local checkout yields the commit's
- * tree. Missing local objects or another repository leave it unproven, with the reason.
+ * tree. 2.15.0: it also counts when what was changed by hand on top of that automatic merge (a conflict that was
+ * resolved, or an edit made in the merge) is only prose documentation, the same files that stay covered on their
+ * own after the last round: two PRs that both edit docs/current-work.md conflict there every day. Missing local
+ * objects or another repository leave it unproven, with the reason.
  * @param {string} base @param {any} entry a commit as GitHub's commits API reports it @param {string} baseRef
  * @returns {{merge: boolean, clean?: boolean, error?: boolean, reason?: string}}
  */
@@ -169,15 +177,29 @@ function cleanBaseMerge(base, entry, baseRef) {
   try {
     if (!ancestorOrEqual(base, second, baseRef)) return { merge: true, clean: false, reason: `its second parent ${second.slice(0, 12)} is not in ${baseRef}` };
   } catch { return { merge: true, clean: false, error: true, reason: `GitHub could not compare ${second.slice(0, 12)} with ${baseRef}` }; }
+  const unbuilt = "the local checkout cannot rebuild the merge (missing objects or another repository: run from the PR's checkout after git fetch)";
+  /** @param {string[]} args */
+  const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
   let written;
-  try {
-    written = execFileSync("git", ["merge-tree", "--write-tree", first, second], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 }).split("\n")[0].trim();
-  } catch (error) {
-    const status = /** @type {{status?: number}} */ (error).status;
-    return { merge: true, clean: false, reason: status === 1 ? "git merge-tree reports conflicts" : "the local checkout cannot rebuild the merge (missing objects or another repository: run from the PR's checkout after git fetch)" };
+  let conflicts = false;
+  try { written = git(["merge-tree", "--write-tree", first, second]).split("\n")[0].trim(); } catch (error) {
+    const failed = /** @type {{status?: number, stdout?: string}} */ (error);
+    if (failed.status !== 1) return { merge: true, clean: false, reason: unbuilt };
+    // With conflicts git still prints the tree of the automatic merge, conflict markers included.
+    conflicts = true;
+    written = String(failed.stdout ?? "").split("\n")[0].trim();
   }
-  if (written !== tree) return { merge: true, clean: false, reason: `its tree ${tree.slice(0, 12)} differs from the clean merge ${written.slice(0, 12)}` };
-  return { merge: true, clean: true };
+  if (written === tree) return conflicts ? { merge: true, clean: false, reason: "git merge-tree reports conflicts and the commit keeps them unresolved" } : { merge: true, clean: true };
+  // What was changed by hand on top of the automatic merge.
+  /** @type {{filename: string, status: string}[]} */
+  let byHand;
+  try {
+    if (!/^[0-9a-f]{40}$/.test(written)) throw new Error("no tree");
+    byHand = git(["diff", "--name-status", "--no-renames", written, tree]).split("\n").filter(Boolean).map((line) => { const [status, ...name] = line.split("\t"); return { filename: name.join("\t"), status: status === "A" ? "added" : status === "D" ? "removed" : "modified" }; });
+  } catch { return { merge: true, clean: false, reason: unbuilt }; }
+  if (byHand.length && byHand.every(isNonFunctionalChange)) return { merge: true, clean: true };
+  const names = byHand.map((file) => file.filename).slice(0, 5).join(", ");
+  return { merge: true, clean: false, reason: conflicts ? `git merge-tree reports conflicts, and their resolution changes more than prose documentation (${names})` : `its tree ${tree.slice(0, 12)} differs from the clean merge ${written.slice(0, 12)} in more than prose documentation (${names})` };
 }
 
 /**
@@ -283,7 +305,7 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
     const pending = commit.files.filter((name) => !settled(name));
     const allowed = new Set(commit.fixes.flatMap((id) => known.get(id) ?? []));
     const unknown = commit.fixes.filter((id) => !known.has(id));
-    const outside = pending.filter((name) => !allowed.has(name) && !VERIFICATION_GUIDE.test(name));
+    const outside = pending.filter((name) => !allowed.has(name) && !verificationGuide(name));
     if (pending.length === 0) commit.settled = true;
     if (commit.files.length > 0 && commit.files.every(untouched)) commit.undone = true;
     if (pending.length === 0) { /* nothing left to read: no citation needed */ }
@@ -501,7 +523,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A later exemption replaces an earlier one; it counts only for the exact head it names.
   const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
   const lastRound = rounds.at(-1);
-  const solMax = rounds.length > SOL_BUDGET ? Math.max(CRITICAL_LIMIT, rounds.length) : SOL_BUDGET;
+  const solBudget = lineage?.budget ?? SOL_BUDGET;
+  const solMax = rounds.length > solBudget ? Math.max(CRITICAL_LIMIT, rounds.length) : solBudget;
   // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
   const lineageLast = lineage?.lastRound;
   const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
@@ -509,6 +532,10 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const stillOpen = lastRound ? openFindings(lastRound, lastSlot) : { blockers: [], critical: false };
   const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
   let advanceRefused = false;
+  // 2.15.0: a confirmation that closed a finding and found its fix broke something critical disputes that fix too, so
+  // the withdrawal takes the closed finding's files out with it; otherwise the defect would stay in the PR as closed.
+  const undoneClosures = lastRound && stillOpen.blockers.some((finding) => finding.origin === "fix-induced")
+    ? (lastRound.closes ?? []).filter((entry) => !entry.pr).flatMap((entry) => rounds.find((round) => round.round === entry.round)?.findings.find((finding) => finding.id === entry.id)?.paths ?? []) : [];
   // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
   let advanceNote = "";
   /** @param {string} from @param {string} reason @param {boolean} covered @returns {Coverage} */
@@ -546,7 +573,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
       // recorded for another head, or a fix in a commit the PR no longer has, does not count.
       advanceNote = advanceProblem({ ...judged, head: advance.head });
       if (!advanceNote && (after === null || (!after.error && after.filtersPass))) advanceNote = advanceProblem({ ...judged, head, commits: after?.commits ?? [] });
-      const kept = advance.kind === "withdrawn" ? stillOpen.blockers.flatMap((finding) => finding.paths).filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
+      const kept = advance.kind === "withdrawn" ? [...stillOpen.blockers.flatMap((finding) => finding.paths), ...undoneClosures].filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
       if (advanceNote) solCoverage = null;
       else if (after?.error) solCoverage = after;
       else if ((after === null || after.filtersPass) && kept.length === 0) solState = "advanced";
@@ -607,7 +634,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
   const siguiente = gateNextAction(step, { toDevelop, production, stackBase: toDevelop && baseRef !== "develop" ? baseRef : "", prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
-    open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
+    open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))], alsoOut: undoneClosures,
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
     ok,

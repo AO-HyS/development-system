@@ -42,7 +42,7 @@ async function reviewBrief({ home, pr }) {
   const cases = accepted ? readReceipts(home, status.pr).find((entry) => entry.path === evidence.receipt)?.receipt.cases ?? [] : [];
   const listed = scope === "fix-diff" ? confirmationList(home, lineageState(home, resolveLineage({ pr: status.pr, home }))) : [];
   const brief = reviewerBrief({
-    prKey: status.pr, head: status.head, scope, from: scope === "fix-diff" ? last?.head : undefined, slot,
+    prKey: status.pr, head: status.head, scope, from: scope === "fix-diff" ? last?.head : undefined, slot, budget: lineage.budget,
     receipt: accepted ? evidence.receipt : undefined, cases, listed,
     rejected: status.codexThreads.filter((thread) => thread.state === "rejected-needs-sol"),
     hard: status.reviewer === "fable" ? status.reviewerReason : "",

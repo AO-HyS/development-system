@@ -20,12 +20,16 @@
 //   one round    BUDGET is 1: a blocking round with nothing critical open advances after its fixes. CRITICAL_LIMIT
 //                is 2: a live critical finding gets one confirmation round that closes it or repeats it; repeated,
 //                the disputed change leaves the PR. Rows written under the caps of two and four stay valid.
+//   production   a PR into a production base (a release) keeps two rounds: it cannot advance on its own, so after a
+//                blocking round, or when its base branch brought more commits, a second read is its only way back.
 import { isNonFunctionalChange } from "./evidence.mjs";
 
 /** Review rounds a branch lineage runs on its own, whichever reviewer runs them. */
 export const BUDGET = 1;
 /** Round 2 exists only to confirm the fix of a critical finding (rounds 3 and 4 until 2.14.3). */
 export const CRITICAL_LIMIT = 2;
+/** Rounds of a PR into a production base: it never advances without a read, so it keeps the second one. */
+export const PRODUCTION_BUDGET = 2;
 /** What a finding of a 2.15.0 round says about its reach at the head that was read. */
 export const EXPOSURES = ["live", "latent"];
 /** Last slot of the ordinary reading. Not BUDGET: a recorded round keeps its reading when caps move. */
@@ -54,12 +58,11 @@ export const FABLE_UNAVAILABLE_MS = 7 * 24 * 60 * 60 * 1000;
 /**
  * Why the next round of a lineage is hard, first match wins, or "" for a normal round (owner decision of 2026-11-12:
  * Fable reviews only security work and hard reviews). The gate computes it; nobody is asked.
- * @param {{critical?: boolean, rejected?: boolean, nextSlot: number}} input
+ * @param {{critical?: boolean, rejected?: boolean}} input
  */
-export function hardReason({ critical = false, rejected = false, nextSlot }) {
+export function hardReason({ critical = false, rejected = false }) {
   if (critical) return "hallazgo crítico abierto";
-  if (rejected) return "rechazo de un hilo crítico de Codex";
-  return nextSlot >= 3 ? "dos rondas no cerraron la revisión" : "";
+  return rejected ? "rechazo de un hilo crítico de Codex" : "";
 }
 
 /**
@@ -142,40 +145,40 @@ export function liveCritical(round) {
  *   hold      the lineage spent its rounds without one valid read: the PR stays out
  *   none      the last round is clean and nothing arrived after it
  * `pendingCritical` is a rejected critical Codex thread no review round has read yet; `moved` says commits arrived after
- * the last round that coverage does not explain.
- * @param {{nextSlot: number, last?: {result: string, critical: boolean}, moved?: boolean, pendingCritical?: boolean}} input
+ * the last round that coverage does not explain; `budget` is PRODUCTION_BUDGET for a PR into a production base.
+ * @param {{nextSlot: number, last?: {result: string, critical: boolean}, moved?: boolean, pendingCritical?: boolean, budget?: number}} input
  * @returns {{action: NextAction, scope?: "full" | "fix-diff", critical?: boolean}}
  */
-export function nextReview({ nextSlot, last, moved = false, pendingCritical = false }) {
+export function nextReview({ nextSlot, last, moved = false, pendingCritical = false, budget = BUDGET }) {
   if (nextSlot === 1) return { action: "round", scope: "full" };
   // A lineage whose only round was annulled gets one more full read (as it did when the budget was two), then holds.
   if (!last) return nextSlot <= CRITICAL_LIMIT ? { action: "round", scope: "full" } : { action: "hold" };
   const critical = pendingCritical || (last.result === "blocking" && last.critical);
   if (last.result === "blocking" || pendingCritical) {
-    if (nextSlot <= BUDGET) return { action: "round", scope: "fix-diff" };
+    if (nextSlot <= budget) return { action: "round", scope: "fix-diff" };
     if (!critical) return { action: "advance" };
     return nextSlot <= CRITICAL_LIMIT ? { action: "round", scope: "fix-diff", critical: true } : { action: "withdraw" };
   }
   if (!moved) return { action: "none" };
-  return nextSlot <= BUDGET ? { action: "round", scope: "fix-diff" } : { action: "split" };
+  return nextSlot <= budget ? { action: "round", scope: "fix-diff" } : { action: "split" };
 }
 
 /**
  * Why a reservation for `slot` is refused, or "" when the policy admits it. An unused owner approval recorded for the
  * slot (2.9.0 rows still read) admits a round the policy would not run only inside the cap; it never opens a round
  * past the caps.
- * @param {{slot: number, scope: string, last?: {result: string, critical: boolean, head: string}, head: string, approved?: boolean, pendingCritical?: boolean}} input
+ * @param {{slot: number, scope: string, last?: {result: string, critical: boolean, head: string}, head: string, approved?: boolean, pendingCritical?: boolean, budget?: number}} input
  */
-export function admission({ slot, scope, last, head, approved = false, pendingCritical = false }) {
+export function admission({ slot, scope, last, head, approved = false, pendingCritical = false, budget = BUDGET }) {
   if (slot === 1) return scope === "full" ? "" : "the first review round of a lineage must be --scope full";
-  if (approved && slot <= BUDGET) return "";
-  const next = nextReview({ nextSlot: slot, last, moved: Boolean(last) && last?.head !== head, pendingCritical });
+  if (approved && slot <= budget) return "";
+  const next = nextReview({ nextSlot: slot, last, moved: Boolean(last) && last?.head !== head, pendingCritical, budget });
   if (next.action === "round") return "";
   const gate = "run development-system pr-review-status <pr> --gate and do what it says";
   if (next.action === "none") return `the last review round is clean and the head has not moved since: no other round runs; ${gate}`;
-  if (next.action === "advance") return `the lineage used its review budget (${BUDGET}) and nothing open is critical: no round ${slot} runs; ${gate} (it advances without another round)`;
+  if (next.action === "advance") return `the lineage used its review budget (${budget}) and nothing open is critical: no round ${slot} runs; ${gate} (it advances without another round)`;
   if (next.action === "withdraw") return `the lineage reached ${CRITICAL_LIMIT} rounds with a critical finding still open: no round ${slot} runs; ${gate} (the disputed change leaves the PR)`;
-  if (next.action === "split") return `the lineage used its review budget (${BUDGET}): commits that are not a cited fix or a clean base merge go to another PR; ${gate}`;
+  if (next.action === "split") return `the lineage used its review budget (${budget}): commits that are not a cited fix or a clean base merge go to another PR; ${gate}`;
   return `the lineage spent its rounds without a valid recorded round: the PR stays unmerged; ${gate}`;
 }
 

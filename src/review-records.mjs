@@ -14,7 +14,7 @@
 // or the coordinator concluded; it never authorizes a merge by itself.
 import {
   COVERAGE_ID, EXEMPTIONS, FINDING_FORM, OBSERVED_MODEL, RESULTS, REVIEWERS, SCOPES, SHA, THREAD, VERDICTS,
-  append, classifyFindings, confirmationList, containedIn, lineageState, lineageSummary, list, locate, parseFinding, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, slotOf, text, verifyHead, withFileLock,
+  append, classifyFindings, confirmationList, containedIn, lineageState, lineageSummary, list, locate, parseFinding, readReviewRecords, recordProblem, resolveLineage, roundBudget, sequenceProblem, slotOf, text, verifyHead, withFileLock,
 } from "./review-state.mjs";
 import { admission, isCritical } from "./review-policy.mjs";
 
@@ -116,7 +116,7 @@ export function recordReview({ home, pr, reviewer, observedModel, head, scope, r
     if (reservation.scope !== scope) throw new Error(`the reservation for slot ${reservation.slot} (${reservation.id}) is --scope ${reservation.scope}, not ${scope}`);
     // The policy is asked again for the head that was read: a reservation carries no authority of its own.
     const before = state.lastRound;
-    const refusal = admission({ slot: reservation.slot, scope, last: before && { result: before.record.result, critical: before.critical, head: before.record.head }, head, approved: Boolean(reservation.approvalId), pendingCritical: Boolean(reservation.criticalThread) });
+    const refusal = admission({ slot: reservation.slot, scope, last: before && { result: before.record.result, critical: before.critical, head: before.record.head }, head, approved: Boolean(reservation.approvalId), pendingCritical: Boolean(reservation.criticalThread), budget: roundBudget(lineage) });
     if (refusal) throw new Error(`reservation ${reservation.id} (slot ${reservation.slot}) is not a round the policy runs: ${refusal}. Release it with development-system review release --pr ${key} --reservation-id ${reservation.id} --reason <why>`);
     const rounds = /** @type {RoundRecord[]} */ (existing.filter((record) => record.type === "round"));
     const round = rounds.length + 1;
@@ -137,6 +137,8 @@ export function recordReview({ home, pr, reviewer, observedModel, head, scope, r
       if (disposition?.outcome === "rejected") continue;
       if (disposition?.outcome !== "fixed" || !disposition.commit) throw new Error(`--closes ${entry.id} needs its disposition as fixed (with the commit) or rejected; it is ${disposition?.outcome ?? "not recorded"}`);
       if (!containedIn(lineage, disposition.commit, head)) throw new Error(`--closes ${entry.id}: GitHub does not show its fix commit ${disposition.commit} in the history of the head this round read (${head}); the reviewer did not read that fix`);
+      // A commit the round that found it already read fixes nothing new.
+      if (before && containedIn(lineage, disposition.commit, before.record.head)) throw new Error(`--closes ${entry.id}: its fix commit ${disposition.commit} is already part of the head the round that found it read (${before.record.head}), so it is not a fix made after that round: record the disposition again with the commit that fixes it`);
     }
     const closures = closes.map((id) => { const entry = /** @type {(typeof listed)[number]} */ (listed.find((candidate) => candidate.id === id)); return { round: entry.round, id, ...(entry.pr !== key ? { pr: entry.pr } : {}) }; });
     const classified = classifyFindings(parsed, reservation.slot, /** @type {RoundRecord["result"]} */ (result));

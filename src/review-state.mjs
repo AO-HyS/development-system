@@ -16,7 +16,7 @@ import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
 import { productionBase } from "./review-stack.mjs";
-import { BUDGET, CRITICAL, EXPOSURES, NOT_CRITICAL, REVIEWERS, admission, fableRound, hardReason, isCritical, liveCritical, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
+import { BUDGET, CRITICAL, EXPOSURES, NOT_CRITICAL, PRODUCTION_BUDGET, REVIEWERS, admission, fableRound, hardReason, isCritical, liveCritical, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
 export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
@@ -602,9 +602,15 @@ export function lineageState(home, lineage) {
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
   // 2.14.0: who runs the next round (Sol, Fable when hard); slots are shared between reviewers. `rejected` (a pending
   // critical Codex rejection) is known only to the gate. The round runs on the first reserved slot, else the next.
-  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected, nextSlot: pending[0]?.slot ?? slotsUsed + 1 }) });
+  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected }) });
   return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, recorded, approvalsUnused, roundOf, everBound, reviewer: reviewerWith(), reviewerWith };
 }
+
+/**
+ * The rounds the lineage of this PR runs on its own: one, or two when its base is positively production (a release).
+ * @param {Lineage} lineage
+ */
+export const roundBudget = (lineage) => productionBase(String(lineage.pull?.base?.ref ?? ""), String(lineage.pull?.base?.repo?.default_branch ?? "")) ? PRODUCTION_BUDGET : BUDGET;
 
 /**
  * 2.15.0: the live critical findings the lineage's last round left open, each with its latest disposition. They are
@@ -645,7 +651,7 @@ export function lineageSummary(state) {
     id: state.lineage.id,
     prs: state.lineage.prs.map((entry) => entry.number),
     slotsUsed: state.slotsUsed,
-    budget: BUDGET,
+    budget: roundBudget(state.lineage),
     nextSlot: state.nextSlot,
     approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, pr: approval.pr, slot: approval.slot, scope: approval.scope })),
     pending: state.pending.map((reservation) => ({ id: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope })),
@@ -723,13 +729,20 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     // a reservation made before a rule changed, or before the PR moved, does not carry its old answer.
     /** @param {number} slot @param {boolean} approved @param {boolean} critical */
     const refused = (slot, approved, critical) => {
-      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical });
+      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical, budget: roundBudget(lineage) });
       return refusal ? `slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}` : "";
     };
     // 2.15.0: the confirmation round is reserved only when every live critical finding the last round left open says
-    // how it ended (fixed in a commit, or rejected with the reason); the reservation then freezes that list.
+    // how it ended (fixed in a commit, or rejected with the reason); the reservation then freezes that list. The
+    // other live findings of that round are not re-read: each needs its disposition first, as on the advance path.
     const unsettled = () => {
-      const open = confirmationList(home, state).filter((entry) => entry.disposition?.outcome !== "fixed" && entry.disposition?.outcome !== "rejected");
+      const listed = confirmationList(home, state);
+      const open = listed.filter((entry) => entry.disposition?.outcome !== "fixed" && entry.disposition?.outcome !== "rejected");
+      if (!open.length && listed.length && last) {
+        const dispositions = dispositionsOf(readReviewRecords(home, last.pr), last.record.round);
+        const loose = last.record.findings.filter((finding) => finding.exposure === "live" && !dispositions.has(finding.id)).map((finding) => finding.id);
+        if (loose.length) return `round ${last.record.round} of ${last.pr} also left ${loose.join(", ")} open (live, not critical) and the confirmation round does not read ${loose.length === 1 ? "it" : "them"}: fix each and record it with development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit> (or rejected or follow-up with --note <reason>) before the confirmation round`;
+      }
       return open.length && last ? `round ${last.record.round} of ${last.pr} left ${open.map((entry) => entry.id).join(", ")} open (live, critical) without a fix or a rejection: record each with development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit> (or --outcome rejected --note <reason>) before the confirmation round; follow-up is only for a change that left the PR` : "";
     };
     const existing = state.live.find((reservation) => reservation.requestKey === requestKey);

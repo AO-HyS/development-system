@@ -12,7 +12,7 @@
 //                    PRs that end in develop (2.14.3, review-stack.mjs); the gate
 //                    (`pr-review-status`) still checks every commit after the round and, when withdrawn, that the PR
 //                    no longer touches the finding's files.
-import { advanceProblem, liveCritical, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
+import { CRITICAL_LIMIT, advanceProblem, liveCritical, nextReview, openFindings, OUTCOMES } from "./review-policy.mjs";
 import { SHA, append, closedBy, dispositionsOf, lineageState, locate, readReviewRecords, recordProblem, resolveLineage, sequenceProblem, text, verifyHead, withFileLock } from "./review-state.mjs";
 import { towardDevelop } from "./review-stack.mjs";
 
@@ -74,6 +74,8 @@ export function recordDisposition({ home, pr, finding, outcome, commit, note, ro
       const state = lineageState(home, lineage);
       const closure = closedBy(state, key, target.round, /** @type {string} */ (text(finding)));
       if (closure) throw new Error(`round ${closure.round.round} of ${closure.pr} closed ${finding}: a closed finding is not reopened; a later change about it goes to its own PR`);
+      // Before the confirmation a change taken out of the PR is a fix like any other: the confirmation reads that commit.
+      if (outcome === "follow-up" && state.nextSlot <= CRITICAL_LIMIT) throw new Error(`${finding} is a live critical finding and its confirmation round has not run: record it as --outcome fixed --commit <the fix, or the commit that took the change out of the PR> or as rejected with the reason. --outcome follow-up is for after the confirmation repeated it and the change left the PR`);
       const waiting = state.pending[0];
       if (waiting) throw new Error(`the confirmation round of this lineage is reserved (reservation ${waiting.id}, slot ${waiting.slot}) with ${finding} as it stands: record that round first, or release the reservation if the round never ran (development-system review release --pr ${waiting.pr} --reservation-id ${waiting.id} --reason <why>)`);
     }
