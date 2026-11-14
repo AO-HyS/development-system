@@ -64,6 +64,8 @@ const REQUEST_MARKER = "ds-codex-review-request";
 // 2.15.0: Codex is asked once per PR (twice until 2.14.3); rows of PRs with more requests still read.
 const BUDGET = 1;
 const UNKNOWN_HOURS = 6;
+/** The area's verification guide (2.15.0): a Markdown file with a path segment that contains `verif`. */
+const VERIFICATION_GUIDE = /(^|\/)[^/]*verif[^/]*(\/[^/]+)*\.mdx?$/i;
 // 2.15.0: toward develop Codex cannot hold a PR. Measured over 52 requests of the three product repositories, every
 // answer arrived within 5 minutes; a request this old without a valid review reads `unknown`, even if a status says running.
 const DEVELOP_WAIT_MINUTES = 30;
@@ -205,6 +207,10 @@ function cleanBaseMerge(base, entry, baseRef) {
  *                   across repair commits: one repair commit carries every id of the fix.
  *   record          a `fix-only` coverage record is no longer required: it was the coordinator's word about its own
  *                   commits and added nothing to the citation. An `out-of-scope` record for the head still vetoes.
+ *   guide           2.15.0: a finding is a missing case, and its fix adds the case to the area's verification guide.
+ *                   A commit that cites findings of the PR may also change that guide without a finding naming it: a
+ *                   Markdown file with a path segment that contains `verif` (docs/project-skills/verify-billing/SKILL.md,
+ *                   docs/verification.md). Prose only; a commit without a valid `fixes:` line is still refused.
  * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
  * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string, prChanged?: Set<string> | null}} input @returns {Coverage}
  */
@@ -277,7 +283,7 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef, prCh
     const pending = commit.files.filter((name) => !settled(name));
     const allowed = new Set(commit.fixes.flatMap((id) => known.get(id) ?? []));
     const unknown = commit.fixes.filter((id) => !known.has(id));
-    const outside = pending.filter((name) => !allowed.has(name));
+    const outside = pending.filter((name) => !allowed.has(name) && !VERIFICATION_GUIDE.test(name));
     if (pending.length === 0) commit.settled = true;
     if (commit.files.length > 0 && commit.files.every(untouched)) commit.undone = true;
     if (pending.length === 0) { /* nothing left to read: no citation needed */ }
