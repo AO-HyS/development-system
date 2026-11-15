@@ -42,29 +42,21 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Configuración vigente (2.15.0)
+## Configuración vigente (3.0.0)
 
-La fuente generada de verdad es `artifacts/2.15.0/model-routing.md`; la página
+La fuente generada de verdad es `artifacts/3.0.0/model-routing.md`; la página
 `docs/model-routing.md` la resume. El modelo elegido al iniciar la conversación
-sigue siendo el orquestador y conserva la coordinación, la integración y las
-correcciones.
+sigue siendo el orquestador y decide cómo trabajar: ningún agente, modelo,
+skill ni orden de trabajo es obligatorio.
 
-- Sol 6.1 High revisa los PR terminados y los planes por codex-review, y hace el cross review que pida el operador.
-- Fable 5.2 (`claude-fable-5-2`) revisa en solo lectura solo la seguridad y las revisiones difíciles; la puerta le ordena la ronda de confirmación cuando hay un hallazgo crítico vivo.
-- Opus 5.5 planifica, implementa lo difícil y la interfaz, y hace la crítica visual independiente.
-- Sonnet 5.5 ejecuta trabajo general acotado.
-- Haiku 5.5 Medium (`claude-haiku-5-5`) explora y mapea código en solo lectura, y escribe lo exacto y mecánico.
-- Terra 6.1 fast (prioridad): uso de computadora y simulador en Low, pruebas de navegador en High, video en Medium.
+- Sol 6.1 High hace la lectura independiente de un cambio crítico antes de fusionarlo y la del lote de cambios normales al final de la sesión.
+- Fable 5.2 queda fuera de la rutina.
+- Opus 5.5, Sonnet 5.5 y Haiku 5.5 (`claude-haiku-5-5`): los agentes con nombre conservan su modelo; ninguno es obligatorio.
+- Terra 6.1 fast (prioridad): uso de computadora y navegador para lo que QuickE2E y Playwright no alcanzan.
 
-Cada selección depende de la tarea; no activamos todos los roles en cada
-funcionalidad. Al terminar, se resuelve (settle) el hilo de cada hijo delegado
-tras integrar su resultado, y antes del primer `delegate_task` se lee
-`runtimeMode`. Las revisiones siguen el presupuesto por línea de rama. El
-guard de Claude orienta al padre con una frase, sin bloquear: tras diez
-lecturas seguidas sin explorador, al lanzar solo un segundo escritor seguido,
-desde la segunda petición de secreto de la sesión, al lanzar un escritor Opus
-sin `Opus reason:`, en el ayudante 21 y en el tercer PR de la sesión. Desde
-2.15.0 los casos van primero: el hilo lista sus casos, los corre y los graba
-(`evidence record --case`) antes de pedir cualquier revisión; un revisor lee
-una vez buscando el caso que falta; solo bloquea un hallazgo vivo, y uno
-crítico se arregla en la misma tarea y se confirma en una ronda más.
+El guard del roster y la puerta de cierre ya no están conectados. Lo que pasa
+cada cambio está en [listo.md](listo.md): el nivel sale de `config/niveles.json`
+del repositorio (crítico, normal o mecánico), Codex terminó y cada comentario
+tiene respuesta, la prueba rápida con QuickE2E corre siempre sin frenar la
+fusión a develop, y un cambio crítico necesita antes de fusionar una lectura
+independiente, sus casos corridos de verdad y el registro.
