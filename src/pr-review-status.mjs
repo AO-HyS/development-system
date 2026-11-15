@@ -129,7 +129,7 @@ function pullFiles(base, number, expected) {
 }
 
 /** Every Codex app summary comment as {sha, status}: the hidden state JSON first, the table row as fallback. @param {any[]} appComments */
-function summaryStates(appComments) {
+export function summaryStates(appComments) {
   return appComments.filter((comment) => String(comment.body).includes("codex-pull-request-review-summary")).flatMap((comment) => {
     const body = String(comment.body);
     const hidden = /<!-- codex-review-state:v1 (\{.*?\}) -->/.exec(body);
@@ -152,7 +152,7 @@ function summaryStates(appComments) {
  */
 
 /** True when `ancestor` is `descendant` or one of its ancestors on GitHub; throws when GitHub cannot say. @param {string} base @param {string} ancestor @param {string} descendant */
-function ancestorOrEqual(base, ancestor, descendant) {
+export function ancestorOrEqual(base, ancestor, descendant) {
   const compare = JSON.parse(gh(["api", `${base}/compare/${ancestor}...${descendant}`]));
   return compare.status === "identical" || compare.status === "ahead";
 }
@@ -249,7 +249,7 @@ function cleanBaseMerge(base, entry, baseRef) {
  * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
  * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string, prChanged?: Set<string> | null}} input @returns {Coverage}
  */
-function coverage({ base, from, to, findings, peers = [], records, baseRef, prChanged = null }) {
+export function coverage({ base, from, to, findings, peers = [], records, baseRef, prChanged = null }) {
   /** @type {CoveredCommit[]} */
   const commits = [];
   /** @param {string} reason @param {boolean} [error] @returns {Coverage} */

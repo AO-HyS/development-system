@@ -335,6 +335,9 @@ function parseThreadHealthArguments(argv) {
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json] | --diagram";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
 const PROGRESS_USAGE = "<owner/repo#number | PR URL>... [--home <dir>] [--json] (facts only: GitHub state, gate step, Sol rounds, recorded evidence; unread = desconocido)";
+const LISTO_USAGE = "<owner/repo#n> [--subir critico] [--pedir] [--sin-estado] [--niveles <draft.json>] [--repo <checkout>] [--home <dir>] [--json] | --produccion <owner/repo> [--base main] [--head develop] [--sin-estado] [--niveles <draft.json>] [--json] (3.0.0: level, Codex, checks, smoke and record; publishes «listo para fusionar» / «listo para producción» on the exact head; exit 0 listo, 1 falta, 2 espera)";
+const REGISTRO_USAGE = "<owner/repo#n> --sha <head> | --lote <owner/repo> --prs 12,13; --entorno <url|local> --lector <model> --lectura <thread> --veredicto sin-vivos|vivos [--vivo \"V1: …\"]... [--cerrado \"V1: <fix>\"]... [--cubre codex:<id>]... [--necesario \"N1: <case>\"]... [--caso \"pass|fail: N1 <tried> => <observed>\"]... [--no-alcanzado \"N2: <why>\"]... [--dispensa \"<owner's words>\"] [--autor <model>] [--sin-publicar] [--json] (the read record, a PR comment)";
+const SMOKE_USAGE = "--base <url> [--repo <checkout>] [--flujo <flow.json>] [--sin-estado] [--home <dir>] [--json] (QuickE2E smoke; publishes the `smoke` status on a clean HEAD; never blocks develop)";
 
 const GOVERNANCE_INPUT = "[--home <abs dir>] [--run <id>] (--input <file> | --input-json <json>) [--json]";
 /** Governance subcommands and usage; the dispatcher rejects any subcommand absent here. */
@@ -426,6 +429,9 @@ const COMMAND_TABLE = [
   ["check-primitives", "[--root <dir>] [--ref <ref>] [--file <path>] [--json]"],
   ["pr-review-status", PR_REVIEW_USAGE],
   ["progress", PROGRESS_USAGE],
+  ["listo", LISTO_USAGE],
+  ["registro", REGISTRO_USAGE],
+  ["smoke", SMOKE_USAGE],
   ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
   ...BROWSER_POOL_TABLE,
   ["commands", "[--json]"],
@@ -626,6 +632,10 @@ async function runCommand(argv) {
     const result = progress({ prs: rest, home });
     return { result, output: json ? JSON.stringify(result) : formatProgress(result), json };
   }
+  // 3.0.0: each module parses its own flags and returns { result, output, json, code } (exit 2 = espera / no flow).
+  if (argv[0] === "listo") return (await import("./listo.mjs")).runListoCommand(argv.slice(1));
+  if (argv[0] === "registro") return (await import("./registro.mjs")).runRegistroCommand(argv.slice(1));
+  if (argv[0] === "smoke") return (await import("./smoke.mjs")).runSmokeCommand(argv.slice(1));
   if (argv[0] === "review") return (await import("./review-cli.mjs")).runReviewCommand(argv);
   if (argv[0] === "check-primitives") {
     const json = argv.includes("--json");
