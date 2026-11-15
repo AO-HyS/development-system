@@ -1,19 +1,20 @@
 // @ts-check
 
 import { randomUUID } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 
-/** Codex Stop hook that asks for the completion report once per session (Claude Code gets it through claude-orchestration). */
+/**
+ * The Codex Stop hook that asked for the completion report once per session. DS 3.0.0 no longer declares it: enabling
+ * removes the managed Stop entry an older version wrote and keeps every other hook (Jev governance events included); the
+ * engine may stay installed, unwired. A contract rollback restores the previous hooks bytes, entry included.
+ */
 const marker = "AOHYS_REPORT_GATE=1";
 const engineRelative = ".codex/development-system/runtime/report-gate/stop-gate.mjs";
 const configRelative = ".codex/hooks.json";
 /** HOME-relative activation snapshot; a contract rollback refuses while it exists. */
 export const reportGateStateRelative = ".development-system/private/report-gate/state.json";
 const stateRelative = reportGateStateRelative;
-const timeout = 10;
-const statusMessage = "Checking completion report";
 
 /** @param {unknown} error */
 function missing(error) {
@@ -101,17 +102,6 @@ function isManagedEntry(entry) {
   return /** @type {any[]} */ (entry.hooks).some((hook) => hook && typeof hook === "object" && typeof hook.command === "string" && hook.command.includes(marker));
 }
 
-/** @param {any} container @param {string} command */
-function mergedHooks(container, command) {
-  const hooks = container && typeof container === "object" && !Array.isArray(container) ? { ...container } : {};
-  const stop = Array.isArray(hooks.Stop) ? /** @type {any[]} */ (hooks.Stop) : [];
-  hooks.Stop = [
-    ...stop.filter((entry) => !isManagedEntry(entry)),
-    { hooks: [{ type: "command", command, timeout, statusMessage }] },
-  ];
-  return hooks;
-}
-
 /** @param {any} config */
 function withoutManaged(config) {
   const next = { ...config };
@@ -126,12 +116,11 @@ function withoutManaged(config) {
   return next;
 }
 
-/** @param {any} config @param {string} command */
-function managedMatches(config, command) {
+/** The managed report-gate hooks still wired in Codex Stop, by marker. @param {any} config */
+function managedMatches(config) {
   const stop = Array.isArray(config?.hooks?.Stop) ? /** @type {any[]} */ (config.hooks.Stop) : [];
   return stop.flatMap((entry) => (Array.isArray(entry?.hooks) ? entry.hooks : [])
-    .filter((/** @type {any} */ hook) => typeof hook?.command === "string" && hook.command.includes(marker))
-    .map((/** @type {any} */ hook) => ({ hook, exact: hook.type === "command" && hook.command === command && hook.timeout === timeout })));
+    .filter((/** @type {any} */ hook) => typeof hook?.command === "string" && hook.command.includes(marker)));
 }
 
 /** @param {Buffer | null} contents */
@@ -154,22 +143,11 @@ export async function auditReportGate({ home }) {
     try { await assertNoSymlinkParents(resolvedHome, path); }
     catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
   }
-  const engine = await lstat(managed.engine).catch(() => null);
-  if (!engine?.isFile()) problems.push(`Report gate engine is not installed: ${managed.engine}`);
   let config = {};
   try { config = parseObject(await readOptional(managed.config), "Codex hooks"); }
   catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-  const matches = managedMatches(config, managed.command);
-  if (matches.length !== 1 || !matches[0].exact) problems.push(`Codex Stop has ${matches.length} report-gate hooks; expected exactly one with timeout ${timeout}`);
-  if (engine?.isFile()) {
-    const result = spawnSync(process.execPath, [managed.engine, "--harness", "codex"], {
-      input: JSON.stringify({ session_id: "audit", stop_hook_active: true, transcript_path: "", cwd: resolvedHome }),
-      env: { ...process.env, HOME: resolvedHome },
-      encoding: "utf8",
-      timeout: 10000,
-    });
-    if (result.status !== 0 || (result.stdout ?? "").trim() !== "") problems.push("Report gate did not allow the stop_hook_active probe silently");
-  }
+  const matches = managedMatches(config);
+  if (matches.length > 0) problems.push(`Codex Stop still has ${matches.length} report-gate hooks; this version wires none`);
   return {
     ok: problems.length === 0,
     operation: "report-gate-audit",
@@ -185,17 +163,16 @@ export async function enableReportGate({ home }) {
   const resolvedHome = resolve(home);
   const managed = paths(resolvedHome);
   for (const path of [managed.engine, managed.config, managed.state]) await assertNoSymlinkParents(resolvedHome, path);
-  const engine = await lstat(managed.engine).catch(() => null);
-  if (!engine?.isFile()) throw new Error(`Report gate engine is not installed: ${managed.engine}`);
   const current = await readOptional(managed.config);
   const config = parseObject(current, "Codex hooks");
   const stateBytes = await readOptional(managed.state);
   const state = parseState(stateBytes);
-  const matches = managedMatches(config, managed.command);
-  if (matches.length === 1 && matches[0].exact && state) {
+  const matches = managedMatches(config);
+  // Nothing wired: nothing to write, and an older activation snapshot stays for its own rollback.
+  if (matches.length === 0) {
     return { ...(await auditReportGate({ home: resolvedHome })), operation: "report-gate-enable", changed: false };
   }
-  const installed = serialize({ ...config, hooks: mergedHooks(config.hooks, managed.command) });
+  const installed = serialize(withoutManaged(config));
   /** @type {string | null} */
   let before;
   if (state && current !== null && current.equals(Buffer.from(state.installed, "base64"))) before = state.before;

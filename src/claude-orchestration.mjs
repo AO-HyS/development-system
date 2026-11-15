@@ -21,14 +21,13 @@ export const managedEnv = /** @type {const} */ ({
   // Compact near 300K tokens instead of the 1M window: every call rereads the whole context.
   CLAUDE_CODE_AUTO_COMPACT_WINDOW: "300000",
 });
-const managedEvents = /** @type {const} */ ([
-  // delegate_task reaches the guard so a T3 PR review reserves its lineage slot first (both MCP server spellings);
-  // reads, Bash and request_secret feed the coach.
-  { event: "PreToolUse", matcher: "Agent|Read|Grep|Glob|Bash|.*[Ss]creenshot.*|mcp__t3[-_]code__(delegate_task|request_secret)", timeout: 20, statusMessage: "Checking roster, image budget and review brake", target: "guard" },
-  { event: "PostToolUse", matcher: "Agent", timeout: 5, statusMessage: undefined, target: "guard" },
-  { event: "SubagentStop", matcher: undefined, timeout: 5, statusMessage: undefined, target: "guard" },
-  { event: "Stop", matcher: undefined, timeout: 10, statusMessage: undefined, target: "stopGate" },
-]);
+/**
+ * DS 3.0.0 wires no roster-guard event (PreToolUse, PostToolUse, SubagentStop) and no Stop → stop-gate event. Enabling
+ * removes those managed entries left by an older version and keeps every other hook; the runtime files may stay
+ * installed, unwired. A contract rollback restores the previous settings bytes, entries included.
+ * @type {{ event: string, matcher: string | undefined, timeout: number, statusMessage: string | undefined, target: "guard" | "stopGate" }[]}
+ */
+const managedEvents = [];
 
 /** @param {unknown} error */
 function missing(error) {
@@ -143,6 +142,8 @@ async function artifactFindings(managed) {
   const artifacts = /** @type {any[]} */ (Array.isArray(manifest.artifacts) ? manifest.artifacts : []);
   for (const [label, destination, path] of [["guard", guardRelative, managed.guard], ["policy", policyRelative, managed.policy], ["stop gate", stopGateRelative, managed.stopGate]]) {
     const artifact = artifacts.find((entry) => entry && entry.destination === destination);
+    // Unwired since 3.0.0: a version may leave these runtime files out; one it declares must match.
+    if (!artifact && managedEvents.length === 0) continue;
     if (!artifact) { findings.push(`Installed manifest does not declare the ${label} at ${destination}`); continue; }
     const actual = await readOptional(path);
     if (actual === null) {
@@ -207,7 +208,9 @@ function hasManagedHook(container, command) {
 
 /** @param {any} settings @param {ReturnType<typeof paths>} managed */
 function mergedSettings(settings, managed) {
-  const base = withoutManaged(settings.hooks, managedCommands(managed), false);
+  // With nothing to add back, an event (or the hooks object) the removal empties is dropped; unrelated ones stay as written.
+  const unwired = managedEvents.length === 0;
+  const base = withoutManaged(settings.hooks, managedCommands(managed), unwired);
   /** @type {Record<string, any>} */
   const hooks = base && typeof base === "object" && !Array.isArray(base) ? { ...base } : {};
   for (const spec of managedEvents) {
@@ -216,7 +219,9 @@ function mergedSettings(settings, managed) {
   }
   const env = settings.env && typeof settings.env === "object" && !Array.isArray(settings.env) ? { ...settings.env } : {};
   Object.assign(env, managedEnv);
-  return { ...settings, hooks, env };
+  const next = { ...settings, hooks, env };
+  if (unwired && (base === undefined || base === null)) delete next.hooks;
+  return next;
 }
 
 /**
@@ -308,6 +313,11 @@ export async function auditClaudeOrchestration({ home }) {
     if (entry.matcher !== spec.matcher) findings.push(`${spec.event} managed hook has matcher ${JSON.stringify(entry.matcher)}; expected ${JSON.stringify(spec.matcher)}`);
     if (hook.type !== "command" || hook.timeout !== spec.timeout) findings.push(`${spec.event} managed hook must be a command with timeout ${spec.timeout}`);
   }
+  for (const [label, command] of [["roster guard", managed.command], ["stop gate", managed.stopCommand]]) {
+    if (!managedEvents.some((spec) => commandFor(managed, spec) === command) && hasManagedHook(settings.hooks, command)) {
+      findings.push(`Claude Code settings still wire the ${label}; this version does not`);
+    }
+  }
   const missingTarget = "managed hook targets a missing guard";
   if (hasManagedHook(settings.hooks, managed.command) && (await readOptional(managed.guard)) === null && !findings.includes(missingTarget)) {
     findings.push(missingTarget);
@@ -322,7 +332,8 @@ export async function auditClaudeOrchestration({ home }) {
   const probes = [];
   /** @type {string[]} */
   const sideEffects = [];
-  if ((await readOptional(managed.guard)) !== null) {
+  // An unwired guard enforces nothing, so its probes prove nothing about this installation.
+  if (managedEvents.some((spec) => spec.target === "guard") && (await readOptional(managed.guard)) !== null) {
     const denied = probe(resolvedHome, managed.guard, "general-purpose");
     const allowed = probe(resolvedHome, managed.guard, "code-mapper");
     // The review brake on T3 delegate_task: a non-review task passes untouched (no output); a review without

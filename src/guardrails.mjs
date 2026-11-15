@@ -142,7 +142,8 @@ function mergedHooks(container, matcher, command) {
     ...existing,
     {
       matcher,
-      hooks: [{ type: "command", command, timeout: 5, statusMessage: "Checking destructive-command policy" }],
+      // 10 s: the guard's own 3 s deadline plus the base lookup of a pull request merge (gh, up to 3 s).
+      hooks: [{ type: "command", command, timeout: 10, statusMessage: "Checking destructive-command policy" }],
     },
   ];
   return hooks;
@@ -199,7 +200,7 @@ function exactEntry(config, command, matcher) {
     if (entry.matcher !== matcher) return false;
     const entryHooks = /** @type {any[]} */ (entry.hooks);
     return entryHooks.some((hook) =>
-      hook?.type === "command" && hook?.command === command && hook?.timeout === 5);
+      hook?.type === "command" && hook?.command === command && hook?.timeout === 10);
   });
 }
 
