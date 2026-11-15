@@ -6022,6 +6022,8 @@ function pushTargets(rest, ctx) {
     if (!word.literal) { unknown = true; continue; }
     if (word.value === "tag") { k++; continue; }
     const spec = word.value.replace(/^\+/u, "");
+    // `:` (and `+:`) pushes every matching branch, develop and main included when both sides have them.
+    if (spec === ":") { names.push("*"); continue; }
     const colon = spec.indexOf(":");
     let target = colon >= 0 && colon < spec.length - 1 ? spec.slice(colon + 1) : colon >= 0 ? spec.slice(0, colon) : spec;
     if (target === "HEAD" || target === "@") {
@@ -6065,7 +6067,7 @@ function ghArguments(rest) {
   return { positionals, options };
 }
 
-/** The guard's whole hook has 5 s; the base lookup gets at most this much and a slow answer blocks. */
+/** The guard's whole hook has 10 s; the base lookup gets at most this much and a slow answer blocks. */
 const GH_LOOKUP_MS = 3000;
 
 /**

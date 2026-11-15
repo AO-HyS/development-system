@@ -496,7 +496,15 @@ export function listoProduccion(options) {
       else if (!newest.registro) pendiente.push("registro ilegible");
       else {
         const sha = newest.registro.sha.toLowerCase();
-        if (sha.length < 7 || !(head.startsWith(sha) || String(pull.merge_commit_sha ?? "").startsWith(sha))) pendiente.push(`registro de otro commit (${short(sha)})`);
+        // A record of an earlier commit still counts when the head covers it (clean merges of the base, cited fixes),
+        // the same rule `listo` applied before the merge.
+        const atHead = sha.length >= 7 && (head.startsWith(sha) || String(pull.merge_commit_sha ?? "").startsWith(sha));
+        const coveredByHead = () => {
+          if (!/^[0-9a-f]{40}$/.test(sha)) return false;
+          const findings = codexThreads(gh, owner, repo, pull.number).map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)] }));
+          try { return coverage({ base: api, from: sha, to: head, findings, peers: [], records: [], baseRef: headBranch, prChanged: new Set(files.flatMap(namesOf)) }).covered === true; } catch { return false; }
+        };
+        if (!atHead && !coveredByHead()) pendiente.push(`registro de otro commit (${short(sha)})`);
         else {
           const verdict = evaluateRegistro(newest.registro);
           if (verdict.abiertos.length) pendiente.push("hallazgo vivo abierto");
