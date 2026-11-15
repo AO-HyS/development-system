@@ -9,7 +9,7 @@ One `PreToolUse` hook per host runs `scripts/command-guard.mjs` (Codex and T3 Co
 
 ## What it blocks
 
-- **Production** (`production`): `git push` that updates `main` or `master`; `gh pr merge` (or `gh api -X PUT …/pulls/<n>/merge`) of a PR whose base is `main` or `master`, read with `gh pr view <pr> --json baseRefName` (blocked, with the reason, when it cannot be read); `vercel … --prod`, `vercel promote`, `convex deploy` without a preview flag, `wrangler deploy` to production or without `--env`, `npm|pnpm publish`, `gh release create`, and package scripts `deploy:prod*` and `release:prod*`. It passes only with `DS_PRODUCCION="<the owner's words>"` as a prefix, once the owner answered.
+- **Production** (`production`): `git push` that updates `main` or `master`, by a refspec or, when none names the destination, by the configuration git reads, stored or given with `-c` (`remote.<name>.push`, `push.default` `matching` or `upstream`); `gh pr merge` (or `gh api -X PUT …/pulls/<n>/merge`) of a PR whose base is `main` or `master`, read with `gh pr view <pr> --json baseRefName` (blocked, with the reason, when it cannot be read); `vercel … --prod`, `vercel promote`, `convex deploy` without a preview flag, `wrangler deploy` to production or without `--env`, `npm|pnpm publish`, `gh release create`, and package scripts `deploy:prod*` and `release:prod*`. It passes only with `DS_PRODUCCION="<the owner's words>"` as a prefix, once the owner answered.
 - **Destruction the owner did not order**: `git reset --hard`, `git clean` (not `-n`/`-i`), discarding through `git checkout --`/`restore`/`switch --force`, `rm -rf` (except folders the agent can make again: ignored build or cache folders, the scratch folder, temporary folders), a forced or mirror push to `develop`, `main` or `master` (to any other branch it passes), `gh repo delete`, infrastructure destruction, disk formatting. Each passes with `DS_ORDENADO="<the owner's words>"` as a prefix.
 - **Spend**: `vercel domains buy|transfer-in`, `stripe --live`, and the MCP tools the MCP policy names as spend, destruction, messages to people or account security.
 - **Secrets** (`secret-export`): a command given a path in `~/.development-system/private/secrets` or reading input from one. No exception.
@@ -17,7 +17,7 @@ One `PreToolUse` hook per host runs `scripts/command-guard.mjs` (Codex and T3 Co
 
 ## What it no longer blocks
 
-What it cannot read passes: a command it cannot parse, a program named by a variable, `eval`, dynamic shell text, unknown hook payloads and unknown MCP tools. `references/policy.json` lists those rule ids in `disabledRules`; a match of a disabled rule allows the command, and the commands around it are still judged. Guard configuration, Git configuration and merges to `develop` are not locked either.
+What it cannot read passes: a command it cannot parse, a program named by a variable, `eval`, dynamic shell text, unknown hook payloads and unknown MCP tools. `references/policy.json` lists those rule ids in `disabledRules`; a match of a disabled rule allows the command, and the commands around it are still judged. The rules that stay on read each program's words before any disabled check, so a disabled check cannot hide them, and the secrets folder is read again from the directory `env -C`, `sudo -D` or `git -C` moves to. Guard configuration, Git configuration and merges to `develop` are not locked either.
 
 ## Owner's words
 

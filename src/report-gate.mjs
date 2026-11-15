@@ -108,7 +108,12 @@ function withoutManaged(config) {
   if (!config.hooks || typeof config.hooks !== "object" || Array.isArray(config.hooks)) return next;
   const hooks = { ...config.hooks };
   if (Array.isArray(hooks.Stop)) {
-    hooks.Stop = /** @type {any[]} */ (hooks.Stop).filter((entry) => !isManagedEntry(entry));
+    // Only the managed hook leaves: an entry that also carries someone else's hook keeps it, with its other properties.
+    hooks.Stop = /** @type {any[]} */ (hooks.Stop).flatMap((entry) => {
+      if (!isManagedEntry(entry)) return [entry];
+      const kept = /** @type {any[]} */ (entry.hooks).filter((hook) => !(hook && typeof hook === "object" && typeof hook.command === "string" && hook.command.includes(marker)));
+      return kept.length === 0 ? [] : [{ ...entry, hooks: kept }];
+    });
     if (hooks.Stop.length === 0) delete hooks.Stop;
   }
   if (Object.keys(hooks).length === 0) delete next.hooks;

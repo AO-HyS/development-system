@@ -2880,7 +2880,8 @@ function evaluateGitConfigs(configs, subArgs, ctx) {
   for (const word of configs) {
     const index = word.value.indexOf("=");
     const key = index < 0 ? word.value : word.value.slice(0, index);
-    if (destructiveGitConfig(key.replaceAll(UNKNOWN, "x"), index < 0 ? null : word.value.slice(index + 1), word.literal)) throw new Block("git-config-destructive");
+    // Policy 3.0.0: with this rule off the reading goes on, so the rules that stay on still see the command.
+    if (!disabledRules.has("git-config-destructive") && destructiveGitConfig(key.replaceAll(UNKNOWN, "x"), index < 0 ? null : word.value.slice(index + 1), word.literal)) throw new Block("git-config-destructive");
     if (!GIT_EXEC_CONFIG.test(key.replaceAll(UNKNOWN, "x"))) continue;
     if (!word.literal || index < 0) throw new Block("shell-dynamic-command", "Inline Git configuration that names an executed program must be a literal key=value pair.");
     const value = word.value.slice(index + 1);
@@ -5239,7 +5240,12 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     args = next.args;
     if (next.appended) { appended = true; viaXargs = true; replace = next.replace ?? null; }
     // `env -C dir` and `sudo -D dir` run the command in that directory.
-    if (next.chdir) { cwdMoved = true; ctx = { ...ctx, cwd: chdirTarget(next.chdir, ctx) }; }
+    if (next.chdir) {
+      cwdMoved = true;
+      ctx = { ...ctx, cwd: chdirTarget(next.chdir, ctx) };
+      // The secrets folder is read from the directory the program really runs in.
+      checkSecretWords(args, ctx);
+    }
   }
   // git-core executables (`.../git-core/git-reset`) are git subcommands.
   const gitCore = /^git-([a-z][a-z0-9-]*)$/u.exec(commandName(args[0].value));
@@ -5248,6 +5254,15 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
   // A sensitive program's words that the same command assigned as literals are read as those literals by every rule below.
   if (isSensitive(name)) args = args.map(resolvedWord);
   const rest = name === "git" ? expandGitOptions(args.slice(1)) : args.slice(1);
+
+  // git -C runs in that directory: the paths after it are read from there.
+  if (name === "git") {
+    const directory = gitDirectory(rest, ctx);
+    if (directory !== ctx.cwd) checkSecretWords(rest, { ...ctx, cwd: directory });
+  }
+  // Policy 3.0.0: the rules that stay on read the command first. A check the policy turned off stops the reading of
+  // this command where it fires, and nothing after it would be judged.
+  judgeCommandRules(name, rest, ctx, viaXargs);
 
   if (viaXargs) {
     // xargs builds arguments from standard input, which the guard cannot see.
@@ -5450,27 +5465,6 @@ function evaluateArgv(argv, redirects, ctx, stdinPiped, appended, nested = false
     const reads = name === "git" ? parseGit(rest).readOnly : readOnlySensitive(name, rest) || (name === "gh" && readOnlyGhApi(rest));
     // Policy 3.0.0: when this rule is off the command rules below still read the words they can.
     if (!reads && !disabledRules.has("sensitive-dynamic-argument")) throw new Block("sensitive-dynamic-argument");
-  }
-
-  if (!pureRead) {
-    const words = name === "git" ? rest.slice(parseGit(rest).subIndex) : rest;
-    const canonical = [name, ...words.map((word) => word.value.replace(/\s/gu, "\u001f"))].join(" ");
-    for (const rule of commandRules) {
-      if (!rule.regex.test(canonical)) continue;
-      // Policy 2.6.0: the agent's own regenerable folders and branches already merged are not the harm these rules stop.
-      if (rule.id === "broad-recursive-delete" && name === "rm" && !viaXargs && !ctx.substituted && ownRegenerableDelete(rest, ctx)) continue;
-      if (rule.id === "git-branch-delete-force" && name === "git" && !viaXargs && !ctx.substituted && mergedBranchDelete(rest, ctx)) continue;
-      // Policy 3.0.0: a forced push blocks only toward develop, main or master; production names what it reaches.
-      if (rule.id === "git-force-push" && name === "git" && !pushReaches(rest, ctx, forcePushBranches)) continue;
-      if (rule.id === "production") {
-        const what = productionTarget(name, rest, ctx);
-        if (what === null) continue;
-        if (ownerPass(rule.id)) continue;
-        throw new Block(rule.id, productionReason(what));
-      }
-      if (ownerPass(rule.id)) continue;
-      throw new Block(rule.id, ownerHint(rule.id, rule.reason));
-    }
   }
 
   if (name === "gh" && !disabledRules.has("merge-gate")) checkMergeGate(rest);
@@ -5949,6 +5943,46 @@ function ownerPass(ruleId) {
   return false;
 }
 
+/** Whether the program only reads, so no command rule applies to it. @param {string} name @param {Word[]} rest */
+function commandOnlyReads(name, rest) {
+  try {
+    if (name === "sed") {
+      const sed = analyzeSed(rest);
+      return Boolean(sed && !sed.inPlace && sed.writes.length === 0 && !sed.uncertain);
+    }
+    if (name === "awk") return awkIsPureRead(rest);
+  } catch {
+    return false;
+  }
+  return readOnlyCommands.has(name);
+}
+
+/**
+ * The command rules the policy keeps on (destruction, spend, production), read from the program's own words.
+ * @param {string} name @param {Word[]} rest @param {Context} ctx @param {boolean} viaXargs
+ */
+function judgeCommandRules(name, rest, ctx, viaXargs) {
+  if (commandOnlyReads(name, rest)) return;
+  const words = name === "git" ? rest.slice(parseGit(rest).subIndex) : rest;
+  const canonical = [name, ...words.map((word) => word.value.replace(/\s/gu, "\u001f"))].join(" ");
+  for (const rule of commandRules) {
+    if (!rule.regex.test(canonical)) continue;
+    // Policy 2.6.0: the agent's own regenerable folders and branches already merged are not the harm these rules stop.
+    if (rule.id === "broad-recursive-delete" && name === "rm" && !viaXargs && !ctx.substituted && ownRegenerableDelete(rest, ctx)) continue;
+    if (rule.id === "git-branch-delete-force" && name === "git" && !viaXargs && !ctx.substituted && mergedBranchDelete(rest, ctx)) continue;
+    // Policy 3.0.0: a forced push blocks only toward develop, main or master; production names what it reaches.
+    if (rule.id === "git-force-push" && name === "git" && !pushReaches(rest, ctx, forcePushBranches)) continue;
+    if (rule.id === "production") {
+      const what = productionTarget(name, rest, ctx);
+      if (what === null) continue;
+      if (ownerPass(rule.id)) continue;
+      throw new Block(rule.id, productionReason(what));
+    }
+    if (ownerPass(rule.id)) continue;
+    throw new Block(rule.id, ownerHint(rule.id, rule.reason));
+  }
+}
+
 /** @param {string} ruleId @param {string} reason */
 function ownerHint(ruleId, reason) {
   const prefix = Object.entries(ownerPrefixes).find(([, rules]) => rules.includes(ruleId))?.[0];
@@ -5972,20 +6006,41 @@ const forcePushBranches = new Set(/** @type {string[]} */ (policy.forcePushBranc
 const productionBranches = new Set(/** @type {string[]} */ (policy.productionBranches ?? ["main", "master"]));
 /** `git push` options whose value is the next word. */
 const PUSH_VALUE_OPTIONS = new Set(["--repo", "-o", "--push-option", "--receive-pack", "--exec"]);
+/** Configuration git reads to choose what a push updates; only these keys of a `-c` are handed to the guard's own query. */
+const PUSH_CONFIG_KEY = /^(?:remote\..+\.push|remote\.pushdefault|push\.default|branch\..+\.(?:pushremote|remote|merge))$/iu;
 
 /**
  * The branches a `git push` updates on the remote: each refspec's destination (`HEAD:main`, `+feat`, `:old`, `--delete x`),
- * the current branch when no refspec is given (or for `HEAD`), and `*` for `--all`, `--branches`, `--mirror` or a pattern.
- * `unknown` when a refspec or the current branch cannot be read; tags are not branches.
+ * and `*` for `--all`, `--branches`, `--mirror` or a pattern. With no refspec git decides from its configuration, stored
+ * or given with `-c`: the remote's push refspecs, else `push.default` (every matching branch, the upstream branch, or the
+ * current one). A refspec with no destination follows a configured refspec of the same source.
+ * `unknown` when a refspec, the configuration or the current branch cannot be read; tags are not branches.
  * @param {Word[]} rest @param {Context} ctx
  */
 function pushTargets(rest, ctx) {
   const { subIndex } = parseGit(rest);
-  let directory = ctx.cwd;
+  const directory = gitDirectory(rest, ctx);
+  /** @type {string[]} */
+  const inline = [];
+  let configUnknown = false;
   for (let k = 0; k < subIndex; k++) {
-    if (rest[k].value !== "-C" || !rest[k + 1]) continue;
-    directory = chdirTarget(rest[++k], { ...ctx, cwd: directory });
+    const option = rest[k].value;
+    const envForm = option === "--config-env" || option.startsWith("--config-env=");
+    if (option !== "-c" && !envForm) continue;
+    const word = option.startsWith("--config-env=") ? { ...rest[k], value: option.slice(13) } : rest[++k];
+    if (!word) break;
+    const at = word.value.indexOf("=");
+    const key = at < 0 ? word.value : word.value.slice(0, at);
+    // A key the guard cannot read may be one of these; a value it cannot read (or one taken from the environment) is unknown.
+    if (key.includes(UNKNOWN) || (PUSH_CONFIG_KEY.test(key) && (envForm || !word.literal || at < 0))) configUnknown = true;
+    else if (PUSH_CONFIG_KEY.test(key)) inline.push(word.value);
   }
+  /** Values of one configuration key as git reads them here, `-c` included. @param {string} key */
+  const configured = (key) => {
+    if (directory === null) return [];
+    const result = gitQuery(directory, [...inline.flatMap((entry) => ["-c", entry]), "config", "--get-all", key]);
+    return result && result.status === 0 ? result.stdout.split("\n").map((line) => line.trim()).filter(Boolean) : [];
+  };
   const args = rest.slice(subIndex + 1);
   /** @type {Word[]} */
   const positionals = [];
@@ -5993,18 +6048,23 @@ function pushTargets(rest, ctx) {
   // git 2.53 reads the first positional as the repository even with --repo; the lock reads every positional as a
   // refspec too when --repo is present, so no reading of the command hides a protected branch.
   let repoOption = false;
+  /** @type {Word | null} */
+  let repoWord = null;
   for (let i = 0; i < args.length; i++) {
     const { value } = args[i];
     if (value === "--") { positionals.push(...args.slice(i + 1)); break; }
     if (/^--(?:all|branches|mirror)$/u.test(value)) { all = true; continue; }
-    if (value === "--repo" || value.startsWith("--repo=")) repoOption = true;
+    if (value === "--repo" || value.startsWith("--repo=")) {
+      repoOption = true;
+      repoWord = value === "--repo" ? args[i + 1] ?? null : { ...args[i], value: value.slice(7) };
+    }
     if (PUSH_VALUE_OPTIONS.has(value)) { i++; continue; }
     if (value.startsWith("-")) continue;
     positionals.push(args[i]);
   }
   /** @type {string[]} */
   const names = [];
-  let unknown = false;
+  let unknown = configUnknown;
   if (all) return { names: ["*"], unknown };
   /** @type {string | null | undefined} */
   let current;
@@ -6014,30 +6074,71 @@ function pushTargets(rest, ctx) {
     current = result && result.status === 0 && result.stdout.trim() ? result.stdout.trim() : null;
     return current;
   };
-  const refspecs = repoOption ? positionals : positionals.slice(1);
-  if (positionals.length <= 1 && !repoOption || positionals.length === 0) {
+  /** A branch name as written (`HEAD`, `refs/heads/x`), or null when it cannot be read. @param {string} text */
+  const branchName = (text) => {
+    if (text !== "HEAD" && text !== "@") return text.replace(/^refs\/heads\//u, "");
     const branch = currentBranch();
     if (branch === null) unknown = true;
-    else names.push(branch);
+    return branch;
+  };
+  /** Adds the branch one refspec updates. @param {string} text */
+  const addSpec = (text) => {
+    const spec = text.replace(/^\+/u, "");
+    // `:` (and `+:`) pushes every matching branch, develop and main included when both sides have them.
+    if (spec === ":") { names.push("*"); return; }
+    const colon = spec.indexOf(":");
+    const written = colon >= 0 && colon < spec.length - 1 ? spec.slice(colon + 1) : colon >= 0 ? spec.slice(0, colon) : spec;
+    if (written.startsWith("refs/tags/")) return;
+    const target = branchName(written);
+    if (target !== null) names.push(target.includes("*") ? "*" : target);
+  };
+  // The remote whose configuration applies: the one written, else the branch's or the default one.
+  const refspecs = repoOption ? positionals : positionals.slice(1);
+  const written = repoOption ? repoWord : positionals[0] ?? null;
+  /** @type {string[] | undefined} */
+  let stored;
+  const remoteSpecs = () => {
+    if (stored !== undefined) return stored;
+    stored = [];
+    if (written && !written.literal) { unknown = true; return stored; }
+    const branch = written ? null : currentBranch();
+    const remote = written ? written.value
+      : (branch === null ? undefined : configured(`branch.${branch}.pushRemote`).at(-1))
+        ?? configured("remote.pushDefault").at(-1)
+        ?? (branch === null ? undefined : configured(`branch.${branch}.remote`).at(-1))
+        ?? "origin";
+    stored = configured(`remote.${remote}.push`);
+    return stored;
+  };
+  if (refspecs.length === 0) {
+    const specs = remoteSpecs();
+    if (specs.length > 0) {
+      for (const spec of specs) addSpec(spec);
+      return { names, unknown };
+    }
+    const mode = (configured("push.default").at(-1) ?? "simple").toLowerCase();
+    if (mode === "nothing") return { names, unknown };
+    if (mode === "matching") return { names: ["*"], unknown };
+    const branch = currentBranch();
+    if (branch === null) return { names, unknown: true };
+    names.push(branch);
+    // `upstream` pushes to the branch this one tracks, whatever its name.
+    if (mode === "upstream" || mode === "tracking") for (const merge of configured(`branch.${branch}.merge`)) addSpec(merge);
     return { names, unknown };
   }
   for (let k = 0; k < refspecs.length; k++) {
     const word = refspecs[k];
     if (!word.literal) { unknown = true; continue; }
     if (word.value === "tag") { k++; continue; }
-    const spec = word.value.replace(/^\+/u, "");
-    // `:` (and `+:`) pushes every matching branch, develop and main included when both sides have them.
-    if (spec === ":") { names.push("*"); continue; }
-    const colon = spec.indexOf(":");
-    let target = colon >= 0 && colon < spec.length - 1 ? spec.slice(colon + 1) : colon >= 0 ? spec.slice(0, colon) : spec;
-    if (target === "HEAD" || target === "@") {
-      const branch = currentBranch();
-      if (branch === null) { unknown = true; continue; }
-      target = branch;
+    addSpec(word.value);
+    if (word.value.includes(":")) continue;
+    // No destination written: a configured refspec of the same source names it.
+    const source = branchName(word.value.replace(/^\+/u, ""));
+    for (const spec of remoteSpecs()) {
+      const body = spec.replace(/^\+/u, "");
+      const colon = body.indexOf(":");
+      if (colon > 0 && source !== null && branchName(body.slice(0, colon)) === source) addSpec(spec);
     }
-    if (target.startsWith("refs/tags/")) continue;
-    target = target.replace(/^refs\/heads\//u, "");
-    names.push(target.includes("*") ? "*" : target);
   }
   return { names, unknown };
 }
@@ -6173,12 +6274,29 @@ function secretPath(value, ctx) {
   return false;
 }
 
+/** Words that name a path in the secrets folder, read from the directory of `ctx`. @param {Word[]} words @param {Context} ctx */
+function checkSecretWords(words, ctx) {
+  if (secretRoots.length === 0) return;
+  for (const word of words) {
+    if (secretPath(resolvedWord(word).value, ctx)) throw new Block("secret-export", `${structural["secret-export"]} Ruta: ${word.value.replaceAll(UNKNOWN, "…")}`);
+  }
+}
+
+/** The directory `git -C <dir> …` runs in (each -C read from the one before); null when it cannot be read. @param {Word[]} rest @param {Context} ctx */
+function gitDirectory(rest, ctx) {
+  const { subIndex } = parseGit(rest);
+  let directory = ctx.cwd;
+  for (let k = 0; k < subIndex; k++) {
+    if (rest[k].value !== "-C" || !rest[k + 1]) continue;
+    directory = chdirTarget(rest[++k], { ...ctx, cwd: directory });
+  }
+  return directory;
+}
+
 /** A program given a path in the secrets folder, or input redirected from one, is denied with no exception. @param {any} node @param {Context} ctx */
 function checkSecretRead(node, ctx) {
   if (secretRoots.length === 0) return;
-  for (const word of /** @type {Word[]} */ (node.words ?? [])) {
-    if (secretPath(resolvedWord(word).value, ctx)) throw new Block("secret-export", `${structural["secret-export"]} Ruta: ${word.value.replaceAll(UNKNOWN, "…")}`);
-  }
+  checkSecretWords(/** @type {Word[]} */ (node.words ?? []), ctx);
   for (const redirect of /** @type {Redirect[]} */ (node.redirects ?? [])) {
     if (!redirect.target || !/^<(?:>|&)?$/u.test(redirect.op)) continue;
     if (secretPath(redirect.target.value, ctx)) throw new Block("secret-export", `${structural["secret-export"]} Ruta: ${redirect.target.value.replaceAll(UNKNOWN, "…")}`);
