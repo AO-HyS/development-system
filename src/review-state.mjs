@@ -15,7 +15,8 @@ import { appendFileSync, chmodSync, closeSync, existsSync, mkdirSync, openSync, 
 import { hostname } from "node:os";
 import { dirname, resolve } from "node:path";
 import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, parsePrReference, readReceipts } from "./evidence.mjs";
-import { BUDGET, CRITICAL, NOT_CRITICAL, REVIEWERS, admission, fableRound, hardReason, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
+import { productionBase } from "./review-stack.mjs";
+import { BUDGET, CRITICAL, EXPOSURES, NOT_CRITICAL, PRODUCTION_BUDGET, REVIEWERS, admission, fableRound, hardReason, isCritical, liveCritical, openFindings, policyRecordProblem, reviewerFor } from "./review-policy.mjs";
 
 export { BUDGET, CRITICAL, OBSERVED_MODEL, REVIEWERS, classifyFindings, reviewerFor } from "./review-policy.mjs";
 
@@ -36,8 +37,9 @@ export const THREAD = /^(t3-thread:\/\/\S+|thread:\S{8,}|[0-9a-f]{8}-[0-9a-f]{4}
 const REQUEST_KEY = /^[\x21-\x7e]{1,200}$/;
 
 /**
- * @typedef {{id: string, paths: string[], origin?: "prior" | "fix-induced" | "new", critical?: string}} Finding
- * @typedef {{type: "round", pr: string, reviewer: "sol" | "fable", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string, observedModel?: string}} RoundRecord
+ * @typedef {{id: string, paths: string[], origin?: "prior" | "fix-induced" | "new", critical?: string, exposure?: "live" | "latent"}} Finding
+ * @typedef {{round: number, id: string, pr?: string}} Closure
+ * @typedef {{type: "round", pr: string, reviewer: "sol" | "fable", round: number, head: string, scope: "full" | "fix-diff", result: "blocking" | "non-blocking" | "none", thread: string, findings: Finding[], recordedAt: string, operatorApproval?: string, slot?: number, from?: string, approvalId?: string, observedModel?: string, closes?: Closure[]}} RoundRecord
  * @typedef {{type: "exemption", pr: string, reviewer: "sol", head: string, exempt: "docs-only" | "low-risk", reason: string, recordedAt: string}} ExemptionRecord
  * @typedef {{type: "coverage", pr: string, from: string, to: string, findings: string[], verdict: "fix-only" | "out-of-scope", note: string, recordedAt: string}} CoverageRecord
  * @typedef {{type: "waiver", pr: string, head: string, quote: string, recordedAt: string}} WaiverRecord
@@ -185,11 +187,15 @@ export function rawLines(file) {
 // ---------------------------------------------------------------------------------------------------------------
 // Findings
 
-const SUFFIX = /^(.*[^/])@([a-z-]+)(?:\/([a-z-]+))?$/;
+const SUFFIX = /^(.*[^/])@([a-z-]+)(?:\/([a-z-]+))?(?:\/([a-z-]+))?$/;
+/** The form every finding of a 2.15.0 round takes. */
+export const FINDING_FORM = "<id>:<path>[+<path>...]@<prior|fix-induced|new>/<critical domain|none>/<live|latent>";
 
 /**
- * "<id>:<path>[+<path>...][@<origin>[/<critical>]]" -> {id, paths, origin?, critical?}. Origin is prior, fix-induced or
- * new; critical is one of the protected domains or `none` (a finding that does not say counts as critical at the cap).
+ * "<id>:<path>[+<path>...][@<origin>[/<critical>[/<exposure>]]]" -> {id, paths, origin?, critical?, exposure?}. Origin
+ * is prior, fix-induced or new; critical is one of the protected domains or `none` (a finding that does not say counts
+ * as critical at the cap); exposure (2.15.0) is live or latent. `review record` asks for all three; the shorter forms
+ * are what older rows hold.
  * @param {string} value @returns {Finding}
  */
 export function parseFinding(value) {
@@ -200,17 +206,21 @@ export function parseFinding(value) {
   let origin;
   /** @type {string | undefined} */
   let critical;
+  /** @type {Finding["exposure"]} */
+  let exposure;
   const suffix = SUFFIX.exec(rest);
   if (suffix) {
     if (!ORIGINS.includes(suffix[2])) throw new Error(`Finding origin must be ${ORIGINS.join(", ")}: ${value}`);
-    if (suffix[3] !== undefined && !DOMAINS.includes(suffix[3])) throw new Error(`Finding critical domain must be ${DOMAINS.join(", ")}: ${value}`);
+    if (suffix[3] !== undefined && !DOMAINS.includes(suffix[3])) throw new Error(`Finding critical domain must be ${DOMAINS.join(", ")} (then /live or /latent): ${value}`);
+    if (suffix[4] !== undefined && !EXPOSURES.includes(suffix[4])) throw new Error(`Finding exposure must be ${EXPOSURES.join(" or ")}: ${value}`);
     rest = suffix[1];
     origin = /** @type {Finding["origin"]} */ (suffix[2]);
     critical = suffix[3];
+    exposure = /** @type {Finding["exposure"]} */ (suffix[4]);
   }
   const paths = rest.split("+").map((path) => path.trim()).filter(Boolean);
-  if (!FINDING_ID.test(id) || paths.length === 0 || paths.some((path) => path.includes(".."))) throw new Error(`Finding must be <id>:<path>[+<path>...][@prior|fix-induced|new[/<critical>]]: ${value}`);
-  return { id, paths, ...(origin ? { origin } : {}), ...(critical ? { critical } : {}) };
+  if (!FINDING_ID.test(id) || paths.length === 0 || paths.some((path) => path.includes(".."))) throw new Error(`Finding must be ${FINDING_FORM}: ${value}`);
+  return { id, paths, ...(origin ? { origin } : {}), ...(critical ? { critical } : {}), ...(exposure ? { exposure } : {}) };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -227,16 +237,21 @@ const hasShape = (value, required, optional) => typeof value === "object" && val
 const isFinding = (value) => hasKeys(value, ["id", "paths"]) && typeof value.id === "string" && FINDING_ID.test(value.id) && Array.isArray(value.paths) && value.paths.length > 0
   && value.paths.every((/** @type {unknown} */ path) => typeof path === "string" && path !== "" && path.trim() === path && !path.includes(".."));
 /** A 2.9.0 finding: the legacy shape plus an origin and, with it, an optional critical domain. @param {any} value */
-const isClassifiedFinding = (value) => hasShape(value, ["id", "paths"], ["origin", "critical"])
+const isClassifiedFinding = (value) => hasShape(value, ["id", "paths"], ["origin", "critical", "exposure"])
   && isFinding({ id: value.id, paths: value.paths })
   && (value.origin === undefined || ORIGINS.includes(value.origin))
-  && (value.critical === undefined || (value.origin !== undefined && DOMAINS.includes(value.critical)));
+  && (value.critical === undefined || (value.origin !== undefined && DOMAINS.includes(value.critical)))
+  // 2.15.0: live or latent, only on a finding that also says its origin and its domain.
+  && (value.exposure === undefined || (value.critical !== undefined && EXPOSURES.includes(value.exposure)));
+/** One entry of a round's `closes`: the round and id of a live critical finding, and its PR when it is an earlier one of the branch. @param {any} value */
+const isClosure = (value) => hasShape(value, ["round", "id"], ["pr"]) && Number.isInteger(value.round) && value.round >= 1
+  && typeof value.id === "string" && FINDING_ID.test(value.id) && (!("pr" in value) || Boolean(text(value.pr)));
 
 /** Keys only 2.9.0 writes; a row without them is legacy-shaped and validates exactly as in 2.8.1. @param {any} record */
 const isSlotRow = (record) => record && typeof record === "object" && ("slot" in record || "approvalId" in record);
 /** @param {any} record */
-const hasNewKeys = (record) => isSlotRow(record) || "from" in record
-  || (Array.isArray(record.findings) && record.findings.some((/** @type {any} */ finding) => finding && typeof finding === "object" && ("origin" in finding || "critical" in finding)));
+const hasNewKeys = (record) => isSlotRow(record) || "from" in record || "closes" in record
+  || (Array.isArray(record.findings) && record.findings.some((/** @type {any} */ finding) => finding && typeof finding === "object" && ("origin" in finding || "critical" in finding || "exposure" in finding)));
 /** The lineage slot of a round row: its `slot`, else its local round number. @param {any} record */
 export const slotOf = (record) => Number(record?.slot ?? record?.round);
 
@@ -254,12 +269,15 @@ export function recordProblem(record, key) {
     if (hasNewKeys(record) || (Number(record.round) > 2 && !("operatorApproval" in record))) {
       // 2.9.0 row: optional slot (when it differs from the local round), from (fix-diff only) and approvalId (a 2.9.0
       // owner approval; no round needs one since 2.13.0).
-      if (!hasShape(record, keys, ["slot", "from", "approvalId"])) return "round has missing or unknown fields";
+      // 2.15.0 adds closes: the live critical findings of the round before that this confirmation found fixed.
+      if (!hasShape(record, keys, ["slot", "from", "approvalId", "closes"])) return "round has missing or unknown fields";
+      if ("closes" in record && (!Array.isArray(record.closes) || record.closes.length === 0 || !record.closes.every(isClosure)
+        || new Set(record.closes.map((/** @type {Closure} */ entry) => `${entry.pr ?? ""}#${entry.round}#${entry.id}`)).size !== record.closes.length)) return "round closes are not distinct {round, id, pr?} entries";
       if (!Number.isInteger(record.round) || record.round < 1) return "round number is not a positive integer";
       if ("slot" in record && (!Number.isInteger(record.slot) || record.slot <= record.round)) return "round slot is not an integer past its local round number";
       if ("from" in record && (typeof record.from !== "string" || !SHA.test(record.from) || record.scope !== "fix-diff")) return "round from is not a 40-hex SHA on a fix-diff round";
       if ("approvalId" in record && (!text(record.approvalId) || slotOf(record) < 3)) return "round approval id is empty or names a slot before the third";
-      if (!Array.isArray(record.findings) || !record.findings.every(isClassifiedFinding)) return "round findings are not {id, paths[], origin?, critical?}";
+      if (!Array.isArray(record.findings) || !record.findings.every(isClassifiedFinding)) return "round findings are not {id, paths[], origin?, critical?, exposure?}";
     } else {
       if (!hasKeys(record, Number(record.round) > 2 ? [...keys, "operatorApproval"] : keys)) return "round has missing or unknown fields";
       if (!Number.isInteger(record.round) || record.round < 1) return "round number is not a positive integer";
@@ -310,6 +328,42 @@ export function sequenceProblem(records) {
   if (rounds.some((round, index) => round.round !== index + 1)) return "numbers its review rounds out of order";
   if (rounds.some((round, index) => index >= 1 && slotOf(round) <= slotOf(rounds[index - 1]))) return "has lineage slots that do not increase";
   if (rounds.some((round) => slotOf(round) === 1 && round.scope !== "full")) return "has a lineage slot 1 that is not full";
+  return closureProblem(records, rounds);
+}
+
+/** The latest disposition of each finding of one round. @param {ReviewRecord[]} records @param {number} round */
+export function dispositionsOf(records, round) {
+  /** @type {Map<string, import("./review-policy.mjs").DispositionRecord>} */
+  const latest = new Map();
+  for (const record of records) if (record.type === "disposition" && record.round === round) latest.set(record.finding, record);
+  return latest;
+}
+
+/**
+ * 2.15.0, a critical finding is fixed and never left for later: the round after one that left live critical findings
+ * accounts for each of them, either in `closes` (it read the fix, or accepts the rejection) or by repeating it with
+ * the same id as a live critical finding. A closure needs the finding's disposition as fixed or rejected, written
+ * before the round. A closure of a finding of an earlier PR of the branch (`pr`) is checked when it is recorded.
+ * Rows written before 2.15.0 leave no live critical finding and are not asked.
+ * @param {ReviewRecord[]} records @param {RoundRecord[]} rounds
+ */
+function closureProblem(records, rounds) {
+  for (const [index, round] of rounds.entries()) {
+    const before = rounds[index - 1];
+    const owed = before ? liveCritical(before) : [];
+    const local = (round.closes ?? []).filter((entry) => !entry.pr);
+    const stray = local.find((entry) => !before || entry.round !== before.round || !owed.some((finding) => finding.id === entry.id));
+    if (stray) return `has a round ${round.round} that closes ${stray.id}, which is not a live critical finding of the round before it`;
+    if (!before) continue;
+    const dispositions = dispositionsOf(records.slice(0, records.indexOf(round)), before.round);
+    for (const finding of owed) {
+      const closed = local.some((entry) => entry.id === finding.id);
+      const repeated = round.findings.some((candidate) => candidate.id === finding.id && candidate.exposure === "live" && isCritical(candidate));
+      if (closed === repeated) return `has a round ${round.round} that ${closed ? "both closes and repeats" : "neither closes nor repeats"} the live critical finding ${finding.id} of round ${before.round}`;
+      const outcome = dispositions.get(finding.id)?.outcome;
+      if (closed && outcome !== "fixed" && outcome !== "rejected") return `has a round ${round.round} that closes ${finding.id} of round ${before.round} without a fixed or rejected disposition recorded before it`;
+    }
+  }
   return "";
 }
 
@@ -548,8 +602,47 @@ export function lineageState(home, lineage) {
   const lastRound = last ? { pr: last.pr, record: last.round, slot: lastBound ? slotOf(last.round) : undefined, effectiveSlot: lastBound ? slotOf(last.round) : slotsUsed, fixInduced: last.round.result === "blocking" && last.round.findings.some((finding) => finding.origin === "fix-induced"), critical: openFindings(last.round, lastBound ? slotOf(last.round) : slotsUsed).critical } : undefined;
   // 2.14.0: who runs the next round (Sol, Fable when hard); slots are shared between reviewers. `rejected` (a pending
   // critical Codex rejection) is known only to the gate. The round runs on the first reserved slot, else the next.
-  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected, nextSlot: pending[0]?.slot ?? slotsUsed + 1 }) });
-  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, approvalsUnused, roundOf, everBound, reviewer: reviewerWith(), reviewerWith };
+  const reviewerWith = (rejected = false) => reviewerFor({ releases, rounds: recorded.map((entry) => entry.round), now: Date.now(), hard: hardReason({ critical: lastRound?.critical, rejected }) });
+  return { lineage, approvals, reservations, allReservations, releases, live, pending, legacyRounds: legacy.length, slotsUsed, nextSlot: slotsUsed + 1, lastRound, recorded, approvalsUnused, roundOf, everBound, reviewer: reviewerWith(), reviewerWith };
+}
+
+/**
+ * The rounds the lineage of this PR runs on its own: one, or two when its base is positively production (a release).
+ * @param {Lineage} lineage
+ */
+export const roundBudget = (lineage) => productionBase(String(lineage.pull?.base?.ref ?? ""), String(lineage.pull?.base?.repo?.default_branch ?? "")) ? PRODUCTION_BUDGET : BUDGET;
+
+/**
+ * 2.15.0: the live critical findings the lineage's last round left open, each with its latest disposition. They are
+ * what the confirmation round closes or repeats; empty when the last round is not a blocking 2.15.0 round.
+ * @param {string} home @param {ReturnType<typeof lineageState>} state
+ */
+export function confirmationList(home, state) {
+  const last = state.lastRound;
+  const owed = last ? liveCritical(last.record) : [];
+  if (!last || !owed.length) return [];
+  const dispositions = dispositionsOf(readReviewRecords(home, last.pr), last.record.round);
+  return owed.map((finding) => ({ pr: last.pr, round: last.record.round, id: finding.id, paths: finding.paths, critical: finding.critical, disposition: dispositions.get(finding.id) }));
+}
+
+/**
+ * Whether a later round of the lineage closed finding `id` of `round` of `pr`: after that nothing reopens it.
+ * @param {ReturnType<typeof lineageState>} state @param {string} pr @param {number} round @param {string} id
+ */
+export function closedBy(state, pr, round, id) {
+  return state.recorded.find((entry) => (entry.round.closes ?? []).some((closure) => closure.id === id && closure.round === round && (closure.pr ?? entry.pr) === pr));
+}
+
+/**
+ * Whether GitHub says `commit` is `head` or part of its history; an unreadable comparison is "no".
+ * @param {Lineage} lineage @param {string} commit @param {string} head
+ */
+export function containedIn(lineage, commit, head) {
+  if (commit === head) return true;
+  try {
+    const compare = JSON.parse(gh(["api", `repos/${lineage.owner}/${lineage.repo}/compare/${commit}...${head}`]));
+    return compare?.status === "ahead" || compare?.status === "identical";
+  } catch { return false; }
 }
 
 /** The gate's view of a lineage. @param {ReturnType<typeof lineageState>} state */
@@ -558,11 +651,11 @@ export function lineageSummary(state) {
     id: state.lineage.id,
     prs: state.lineage.prs.map((entry) => entry.number),
     slotsUsed: state.slotsUsed,
-    budget: BUDGET,
+    budget: roundBudget(state.lineage),
     nextSlot: state.nextSlot,
     approvalsUnused: state.approvalsUnused.map((approval) => ({ id: approval.id, pr: approval.pr, slot: approval.slot, scope: approval.scope })),
     pending: state.pending.map((reservation) => ({ id: reservation.id, pr: reservation.pr, slot: reservation.slot, scope: reservation.scope })),
-    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, effectiveSlot: state.lastRound.effectiveSlot, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced, critical: state.lastRound.critical, head: state.lastRound.record.head } } : {}),
+    ...(state.lastRound ? { lastRound: { pr: state.lastRound.pr, round: state.lastRound.record.round, slot: state.lastRound.slot ?? null, effectiveSlot: state.lastRound.effectiveSlot, result: state.lastRound.record.result, fixInduced: state.lastRound.fixInduced, critical: state.lastRound.critical, head: state.lastRound.record.head, liveCritical: liveCritical(state.lastRound.record).map((finding) => finding.id) } } : {}),
   };
 }
 
@@ -582,15 +675,16 @@ function verifyRedesign(value, cwd) {
 const numberOf = (key) => Number(key.slice(key.lastIndexOf("#") + 1));
 
 /**
- * Evidence comes before the first Sol round of a PR into develop: the reservation applies the evaluation the gate
- * uses, with its exceptions (a docs-only PR, the owner's waiver, a nonvisual receipt). Other bases are not asked.
+ * Evidence comes before every round of a PR whose base is not positively production (develop, a stack, a task
+ * branch), the confirmation round included (2.15.0; until 2.14.3 only before the first): the cases ran on the head the
+ * reviewer is about to read. The reservation applies the evaluation the gate uses, with its exceptions (a docs-only
+ * PR, the owner's waiver, a nonvisual receipt). A production base is not asked.
  * Returns "" or why the round does not start yet.
  * @param {string} home @param {Lineage} lineage
  */
-function evidenceBeforeFirstRound(home, lineage) {
+function evidenceBeforeRound(home, lineage) {
   const pull = lineage.pull;
-  if (String(pull?.base?.ref ?? "") !== "develop") return "";
-  if (readReviewRecords(home, lineage.key).some((record) => record.type === "round")) return "";
+  if (productionBase(String(pull?.base?.ref ?? ""), String(pull?.base?.repo?.default_branch ?? ""))) return "";
   const head = String(pull?.head?.sha ?? "");
   const api = `repos/${lineage.owner}/${lineage.repo}`;
   /** @param {string[]} args @returns {any} */
@@ -607,7 +701,7 @@ function evidenceBeforeFirstRound(home, lineage) {
       return Array.isArray(compare.files) && compare.files.length < 300 ? compare.files.map(changedFile) : null;
     },
   });
-  return ACCEPTED_EVIDENCE.has(evidence.state) ? "" : `the behavioral evidence of ${lineage.key} is ${evidence.state} (${evidence.reason}): record it with development-system evidence record before the first Sol round`;
+  return ACCEPTED_EVIDENCE.has(evidence.state) ? "" : `the behavioral evidence of ${lineage.key} is ${evidence.state} (${evidence.reason}): run the cases on this head and record them with development-system evidence record (--case "<pass|fail>: <what was tried> => <what was observed>" for each) before the review round`;
 }
 
 /**
@@ -635,14 +729,30 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     // a reservation made before a rule changed, or before the PR moved, does not carry its old answer.
     /** @param {number} slot @param {boolean} approved @param {boolean} critical */
     const refused = (slot, approved, critical) => {
-      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical });
+      const refusal = admission({ slot, scope, last: last && { result: last.record.result, critical: last.critical, head: last.record.head }, head: String(lineage.pull?.head?.sha ?? ""), approved, pendingCritical: critical, budget: roundBudget(lineage) });
       return refusal ? `slot ${slot}${last ? ` after ${where(last)} (${last.record.result})` : ""}: ${refusal}` : "";
+    };
+    // 2.15.0: the confirmation round is reserved only when every live critical finding the last round left open says
+    // how it ended (fixed in a commit, or rejected with the reason); the reservation then freezes that list. The
+    // other live findings of that round are not re-read: each needs its disposition first, as on the advance path.
+    const unsettled = () => {
+      const listed = confirmationList(home, state);
+      const open = listed.filter((entry) => entry.disposition?.outcome !== "fixed" && entry.disposition?.outcome !== "rejected");
+      // A commit the round that found the finding already read fixes nothing: said here, before the round runs.
+      const stale = last ? listed.filter((entry) => entry.disposition?.outcome === "fixed" && entry.disposition.commit && containedIn(lineage, entry.disposition.commit, last.record.head)) : [];
+      if (stale.length && last) return `${stale.map((entry) => entry.id).join(", ")} ${stale.length === 1 ? "is" : "are"} recorded as fixed in a commit that round ${last.record.round} of ${last.pr} already read (its head ${last.record.head} contains it): record the disposition again with the commit that fixes it (development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit>) before the confirmation round`;
+      if (!open.length && listed.length && last) {
+        const dispositions = dispositionsOf(readReviewRecords(home, last.pr), last.record.round);
+        const loose = last.record.findings.filter((finding) => finding.exposure === "live" && !dispositions.has(finding.id)).map((finding) => finding.id);
+        if (loose.length) return `round ${last.record.round} of ${last.pr} also left ${loose.join(", ")} open (live, not critical) and the confirmation round does not read ${loose.length === 1 ? "it" : "them"}: fix each and record it with development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit> (or rejected or follow-up with --note <reason>) before the confirmation round`;
+      }
+      return open.length && last ? `round ${last.record.round} of ${last.pr} left ${open.map((entry) => entry.id).join(", ")} open (live, critical) without a fix or a rejection: record each with development-system review dispose --pr ${last.pr} --finding <id> --outcome fixed --commit <fix commit> (or --outcome rejected --note <reason>) before the confirmation round; follow-up is only for a change that left the PR` : "";
     };
     const existing = state.live.find((reservation) => reservation.requestKey === requestKey);
     if (existing) {
       if (existing.pr !== lineage.key || existing.scope !== scope) throw new Error(`request key ${requestKey} already reserved slot ${existing.slot} (${existing.scope}) for ${existing.pr}; use a new key for a different round`);
       if (state.roundOf(existing)) throw new Error(`request key ${requestKey} reserved slot ${existing.slot} (reservation ${existing.id}) and slot ${existing.slot} already recorded its round; reserve the next slot with a new request key (a new Task-Id or packet)`);
-      const unproven = evidenceBeforeFirstRound(home, lineage);
+      const unproven = evidenceBeforeRound(home, lineage) || unsettled();
       if (unproven) throw new Error(unproven);
       const gone = refused(existing.slot, Boolean(existing.approvalId), Boolean(existing.criticalThread));
       if (gone) throw new Error(`reservation ${existing.id} is no longer a round the policy runs (${gone}): release it with development-system review release --pr ${existing.pr} --reservation-id ${existing.id} --reason <why>`);
@@ -656,10 +766,10 @@ export function reserveReview({ home, pr, scope, requestKey, packetHash, approva
     const approval = approvalId ? candidates.find((candidate) => candidate.id === approvalId) : candidates[0];
     if (approvalId !== undefined && !approval) throw new Error(`approval ${approvalId} is not an unused approval for slot ${slot} (${scope}) of ${lineage.key}; no round needs an approval since 2.13.0, so drop --approval-id`);
     if (!last && slot >= 2 && scope !== "full") throw new Error(`slot ${slot} has no recorded round to diff from: reserve it with --scope full`);
-    const unproven = evidenceBeforeFirstRound(home, lineage);
-    if (unproven) throw new Error(unproven);
     const refusal = refused(slot, Boolean(approval), Boolean(criticalThread));
     if (refusal) throw new Error(refusal);
+    const unproven = evidenceBeforeRound(home, lineage) || unsettled();
+    if (unproven) throw new Error(unproven);
     if (last?.fixInduced && !redesign) throw new Error(`the last round of this lineage (${where(last)}) has a fix-induced blocking finding: redesign the fix before another round and pass --redesign <path>#<sha256 of its bytes> (packet line "Redesign: <path>#<sha256>")`);
     const verified = redesign === undefined ? undefined : verifyRedesign(redesign, cwd);
     /** @type {Reservation} */

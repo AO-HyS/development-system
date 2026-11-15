@@ -1,6 +1,6 @@
 // @ts-check
 // The review gate for one PR head: Codex (the chatgpt-codex-connector GitHub app), Sol review records
-// (`src/review-records.mjs`) and, for a PR into develop, behavioral evidence (`src/evidence.mjs`). Codex reviews only
+// (`src/review-records.mjs`) and, unless the base is production, behavioral evidence (`src/evidence.mjs`). Codex reviews only
 // when a PR is opened, marked ready, or asked with "@codex review", so later commits go unreviewed unless someone asks
 // again. `--request` asks for the current head while fewer than two requests are published; it holds a local per-PR
 // lock and re-reads GitHub inside it before posting, and never deletes a published request. `mergeReady` combines
@@ -30,9 +30,11 @@
 //                           exactly 2 parents, the second an ancestor-or-equal of the base branch, and `git merge-tree
 //                           --write-tree p1 p2` (local checkout) equal to its tree; the base history it imports is not a
 //                           PR commit; missing objects -> uncovered. Every other first-parent commit cites `fixes: <id>`
-//                           of that review (Codex: only threads the review of that head opened) and touches only those
-//                           findings' paths, and a `fix-only` coverage record runs from the reviewed head to the current
-//                           head; out-of-scope or missing -> uncovered. Only clean base merges -> covered, no record.
+//                           of this PR's reviews (any recorded round; Codex threads: for Codex only those the review of
+//                           that head opened) and touches only those findings' paths. 2.14.3: a file the interval leaves
+//                           as it was read, or that the PR no longer changes, needs no citation; `covers: <sha>` in a
+//                           later commit lends its ids to a commit pushed without them; the `fix-only` record is
+//                           optional and an `out-of-scope` record still vetoes. Only clean base merges -> covered.
 //   Sol                     records invalid or contradictory -> invalid; an exemption counts only for its exact head;
 //                           approval needs the last round's result to be none or non-blocking, on the head or covered
 //   Sol (2.13.0)            rounds run without approval, two per branch lineage (2.14.1; five before) and two more for a critical fix
@@ -40,26 +42,38 @@
 //                           prose docs, clean base merges and recorded cited fixes stay covered; at the cap an
 //                           `auto-advance` row lets the PR into develop with every later commit a cited fix
 //   routing (2.10.0)        the first unmet gate picks siguiente through review-gate-machine.mjs (XState); --diagram draws it
-//   mergeReady              Codex ok AND no blocking finding AND Sol ok AND develop evidence (asked first before the
+//   mergeReady              Codex ok AND no blocking finding AND Sol ok AND behavioral evidence unless the base is production (asked first before the
 //                           first Sol round, then again for the final head)
 import { execFileSync } from "node:child_process";
 import { chmodSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, readReceipts, writeMergeGate } from "./evidence.mjs";
+import { ACCEPTED_EVIDENCE, changedFile, evaluatePullEvidence, isNonFunctionalChange, readReceipts, writeMergeGate } from "./evidence.mjs";
 import { readReviewRecords, requestLockPath, withFileLock } from "./review-records.mjs";
 import { lineageState, lineageSummary, resolveLineage } from "./review-state.mjs";
 import { gateNextAction, gateStep } from "./review-gate-machine.mjs";
 import { codexThreads, roundsReservedAt, threadStates } from "./codex-threads.mjs";
-import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, onlyProse, openFindings } from "./review-policy.mjs";
+import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, isCritical, onlyProse, openFindings } from "./review-policy.mjs";
 import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
+import { productionBase, towardDevelop } from "./review-stack.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
 const APP_LOGIN = "chatgpt-codex-connector";
 const REQUEST_MARKER = "ds-codex-review-request";
-const BUDGET = 2;
+// 2.15.0: Codex is asked once per PR (twice until 2.14.3); rows of PRs with more requests still read.
+const BUDGET = 1;
 const UNKNOWN_HOURS = 6;
+/**
+ * The area's verification guide (2.15.0), prose only: a `.md` under `docs/` with a path segment that contains
+ * `verif`, or the `SKILL.md` of a `verify-*` skill directory. Never an instruction file.
+ */
+const VERIFICATION_GUIDE = /^(docs\/([^/]+\/)*[^/]*verif[^/]*(\/[^/]+)*\.md|([^/]+\/)*verify-[^/]+\/SKILL\.md)$/i;
+/** @param {string} name */
+const verificationGuide = (name) => VERIFICATION_GUIDE.test(name) && !/(^|\/)(AGENTS|CLAUDE)\.md$/i.test(name);
+// 2.15.0: toward develop Codex cannot hold a PR. Measured over 52 requests of the three product repositories, every
+// answer arrived within 5 minutes; a request this old without a valid review reads `unknown`, even if a status says running.
+const DEVELOP_WAIT_MINUTES = 30;
 const MAX_COVERAGE_COMMITS = 20;
 // Only causes that end the request; a bare "error" is ambiguous and leaves it requested/unknown.
 const TERMINAL = /usage limit|quota|not enabled|no access|couldn['’]?t review|could not review|unable to review/i;
@@ -133,7 +147,7 @@ function summaryStates(appComments) {
 /**
  * @typedef {{id: string, paths: string[]}} Finding
  * @typedef {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} CodexState
- * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean}} CoveredCommit
+ * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean, settled?: boolean, undone?: boolean}} CoveredCommit
  * @typedef {{from: string, to: string, covered: boolean, error: boolean, filtersPass: boolean, reason: string, commits: CoveredCommit[]}} Coverage
  */
 
@@ -146,7 +160,10 @@ function ancestorOrEqual(base, ancestor, descendant) {
 /**
  * Whether one first-parent commit (GitHub commit detail) is a clean merge of the base branch: exactly 2 parents, the second an ancestor-or-equal
  * of `baseRef` (GitHub compare), and `git merge-tree --write-tree p1 p2` in the local checkout yields the commit's
- * tree. Missing local objects or another repository leave it unproven, with the reason.
+ * tree. 2.15.0: it also counts when what was changed by hand on top of that automatic merge (a conflict that was
+ * resolved, or an edit made in the merge) is only prose documentation, the same files that stay covered on their
+ * own after the last round: two PRs that both edit docs/current-work.md conflict there every day. Missing local
+ * objects or another repository leave it unproven, with the reason.
  * @param {string} base @param {any} entry a commit as GitHub's commits API reports it @param {string} baseRef
  * @returns {{merge: boolean, clean?: boolean, error?: boolean, reason?: string}}
  */
@@ -160,15 +177,42 @@ function cleanBaseMerge(base, entry, baseRef) {
   try {
     if (!ancestorOrEqual(base, second, baseRef)) return { merge: true, clean: false, reason: `its second parent ${second.slice(0, 12)} is not in ${baseRef}` };
   } catch { return { merge: true, clean: false, error: true, reason: `GitHub could not compare ${second.slice(0, 12)} with ${baseRef}` }; }
+  const unbuilt = "the local checkout cannot rebuild the merge (missing objects or another repository: run from the PR's checkout after git fetch)";
+  /** @param {string[]} args */
+  const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
   let written;
-  try {
-    written = execFileSync("git", ["merge-tree", "--write-tree", first, second], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 }).split("\n")[0].trim();
-  } catch (error) {
-    const status = /** @type {{status?: number}} */ (error).status;
-    return { merge: true, clean: false, reason: status === 1 ? "git merge-tree reports conflicts" : "the local checkout cannot rebuild the merge (missing objects or another repository: run from the PR's checkout after git fetch)" };
+  let conflicts = false;
+  try { written = git(["merge-tree", "--write-tree", "--name-only", first, second]).split("\n")[0].trim(); } catch (error) {
+    const failed = /** @type {{status?: number, stdout?: string}} */ (error);
+    if (failed.status !== 1) return { merge: true, clean: false, reason: unbuilt };
+    // With conflicts git still prints the tree of the automatic merge, conflict markers included, then the
+    // conflicted paths up to the first empty line.
+    conflicts = true;
+    const printed = String(failed.stdout ?? "").split("\n");
+    written = printed[0].trim();
+    const end = printed.indexOf("", 1);
+    // A conflict git cannot mark in the file (one side deleted it, a binary, a submodule) leaves that file in the
+    // automatic tree as one side had it, so keeping it does not show as a change by hand: every conflicted path
+    // must itself be prose.
+    const listed = printed.slice(1, end < 0 ? printed.length : end);
+    const code = listed.filter((name) => !isNonFunctionalChange({ filename: name, status: "modified" }));
+    if (end < 0 || !listed.length || code.length) return { merge: true, clean: false, reason: `git merge-tree reports conflicts outside prose documentation (${code.slice(0, 5).join(", ") || "paths not listed"})` };
+    // git labels its markers with what was merged, so a commit that kept them differs from the automatic tree only in
+    // those labels and would read as a resolution in prose.
+    const marked = listed.filter((name) => { try { const text = git(["show", `${tree}:${name}`]); return /^<{7} /m.test(text) && /^>{7} /m.test(text); } catch { return false; } });
+    if (marked.length) return { merge: true, clean: false, reason: `the commit keeps conflict markers in ${marked.slice(0, 5).join(", ")}` };
   }
-  if (written !== tree) return { merge: true, clean: false, reason: `its tree ${tree.slice(0, 12)} differs from the clean merge ${written.slice(0, 12)}` };
-  return { merge: true, clean: true };
+  if (written === tree) return conflicts ? { merge: true, clean: false, reason: "git merge-tree reports conflicts and the commit keeps them unresolved" } : { merge: true, clean: true };
+  // What was changed by hand on top of the automatic merge.
+  /** @type {{filename: string, status: string}[]} */
+  let byHand;
+  try {
+    if (!/^[0-9a-f]{40}$/.test(written)) throw new Error("no tree");
+    byHand = git(["diff", "--name-status", "--no-renames", "--ignore-submodules=none", written, tree]).split("\n").filter(Boolean).map((line) => { const [status, ...name] = line.split("\t"); return { filename: name.join("\t"), status: status === "A" ? "added" : status === "D" ? "removed" : "modified" }; });
+  } catch { return { merge: true, clean: false, reason: unbuilt }; }
+  if (byHand.length && byHand.every(isNonFunctionalChange)) return { merge: true, clean: true };
+  const names = byHand.map((file) => file.filename).slice(0, 5).join(", ");
+  return { merge: true, clean: false, reason: conflicts ? `git merge-tree reports conflicts, and their resolution changes more than prose documentation (${names})` : `its tree ${tree.slice(0, 12)} differs from the clean merge ${written.slice(0, 12)} in more than prose documentation (${names})` };
 }
 
 /**
@@ -176,14 +220,36 @@ function cleanBaseMerge(base, entry, baseRef) {
  * head. It walks the first-parent chain from the current head back to the reviewed head (at most 20 first-parent
  * commits). A first-parent commit that is a verified clean merge of `baseRef` is covered, and the base history it
  * imports through its second parent is not a PR commit, so it needs no `fixes:` line. Every other first-parent commit
- * must cite findings of this review or of the other reviewer (`peers`): a fix the other reviewer asked for is still a
- * fix, not new scope (operator decision 2026-11-03). It must touch only the cited findings' paths; those commits then
- * need a fix-only coverage record. An
- * interval made only of clean base merges needs no record. Anything GitHub or the local checkout cannot prove leaves the
- * interval uncovered with the reason.
- * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string}} input @returns {Coverage}
+ * must cite findings of this PR's reviews: `findings` and `peers` together are every recorded round and the Codex
+ * threads, because a fix another round or the other reviewer asked for is still a fix, not new scope (operator decision
+ * 2026-11-03; every round since 2.14.3). It must touch only the cited findings' paths.
+ *
+ * 2.14.3, from five stalls in one day (frictions fixes-line-needs-amend, gate-per-commit-scope-no-net-diff,
+ * gate-codex-coverage-ignores-fable-fixes, review-coverage-fix-diff-rounds):
+ *   settled files   a file needs no citation when the interval leaves it as the reviewer read it (it is not in the
+ *                   diff from the reviewed head to the current head, and no clean base merge of the interval brought
+ *                   it in: undoing a base merge also leaves that diff empty, and merging it would delete the base's
+ *                   work) or when the PR no longer changes it (`prChanged` does not list it: the change left the PR).
+ *                   A commit made only of such files, an empty commit included, is covered without a `fixes:` line.
+ *                   A commit whose every file the interval left as it was read is also marked `undone`: a finding
+ *                   recorded as fixed there is not fixed (review-policy.mjs advanceProblem). Best effort: it needs
+ *                   the net diff, and another change to the same file hides it; the revert then needs its own
+ *                   citation, so the only loss is a wrong "fixed" in the ledger.
+ *   covers          a later commit of the interval lends its `fixes:` ids to an earlier one it names with
+ *                   `covers: <sha>` (7 to 40 hex). Pushed history cannot be amended, so this repairs a fix that was
+ *                   pushed without its line or with a wrong id; the lent ids replace the commit's own and the newest
+ *                   `covers:` that carries ids wins, so a mistyped repair is repaired by another. Ids are not joined
+ *                   across repair commits: one repair commit carries every id of the fix.
+ *   record          a `fix-only` coverage record is no longer required: it was the coordinator's word about its own
+ *                   commits and added nothing to the citation. An `out-of-scope` record for the head still vetoes.
+ *   guide           2.15.0: a finding is a missing case, and its fix adds the case to the area's verification guide.
+ *                   A commit that cites findings of the PR may also change that guide without a finding naming it: a
+ *                   Markdown file with a path segment that contains `verif` (docs/project-skills/verify-billing/SKILL.md,
+ *                   docs/verification.md). Prose only; a commit without a valid `fixes:` line is still refused.
+ * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
+ * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string, prChanged?: Set<string> | null}} input @returns {Coverage}
  */
-function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
+function coverage({ base, from, to, findings, peers = [], records, baseRef, prChanged = null }) {
   /** @type {CoveredCommit[]} */
   const commits = [];
   /** @param {string} reason @param {boolean} [error] @returns {Coverage} */
@@ -192,7 +258,25 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
   let compare;
   try { compare = JSON.parse(gh(["api", `${base}/compare/${from}...${to}`])); } catch { return uncovered(`GitHub could not compare ${from.slice(0, 12)}...${to.slice(0, 12)}`, true); }
   if (compare.status !== "ahead") return uncovered(`the head is ${compare.status} of the reviewed head ${from.slice(0, 12)}, not ahead`);
-  const known = new Map([...peers, ...findings].map((finding) => [finding.id, finding.paths]));
+  // Two rounds may reuse an id (F1 of round 1 and of round 2): the id then stands for the paths of both.
+  /** @type {Map<string, string[]>} */
+  const known = new Map();
+  for (const finding of [...peers, ...findings]) known.set(finding.id, [...(known.get(finding.id) ?? []), ...finding.paths]);
+  // The interval's net diff; null when GitHub does not list it or lists it partially, and then no file counts as
+  // untouched by the interval.
+  /** @type {Set<string> | null} */
+  let net = Array.isArray(compare.files) && compare.files.length < 300 ? new Set(compare.files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])])) : null;
+  // What the clean base merges of the interval brought in: never "untouched", whatever the net diff says.
+  /** @type {Set<string>} */
+  const merged = new Set();
+  /** The interval left the file as the reviewer read it. @param {string} name */
+  const untouched = (name) => net !== null && !net.has(name) && !merged.has(name);
+  /** A file the reviewer has nothing new to read in. @param {string} name */
+  const settled = (name) => untouched(name) || (prChanged !== null && !prChanged.has(name));
+  /** Commits that are not clean base merges, judged after the walk: a base merge is older than the commit that undoes it. @type {{commit: CoveredCommit, merge: ReturnType<typeof cleanBaseMerge>, parents: number}[]} */
+  const judged = [];
+  /** `covers:` lines seen so far, newest commit first: [sha prefix, the ids that commit cites]. @type {[string, string[]][]} */
+  const lent = [];
   let filtersPass = true;
   let baseMerges = 0;
   let sha = to;
@@ -207,40 +291,54 @@ function coverage({ base, from, to, findings, peers = [], records, baseRef }) {
     const merge = cleanBaseMerge(base, detail, baseRef);
     if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
     if (merge.clean) {
+      // GitHub lists a merge's files against its first parent; an unlisted, empty or partial list means "every file".
+      if (Array.isArray(detail.files) && detail.files.length > 0 && detail.files.length < 300) for (const file of detail.files) { merged.add(String(file.filename)); if (file.previous_filename) merged.add(String(file.previous_filename)); }
+      else net = null;
       commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
       baseMerges += 1;
       sha = parents[0];
       continue;
     }
-    const fixes = [...message.matchAll(/^fixes:\s*(.+)$/gim)].flatMap((match) => match[1].split(/[\s,]+/)).filter(Boolean);
-    const files = Array.isArray(detail.files) ? detail.files : [];
-    if (files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
+    const own = [...message.matchAll(/^fixes:\s*(.+)$/gim)].flatMap((match) => match[1].split(/[\s,]+/)).filter(Boolean);
+    // Newest first, so the latest `covers:` naming this commit wins.
+    const borrowed = lent.find(([prefix]) => sha.startsWith(prefix))?.[1] ?? [];
+    const fixes = borrowed.length ? borrowed : own;
+    for (const match of message.matchAll(/^covers:\s*(.+)$/gim)) for (const prefix of match[1].split(/[\s,]+/)) if (own.length && /^[0-9a-f]{7,40}$/.test(prefix)) lent.push([prefix, own]);
+    const files = detail.files;
+    if (!Array.isArray(files) || files.length >= 300) return { ...uncovered(`GitHub listed the files of ${sha.slice(0, 12)} partially`, true), commits };
     const names = files.flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
-    const allowed = new Set(fixes.flatMap((id) => known.get(id) ?? []));
-    const unknown = fixes.filter((id) => !known.has(id));
-    const outside = names.filter((/** @type {string} */ name) => !allowed.has(name));
     /** @type {CoveredCommit} */
     const commit = { sha, message: message.split("\n")[0].slice(0, 120), fixes, files: names };
-    if (fixes.length === 0) commit.problem = "no `fixes: <id>` line";
-    else if (unknown.length) commit.problem = `cites ids that are not findings of that review: ${unknown.join(", ")}`;
+    judged.push({ commit, merge, parents: parents.length });
+    commits.push(commit);
+    sha = parents[0];
+  }
+  for (const { commit, merge, parents } of judged) {
+    // Only the files the interval really changes, and the PR still changes, need a cited finding.
+    const pending = commit.files.filter((name) => !settled(name));
+    const allowed = new Set(commit.fixes.flatMap((id) => known.get(id) ?? []));
+    const unknown = commit.fixes.filter((id) => !known.has(id));
+    const outside = pending.filter((name) => !allowed.has(name) && !verificationGuide(name));
+    if (pending.length === 0) commit.settled = true;
+    if (commit.files.length > 0 && commit.files.every(untouched)) commit.undone = true;
+    if (pending.length === 0) { /* nothing left to read: no citation needed */ }
+    else if (commit.fixes.length === 0) commit.problem = "no `fixes: <id>` line";
+    else if (unknown.length) commit.problem = `cites ids that are not findings of this PR's reviews: ${unknown.join(", ")}`;
     else if (outside.length) commit.problem = `touches files outside the cited findings: ${outside.slice(0, 5).join(", ")}`;
     if (commit.problem && merge.merge) commit.problem = `${commit.problem}; not a clean base merge: ${merge.reason}`;
     // Only a verified clean base merge may skip its side parents; any other merge brings in history this walk never
     // inspects, so it fails closed instead of being covered by the merge commit's own fixes lines.
-    if (!commit.problem && parents.length > 1) commit.problem = `a merge that is not a verified clean base merge (${merge.reason ?? "side history not from the base"}); its side-parent commits are unreviewed`;
+    if (!commit.problem && parents > 1) commit.problem = `a merge that is not a verified clean base merge (${merge.reason ?? "side history not from the base"}); its side-parent commits are unreviewed`;
     if (commit.problem) filtersPass = false;
-    commits.push(commit);
-    sha = parents[0];
   }
   if (commits.length === 0) return uncovered("no commits after the reviewed head");
   if (!filtersPass) return { ...uncovered("a commit after the reviewed head is not a cited fix of its findings"), commits };
   if (baseMerges === commits.length) return { from, to, covered: true, error: false, filtersPass, reason: `only clean merges of ${baseRef} after the reviewed head`, commits };
   const forHead = records.filter((record) => record.type === "coverage" && record.to === to);
   if (forHead.some((record) => record.verdict === "out-of-scope")) return { ...uncovered(`a coverage record for ${to.slice(0, 12)} says out-of-scope`), filtersPass, commits };
-  const cited = [...new Set(commits.flatMap((commit) => commit.fixes))];
-  const record = forHead.find((candidate) => candidate.verdict === "fix-only" && candidate.from === from && cited.every((id) => candidate.findings.includes(id)));
-  if (!record) return { ...uncovered(`no fix-only coverage record from ${from.slice(0, 12)} to ${to.slice(0, 12)} naming ${cited.join(", ")}`), filtersPass, commits };
-  return { from, to, covered: true, error: false, filtersPass, reason: `fix-only coverage recorded: ${record.note}`, commits };
+  // The record is optional since 2.14.3; when one exists for this interval its note is the reason shown.
+  const record = forHead.find((candidate) => candidate.verdict === "fix-only" && candidate.from === from);
+  return { from, to, covered: true, error: false, filtersPass, reason: record ? `fix-only coverage recorded: ${record.note}` : "every commit after the reviewed head is a cited fix of this PR's findings, leaves no net change or takes a file out of the PR", commits };
 }
 
 /**
@@ -360,13 +458,16 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
         let state;
         if (validReview(sha)) state = "answered";
         else if (terminal) state = "failed-terminal";
+        else if (toDevelop && now - at > DEVELOP_WAIT_MINUTES * 60_000) state = "unknown";
         else if (sha && summaries.some((summary) => cites(sha, summary.sha) && RUNNING.test(summary.status))) state = "running";
         else if (now - at > UNKNOWN_HOURS * 3_600_000) state = "unknown";
         else state = "requested";
         return { id: Number(comment.id), sha, createdAt: String(comment.created_at), state };
       });
     let headState = codexHeadState({ headReviewed, headRequest: published.filter((entry) => entry.sha === head).at(-1),
-      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status)), published });
+      // Toward develop a running status counts only while some request is younger than the wait.
+      headRunning: summaries.some((summary) => cites(head, summary.sha) && RUNNING.test(summary.status))
+        && !(toDevelop && published.length > 0 && published.every((entry) => now - Date.parse(entry.createdAt) > DEVELOP_WAIT_MINUTES * 60_000)), published });
     const last = published.at(-1);
     const budgetSpent = !headReviewed && published.length >= BUDGET && last?.state === "answered" && blockingIds.length === 0;
     /** @type {"no-findings" | "findings" | "budget-spent" | "running" | "pending" | "unavailable"} */
@@ -378,14 +479,37 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     else state = "pending";
     return { reviews, published, headReviewed, headState, last, budgetSpent, state };
   };
+  const baseRef = String(pull.base?.ref ?? "");
+  // develop, or a stack of open PRs that ends in develop (2.14.3): the review runs and advances the same way, and behavioral
+  // evidence is required the same way.
+  const toDevelop = towardDevelop({ owner, repo, baseRef, defaultBranch: String(pull.base?.repo?.default_branch ?? "") });
+  const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  const evidenceReceipts = readReceipts(home, prKey);
+  const behavioralEvidence = evaluatePullEvidence({
+    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
+    // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
+    prFiles,
+  });
+  // Evidence is required of every PR whose base is not positively production, so a stacked PR needs it, and so does one
+  // whose stack could not be resolved (a failed lookup, a base branch without an open PR): when the PR below merges,
+  // GitHub retargets the stacked PR to develop with the same head, and the command guard reads a merge pass by PR and
+  // head, not by base, so a pass issued without evidence would admit that develop merge. A PR into main needs none
+  // here; its merge is the owner's production stop, which the gate's next action says.
+  // 2.15.0 (cases first): it is read before anything is asked of a reviewer, so no Codex request is posted and no
+  // round is reserved for a head whose cases have not run.
+  const production = productionBase(baseRef, String(pull.base?.repo?.default_branch ?? ""));
+  const evidenceRequired = !production;
+  const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   let requestStatus = "not-requested";
   /** @returns {string} */
   const decide = (/** @type {ReturnType<typeof observe>} */ view) => {
     if (view.headReviewed || view.budgetSpent) return `skipped-${view.state}`;
-    // Review budget: never post past two published requests.
+    // Review budget: never post past the published requests of the budget.
     if (view.published.length >= BUDGET) return "budget-exhausted";
     if (view.headState === "requested") return "already-requested-for-head";
     if (view.headState === "running") return "skipped-running";
+    // The cases run before anyone is asked to read: without accepted evidence for this head nothing is posted.
+    if (!evidenceOk) return "evidence-first";
     return "";
   };
   const view = !request ? observe() : withFileLock(requestLockPath(home, prKey), () => {
@@ -402,10 +526,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   }, { waitMs: REQUEST_LOCK_WAIT_MS });
   const { reviews, published, headReviewed, last, budgetSpent, state } = view;
   const headState = view.headState;
-  const baseRef = String(pull.base?.ref ?? "");
-  const toDevelop = baseRef === "develop";
   const inFlight = headState === "requested" || headState === "running";
-  // Toward develop two spent requests stop being a stop even when the last one never answered: Sol covers them.
+  // Toward develop a spent request budget stops being a stop even when the last request never answered: the round covers it.
   const codexSpent = !headReviewed && published.length >= BUDGET && !inFlight && blockingIds.length === 0 && (toDevelop || last?.state === "answered");
   // Coverage after budget-spent admits only the threads the review of that head opened.
   const reviewedHead = budgetSpent && last ? last.sha : headReviewed ? head : "";
@@ -414,8 +536,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A later exemption replaces an earlier one; it counts only for the exact head it names.
   const exemption = /** @type {import("./review-records.mjs").ExemptionRecord | undefined} */ (records.filter((record) => record.type === "exemption").at(-1));
   const lastRound = rounds.at(-1);
-  const solMax = rounds.length > SOL_BUDGET ? CRITICAL_LIMIT : SOL_BUDGET;
-  const prFiles = pullFiles(base, number, Number(pull.changed_files));
+  const solBudget = lineage?.budget ?? SOL_BUDGET;
+  const solMax = rounds.length > solBudget ? Math.max(CRITICAL_LIMIT, rounds.length) : solBudget;
   // The slot the last round counts as, derived where the advance writer derives it (a legacy round has no bound slot).
   const lineageLast = lineage?.lastRound;
   const lastSlot = !lastRound ? 0 : lineageLast && lineageLast.pr.toLowerCase() === prKey.toLowerCase() && lineageLast.round === lastRound.round ? lineageLast.effectiveSlot : Number(lastRound.slot ?? lastRound.round);
@@ -423,12 +545,24 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const stillOpen = lastRound ? openFindings(lastRound, lastSlot) : { blockers: [], critical: false };
   const advance = /** @type {import("./review-policy.mjs").AdvanceRecord | undefined} */ (records.filter((record) => record.type === "auto-advance" && record.round === lastRound?.round).at(-1));
   let advanceRefused = false;
+  // 2.15.0: a confirmation that closed a finding by its fix and found that fix broke something critical disputes the
+  // fix too, so the withdrawal takes the closed finding's files out with it; otherwise the defect would stay in the PR
+  // as closed. A finding closed because its rejection held has no fix to dispute.
+  const undoneClosures = lastRound && stillOpen.blockers.some((finding) => finding.origin === "fix-induced" && isCritical(finding))
+    ? (lastRound.closes ?? []).filter((entry) => !entry.pr && dispositionsOf(records, entry.round).get(entry.id)?.outcome === "fixed").flatMap((entry) => rounds.find((round) => round.round === entry.round)?.findings.find((finding) => finding.id === entry.id)?.paths ?? []) : [];
   // Why a recorded advance does not count; such a row is ignored and the lineage decides the next step.
   let advanceNote = "";
   /** @param {string} from @param {string} reason @param {boolean} covered @returns {Coverage} */
   const verdict = (from, reason, covered) => ({ from, to: head, covered, error: false, filtersPass: covered, reason, commits: [] });
-  /** @param {string} from @param {Finding[]} findings */
-  const walk = (from, findings) => coverage({ base, from, to: head, findings, peers: originUnknown ? [] : codexFindings, records, baseRef });
+  // Every recorded round's findings are citable, not only the last round's: a fix-diff round does not repeat the
+  // findings of the rounds before it.
+  // 2.15.0: a finding a confirmation round closed is not citable any more: nothing reopens it, so a later commit
+  // about it is not a fix of this PR and goes to its own PR.
+  const closed = new Set(rounds.flatMap((round) => (round.closes ?? []).filter((entry) => !entry.pr).map((entry) => `${entry.round}#${entry.id}`)));
+  const roundFindings = rounds.flatMap((round) => round.findings.filter((finding) => !closed.has(`${round.round}#${finding.id}`)));
+  const prChanged = prFiles === null ? null : new Set(prFiles.flatMap((file) => [file.filename, ...(file.previous_filename ? [file.previous_filename] : [])]));
+  /** @param {string} from */
+  const walk = (from) => coverage({ base, from, to: head, findings: roundFindings, peers: originUnknown ? [] : codexFindings, records, baseRef, prChanged });
   /** @type {Coverage | null} */
   let solCoverage = null;
   /** @type {"invalid" | "exempt" | "exemption-stale" | "missing" | "blocking" | "approved" | "covered" | "not-covered" | "waived" | "advanced"} */
@@ -444,7 +578,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
     if (advance && toDevelop) {
       // The advance stands in for the re-read only while every commit after the round is a cited fix of its findings
       // or a clean base merge; a withdrawn change must be gone from the PR's files.
-      const after = lastRound.head === head ? null : walk(lastRound.head, lastRound.findings);
+      const after = lastRound.head === head ? null : walk(lastRound.head);
       // The row is judged again against the ledger and the PR as they are now. First its authority (the real slot, what
       // the policy says after that round, the findings and their dispositions), then, once every commit after the
       // round is a cited fix or a clean base merge, whether the row accounts for each of them at the current head.
@@ -453,7 +587,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
       // recorded for another head, or a fix in a commit the PR no longer has, does not count.
       advanceNote = advanceProblem({ ...judged, head: advance.head });
       if (!advanceNote && (after === null || (!after.error && after.filtersPass))) advanceNote = advanceProblem({ ...judged, head, commits: after?.commits ?? [] });
-      const kept = advance.kind === "withdrawn" ? stillOpen.blockers.flatMap((finding) => finding.paths).filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
+      const kept = advance.kind === "withdrawn" ? [...stillOpen.blockers.flatMap((finding) => finding.paths), ...undoneClosures].filter((path) => prFiles === null || prFiles.some((file) => file.filename === path || file.previous_filename === path)) : [];
       if (advanceNote) solCoverage = null;
       else if (after?.error) solCoverage = after;
       else if ((after === null || after.filtersPass) && kept.length === 0) solState = "advanced";
@@ -467,7 +601,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   else if (onlyProse(changedSince(base, lastRound.head, head))) { solState = "covered"; solCoverage = verdict(lastRound.head, "only prose docs changed after the last round", true); }
   else {
     // Co-cited Codex ids only need to exist: any Codex finding with a known origin, not just the latest reviewed head's.
-    solCoverage = walk(lastRound.head, lastRound.findings);
+    solCoverage = walk(lastRound.head);
     solState = solCoverage.covered ? "covered" : "not-covered";
   }
   // Sol read every commit of the PR (a clean chained round at the head, its coverage, or the advance at the cap).
@@ -477,7 +611,7 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   if (budgetSpent && last && !solReadAll) {
     codexCoverage = originUnknown
       ? { from: last.sha, to: head, covered: false, error: true, filtersPass: false, reason: "GitHub did not report which commit a Codex thread reviewed", commits: [] }
-      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: lastRound?.findings ?? [], records, baseRef });
+      : coverage({ base, from: last.sha, to: head, findings: admissibleFindings, peers: roundFindings, records, baseRef, prChanged });
   }
   let ok = state === "no-findings" || (codexSpent && (solReadAll || codexCoverage?.covered === true));
   // The owner stopped reviews for this exact head, in words the PR description quotes verbatim: no more Sol or Codex rounds.
@@ -489,15 +623,6 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   // A rejected critical Codex thread waits for Sol's read; only the owner's waiver stands in for it.
   const pendingCritical = rejectedNeedSol.length > 0 && !waiver;
   const reviewer = reviewerWith(pendingCritical);
-  const evidenceReceipts = readReceipts(home, prKey);
-  const behavioralEvidence = evaluatePullEvidence({
-    receipts: evidenceReceipts, head, prBody: String(pull.body ?? ""), changedSince: (from) => changedSince(base, from, head),
-    // Always listed: a docs-only PR needs no receipt, and a mobile PR needs one per native platform.
-    prFiles,
-  });
-  // Evidence is a develop-merge gate. From 2.12.0 a main merge whose gate passes does not wait for the owner (four-stop policy).
-  const evidenceRequired = toDevelop;
-  const evidenceOk = !evidenceRequired || ACCEPTED_EVIDENCE.has(behavioralEvidence.state);
   const mergeReady = ok && blockingIds.length === 0 && solOk && evidenceOk && !pendingCritical;
   // Contradictory or partial data (records that cannot be read or conflict, a GitHub read that failed) is `unknown`.
   const contradictory = solState === "invalid" || (!waiver && (codexCoverage?.error === true || solCoverage?.error === true));
@@ -522,8 +647,8 @@ export function prReviewStatus({ pr, request = false, gate = false, home = homed
   const problems = (/** @type {{commits?: CoveredCommit[]} | null | undefined} */ coverage) => (coverage?.commits ?? []).filter((commit) => commit.problem).map((commit) => `${commit.sha.slice(0, 12)} ${commit.problem}`);
   const uncovered = advanceRefused && !problems(solCoverage).length && solCoverage?.reason ? [solCoverage.reason] : [...new Set([...problems(solCoverage), ...problems(codexCoverage)])];
   const receipt = ["ok", "nonvisual"].includes(behavioralEvidence.state) ? evidenceReceipts.at(-1)?.path : undefined;
-  const siguiente = gateNextAction(step, { prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
-    open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))],
+  const siguiente = gateNextAction(step, { toDevelop, production, stackBase: toDevelop && baseRef !== "develop" ? baseRef : "", prKey, owner, repo, number, head, blockingIds, exemptionHead: exemption?.head, recordsError, uncovered, advanceNote,
+    open: [...stillOpen.blockers, ...rejectedNeedSol.map((thread) => ({ id: thread.id, paths: [thread.path] }))], alsoOut: undoneClosures,
     solNext: () => solNextStep({ lineage, lineageError, prKey, head, exempt: exemptNeedsRound, moved, rejected: pendingCritical ? rejectedNeedSol.map((thread) => thread.id) : [], receipt, reviewer }) });
   return {
     ok,
@@ -579,12 +704,12 @@ export function formatPrReviewStatus(result) {
   };
   coverageLines("Codex", result.codexCoverage);
   const sol = result.solReview;
-  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : "Sol 6.1 High"}${result.reviewerReason ? `; ${result.reviewerReason}` : ""}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
+  lines.push(`Review (${result.reviewer === "fable" ? "Fable 5.2" : "Sol 6.1 High"}${result.reviewerReason && sol.state !== "approved" ? `; ${result.reviewerReason}` : ""}): ${sol.state}${sol.lastRound ? ` (round ${sol.lastRound.round} ${sol.lastRound.scope} ${sol.lastRound.result} at ${sol.lastRound.head.slice(0, 12)})` : ""}${sol.exemption ? ` (${sol.exemption.exempt}: ${sol.exemption.reason})` : ""}${sol.error ? ` (${sol.error})` : ""}.`);
   coverageLines("Review", sol.coverage);
   const lineage = result.lineage;
   if ("error" in lineage) lines.push(`Lineage: unreadable (${lineage.error}).`);
   else {
-    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed}/${lineage.budget}${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
+    lines.push(`Lineage ${lineage.id}: PRs ${lineage.prs.map((number) => `#${number}`).join(", ")}; review slots used ${lineage.slotsUsed} (budget ${lineage.budget}, ${lineage.budget > SOL_BUDGET ? "a PR into a production base" : "one more only to confirm a live critical fix"})${lineage.lastRound ? `; last round ${lineage.lastRound.pr} ${lineage.lastRound.slot ? `slot ${lineage.lastRound.slot}` : `legacy round ${lineage.lastRound.round}`} ${lineage.lastRound.result}${lineage.lastRound.fixInduced ? " (fix-induced blocker)" : ""}` : ""}.`);
     for (const approval of lineage.approvalsUnused) lines.push(`  - unused owner approval ${approval.id} for slot ${approval.slot} (${approval.scope}) of ${approval.pr}`);
     for (const reservation of lineage.pending) lines.push(`  - reserved, unrecorded: slot ${reservation.slot} (${reservation.scope}) for ${reservation.pr}, reservation ${reservation.id}`);
   }

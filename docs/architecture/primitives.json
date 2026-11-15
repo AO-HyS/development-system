@@ -74,7 +74,7 @@
       "category": "workflow",
       "status": "active",
       "summary": "The merge gate of a PR's exact head: Codex threads answered (not resolved), one review request per head, review rounds (Sol 6.1 High; Fable 5.2 for security work and hard reviews) and coverage, evidence, and one next action in words. For a PR into develop no route ends in the owner.",
-      "paths": ["src/pr-review-status.mjs", "src/review-gate-machine.mjs", "src/codex-threads.mjs", "src/review-next.mjs"],
+      "paths": ["src/pr-review-status.mjs", "src/review-gate-machine.mjs", "src/codex-threads.mjs", "src/review-next.mjs", "src/review-stack.mjs"],
       "symbols": ["src/pr-review-status.mjs#prReviewStatus", "src/review-gate-machine.mjs#gateStep"],
       "guarantees": [{ "statement": "With base develop no combination of gate facts ends in ownerDecides.", "verifiedBy": "development-system pr-review-status --diagram" }]
     },
