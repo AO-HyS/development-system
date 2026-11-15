@@ -5990,10 +5990,14 @@ function pushTargets(rest, ctx) {
   /** @type {Word[]} */
   const positionals = [];
   let all = false;
+  // git 2.53 reads the first positional as the repository even with --repo; the lock reads every positional as a
+  // refspec too when --repo is present, so no reading of the command hides a protected branch.
+  let repoOption = false;
   for (let i = 0; i < args.length; i++) {
     const { value } = args[i];
     if (value === "--") { positionals.push(...args.slice(i + 1)); break; }
     if (/^--(?:all|branches|mirror)$/u.test(value)) { all = true; continue; }
+    if (value === "--repo" || value.startsWith("--repo=")) repoOption = true;
     if (PUSH_VALUE_OPTIONS.has(value)) { i++; continue; }
     if (value.startsWith("-")) continue;
     positionals.push(args[i]);
@@ -6010,8 +6014,8 @@ function pushTargets(rest, ctx) {
     current = result && result.status === 0 && result.stdout.trim() ? result.stdout.trim() : null;
     return current;
   };
-  const refspecs = positionals.slice(1);
-  if (refspecs.length === 0) {
+  const refspecs = repoOption ? positionals : positionals.slice(1);
+  if (positionals.length <= 1 && !repoOption || positionals.length === 0) {
     const branch = currentBranch();
     if (branch === null) unknown = true;
     else names.push(branch);
