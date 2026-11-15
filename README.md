@@ -4,33 +4,13 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **2.15.0**, shared skill catalog **0.82.0**. 2.15.0 puts the cases first: the thread lists its cases, runs and records them before any review, one reviewer reads once looking for the missing case, only a live finding blocks, and a live critical finding is fixed and confirmed in the same task. 2.14.3 lets the review gate advance on its own after the round cap. 2.14.2 makes one review reservation launch one reviewer. 2.14.1 joins what the best measured version did
-with the current one: explorers may join read-only commands, the review gate runs two rounds per branch (two more
-only for a critical finding), and the coach flags an Opus writer without a written reason, helper 21 and the third PR of a session.
-2.14.0 enforced orchestration in code: the
-review gate names the reviewer of each round (Sol 6.1 High; Fable 5.2 for security work and hard reviews),
-read-only mappers can search, the Claude guard coaches the parent with one
-sentence (never a block), and the Stop hook asks for a short closing in the thread instead of an HTML report.
-2.13.2 added Planeta Aula to the weekly Development Steward allowlist (seven repositories). 2.13.1 fixed two findings of the
-2.13.0 release review (a negated command is never certain for the guard; Sol reservations match in any
-letter case). 2.13.0 made the review gate advance on its own toward develop (five Sol rounds, seven for a
-critical finding, the next action printed by `pr-review-status --gate`), made the guard block harm
-instead of what it cannot read at a glance (guard policy 2.6.0), and gave progress and closings one
-text format with `development-system progress` for the facts. 2.12.0 limited owner
-stops to five (incremental spend, destruction the owner did not order,
-messages to real people, account security, production), recognizes the owner's many ways of saying
-"do not ask me" for everything else, and adds an MCP spend guard (previous guard policy). The one before made
-`/in-your-own-words` plans say when the work is done and how it
-will be proven, and that list becomes the goal after approval. 2.10.0 added shared checks: `development-system check-file-size` keeps changed
-source files under a token budget (an already large file may grow at most 1000
-bytes per change; per-repository `.file-size-budget.json`), and guard policy
-2.4.0 inspects GNU `parallel` like `xargs`; `development-system clean-cache`
-moves an allowlisted regenerable cache entry to the Trash. 2.9.0 put a real brake on Sol PR
-reviews: the budget counts per branch lineage and owner approvals bind one
-round. 2.8.1 routed computer use and browser QA to Terra 6.1 fast per the
-[model screen of 2026-10-29](docs/model-screen-2026-10-29.md). Earlier weekly
-learning controls are described in
-[ADR 0073](docs/adr/0073-weekly-learning-controls.md).
+Current source candidate: **3.0.0**, shared skill catalog **0.83.0**. 3.0.0 lets the model choose how to work: the
+global instructions are one page, the roster guard and the stop gate are no longer wired, and the command lock
+blocks only production, destruction of uncommitted work, a forced push to develop or main, new spend and reading
+the secrets folder. What a change goes through is three commands ([docs/listo.md](docs/listo.md)):
+`development-system listo` (level from the repository's `config/niveles.json`, Codex answered, and for a critical
+change one independent read, its cases and a record), `development-system registro` and `development-system smoke`.
+The previous version, 2.15.0, put the cases before the review.
 
 The candidate is not a claim of publication or global installation. Browser
 resource preparation remains described in [the browser pool guide](docs/browser-pool/README.md).
