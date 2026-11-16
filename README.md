@@ -4,7 +4,9 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **3.0.0**, shared skill catalog **0.83.0**. 3.0.0 lets the model choose how to work: the
+Current source candidate: **3.1.0**, shared skill catalog **0.83.0**. 3.1.0 adds `development-system listo --barrido`,
+which lists the Codex threads still unanswered on recently merged pull requests (Codex often answers minutes after
+the merge), and `listo --produccion` holds while one exists. 3.0.0 lets the model choose how to work: the
 global instructions are one page, the roster guard and the stop gate are no longer wired, and the command lock
 blocks only production, destruction of uncommitted work, a forced push to develop or main, new spend and reading
 the secrets folder. What a change goes through is three commands ([docs/listo.md](docs/listo.md)):

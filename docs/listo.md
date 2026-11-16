@@ -1,4 +1,4 @@
-# `listo`, `registro` y `smoke` (Development System 3.0.0)
+# `listo`, `registro` y `smoke` (Development System 3.1.0)
 
 Una página para agentes. El modelo elige cómo trabaja; estos tres comandos deciden si un PR puede fusionarse a
 `develop` y si `develop` puede pasar a `main`. Todo lo que leen está en GitHub, así que cualquier hilo reconstruye el
@@ -34,6 +34,9 @@ Un reloj por PR, sin reinicios: 15 minutos desde la primera petición `@codex re
 Dentro del reloj el resultado es `espera`. Al vencer, o si Codex dice que no puede revisar, se deja Codex y el PR pasa
 a crítico.
 
+Codex también lee la punta que se fusiona y suele contestar unos minutos después de la fusión. Esos hilos los lista
+`listo --barrido` (abajo) y frenan producción mientras sigan sin contestar.
+
 ## `development-system listo <owner/repo#n>`
 
 ```
@@ -51,6 +54,26 @@ punta el estado `listo para fusionar`. Resultados:
 Opciones: `--subir critico` (pone la etiqueta), `--pedir` (pide a Codex una vez si nadie lo pidió), `--sin-estado`
 (solo evalúa; también sirve con PRs ya fusionados), `--niveles <borrador.json>` (solo con `--sin-estado`, para probar
 reglas), `--repo <checkout>`, `--json`.
+
+## `development-system listo --barrido <owner/repo>`
+
+```
+development-system listo --barrido AO-HyS/nutri-plan
+```
+
+Antes de dar por terminada la tarea. Lee los PRs fusionados en `--head` (por omisión `develop`) en los últimos `--dias`
+días (por omisión 14) y lista cada hilo de Codex sin contestar: `#<pr>`, `codex:<id>`, la prioridad, `tardío` si Codex
+lo escribió después de la fusión, el archivo, la primera línea del hallazgo y el enlace al comentario. Avisa de los PRs
+fusionados hace menos de 10 minutos (Codex puede no haber terminado).
+
+Un hilo de un PR fusionado queda contestado con «Rechazado: motivo» o con un commit que existe en el repositorio, ya
+está en la punta de `--head` (o es un commit del mismo PR), no es el commit que Codex revisó ni un ancestro suyo, y
+toca el archivo del hilo. El arreglo casi siempre vive en un PR posterior: contesta cuando ese PR ya se fusionó. Un
+commit que no toca el archivo del hilo no lo contesta; si el arreglo de verdad está en otro archivo, dilo con
+«Rechazado: <motivo>».
+
+No publica estados ni escribe nada y no necesita `config/niveles.json`. Salida 0 sin pendientes, 1 con alguno. No se
+combina con un PR, `--produccion`, `--pedir`, `--subir`, `--niveles` ni `--base`.
 
 ## `development-system registro`
 
@@ -87,7 +110,9 @@ development-system listo --produccion AO-HyS/the-barber-central
 
 Lee los PRs fusionados en `develop` cuyo commit de fusión está en `main...develop` y es posterior a `desde` de
 `config/niveles.json`. Cada PR normal o crítico necesita un registro completo de su última punta o de su commit de
-fusión; los mecánicos no. La punta de `develop` necesita `smoke` en `success`. Imprime lo pendiente agrupado por motivo
+fusión; los mecánicos no. Cualquier PR del rango, sea cual sea su nivel, con un hilo de Codex sin contestar (la misma
+lectura que `--barrido`) queda pendiente por `hilo de Codex sin contestar`, y `siguiente` nombra `listo --barrido`. La
+punta de `develop` necesita `smoke` en `success`. Imprime lo pendiente agrupado por motivo
 y publica `listo para producción` (`success` solo sin pendientes). Pasar a producción sigue necesitando la respuesta
 explícita del dueño.
 
