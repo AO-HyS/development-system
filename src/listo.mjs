@@ -427,20 +427,24 @@ export function listo(options) {
 }
 
 /**
- * @typedef {{pr: number, id: string, priority: number | null, tardio: boolean, path: string, finding: string, url: string, estado: "open" | "unverified", detalle: string, escrito: string}} HiloPendiente
+ * @typedef {{pr: number, id: string, priority: number | null, tardio: boolean, path: string, finding: string, url: string, estado: "open" | "unverified" | "rejected-needs-sol", detalle: string, escrito: string}} HiloPendiente
  */
 
 /**
- * 3.1.0: the Codex threads of a MERGED pull request that still wait for an answer (state open or unverified), read
- * the same way by `listo --barrido` and `listo --produccion`. For a merged PR the fix usually lives in a later PR, so a
- * cited SHA is the fix when the commit exists in the repository, reached the head branch (contained in `headSha`, or
- * a commit of this PR, which a squash merge leaves out of the branch), is not the commit Codex reviewed nor an ancestor
- * of it, and touches the thread's file. A thread is `tardío` when Codex wrote it after the PR was merged.
+ * 3.1.0: the Codex threads of a MERGED pull request that still wait for an answer, read the same way by
+ * `listo --barrido` and `listo --produccion`: state open or unverified, and a critical rejection (P0, P1, no readable
+ * priority or a critical domain) that no record posted after it names (`registro … --cubre codex:<id>`), exactly as
+ * `listo <pr>` holds it before the merge. For a merged PR the fix usually lives in a later PR, so a cited SHA is the
+ * fix when the commit exists in the repository, reached the head branch (contained in `headSha`, or a commit of this
+ * PR, which a squash merge leaves out of the branch), comes after what Codex reviewed (it descends from the reviewed
+ * commit, or from this PR's merge commit, which is how a squash merge carries the reviewed code into the branch; a
+ * commit of a line that diverged before the merge is not later) and touches the thread's file. A thread is `tardío`
+ * when Codex wrote it after the PR was merged.
  * @param {{owner: string, repo: string, pull: any, headBranch: string, headSha: string, threads?: any[], cache?: Map<string, any>}} input
  * @returns {HiloPendiente[]}
  */
 export function pendingCodexThreads(input) {
-  return mergedCodexThreads(input).filter((thread) => thread.estado === "open" || thread.estado === "unverified").map((thread) => /** @type {HiloPendiente} */ (thread));
+  return mergedCodexThreads(input).filter((thread) => thread.estado === "open" || thread.estado === "unverified" || thread.estado === "rejected-needs-sol").map((thread) => /** @type {HiloPendiente} */ (thread));
 }
 
 /**
@@ -472,9 +476,20 @@ export function mergedCodexThreads({ owner, repo, pull, headBranch, headSha, thr
     const reached = prCommits.includes(sha) || memo(`in:${sha}:${headSha}`, () => ancestorOrEqual(api, sha, headSha));
     if (!reached) return null;
     const files = (commit.files ?? []).flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
-    return { sha, files, after: (/** @type {string} */ origin) => origin !== sha && !memo(`in:${sha}:${origin}`, () => ancestorOrEqual(api, sha, origin)) };
+    const mergeSha = String(pull.merge_commit_sha ?? "");
+    const descends = (/** @type {string} */ from) => /^[0-9a-f]{40}$/.test(from) && from !== sha && memo(`in:${from}:${sha}`, () => ancestorOrEqual(api, from, sha));
+    return { sha, files, after: (/** @type {string} */ origin) => origin !== sha && (descends(origin) || descends(mergeSha)) };
   };
-  const states = threadStates({ threads: read, commitInfo, solRoundsAt: [], where: headBranch });
+  /** @type {import("./registro.mjs").RegistroLeido[] | null} */
+  let registros = null;
+  const states = threadStates({ threads: read, commitInfo, solRoundsAt: [], where: headBranch }).map((state) => {
+    if (state.state !== "rejected-needs-sol") return state;
+    // The same closing `listo <pr>` gives a critical rejection: a record posted after it that names the thread.
+    registros ??= readRegistrosFor(owner, repo, Number(pull.number));
+    const naming = registros.filter((entry) => entry.registro?.cubre.includes(state.id)).map((entry) => Date.parse(entry.at));
+    const thread = read.find((candidate) => `codex:${candidate.comments.nodes[0].databaseId}` === state.id);
+    return naming.length ? threadStates({ threads: [thread], commitInfo, solRoundsAt: naming, where: headBranch })[0] : state;
+  });
   return states.map((state) => {
     const thread = read.find((candidate) => `codex:${candidate.comments.nodes[0].databaseId}` === state.id);
     const first = thread.comments.nodes[0];
@@ -505,7 +520,7 @@ function mergedPullsSince(owner, repo, headBranch, since) {
 }
 
 /** One pending thread as one line of output. @param {HiloPendiente} thread */
-const pendingLine = (thread) => `- #${thread.pr} ${thread.id}${thread.priority === null ? "" : ` P${thread.priority}`}${thread.tardio ? " tardío" : ""} ${thread.path}: ${thread.finding} — ${thread.url}`;
+const pendingLine = (thread) => `- #${thread.pr} ${thread.id}${thread.priority === null ? "" : ` P${thread.priority}`}${thread.tardio ? " tardío" : ""}${thread.estado === "rejected-needs-sol" ? " rechazo crítico sin lectura" : ""} ${thread.path}: ${thread.finding} — ${thread.url}`;
 
 export const BARRIDO_DIAS = 14;
 export const CODEX_PENDIENTE = "hilo de Codex sin contestar";
@@ -542,7 +557,7 @@ export function listoBarrido(options) {
   const falta = pendientes.length > 0 || errores.length > 0;
   const command = `development-system listo --barrido ${owner}/${repo}${headBranch === "develop" ? "" : ` --head ${headBranch}`}${options.dias === undefined ? "" : ` --dias ${dias}`}`;
   const siguiente = pendientes.length
-    ? `contesta en cada hilo con el commit del arreglo (cuando ya esté en ${headBranch} y toque el archivo del hilo) o «Rechazado: <motivo>»; después ${command}`
+    ? `contesta en cada hilo con el commit del arreglo (cuando ya esté en ${headBranch} y toque el archivo del hilo) o «Rechazado: <motivo>»${pendientes.some((thread) => thread.estado === "rejected-needs-sol") ? "; un rechazo crítico se cierra con una lectura independiente registrada después: development-system registro <owner/repo#n> … --cubre codex:<id>" : ""}; después ${command}`
     : errores.length ? `revisa el error y corre de nuevo ${command}` : recientes.length ? `nada por ahora; corre de nuevo ${command} en ${RECENT_MINUTES} minutos` : "nada: ningún hilo de Codex pendiente";
   const lines = [`Barrido ${owner}/${repo}: ${pulls.length} PRs fusionados en ${headBranch} desde ${desde} (${dias} días, punta ${short(headSha)}); ${pendientes.length} hilos de Codex sin contestar, ${tardios} llegaron después de la fusión`];
   for (const thread of pendientes) lines.push(pendingLine(thread));

@@ -67,10 +67,15 @@ lo escribió después de la fusión, el archivo, la primera línea del hallazgo 
 fusionados hace menos de 10 minutos (Codex puede no haber terminado).
 
 Un hilo de un PR fusionado queda contestado con «Rechazado: motivo» o con un commit que existe en el repositorio, ya
-está en la punta de `--head` (o es un commit del mismo PR), no es el commit que Codex revisó ni un ancestro suyo, y
-toca el archivo del hilo. El arreglo casi siempre vive en un PR posterior: contesta cuando ese PR ya se fusionó. Un
-commit que no toca el archivo del hilo no lo contesta; si el arreglo de verdad está en otro archivo, dilo con
-«Rechazado: <motivo>».
+está en la punta de `--head` (o es un commit del mismo PR), es posterior a lo que Codex revisó (desciende del commit
+revisado o del commit de fusión del PR; un commit de una línea que se separó antes de la fusión no cuenta: cita el
+commit de fusión del PR que lo trajo) y toca el archivo del hilo. El arreglo casi siempre vive en un PR posterior:
+contesta cuando ese PR ya se fusionó. Un commit que no toca el archivo del hilo no lo contesta; si el arreglo de
+verdad está en otro archivo, dilo con «Rechazado: <motivo>».
+
+Un rechazo de un hallazgo P0, P1, sin prioridad o de dominio crítico sigue pendiente (`rechazo crítico sin lectura`),
+igual que antes de fusionar, hasta que una lectura independiente registrada después lo nombre:
+`development-system registro <owner/repo#n> … --cubre codex:<id>`.
 
 No publica estados ni escribe nada y no necesita `config/niveles.json`. Salida 0 sin pendientes, 1 con alguno. No se
 combina con un PR, `--produccion`, `--pedir`, `--subir`, `--niveles` ni `--base`.
