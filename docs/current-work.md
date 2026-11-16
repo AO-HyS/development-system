@@ -1,6 +1,10 @@
 # Current work
 
-## 3.1.0 — no Codex thread left behind after the merge (branch `feat/ds-310-barrido-codex`, PR into develop, not merged)
+## 3.1.0 — no Codex thread left behind after the merge (released and installed 2026-11-16)
+
+- Released: #224 merged into develop at `58703a8`, #225 into main at `860663e` after the owner's production answer («Muy bien, lleva esto a producción.»), GitHub release `v3.1.0` (tarball sha256 `fb45a89e…7f51`), installed on the owner's computer with `development-system update --version 3.1.0`; `doctor` healthy, both host instruction files carry the sweep sentence and the installed CLI ran `listo --barrido AO-HyS/casa-roca` (0 pending). The archive was first installed into an isolated home (`setup --home`, `doctor` healthy). Three T3 threads had active runs during the install (`--during-active-runs`); they keep the instructions they loaded until their next task. Receipts: `~/.development-system/private/verification/ds-310/release/`. Rollback: `development-system update --version 3.0.0`.
+- «Listo para producción» was red for this repository when it shipped, and the owner was told before he answered: the smoke has no app to run against, and #223 (docs only) had no read.
+- First use, Casa Roca clean-up of 2026-11-16: 17 findings fixed and answered, the sweep reads 0 pending. Still listed by the sweep and not started: Planeta Aula 19 threads (16 late, unjudged), and the confirmed-live findings of Barber (7), NutriPlan (15) and Planeta Aula (3).
 
 - Owner request, verbatim: «Sí adelante», to «pongo en el Development System la regla de no cerrar un PR con hallazgos sin contestar». His order stays: fast, works well, costs less; nothing is added to the merge path.
 - Measured on 2026-11-16 over four repositories (`~/.development-system/private/diagnostics/anti-slop-ampliada-20261116/`): 104 of 502 Codex findings never got a reply; none of the 78 that Codex posted about two minutes after the merge was answered; 42 of the 92 checked were still live defects in `develop`. Since 3.0.0 `listo <pr>` refuses a merge while a thread is unanswered, but nothing looked at a pull request again after it merged, and `listo --produccion` did not read the threads of a normal pull request that already had a record.
