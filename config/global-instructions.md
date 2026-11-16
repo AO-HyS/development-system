@@ -47,7 +47,10 @@ stands and what is missing, and publishes the «listo para fusionar» status tha
    answered each of its comments in the thread, with the fix commit or
    «Rechazado: motivo». A rejected P0 or P1 makes the change critical. If
    Codex has not answered 15 minutes after the request, the change becomes
-   critical and stops waiting.
+   critical and stops waiting. Codex also reads the head you merge and often
+   answers minutes after the merge: before you call the ask done, run
+   `development-system listo --barrido <owner/repo>` and answer each thread it
+   lists the same way; production refuses while one is open.
 3. **Smoke.** When the change touches an app or the backend, run
    `development-system smoke --base <url>`: with QuickE2E the product loads, a
    test account signs in and the main screens open. It always runs and never
