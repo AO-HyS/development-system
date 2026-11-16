@@ -89,10 +89,11 @@ export function roundsReservedAt({ rounds, live, pr }) {
  * {sha, files, after(origin)} or null when the PR has no such commit; it may throw when GitHub cannot say, which
  * leaves the thread unverified. `solRoundsAt` are the times (ms) the PR's recorded Sol rounds were reserved, which is
  * when each reviewer packet was handed over; a round with no reservation has no known start and is not listed.
- * @param {{threads: any[], commitInfo: (cited: string) => {sha: string, files: string[], after: (origin: string) => boolean} | null, solRoundsAt: number[]}} input
+ * `where` names where a fix commit must live in the details (3.1.0: the sweep of merged PRs passes the head branch).
+ * @param {{threads: any[], commitInfo: (cited: string) => {sha: string, files: string[], after: (origin: string) => boolean} | null, solRoundsAt: number[], where?: string}} input
  * @returns {ThreadState[]}
  */
-export function threadStates({ threads, commitInfo, solRoundsAt }) {
+export function threadStates({ threads, commitInfo, solRoundsAt, where = "this PR" }) {
   return threads.map((thread) => {
     const first = thread.comments.nodes[0];
     const body = String(first.body);
@@ -103,7 +104,7 @@ export function threadStates({ threads, commitInfo, solRoundsAt }) {
     };
     const replies = thread.comments.nodes.slice(1).filter(mayAnswer);
     if (replies.length === 0) return { ...base, state: /** @type {const} */ ("open"), detail: thread.comments.nodes.length > 1 ? "no reply from the repository's owner, a member or a collaborator" : "no reply" };
-    let detail = "the reply neither cites a fix commit of this PR nor rejects the finding with a reason";
+    let detail = `the reply neither cites a fix commit of ${where} nor rejects the finding with a reason`;
     for (const reply of [...replies].reverse()) {
       const text = String(reply.body);
       if (REJECTION.test(text)) {
@@ -117,7 +118,7 @@ export function threadStates({ threads, commitInfo, solRoundsAt }) {
       for (const cited of new Set(text.match(/\b[0-9a-f]{7,40}\b/g) ?? [])) {
         try {
           const commit = commitInfo(cited);
-          if (!commit) { detail = `${cited} is not a commit of this PR`; continue; }
+          if (!commit) { detail = `${cited} is not a commit of ${where}`; continue; }
           if (!thread.origin) { detail = "GitHub did not report which commit Codex reviewed"; continue; }
           if (!commit.after(thread.origin)) { detail = `${cited} is not later than the commit Codex reviewed (${thread.origin.slice(0, 12)})`; continue; }
           if (!commit.files.includes(base.path)) { detail = `${cited} does not touch ${base.path}`; continue; }

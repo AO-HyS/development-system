@@ -42,9 +42,9 @@ vueltas puede empeorar la primera prioridad.
 - Codex/T3: herramientas y ciclo de vida de ejecución. Usamos capacidades nativas
   disponibles, sin inferir funcionalidades de otros hosts a partir de una versión.
 
-## Configuración vigente (3.0.0)
+## Configuración vigente (3.1.0)
 
-La fuente generada de verdad es `artifacts/3.0.0/model-routing.md`; la página
+La fuente generada de verdad es `artifacts/3.1.0/model-routing.md`; la página
 `docs/model-routing.md` la resume. El modelo elegido al iniciar la conversación
 sigue siendo el orquestador y decide cómo trabajar: ningún agente, modelo,
 skill ni orden de trabajo es obligatorio.
