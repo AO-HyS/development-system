@@ -438,7 +438,8 @@ export function listo(options) {
  * fix when the commit exists in the repository, reached the head branch (contained in `headSha`, or a commit of this
  * PR, which a squash merge leaves out of the branch), comes after what Codex reviewed (it descends from the reviewed
  * commit, or from this PR's merge commit, which is how a squash merge carries the reviewed code into the branch; a
- * commit of a line that diverged before the merge is not later) and touches the thread's file. A thread is `tardío`
+ * commit of a line that diverged before the merge is not later, and the merge commit itself is never the fix) and
+ * touches the thread's file. A thread is `tardío`
  * when Codex wrote it after the PR was merged.
  * @param {{owner: string, repo: string, pull: any, headBranch: string, headSha: string, threads?: any[], cache?: Map<string, any>}} input
  * @returns {HiloPendiente[]}
@@ -478,7 +479,8 @@ export function mergedCodexThreads({ owner, repo, pull, headBranch, headSha, thr
     const files = (commit.files ?? []).flatMap((/** @type {any} */ file) => [String(file.filename), ...(file.previous_filename ? [String(file.previous_filename)] : [])]);
     const mergeSha = String(pull.merge_commit_sha ?? "");
     const descends = (/** @type {string} */ from) => /^[0-9a-f]{40}$/.test(from) && from !== sha && memo(`in:${from}:${sha}`, () => ancestorOrEqual(api, from, sha));
-    return { sha, files, after: (/** @type {string} */ origin) => origin !== sha && (descends(origin) || descends(mergeSha)) };
+    // The PR's own merge commit touches every file of the PR and descends from what Codex reviewed: it is never a fix.
+    return { sha, files, after: (/** @type {string} */ origin) => origin !== sha && sha !== mergeSha && (descends(origin) || descends(mergeSha)) };
   };
   /** @type {import("./registro.mjs").RegistroLeido[] | null} */
   let registros = null;

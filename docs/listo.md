@@ -68,8 +68,8 @@ fusionados hace menos de 10 minutos (Codex puede no haber terminado).
 
 Un hilo de un PR fusionado queda contestado con «Rechazado: motivo» o con un commit que existe en el repositorio, ya
 está en la punta de `--head` (o es un commit del mismo PR), es posterior a lo que Codex revisó (desciende del commit
-revisado o del commit de fusión del PR; un commit de una línea que se separó antes de la fusión no cuenta: cita el
-commit de fusión del PR que lo trajo) y toca el archivo del hilo. El arreglo casi siempre vive en un PR posterior:
+revisado o del commit de fusión del PR, que por sí mismo nunca es el arreglo; un commit de una línea que se separó
+antes de la fusión no cuenta: cita el commit de fusión del PR que lo trajo) y toca el archivo del hilo. El arreglo casi siempre vive en un PR posterior:
 contesta cuando ese PR ya se fusionó. Un commit que no toca el archivo del hilo no lo contesta; si el arreglo de
 verdad está en otro archivo, dilo con «Rechazado: <motivo>».
 
