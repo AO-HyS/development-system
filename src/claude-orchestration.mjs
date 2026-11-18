@@ -22,6 +22,12 @@ export const managedEnv = /** @type {const} */ ({
   CLAUDE_CODE_AUTO_COMPACT_WINDOW: "300000",
 });
 /**
+ * Top-level settings keys the installation owns. Claude Code gives the skill listing 1 % of the context window and,
+ * when it overflows, announces the least used skills as bare names; three times that budget keeps the descriptions the
+ * model needs to pick a skill. `development-system doctor` reports what the last session really announced.
+ */
+export const managedSettings = /** @type {const} */ ({ skillListingBudgetFraction: 0.03 });
+/**
  * DS 3.0.0 wires no roster-guard event (PreToolUse, PostToolUse, SubagentStop) and no Stop → stop-gate event. Enabling
  * removes those managed entries left by an older version and keeps every other hook; the runtime files may stay
  * installed, unwired. A contract rollback restores the previous settings bytes, entries included.
@@ -219,7 +225,7 @@ function mergedSettings(settings, managed) {
   }
   const env = settings.env && typeof settings.env === "object" && !Array.isArray(settings.env) ? { ...settings.env } : {};
   Object.assign(env, managedEnv);
-  const next = { ...settings, hooks, env };
+  const next = { ...settings, ...managedSettings, hooks, env };
   if (unwired && (base === undefined || base === null)) delete next.hooks;
   return next;
 }
@@ -227,9 +233,15 @@ function mergedSettings(settings, managed) {
 /**
  * @param {any} settings @param {string[]} commands
  * @param {Record<string, {before: string | null, installed: string}>} envState
+ * @param {Record<string, {before: unknown, installed: unknown}>} [topState] managed top-level keys; null `before` means absent
  */
-function structuralRollback(settings, commands, envState) {
+function structuralRollback(settings, commands, envState, topState) {
   const next = { ...settings };
+  for (const [key, record] of Object.entries(topState ?? {})) {
+    if (next[key] !== record.installed) continue;
+    if (record.before === null) delete next[key];
+    else next[key] = record.before;
+  }
   const hooks = withoutManaged(settings.hooks, commands, true);
   if (hooks === undefined) delete next.hooks;
   else if ("hooks" in settings) next.hooks = hooks;
@@ -255,7 +267,9 @@ function parseState(contents) {
   if (state?.schema !== 1 || !state.settings || typeof state.settings.installed !== "string" || !state.env || typeof state.env !== "object") {
     throw new Error("Claude orchestration activation snapshot is invalid");
   }
-  return /** @type {{schema: 1, settings: {before: string | null, installed: string}, env: Record<string, {before: string | null, installed: string}>}} */ (state);
+  // `top` exists since 4.0.0; a snapshot written by an older version has none.
+  if (state.top !== undefined && (!state.top || typeof state.top !== "object")) throw new Error("Claude orchestration activation snapshot is invalid");
+  return /** @type {{schema: 1, settings: {before: string | null, installed: string}, env: Record<string, {before: string | null, installed: string}>, top?: Record<string, {before: unknown, installed: unknown}>}} */ (state);
 }
 
 /**
@@ -328,6 +342,9 @@ export async function auditClaudeOrchestration({ home }) {
   for (const [key, value] of Object.entries(managedEnv)) {
     if (settings.env?.[key] !== value) findings.push(`env ${key} is ${JSON.stringify(settings.env?.[key])}; expected ${JSON.stringify(value)}`);
   }
+  for (const [key, value] of Object.entries(managedSettings)) {
+    if (settings[key] !== value) findings.push(`setting ${key} is ${JSON.stringify(settings[key])}; expected ${JSON.stringify(value)}`);
+  }
   /** @type {ReturnType<typeof probe>[]} */
   const probes = [];
   /** @type {string[]} */
@@ -388,7 +405,7 @@ export async function enableClaudeOrchestration({ home }) {
       before = serialize(next).toString("base64");
     } else before = current.toString("base64");
   } else if (matchesInstalled) before = state.settings.before;
-  else before = current === null ? null : serialize(structuralRollback(settings, managedCommands(managed), state.env)).toString("base64");
+  else before = current === null ? null : serialize(structuralRollback(settings, managedCommands(managed), state.env, state.top)).toString("base64");
   /** @type {Record<string, {before: string | null, installed: string}>} */
   const env = {};
   for (const [key, value] of Object.entries(managedEnv)) {
@@ -400,7 +417,16 @@ export async function enableClaudeOrchestration({ home }) {
       env[key] = { before: stored ? stored.before : typeof existing === "string" ? existing : null, installed: value };
     }
   }
-  const nextState = { schema: 1, settings: { before, installed: installed.toString("base64") }, env };
+  /** @type {Record<string, {before: unknown, installed: unknown}>} */
+  const top = {};
+  for (const [key, value] of Object.entries(managedSettings)) {
+    const stored = state?.top?.[key];
+    const existing = settings[key];
+    // A value the operator wrote over the installed one becomes the value a rollback returns to.
+    if (stored && !matchesInstalled && existing !== undefined && existing !== stored.installed) top[key] = { before: existing, installed: value };
+    else top[key] = { before: stored ? stored.before : existing === undefined ? null : existing, installed: value };
+  }
+  const nextState = { schema: 1, settings: { before, installed: installed.toString("base64") }, env, top };
   try {
     await writeAtomic(managed.state, serialize(nextState));
     if (!unchanged) await writeAtomic(managed.settings, installed);
@@ -430,7 +456,7 @@ export async function rollbackClaudeOrchestration({ home }) {
     status = "restored";
   } else {
     const settings = parseObject(current, "Claude Code settings");
-    await writeAtomic(managed.settings, serialize(structuralRollback(settings, managedCommands(managed), state.env)));
+    await writeAtomic(managed.settings, serialize(structuralRollback(settings, managedCommands(managed), state.env, state.top)));
     status = "structurally-restored";
   }
   await unlink(managed.state);

@@ -65,6 +65,7 @@ import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
 import { codexQuota } from "./codex-quota.mjs";
+import { formatSkillListing, skillListingReport } from "./skill-listing.mjs";
 import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation, withLegacyInstallationMutation } from "./shared-installation.mjs";
 import { updateSharedInstallation } from "./shared-update.mjs";
 import { loadPackageSource } from "./package-source.mjs";
@@ -149,7 +150,9 @@ function formatHuman(result) {
     const quotaLines = !quota ? "" : quota.state === "desconocido"
       ? "\nCodex weekly quota: desconocido (no rate limits in recent sessions)."
       : `\nCodex weekly quota:${quota.accounts.map((item) => `\n- ${item.account}${item.plan ? ` (${item.plan})` : ""}: ${item.usedPercent}% used, observed ${item.observedAt} [${item.freshness}]${item.resetsAt ? `, resets ${item.resetsAt}` : ""}${item.warn ? " WARNING >= 80%" : ""}`).join("")}`;
-    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}`;
+    const listing = /** @type {Awaited<ReturnType<typeof skillListingReport>> | undefined} */ (result.skillListing);
+    const listingLines = listing ? `\n${formatSkillListing(listing).join("\n")}` : "";
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}${listingLines}`;
   }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
@@ -437,6 +440,7 @@ const COMMAND_TABLE = [
   ["progress", PROGRESS_USAGE],
   ["listo", LISTO_USAGE],
   ["registro", REGISTRO_USAGE],
+  ["tarjeta", "abrir|terminado|si|renglon|cerrar|ver --id <slug> … [--home <dir>] [--json] (the card of one ask: its «Terminado» lines, the result and receipt of each, and its numbers)"],
   ["smoke", SMOKE_USAGE],
   ["thread-health", "[--session <id>] [--thread <id>] [--since <time>] [--idle-minutes N] [--home <dir>] [--json]"],
   ...BROWSER_POOL_TABLE,
@@ -643,6 +647,7 @@ async function runCommand(argv) {
   // 3.0.0: each module parses its own flags and returns { result, output, json, code } (exit 2 = espera / no flow).
   if (argv[0] === "listo") return (await import("./listo.mjs")).runListoCommand(argv.slice(1));
   if (argv[0] === "registro") return (await import("./registro.mjs")).runRegistroCommand(argv.slice(1));
+  if (argv[0] === "tarjeta") return (await import("./tarjeta.mjs")).runTarjetaCommand(argv.slice(1));
   if (argv[0] === "smoke") return (await import("./smoke.mjs")).runSmokeCommand(argv.slice(1));
   if (argv[0] === "review") return (await import("./review-cli.mjs")).runReviewCommand(argv);
   if (argv[0] === "check-primitives") {
@@ -711,7 +716,8 @@ async function runCommand(argv) {
   if (command === "shared-audit" || command === "doctor") {
     result = await auditSharedInstallation({ home: options.home, root: repositoryRoot });
     // Descriptive, separate from `ok`: a nearly spent Codex week is a warning, never an installation problem.
-    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }) };
+    // The skill listing is descriptive too: what the newest session of each host announced and loaded.
+    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }), skillListing: await skillListingReport({ home: options.home }) };
   } else if (command === "recover-shared") {
     result = await rollbackSharedInstallation({ home: options.home, recover: true });
   } else if (command === "update") {
