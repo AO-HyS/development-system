@@ -94,9 +94,10 @@ temporary folder. So each verifier:
 - touches only the tabs it opened, the product origin and the test account,
   never his open tabs or his accounts, and never signs out;
 - when the product is already signed in, confirms on screen that the account
-  is the test account before reading or changing anything; with another
-  account it uses nothing, leaves every line NO ALCANZADO and says which
-  account it saw;
+  is the test account before reading or changing anything, looking only at
+  where the account is named and capturing nothing else until then; with
+  another account it uses nothing, leaves every line NO ALCANZADO and says
+  which account it saw;
 - copies to its receipts folder only the capture file its own call returned,
   and takes no whole-screen capture.
 

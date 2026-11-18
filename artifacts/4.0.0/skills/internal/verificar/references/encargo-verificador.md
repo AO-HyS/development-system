@@ -35,8 +35,9 @@ Si Browse no funciona, no lo cambies por otra cosa: repórtalo y marca NO ALCANZ
   contenido exacto de `<ruta de scripts/poner-clave-browse.js>` (léelo con Read; no contiene la contraseña).
 - Otros verificadores comparten la sesión iniciada del navegador: NUNCA cierres sesión. Si al abrir ya estás dentro,
   antes de leer o cambiar nada confirma en pantalla que la cuenta es la de prueba (su correo o ese nombre) y dilo en
-  `que_hice` del primer renglón. Si es otra cuenta, no la uses y no cierres sesión: marca todos los renglones NO
-  ALCANZADO, di qué cuenta viste y termina.
+  `que_hice` del primer renglón. Hasta confirmarla mira sólo dónde dice de quién es la cuenta (su menú) y no guardes
+  capturas de otra cosa. Si es otra cuenta, no la uses y no cierres sesión: marca todos los renglones NO ALCANZADO,
+  di qué cuenta viste y termina.
 - Toca sólo los datos que este encargo nombra: `<registros que son tuyos>`.
 
 ## Los renglones (lo que el producto debe hacer)

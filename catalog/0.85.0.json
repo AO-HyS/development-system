@@ -3317,7 +3317,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/4.0.0/skills/internal/verificar",
           "destination": ".agents/skills/verificar",
-          "folderSha256": "5ed30a52451bb7907eac7c38525acaaf94e52c6beb0dea596b1b8158f8a0cd06",
+          "folderSha256": "261779af72b0bb550abcb203ec36307bae176d6cd30738cbe08b4a8965ea552c",
           "expectedMirrorOf": null
         },
         {
@@ -3325,7 +3325,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/4.0.0/skills/internal/verificar",
           "destination": ".claude/skills/verificar",
-          "folderSha256": "5ed30a52451bb7907eac7c38525acaaf94e52c6beb0dea596b1b8158f8a0cd06",
+          "folderSha256": "261779af72b0bb550abcb203ec36307bae176d6cd30738cbe08b4a8965ea552c",
           "expectedMirrorOf": "verificar.codex",
           "install": "symlink"
         }
