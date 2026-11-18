@@ -240,7 +240,7 @@ function formatHuman(result) {
   if (result.operation === "development-steward") {
     const report = result.report && typeof result.report === "object" ? result.report : {};
     const upstream = /** @type {any} */ (report).skillsUpstream;
-    const skills = upstream ? ` Skills de otro autor: ${upstream.behind.length} atrasadas${upstream.behind.length ? ` (${upstream.behind.map((/** @type {{name: string}} */ row) => row.name).join(", ")})` : ""}, ${upstream.gone.length} ya no existen arriba${upstream.unread.length ? `, ${upstream.unread.length} sin leer` : ""}.` : "";
+    const skills = upstream?.failed ? ` Skills de otro autor: sin leer (${upstream.failed}).` : upstream ? ` Skills de otro autor: ${upstream.behind.length} atrasadas${upstream.behind.length ? ` (${upstream.behind.map((/** @type {{name: string}} */ row) => row.name).join(", ")})` : ""}, ${upstream.gone.length} ya no existen arriba${upstream.unread.length ? `, ${upstream.unread.length} sin leer` : ""}.` : "";
     return `Development Steward: ${"summary" in report ? report.summary : "report unproven"}${skills}`;
   }
   if (result.operation === "development-steward-scheduler") {
@@ -949,7 +949,9 @@ async function runCommand(argv) {
     if (!options.input) throw new Error("development-steward requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
     // 3.2.0: the weekly report lists every catalogued skill of another author that fell behind its source.
-    const skillsUpstream = options.sinUpstream ? null : await (await import("./skills-upstream.mjs")).checkSkillsUpstream({ home: options.home });
+    // A failed or stalled comparison never holds the report: it is recorded as not read.
+    const skillsUpstream = options.sinUpstream ? null : await (await import("./skills-upstream.mjs")).checkSkillsUpstream({ home: options.home })
+      .catch((error) => ({ failed: error instanceof Error ? error.message.split("\n")[0] : String(error) }));
     result = await processDevelopmentStewardReview(input, { home: options.home, skillsUpstream });
   } else if (command === "development-steward-schedule-enable") {
     if (!options.projectsRoot) throw new Error("development-steward-schedule-enable requires --projects-root <path>");

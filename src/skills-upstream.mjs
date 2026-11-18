@@ -15,19 +15,43 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const OWN_REPOSITORY = "https://github.com/AO-HyS/development-system";
-// No credential helper, prompt or personal configuration (url rewrites, tokens) reaches these clones.
-const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_ASKPASS: "", SSH_ASKPASS: "" };
+const FULL_COMMIT = /^[a-f0-9]{40}$/u;
+// One Git call may not outlive this; a stalled connection is cut by Git itself after 30 s under 1 kB/s.
+const GIT_CALL_TIMEOUT_MS = 120_000;
+// After this the remaining skills are reported as unread instead of holding the caller (the weekly Steward report).
+const DEFAULT_DEADLINE_MS = 600_000;
+
+/**
+ * The environment of every Git call: nothing inherited but PATH. No credential helper, prompt, personal or injected
+ * configuration (`GIT_CONFIG_COUNT`, `GIT_CONFIG_PARAMETERS`, url rewrites, extra headers, tokens), proxy or `~/.netrc`
+ * reaches these clones: HOME is the temporary folder itself.
+ * @param {string} root
+ */
+const gitEnvironment = (root) => ({
+  PATH: process.env.PATH ?? "/usr/bin:/bin",
+  HOME: root,
+  XDG_CONFIG_HOME: root,
+  TMPDIR: root,
+  LC_ALL: "C",
+  GIT_TERMINAL_PROMPT: "0",
+  GIT_CONFIG_GLOBAL: "/dev/null",
+  GIT_CONFIG_NOSYSTEM: "1",
+  GIT_ASKPASS: "",
+  SSH_ASKPASS: "",
+});
+const GIT_OPTIONS = ["-c", "credential.helper=", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30"];
 
 /**
  * Temporary blobless clones of public repositories, one per URL, removed by `close()`.
+ * @param {{callTimeoutMs?: number}} [options]
  * @returns {Promise<{clone: (repository: string) => Promise<string>, git: (directory: string, ...args: string[]) => Promise<Buffer>, close: () => Promise<void>}>}
  */
-export async function openUpstreamClones() {
+export async function openUpstreamClones({ callTimeoutMs = GIT_CALL_TIMEOUT_MS } = {}) {
   const root = await mkdtemp(join(tmpdir(), "ds-skills-upstream-"));
   /** @type {Map<string, Promise<string>>} */
   const clones = new Map();
   /** @param {string} directory @param {string[]} args */
-  const git = async (directory, ...args) => (await run("git", ["-c", "credential.helper=", ...args], { cwd: directory, env: GIT_ENV, encoding: "buffer", maxBuffer: 256 * 1024 * 1024 })).stdout;
+  const git = async (directory, ...args) => (await run("git", [...GIT_OPTIONS, ...args], { cwd: directory, env: gitEnvironment(root), encoding: "buffer", maxBuffer: 256 * 1024 * 1024, timeout: callTimeoutMs, killSignal: "SIGKILL" })).stdout;
   /** @param {string} repository */
   const clone = (repository) => {
     if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/u.test(repository)) return Promise.reject(new Error(`not a public GitHub repository: ${repository}`));
@@ -110,9 +134,10 @@ export async function installedUpstreamSkills({ home, lockPath, catalog }) {
  * `atrasada`: a later commit changed the path (pinned → latest, date). `ya-no-existe`: the path is gone upstream.
  * `desconocido`: the repository, the pinned commit or the record could not be read.
  * Group `catalogo`: the catalog shipped with this CLI. Group `instaladas`: the `skills` lock of `home`.
- * @param {{catalog?: any, home?: string, lockPath?: string, concurrency?: number}} [options]
+ * Past `deadlineMs` the skills not yet compared are `desconocido` ("time limit reached"): the caller always gets a report.
+ * @param {{catalog?: any, home?: string, lockPath?: string, concurrency?: number, deadlineMs?: number, callTimeoutMs?: number}} [options]
  */
-export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath, concurrency = 4 } = {}) {
+export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath, concurrency = 4, deadlineMs = DEFAULT_DEADLINE_MS, callTimeoutMs } = {}) {
   const resolved = catalog ?? await currentCatalog();
   const installed = await installedUpstreamSkills({ home, lockPath, catalog: resolved });
   /** @type {Array<{group: "catalogo"|"instaladas", name: string, repository: string, path: string, commit: string, folderHash?: string, updatedAt?: string|null}>} */
@@ -120,7 +145,8 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
     ...upstreamSkills(resolved).map((entry) => ({ group: /** @type {const} */ ("catalogo"), ...entry })),
     ...installed.entries.map((entry) => ({ group: /** @type {const} */ ("instaladas"), ...entry })),
   ];
-  const clones = await openUpstreamClones();
+  const clones = await openUpstreamClones({ callTimeoutMs });
+  const deadline = Date.now() + deadlineMs;
   try {
     /** @typedef {{group: "catalogo"|"instaladas", name: string, repository: string, path: string, pinned: string|null, state: "al-dia"|"atrasada"|"ya-no-existe"|"desconocido", latest: string|null, latestDate: string|null, pinnedDate: string|null, error: string|null}} UpstreamRow */
     /** @type {UpstreamRow[]} */
@@ -131,10 +157,13 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
         /** @type {UpstreamRow} */
         const row = { group: entry.group, name: entry.name, repository: entry.repository, path: entry.path, pinned: entry.commit || null, state: "desconocido", latest: null, latestDate: null, pinnedDate: null, error: null };
         try {
+          if (Date.now() > deadline) throw new Error("time limit reached before this skill was compared");
+          // A pinned commit reaches Git as an argument: only a full hash, never something Git could read as an option.
+          if (entry.commit && !FULL_COMMIT.test(entry.commit)) throw new Error("the pinned commit is not a full 40-character hash");
           const directory = await clones.clone(entry.repository);
           const text = async (/** @type {string[]} */ ...args) => (await clones.git(directory, ...args)).toString().trim();
           const pathspec = entry.path ? ["--", entry.path] : [];
-          const treeAt = (/** @type {string} */ commit) => text("rev-parse", entry.path ? `${commit}:${entry.path}` : `${commit}^{tree}`).catch(() => null);
+          const treeAt = (/** @type {string} */ commit) => text("rev-parse", "--verify", "--quiet", "--end-of-options", entry.path ? `${commit}:${entry.path}` : `${commit}^{tree}`).catch(() => null);
           if (entry.path && !(await text("ls-tree", "--name-only", "HEAD", "--", entry.path))) {
             row.state = "ya-no-existe";
           } else {
@@ -142,11 +171,11 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
             row.latest = latest;
             row.latestDate = date;
             if (entry.commit) {
-              row.pinnedDate = await text("log", "-1", "--format=%cs", `${entry.commit}^{commit}`).catch(() => null);
+              row.pinnedDate = await text("log", "-1", "--format=%cs", "--end-of-options", `${entry.commit}^{commit}`).catch(() => null);
               if (row.pinnedDate === null) throw new Error(`pinned commit ${entry.commit.slice(0, 12)} is not in ${entry.repository}`);
               const behind = latest !== entry.commit && await clones.git(directory, "merge-base", "--is-ancestor", latest, entry.commit).then(() => false, () => true);
               row.state = behind ? "atrasada" : "al-dia";
-            } else if (/^[a-f0-9]{40}$/u.test(entry.folderHash ?? "")) {
+            } else if (FULL_COMMIT.test(entry.folderHash ?? "")) {
               // The `skills` CLI records the Git tree of the folder: find the commit that installed it.
               if ((await treeAt("HEAD")) === entry.folderHash) row.state = "al-dia";
               else {

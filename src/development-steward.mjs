@@ -208,7 +208,10 @@ export function buildDevelopmentStewardReview(input, { home, skillsUpstream } = 
       unread: skillsUpstream.skills.filter((/** @type {any} */ row) => row.state === "desconocido").map((/** @type {any} */ row) => row.name),
       unknownProvenance: Array.isArray(skillsUpstream.unknownProvenance) ? skillsUpstream.unknownProvenance : [],
     }
-    : null;
+    // The comparison did not finish (network, time limit): the report says so instead of leaving the section out.
+    : skillsUpstream && typeof skillsUpstream.failed === "string"
+      ? { catalogVersion: null, checked: 0, behind: [], gone: [], unread: [], unknownProvenance: [], failed: skillsUpstream.failed }
+      : null;
 
   return {
     schemaVersion: 1,
