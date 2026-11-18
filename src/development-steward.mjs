@@ -73,10 +73,12 @@ function normalizeUpstream(item) {
  * Reconcile one scheduled, read-only Development Steward run.
  * Collection adapters provide evidence; this core never contacts or mutates a repository.
  * Repeated mistakes come from the private mistake log in the steward's HOME when `home` is supplied.
+ * `skillsUpstream` is the result of `checkSkillsUpstream` (src/skills-upstream.mjs): the report lists every catalogued
+ * skill of another author that fell behind its source or no longer exists upstream.
  * @param {unknown} input
- * @param {{home?: string}} [options]
+ * @param {{home?: string, skillsUpstream?: any}} [options]
  */
-export function buildDevelopmentStewardReview(input, { home } = {}) {
+export function buildDevelopmentStewardReview(input, { home, skillsUpstream } = {}) {
   const value = isRecord(input) ? input : {};
   /** @type {string[]} */
   const errors = [];
@@ -196,6 +198,21 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
     ? listMistakes({ home, repeated: true }).mistakes.map((mistake) => ({ id: mistake.id, incidents: mistake.incidents, proposedControl: mistake.proposedControl ?? null }))
     : [];
 
+  const skillsBehind = skillsUpstream && Array.isArray(skillsUpstream.skills)
+    ? {
+      catalogVersion: skillsUpstream.catalogVersion ?? null,
+      checked: skillsUpstream.checked ?? skillsUpstream.skills.length,
+      behind: skillsUpstream.skills.filter((/** @type {any} */ row) => row.state === "atrasada")
+        .map((/** @type {any} */ row) => ({ group: row.group, name: row.name, repository: row.repository, path: row.path, pinned: row.pinned, latest: row.latest, latestDate: row.latestDate })),
+      gone: skillsUpstream.skills.filter((/** @type {any} */ row) => row.state === "ya-no-existe").map((/** @type {any} */ row) => row.name),
+      unread: skillsUpstream.skills.filter((/** @type {any} */ row) => row.state === "desconocido").map((/** @type {any} */ row) => row.name),
+      unknownProvenance: Array.isArray(skillsUpstream.unknownProvenance) ? skillsUpstream.unknownProvenance : [],
+    }
+    // The comparison did not finish (network, time limit): the report says so instead of leaving the section out.
+    : skillsUpstream && typeof skillsUpstream.failed === "string"
+      ? { catalogVersion: null, checked: 0, behind: [], gone: [], unread: [], unknownProvenance: [], failed: skillsUpstream.failed }
+      : null;
+
   return {
     schemaVersion: 1,
     contractVersion: "1.41.0",
@@ -211,6 +228,7 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
       summary: reportItems.length === 0 ? "No primary repository needs proven human action." : `${reportItems.length} bounded items need attention.`,
       items: reportItems,
       repeatedMistakes,
+      skillsUpstream: skillsBehind,
     },
     checkInEvidence,
     draftChanges,
@@ -222,10 +240,10 @@ export function buildDevelopmentStewardReview(input, { home } = {}) {
 
 /** Reconcile durable session cursors separately from pending publication recommendations.
  * @param {unknown} input
- * @param {{home: string}} options
+ * @param {{home: string, skillsUpstream?: any}} options
  */
-export async function processDevelopmentStewardReview(input, { home }) {
-  const review = buildDevelopmentStewardReview(input, { home });
+export async function processDevelopmentStewardReview(input, { home, skillsUpstream }) {
+  const review = buildDevelopmentStewardReview(input, { home, skillsUpstream });
   if (!review.valid) return { ...review, retro: null };
   const retro = await reconcileStewardRetro(input, review, { home, allowedIds });
   return { ...review, draftChanges: retro.draftChanges, retro };

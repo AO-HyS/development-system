@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: revisar animaciones"
+  short_description: "Revisa código de animación con un estándar alto"
+  default_prompt: "Usa $review-animations para revisar este código de animación."
+policy:
+  allow_implicit_invocation: false

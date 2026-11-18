@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+  "path": "pstack/skills/architect",
+  "license": "MIT",
+  "files": {
+    "SKILL.md": "aea83d7aa109eb73402182701b14c289844663ad9c8f959fedbef2df66787ce0"
+  },
+  "localOnlyFiles": {
+    "references/design-red-flags.md": "010f470709568d6b0bf5026df714da784ddcbd18d8ce4decca04187b45646661 (kept from commit 9d76bcab133aefcccb16121d7be874e6aa823729; upstream deleted it)"
+  }
+}

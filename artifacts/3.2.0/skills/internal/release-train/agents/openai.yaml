@@ -1,0 +1,6 @@
+interface:
+  display_name: "Release Train"
+  short_description: "Run an affected-surface provider-aware release"
+  default_prompt: "Use $release-train to plan the affected release graph, execute only authorized phases, and verify provider evidence."
+policy:
+  allow_implicit_invocation: false

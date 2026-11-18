@@ -1,0 +1,4 @@
+interface:
+  display_name: "PostHog Observability"
+  short_description: "Audit production signals without provider writes"
+  default_prompt: "Use $posthog-observability to audit collected PostHog evidence and return only deterministic, privacy-safe operational findings."
