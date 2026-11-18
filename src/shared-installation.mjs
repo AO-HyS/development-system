@@ -26,7 +26,9 @@ const ownerKeys = new Set(['$schema', 'env', 'enabledPlugins', 'extraKnownMarket
   'outputStyle', 'language', 'alwaysThinkingEnabled', 'showThinkingSummaries', 'fastMode', 'autoCompactWindow', 'modelSettings',
   'spinnerTipsEnabled', 'viewMode', 'tui', 'voice', 'voiceEnabled', 'cleanupPeriodDays', 'attribution', 'includeCoAuthoredBy',
   'enableAllProjectMcpServers', 'enabledMcpjsonServers', 'disabledMcpjsonServers', 'autoMemoryEnabled', 'editorMode', 'verbose',
-  'prefersReducedMotion', 'timeFormat', 'timeZone', 'feedbackSurveyRate']);
+  'prefersReducedMotion', 'timeFormat', 'timeZone', 'feedbackSurveyRate',
+  // Set by the installation since 4.0.0 and harmless to change: the owner writing his own value or removing it is not drift.
+  'skillListingBudgetFraction']);
 /** Hook commands the installers own, by their installed paths; an owner's own hook with a similar file name is not managed
  * (reviews DS188-02, codex:4462244185). */
 const managedHookCommand = /\/\.agents\/skills\/global-agent-guardrails\/scripts\/command-guard\.mjs|\/\.codex\/development-system\/runtime\/(claude-orchestration\/roster-guard|report-gate\/stop-gate)\.mjs/;

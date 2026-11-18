@@ -8,8 +8,8 @@ no tables, at most 2,000 characters:
 1. First sentence: whether you need something from him, and the state of the
    work. A request to him always goes there.
 2. **What was done** («Qué se hizo»): two to four plain sentences.
-3. **Against done** («Cómo vamos contra el terminado»): the definition of done
-   in one line, then one line per part with ✅, ⏳, 🧱 or ❌.
+3. **Against done** («Cómo vamos contra el terminado»): one line per
+   «Terminado» line with ✅, ⏳, 🧱 or ❌ and its receipt.
 4. **What I need from you** («Lo que necesito de ti»): the exact decision or
    action and what it unlocks, or that nothing is needed. **What happens next**
    («Lo que sigue»): the next action and who owns it.
@@ -19,7 +19,7 @@ no tables, at most 2,000 characters:
    none.
 
 Say «sin verificar» for anything you only read or only merged. A typecheck, an
-HTTP 200 or a clean console is not acceptance. A picture rendered in the thread
+HTTP 200 or a clean console is not acceptance. A picture in the thread
 (`html_preview`, then `html_render`) is for a plan, a trend or a comparison, or
-when he asks for one. The HTML report of `development-system document` is
-produced only when he asks.
+when he asks; the HTML report of `development-system document` only when he
+asks.
