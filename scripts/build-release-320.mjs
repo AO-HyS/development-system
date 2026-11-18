@@ -30,7 +30,7 @@ const unmanagedRetired = { 'find-skills': ['.agents/skills/find-skills', '.claud
 /**
  * Skills whose installed bytes move to `${prefix}/skills/<kind>/<name>`; the kind is the one the previous catalog
  * already gives them. The reviewed candidates, plus wayfinder and good-css, whose only change is a pointer away from a
- * retired skill.
+ * retired skill, and the skills `skills-upstream` found behind their authors after the review.
  * @type {string[]}
  */
 const updatedSkills = [
@@ -41,6 +41,9 @@ const updatedSkills = [
   'improve-codebase-architecture', 'interface-review', 'linear-hygiene', 'mobile-native', 'pick-ui-library', 'posthog-observability',
   'primitives-gardener', 'prototype', 'release-train', 'review-animations', 'review-thread', 'setup-matt-pocock-skills', 'shadcn',
   'to-tickets', 'variant', 'wait-what', 'wayfinder', 'working-backwards',
+  // Behind their authors' current commits per `skills-upstream`; brought up to date after the review.
+  'benchmark-checklist', 'better-accessibility', 'better-colors', 'better-layout', 'better-typography', 'better-ui',
+  'better-writing', 'correct', 'grilling', 'handoff', 'wizard',
 ];
 /**
  * New upstream pins (commit and path in the author's repository) of the skills that were brought up to date. Their
@@ -72,6 +75,18 @@ const upstreamPins = {
   'shadcn': ['968d8cb9dc42ae5d52e8fd356cf84596ec832a26', 'skills/shadcn'],
   'to-tickets': ['5863806dd4e15c63174bee4e7515a4256792ecfa', 'skills/engineering/to-tickets'],
   'variant': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/variant'],
+  'benchmark-checklist': ['93b916d4a1e806507e22f4716b352fa91f2b227e', 'pstack/skills/benchmark-checklist'],
+  'better-accessibility': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-accessibility'],
+  'better-colors': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-colors'],
+  'better-layout': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-layout'],
+  'better-typography': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-typography'],
+  'better-ui': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-ui'],
+  'better-writing': ['2136b60ecf0078f1556623f8b6d26a1563c03512', 'skills/better-writing'],
+  'correct': ['93b916d4a1e806507e22f4716b352fa91f2b227e', 'pstack/skills/correct'],
+  'grilling': ['5863806dd4e15c63174bee4e7515a4256792ecfa', 'skills/productivity/grilling'],
+  'handoff': ['5863806dd4e15c63174bee4e7515a4256792ecfa', 'skills/productivity/handoff'],
+  'wayfinder': ['5863806dd4e15c63174bee4e7515a4256792ecfa', 'skills/engineering/wayfinder'],
+  'wizard': ['5863806dd4e15c63174bee4e7515a4256792ecfa', 'skills/engineering/wizard'],
 };
 // Codex role profiles whose model routing changes in this version (hand-written under the prefix).
 /** @type {string[]} */
@@ -219,8 +234,8 @@ try {
     const directory = `${prefix}/skills/${kind}/${name}`;
     // A skill installed straight from its author's repository becomes a Development System copy with that pin as its upstream reference.
     if (skill.source.repository !== 'https://github.com/AO-HyS/development-system') {
-      const { repository, commit, path, licenseSha256, capabilityTreeSha256 } = skill.source;
-      skill.source = { repository: 'https://github.com/AO-HyS/development-system', commit: '$INSTALL_COMMIT', path: directory, upstreamReference: { repository, commit, path, licenseSha256, capabilityTreeSha256 } };
+      const { repository, commit, path, ...provenance } = skill.source;
+      skill.source = { repository: 'https://github.com/AO-HyS/development-system', commit: '$INSTALL_COMMIT', path: directory, upstreamReference: { repository, commit, path, ...provenance } };
     }
     skill.source.path = directory;
     const pin = upstreamPins[name];

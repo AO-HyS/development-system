@@ -267,10 +267,10 @@
         "path": "artifacts/3.2.0/skills/upstream/wayfinder",
         "upstreamReference": {
           "repository": "https://github.com/mattpocock/skills",
-          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
           "path": "skills/engineering/wayfinder",
           "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
-          "capabilityTreeSha256": "fa164901a041cab31d281288ea4b5af5aeb0a0d557b586cf6b341998a3fb3eb3"
+          "capabilityTreeSha256": "62a0ab7262d40119da048328a71aeadaeaa21a4049ee9268d14500921bb6e257"
         }
       },
       "variants": [
@@ -279,7 +279,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/3.2.0/skills/upstream/wayfinder",
           "destination": ".agents/skills/wayfinder",
-          "folderSha256": "bbb421840b323f1457703927a44e947dec443bfcbd18dbacc5e846c81c20f2e9",
+          "folderSha256": "15d6039ce9aa98772657906fffd139909a0cc0c38f3978d4c843385f4baa9c97",
           "expectedMirrorOf": null
         },
         {
@@ -287,7 +287,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/3.2.0/skills/upstream/wayfinder",
           "destination": ".claude/skills/wayfinder",
-          "folderSha256": "bbb421840b323f1457703927a44e947dec443bfcbd18dbacc5e846c81c20f2e9",
+          "folderSha256": "15d6039ce9aa98772657906fffd139909a0cc0c38f3978d4c843385f4baa9c97",
           "expectedMirrorOf": "wayfinder.codex",
           "install": "symlink"
         }
@@ -414,27 +414,32 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/mattpocock/skills",
-        "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
-        "path": "skills/productivity/grilling",
-        "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
-        "capabilityTreeSha256": "d5833e50e0081bbf5133b6c6b61aa8ba9ffae66e9071404b61e45b18f4cdb57e"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/grilling",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/productivity/grilling",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8"
+        }
       },
       "variants": [
         {
           "id": "grilling.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/grilling",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/grilling",
           "destination": ".agents/skills/grilling",
-          "folderSha256": "d5833e50e0081bbf5133b6c6b61aa8ba9ffae66e9071404b61e45b18f4cdb57e",
+          "folderSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8",
           "expectedMirrorOf": null
         },
         {
           "id": "grilling.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/grilling",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/grilling",
           "destination": ".claude/skills/grilling",
-          "folderSha256": "d5833e50e0081bbf5133b6c6b61aa8ba9ffae66e9071404b61e45b18f4cdb57e",
+          "folderSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8",
           "expectedMirrorOf": "grilling.codex",
           "install": "symlink"
         }
@@ -635,27 +640,32 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/mattpocock/skills",
-        "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
-        "path": "skills/engineering/wizard",
-        "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
-        "capabilityTreeSha256": "fd918004158f826ab85f20a69b75677be74dcbcea19066c4f2511b52fcd5af3a"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/wizard",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/wizard",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e"
+        }
       },
       "variants": [
         {
           "id": "wizard.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/wizard",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wizard",
           "destination": ".agents/skills/wizard",
-          "folderSha256": "fd918004158f826ab85f20a69b75677be74dcbcea19066c4f2511b52fcd5af3a",
+          "folderSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e",
           "expectedMirrorOf": null
         },
         {
           "id": "wizard.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/wizard",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wizard",
           "destination": ".claude/skills/wizard",
-          "folderSha256": "fd918004158f826ab85f20a69b75677be74dcbcea19066c4f2511b52fcd5af3a",
+          "folderSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e",
           "expectedMirrorOf": "wizard.codex",
           "install": "symlink"
         }
@@ -706,27 +716,32 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/mattpocock/skills",
-        "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
-        "path": "skills/productivity/handoff",
-        "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
-        "capabilityTreeSha256": "fe287d0ae54ed66c99522e272af1020323ba4d4698ef60fe1fa63f042dffd313"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/handoff",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/productivity/handoff",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da"
+        }
       },
       "variants": [
         {
           "id": "handoff.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/handoff",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/handoff",
           "destination": ".agents/skills/handoff",
-          "folderSha256": "fe287d0ae54ed66c99522e272af1020323ba4d4698ef60fe1fa63f042dffd313",
+          "folderSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da",
           "expectedMirrorOf": null
         },
         {
           "id": "handoff.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.5.15/skills/upstream/handoff",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/handoff",
           "destination": ".claude/skills/handoff",
-          "folderSha256": "fe287d0ae54ed66c99522e272af1020323ba4d4698ef60fe1fa63f042dffd313",
+          "folderSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da",
           "expectedMirrorOf": "handoff.codex",
           "install": "symlink"
         }
@@ -1821,28 +1836,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-accessibility",
-        "capabilityTreeSha256": "2e5d41fa387ce7674a34c56f0141d38d51f95456eab185423c3f25020aacf827"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-accessibility",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-accessibility",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66"
+        }
       },
       "variants": [
         {
           "id": "better-accessibility.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-accessibility",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-accessibility",
           "destination": ".agents/skills/better-accessibility",
-          "folderSha256": "2e5d41fa387ce7674a34c56f0141d38d51f95456eab185423c3f25020aacf827",
+          "folderSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66",
           "expectedMirrorOf": null
         },
         {
           "id": "better-accessibility.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-accessibility",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-accessibility",
           "destination": ".claude/skills/better-accessibility",
-          "folderSha256": "2e5d41fa387ce7674a34c56f0141d38d51f95456eab185423c3f25020aacf827",
+          "folderSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66",
           "expectedMirrorOf": "better-accessibility.codex",
           "install": "symlink"
         }
@@ -1855,28 +1875,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-colors",
-        "capabilityTreeSha256": "0096ef15e9426779c82a3ce54125f47e7b3089d73741117a4e34caaf7bc150a3"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-colors",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-colors",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af"
+        }
       },
       "variants": [
         {
           "id": "better-colors.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-colors",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-colors",
           "destination": ".agents/skills/better-colors",
-          "folderSha256": "0096ef15e9426779c82a3ce54125f47e7b3089d73741117a4e34caaf7bc150a3",
+          "folderSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af",
           "expectedMirrorOf": null
         },
         {
           "id": "better-colors.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-colors",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-colors",
           "destination": ".claude/skills/better-colors",
-          "folderSha256": "0096ef15e9426779c82a3ce54125f47e7b3089d73741117a4e34caaf7bc150a3",
+          "folderSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af",
           "expectedMirrorOf": "better-colors.codex",
           "install": "symlink"
         }
@@ -1928,28 +1953,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-layout",
-        "capabilityTreeSha256": "92ae8dcaa2fa5aa28daf69b18c97f9602e4b95f016c56174de54704823e243d0"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-layout",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-layout",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049"
+        }
       },
       "variants": [
         {
           "id": "better-layout.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-layout",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-layout",
           "destination": ".agents/skills/better-layout",
-          "folderSha256": "92ae8dcaa2fa5aa28daf69b18c97f9602e4b95f016c56174de54704823e243d0",
+          "folderSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049",
           "expectedMirrorOf": null
         },
         {
           "id": "better-layout.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-layout",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-layout",
           "destination": ".claude/skills/better-layout",
-          "folderSha256": "92ae8dcaa2fa5aa28daf69b18c97f9602e4b95f016c56174de54704823e243d0",
+          "folderSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049",
           "expectedMirrorOf": "better-layout.codex",
           "install": "symlink"
         }
@@ -1962,28 +1992,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-typography",
-        "capabilityTreeSha256": "8d55cca2deaf3a7d0363f355005bf10e1dab5ca7314fcd54dd4281cdc4904314"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-typography",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-typography",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa"
+        }
       },
       "variants": [
         {
           "id": "better-typography.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-typography",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-typography",
           "destination": ".agents/skills/better-typography",
-          "folderSha256": "8d55cca2deaf3a7d0363f355005bf10e1dab5ca7314fcd54dd4281cdc4904314",
+          "folderSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa",
           "expectedMirrorOf": null
         },
         {
           "id": "better-typography.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-typography",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-typography",
           "destination": ".claude/skills/better-typography",
-          "folderSha256": "8d55cca2deaf3a7d0363f355005bf10e1dab5ca7314fcd54dd4281cdc4904314",
+          "folderSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa",
           "expectedMirrorOf": "better-typography.codex",
           "install": "symlink"
         }
@@ -1996,28 +2031,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-ui",
-        "capabilityTreeSha256": "cb7acb6973bc020d85b1fa477e8f7bf3e557d849849255fb26f58316699d7f2a"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-ui",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-ui",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3"
+        }
       },
       "variants": [
         {
           "id": "better-ui.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-ui",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-ui",
           "destination": ".agents/skills/better-ui",
-          "folderSha256": "cb7acb6973bc020d85b1fa477e8f7bf3e557d849849255fb26f58316699d7f2a",
+          "folderSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3",
           "expectedMirrorOf": null
         },
         {
           "id": "better-ui.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-ui",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-ui",
           "destination": ".claude/skills/better-ui",
-          "folderSha256": "cb7acb6973bc020d85b1fa477e8f7bf3e557d849849255fb26f58316699d7f2a",
+          "folderSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3",
           "expectedMirrorOf": "better-ui.codex",
           "install": "symlink"
         }
@@ -2030,28 +2070,33 @@
         "claude"
       ],
       "source": {
-        "repository": "https://github.com/jakubkrehel/skills",
-        "license": "MIT",
-        "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
-        "commit": "267330e1adfc66a718fb65fa6918c1f06d0a689e",
-        "path": "skills/better-writing",
-        "capabilityTreeSha256": "facb02ef39130c4da67ad858b0ab019af1bd9b61730e27d923e2160bc3299c1d"
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-writing",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-writing",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb"
+        }
       },
       "variants": [
         {
           "id": "better-writing.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-writing",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-writing",
           "destination": ".agents/skills/better-writing",
-          "folderSha256": "facb02ef39130c4da67ad858b0ab019af1bd9b61730e27d923e2160bc3299c1d",
+          "folderSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb",
           "expectedMirrorOf": null
         },
         {
           "id": "better-writing.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/1.6.0/skills/upstream/better-writing",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-writing",
           "destination": ".claude/skills/better-writing",
-          "folderSha256": "facb02ef39130c4da67ad858b0ab019af1bd9b61730e27d923e2160bc3299c1d",
+          "folderSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb",
           "expectedMirrorOf": "better-writing.codex",
           "install": "symlink"
         }
@@ -2532,30 +2577,30 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.1.4/skills/external/correct",
+        "path": "artifacts/3.2.0/skills/external/correct",
         "upstreamReference": {
           "repository": "https://github.com/cursor/plugins",
           "license": "MIT",
-          "commit": "9d76bcab133aefcccb16121d7be874e6aa823729",
+          "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
           "path": "pstack/skills/correct",
-          "capabilityTreeSha256": "86f88ec0adda98bcede119d3861312c362d17bc91829c73eb4caa5f1208a9791"
+          "capabilityTreeSha256": "e86f41b862349cc7019815c374a21074e3e2087618cf0fe8f2f869059f4d9937"
         }
       },
       "variants": [
         {
           "id": "correct.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.1.4/skills/external/correct",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/correct",
           "destination": ".agents/skills/correct",
-          "folderSha256": "03a31c8c4fa156e5fb04bada218989f807691ecc5dd37e1c72d34d19a2e86029",
+          "folderSha256": "993da78efa1b9433acf6d055ec8bba90daff7f830459c47de5035001bc86abfe",
           "expectedMirrorOf": null
         },
         {
           "id": "correct.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.1.4/skills/external/correct",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/correct",
           "destination": ".claude/skills/correct",
-          "folderSha256": "03a31c8c4fa156e5fb04bada218989f807691ecc5dd37e1c72d34d19a2e86029",
+          "folderSha256": "993da78efa1b9433acf6d055ec8bba90daff7f830459c47de5035001bc86abfe",
           "expectedMirrorOf": "correct.codex",
           "install": "symlink"
         }
@@ -2608,30 +2653,30 @@
       "source": {
         "repository": "https://github.com/AO-HyS/development-system",
         "commit": "$INSTALL_COMMIT",
-        "path": "artifacts/2.1.4/skills/external/benchmark-checklist",
+        "path": "artifacts/3.2.0/skills/external/benchmark-checklist",
         "upstreamReference": {
           "repository": "https://github.com/cursor/plugins",
           "license": "MIT",
-          "commit": "9d76bcab133aefcccb16121d7be874e6aa823729",
+          "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
           "path": "pstack/skills/benchmark-checklist",
-          "capabilityTreeSha256": "77f6adce1b8785c7e26d762992365b466d3e7d09d61edbd670f2bceccf649146"
+          "capabilityTreeSha256": "3aebce401509c6c2d3192e4b74088cebe95ff80e7d67ab4ecb3b4b644cb0264d"
         }
       },
       "variants": [
         {
           "id": "benchmark-checklist.codex",
           "harness": "codex",
-          "sourceDirectory": "artifacts/2.1.4/skills/external/benchmark-checklist",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/benchmark-checklist",
           "destination": ".agents/skills/benchmark-checklist",
-          "folderSha256": "ba40a93d749ab78c03e877ba4c687b70b45bc06f526294d1daca9efab4269a76",
+          "folderSha256": "83dfbdb37e0773ada82e5ccbf314908732854cc0b5dfdfe3b1bbb5815421acf3",
           "expectedMirrorOf": null
         },
         {
           "id": "benchmark-checklist.claude",
           "harness": "claude",
-          "sourceDirectory": "artifacts/2.1.4/skills/external/benchmark-checklist",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/benchmark-checklist",
           "destination": ".claude/skills/benchmark-checklist",
-          "folderSha256": "ba40a93d749ab78c03e877ba4c687b70b45bc06f526294d1daca9efab4269a76",
+          "folderSha256": "83dfbdb37e0773ada82e5ccbf314908732854cc0b5dfdfe3b1bbb5815421acf3",
           "expectedMirrorOf": "benchmark-checklist.codex",
           "install": "symlink"
         }
@@ -3172,7 +3217,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/3.2.0/skills/internal/cross-review",
           "destination": ".agents/skills/cross-review",
-          "folderSha256": "f9ec597659f90154053342a8d59e6471d660532726c1cb5f510baf90714c08d7",
+          "folderSha256": "a9c88d12dcb860306ebff289d4fec08a48638ab83da022d7fdd7e44ae3abb91e",
           "expectedMirrorOf": null
         },
         {
@@ -3180,7 +3225,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/3.2.0/skills/internal/cross-review",
           "destination": ".claude/skills/cross-review",
-          "folderSha256": "f9ec597659f90154053342a8d59e6471d660532726c1cb5f510baf90714c08d7",
+          "folderSha256": "a9c88d12dcb860306ebff289d4fec08a48638ab83da022d7fdd7e44ae3abb91e",
           "expectedMirrorOf": "cross-review.codex",
           "install": "symlink"
         }

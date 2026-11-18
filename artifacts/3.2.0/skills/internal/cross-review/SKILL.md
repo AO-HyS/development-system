@@ -1,6 +1,6 @@
 ---
 name: cross-review
-description: Open a visible T3 review thread where a second model that did not write it (Sol 6.1 High) reviews a plan or change, then go back and forth in that thread until both accept the same version. The owner can join the thread and steer. Use only when the operator asks for it (/cross-review or an explicit request); never start one on your own.
+description: Open a visible T3 review thread where a second model (Sol 6.1 High for a Claude author, Opus for a Codex author) reviews a plan or change, then go back and forth in that thread until both accept the same version. The owner can join the thread and steer. Use only when the operator asks for it (/cross-review or an explicit request); never start one on your own.
 ---
 
 # Cross review
@@ -10,8 +10,8 @@ one ordinary T3 thread the owner can open, read and write in: the owner asked
 for one continuous visible thread, so this is the explicit exception to fresh
 review rounds. It does not replace `development-system listo` (Codex asked
 once, and the independent read a critical change needs). The reviewer model is
-the owner's choice: Sol 6.1 High in a fresh thread by default, or another model
-that is not the author when Sol is unavailable; the owner may name another.
+the owner's choice: Sol 6.1 High for a Claude author, Opus for a Codex
+author; the owner may name another.
 
 ## Start
 
@@ -23,8 +23,8 @@ that is not the author when Sol is unavailable; the owner may name another.
    launching; a launch has no retry key.
 4. `t3_thread_launch` in the same project and workspace as the author
    (`workspaceStrategy` of the author's checkout; never a new worktree), with:
-   - model: `codex` / `gpt-6.1-sol`, `reasoningEffort: high`, unless the owner
-     named another;
+   - model: `codex` / `gpt-6.1-sol`, `reasoningEffort: high` for a Claude
+     author; `claudeAgent` / `claude-opus-5-5` for a Codex author;
    - first message: the owner's goal in your own words, the artifact path and
      hash, the evidence it rests on, "read only: do not edit, commit, switch
      branches or start servers", and the answer format below.
