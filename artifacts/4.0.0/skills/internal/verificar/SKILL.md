@@ -55,15 +55,21 @@ blanks filled in. At most three verifiers decide at the same time. Verifiers
 that change the same data run one after another or on separate data; say in
 each brief which records are theirs.
 
+Where a repository's guide names another tool for screen evidence (computer
+use, another browser), this verifier replaces it: the owner chose Browse by MCP
+for verification on 2026-11-17. Say so in the closing until that guide is
+updated.
+
 ## Prepare
 
 1. The product runs locally with seed data, as the repository's verification
    guide says. Note every PID you start.
 2. A receipts folder per verifier:
    `~/.development-system/private/verificacion/<ask>/<verifier>/`.
-3. The test account. Its password never goes into a brief, a chat, a tool
-   argument or Browse `execute` source (that source is journaled). Start the
-   helper and name it in the brief:
+3. The test account: one the repository's seed or verification guide names,
+   with the role the line needs. Its password never goes into a brief, a chat,
+   a tool argument or Browse `execute` source (that source is journaled). Start
+   the helper and name it in the brief:
 
    ```sh
    node scripts/servidor-clave.mjs <file-with-the-password> <product-origin> [port]
@@ -87,6 +93,10 @@ temporary folder. So each verifier:
   ends with `session_delete`;
 - touches only the tabs it opened, the product origin and the test account,
   never his open tabs or his accounts, and never signs out;
+- when the product is already signed in, confirms on screen that the account
+  is the test account before reading or changing anything; with another
+  account it uses nothing, leaves every line NO ALCANZADO and says which
+  account it saw;
 - copies to its receipts folder only the capture file its own call returned,
   and takes no whole-screen capture.
 
@@ -97,8 +107,10 @@ draw fixed bars in the middle of the page.
 
 ## Results
 
-Each verifier leaves `resultado.json` and its captures. Read the file and open
-the capture of every NO PASA yourself before acting on it.
+Each verifier leaves `resultado.json` and its captures. Read the file, open the
+capture of every NO PASA and of every defect it lists under `visual`, and set
+the line's verdict yourself: a verifier that calls a cut text «menor» and marks
+PASA has reported a NO PASA of the look line.
 
 - NO PASA: fix the cause and run again only that line and the lines the fix
   can touch. If a lint rule or a type could have caught the defect, add it in

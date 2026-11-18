@@ -63,6 +63,9 @@ Cuando la usas sin que el usuario la invoque, la pausa depende del encargo:
   decidir) o es mecánico, muestra las cinco partes con sus palabras y sigue
   trabajando sin esperar.
 
+Esta primera respuesta lleva las cinco partes, no el formato de cierre; el
+cierre llega cuando el trabajo se detiene o termina.
+
 Si el usuario corrige la propuesta o añade requisitos, revísala y vuelve a
 terminar el turno esperando aprobación; una corrección por sí sola no autoriza
 la ejecución. Tras la aprobación, continúa únicamente con el alcance y las

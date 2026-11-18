@@ -424,8 +424,8 @@ export async function enableClaudeOrchestration({ home }) {
   for (const [key, value] of Object.entries(managedSettings)) {
     const stored = state?.top?.[key];
     const existing = settings[key];
-    // A value the operator wrote over the installed one becomes the value a rollback returns to.
-    if (stored && !matchesInstalled && existing !== undefined && existing !== stored.installed) top[key] = { before: existing, installed: value };
+    // What the operator did to the installed value, writing another or removing the key, is what a rollback returns to.
+    if (stored && existing !== stored.installed) top[key] = { before: existing === undefined ? null : existing, installed: value };
     else top[key] = { before: stored ? stored.before : existing === undefined ? null : existing, installed: value };
   }
   const nextState = { schema: 1, settings: { before, installed: installed.toString("base64") }, env, top };

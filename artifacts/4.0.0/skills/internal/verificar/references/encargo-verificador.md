@@ -20,7 +20,8 @@ Si Browse no funciona, no lo cambies por otra cosa: repórtalo y marca NO ALCANZ
 - Tamaños: `page.setViewportSize({width, height})`. Capturas: `page.screenshot({ path: files.path('nombre.png') })`;
   copia a tu carpeta de recibos sólo el archivo que tu propia llamada devolvió y ábrelo con Read. Nunca captures la
   pantalla completa del equipo.
-- Consola: `pageConsole.start()`, recarga la página, lee `logs`.
+- Consola: `pageConsole.start()`, recarga la página, lee `logs`. Guarda los errores en `consola.txt` en tu carpeta
+  de recibos: ese archivo es el recibo del renglón de la consola.
 - Tropiezos conocidos: `snapshot()` corta a 80 elementos y no ve ventanas emergentes; a 390 el ancho útil es 375;
   un clic en un botón de enviar puede marcar timeout aunque sí funcionó (mira la página antes de repetir); la
   captura de página completa dibuja las barras fijas a media página.
@@ -28,11 +29,15 @@ Si Browse no funciona, no lo cambies por otra cosa: repórtalo y marca NO ALCANZ
 ## El producto
 
 - `<qué es>`, ya corriendo en local con datos de prueba: `<origen-del-producto>`. Hoy es `<fecha y hora>`.
-- Cuenta de prueba: `<correo>`. Cómo se entra: `<pasos de la pantalla de entrada y qué se ve al entrar>`.
+- Cuenta de prueba: `<correo>`, que el producto muestra como `<nombre visible de la cuenta>`. Cómo se entra:
+  `<pasos de la pantalla de entrada y qué se ve al entrar>`.
 - La contraseña nunca la leas, la imprimas ni la escribas. Cuando el campo esté visible, corre en `execute` el
   contenido exacto de `<ruta de scripts/poner-clave-browse.js>` (léelo con Read; no contiene la contraseña).
 - Otros verificadores comparten la sesión iniciada del navegador: NUNCA cierres sesión. Si al abrir ya estás dentro,
-  dilo en `que_hice` del primer renglón. Toca sólo los datos que este encargo nombra: `<registros que son tuyos>`.
+  antes de leer o cambiar nada confirma en pantalla que la cuenta es la de prueba (su correo o ese nombre) y dilo en
+  `que_hice` del primer renglón. Si es otra cuenta, no la uses y no cierres sesión: marca todos los renglones NO
+  ALCANZADO, di qué cuenta viste y termina.
+- Toca sólo los datos que este encargo nombra: `<registros que son tuyos>`.
 
 ## Los renglones (lo que el producto debe hacer)
 
@@ -72,6 +77,8 @@ Reglas del veredicto:
 - PASA sólo si viste en pantalla lo que el renglón dice. NO PASA si viste lo contrario. NO ALCANZADO si no pudiste
   llegar: nunca lo cuentes como pase.
 - No adivines ni completes con lo que el código «debería» hacer. Sólo lo que viste.
+- Un defecto «menor» también decide: si el renglón dice «nada cortado» y hay un texto cortado, es NO PASA. Lo de
+  «menor» va en `que_vi`, no en el veredicto.
 - Meta de tiempo: 10 minutos. Si algo se atora más de 3 intentos, márcalo NO ALCANZADO y sigue. A los 15 minutos
   entrega lo que tengas.
 

@@ -3255,7 +3255,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/4.0.0/skills/external/in-your-own-words",
           "destination": ".agents/skills/in-your-own-words",
-          "folderSha256": "b62f995210c05e550815a7ec9e80baf0e94ce5ee807447eaec8bb03e219be980",
+          "folderSha256": "faea57d618a7ec402fcbde2cbd119fd7239723954c72adfa6ccd159e1227a654",
           "expectedMirrorOf": null
         },
         {
@@ -3263,7 +3263,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/4.0.0/skills/external/in-your-own-words",
           "destination": ".claude/skills/in-your-own-words",
-          "folderSha256": "b62f995210c05e550815a7ec9e80baf0e94ce5ee807447eaec8bb03e219be980",
+          "folderSha256": "faea57d618a7ec402fcbde2cbd119fd7239723954c72adfa6ccd159e1227a654",
           "expectedMirrorOf": "in-your-own-words.codex",
           "install": "symlink"
         }
@@ -3317,7 +3317,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/4.0.0/skills/internal/verificar",
           "destination": ".agents/skills/verificar",
-          "folderSha256": "df55f866eed8f4834bdf711c6276938c82025261bf5854d07ac05c0f1f126323",
+          "folderSha256": "5ed30a52451bb7907eac7c38525acaaf94e52c6beb0dea596b1b8158f8a0cd06",
           "expectedMirrorOf": null
         },
         {
@@ -3325,7 +3325,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/4.0.0/skills/internal/verificar",
           "destination": ".claude/skills/verificar",
-          "folderSha256": "df55f866eed8f4834bdf711c6276938c82025261bf5854d07ac05c0f1f126323",
+          "folderSha256": "5ed30a52451bb7907eac7c38525acaaf94e52c6beb0dea596b1b8158f8a0cd06",
           "expectedMirrorOf": "verificar.codex",
           "install": "symlink"
         }

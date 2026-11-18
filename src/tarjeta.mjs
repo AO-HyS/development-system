@@ -3,7 +3,7 @@
 // way of working helped. One JSON file per ask under ~/.development-system/private/tarjetas/, written from the first
 // reply on, so an ask that stays open or fails has a card too. The card records; it is not a gate and orders no read.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,6 +83,29 @@ function write(path, card) {
   renameSync(temporary, path);
 }
 
+/**
+ * One writer per card: two commands that read the same card and each write it back would drop one of the two receipts,
+ * and two `abrir` would overwrite an ask. The lock is a folder next to the card; one left by a dead process is taken
+ * over after thirty seconds.
+ * @template T @param {string} path @param {() => T} action @returns {T}
+ */
+function locked(path, action) {
+  const lock = `${path}.lock`;
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  const pause = new Int32Array(new SharedArrayBuffer(4));
+  for (let attempt = 0; ; attempt += 1) {
+    try { mkdirSync(lock); break; } catch (error) {
+      if (/** @type {NodeJS.ErrnoException} */ (error).code !== "EEXIST") throw error;
+      let age = 0;
+      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; }
+      if (age > 30_000) { try { rmdirSync(lock); } catch { /* another process took it over */ } continue; }
+      if (attempt >= 200) throw new Error(`la tarjeta ${path} está ocupada por otro comando: vuelve a intentarlo`);
+      Atomics.wait(pause, 0, 0, 50);
+    }
+  }
+  try { return action(); } finally { try { rmdirSync(lock); } catch { /* already gone */ } }
+}
+
 /** @param {string} value @param {string} now @returns {Renglon} */
 function lineOf(value, now) {
   const match = LINE.exec(value.trim());
@@ -123,9 +146,13 @@ function setLines(card, lines, now, checkout) {
   }
 }
 
-/** The last result of each line. @param {Tarjeta} card */
+/**
+ * The last result of each line as it reads now. A result recorded before the line was written, changed or added again
+ * proved another text: it stays in the history and does not count.
+ * @param {Tarjeta} card
+ */
 function marks(card) {
-  return card.terminado.renglones.map((line) => ({ line, last: card.resultados[line.n]?.at(-1) ?? null }));
+  return card.terminado.renglones.map((line) => ({ line, last: (card.resultados[line.n] ?? []).filter((item) => item.en > line.desde).at(-1) ?? null }));
 }
 
 /** @param {Tarjeta} card */
@@ -163,7 +190,10 @@ export function runTarjetaCommand(argv) {
   const id = one(values, "id", true) ?? "";
   const path = cardPath(home, id);
   const checkout = resolve(one(values, "checkout") ?? process.cwd());
+  if (command === "ver") return done(read(path));
+  return locked(path, () => change());
 
+  function change() {
   if (command === "abrir") {
     if (existsSync(path)) throw new Error(`la tarjeta ${id} ya existe: usa «tarjeta terminado» para cambiar sus renglones`);
     const repo = one(values, "repo", true) ?? "";
@@ -182,7 +212,6 @@ export function runTarjetaCommand(argv) {
   }
 
   const card = read(path);
-  if (command === "ver") return done(card);
   if (card.cerrada && command !== "cerrar") throw new Error(`la tarjeta ${id} ya está cerrada (${card.estado})`);
 
   if (command === "terminado") {
@@ -244,4 +273,5 @@ export function runTarjetaCommand(argv) {
   }
 
   throw new Error(`Usage: development-system ${TARJETA_USAGE}`);
+  }
 }
