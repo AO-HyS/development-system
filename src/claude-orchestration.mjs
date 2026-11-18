@@ -23,10 +23,12 @@ export const managedEnv = /** @type {const} */ ({
 });
 /**
  * Top-level settings keys the installation owns. Claude Code gives the skill listing 1 % of the context window and,
- * when it overflows, announces the least used skills as bare names; three times that budget keeps the descriptions the
- * model needs to pick a skill. `development-system doctor` reports what the last session really announced.
+ * when it overflows, announces the least used skills as bare names. Measured 17 Nov 2026 in fresh sessions: at the default
+ * 77 of 250 skills carried a description (30K characters); at 0.03 all 250 did (87K), with 3 % of that budget left. 0.05
+ * leaves room for the skills a product repository adds. `development-system doctor` reports what the last session
+ * really announced.
  */
-export const managedSettings = /** @type {const} */ ({ skillListingBudgetFraction: 0.03 });
+export const managedSettings = /** @type {const} */ ({ skillListingBudgetFraction: 0.05 });
 /**
  * DS 3.0.0 wires no roster-guard event (PreToolUse, PostToolUse, SubagentStop) and no Stop → stop-gate event. Enabling
  * removes those managed entries left by an older version and keeps every other hook; the runtime files may stay

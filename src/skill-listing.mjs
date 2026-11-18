@@ -64,8 +64,9 @@ async function claudeSession(path, mtimeMs) {
     }
   }
   if (!listing || typeof listing.content !== "string") return null;
+  // A plugin skill is named `plugin:skill`, so the name ends at the first colon followed by a space.
   const rows = listing.content.split("\n").filter((/** @type {string} */ row) => row.startsWith("- "));
-  const bare = rows.filter((/** @type {string} */ row) => !/^- [^:]+: \S/.test(row)).map((/** @type {string} */ row) => row.slice(2).trim());
+  const bare = rows.filter((/** @type {string} */ row) => !/^- \S+?: \S/.test(row)).map((/** @type {string} */ row) => row.slice(2).trim());
   return {
     session: basename(path, ".jsonl"), at: new Date(mtimeMs).toISOString(), announced: rows.length,
     withDescription: rows.length - bare.length, withoutDescription: bare, listingChars: listing.content.length,
