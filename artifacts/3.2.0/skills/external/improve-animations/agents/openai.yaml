@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: auditar animaciones"
+  short_description: "Audita animaciones y escribe planes de mejora"
+  default_prompt: "Usa $improve-animations para auditar las animaciones de este repo."
+policy:
+  allow_implicit_invocation: true

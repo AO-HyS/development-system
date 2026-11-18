@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear Hygiene"
+  short_description: "Preview a product-aware Linear cleanup without writes"
+  default_prompt: "Use $linear-hygiene to audit collected Linear and delivery evidence, then return the read-only cleanup preview and clean Check-in handoff."

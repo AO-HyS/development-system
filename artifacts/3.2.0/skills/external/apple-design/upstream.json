@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+  "path": "skills/apple-design",
+  "license": "MIT",
+  "capabilityTreeSha256": null,
+  "files": {
+    "SKILL.md": "7fbacf928637e136da6d475358d0639667a3637ba772f03f8e815bb4c0b86946"
+  }
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: animar en Expo"
+  short_description: "Decide y construye animaciones en React Native y Expo"
+  default_prompt: "Usa $animate-expo para diseñar esta animación en Expo."
+policy:
+  allow_implicit_invocation: true

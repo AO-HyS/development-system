@@ -1,0 +1,6 @@
+interface:
+  display_name: "good-css: CSS moderno"
+  short_description: "Técnicas modernas de CSS en lugar de breakpoints y scripts"
+  default_prompt: "Usa $good-css al escribir o revisar estos estilos."
+policy:
+  allow_implicit_invocation: true
