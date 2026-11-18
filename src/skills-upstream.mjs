@@ -20,6 +20,7 @@ const FULL_COMMIT = /^[a-f0-9]{40}$/u;
 const GIT_CALL_TIMEOUT_MS = 120_000;
 // After this the remaining skills are reported as unread instead of holding the caller (the weekly Steward report).
 const DEFAULT_DEADLINE_MS = 600_000;
+const TIME_LIMIT = "time limit reached before this skill was compared";
 
 /**
  * The environment of every Git call: nothing inherited but PATH. No credential helper, prompt, personal or injected
@@ -43,15 +44,20 @@ const GIT_OPTIONS = ["-c", "credential.helper=", "-c", "protocol.allow=never", "
 
 /**
  * Temporary blobless clones of public repositories, one per URL, removed by `close()`.
- * @param {{callTimeoutMs?: number}} [options]
+ * Past `deadline` (epoch ms) no Git call starts, and a running one is cut when the deadline arrives.
+ * @param {{callTimeoutMs?: number, deadline?: number}} [options]
  * @returns {Promise<{clone: (repository: string) => Promise<string>, git: (directory: string, ...args: string[]) => Promise<Buffer>, close: () => Promise<void>}>}
  */
-export async function openUpstreamClones({ callTimeoutMs = GIT_CALL_TIMEOUT_MS } = {}) {
+export async function openUpstreamClones({ callTimeoutMs = GIT_CALL_TIMEOUT_MS, deadline = Infinity } = {}) {
   const root = await mkdtemp(join(tmpdir(), "ds-skills-upstream-"));
   /** @type {Map<string, Promise<string>>} */
   const clones = new Map();
   /** @param {string} directory @param {string[]} args */
-  const git = async (directory, ...args) => (await run("git", [...GIT_OPTIONS, ...args], { cwd: directory, env: gitEnvironment(root), encoding: "buffer", maxBuffer: 256 * 1024 * 1024, timeout: callTimeoutMs, killSignal: "SIGKILL" })).stdout;
+  const git = async (directory, ...args) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error(TIME_LIMIT);
+    return (await run("git", [...GIT_OPTIONS, ...args], { cwd: directory, env: gitEnvironment(root), encoding: "buffer", maxBuffer: 256 * 1024 * 1024, timeout: Math.max(1, Math.min(callTimeoutMs, remaining)), killSignal: "SIGKILL" })).stdout;
+  };
   /** @param {string} repository */
   const clone = (repository) => {
     if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/u.test(repository)) return Promise.reject(new Error(`not a public GitHub repository: ${repository}`));
@@ -145,8 +151,8 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
     ...upstreamSkills(resolved).map((entry) => ({ group: /** @type {const} */ ("catalogo"), ...entry })),
     ...installed.entries.map((entry) => ({ group: /** @type {const} */ ("instaladas"), ...entry })),
   ];
-  const clones = await openUpstreamClones({ callTimeoutMs });
   const deadline = Date.now() + deadlineMs;
+  const clones = await openUpstreamClones({ callTimeoutMs, deadline });
   try {
     /** @typedef {{group: "catalogo"|"instaladas", name: string, repository: string, path: string, pinned: string|null, state: "al-dia"|"atrasada"|"ya-no-existe"|"desconocido", latest: string|null, latestDate: string|null, pinnedDate: string|null, error: string|null}} UpstreamRow */
     /** @type {UpstreamRow[]} */
@@ -157,7 +163,7 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
         /** @type {UpstreamRow} */
         const row = { group: entry.group, name: entry.name, repository: entry.repository, path: entry.path, pinned: entry.commit || null, state: "desconocido", latest: null, latestDate: null, pinnedDate: null, error: null };
         try {
-          if (Date.now() > deadline) throw new Error("time limit reached before this skill was compared");
+          if (Date.now() > deadline) throw new Error(TIME_LIMIT);
           // A pinned commit reaches Git as an argument: only a full hash, never something Git could read as an option.
           if (entry.commit && !FULL_COMMIT.test(entry.commit)) throw new Error("the pinned commit is not a full 40-character hash");
           const directory = await clones.clone(entry.repository);
@@ -196,8 +202,11 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
               throw new Error("the lock records neither a commit nor a folder hash");
             }
           }
+          // A comparison the time limit cut half-way is unread, whatever it had concluded so far.
+          if (Date.now() > deadline) throw new Error(TIME_LIMIT);
         } catch (error) {
-          row.error = error instanceof Error ? error.message.split("\n")[0] : String(error);
+          row.state = "desconocido";
+          row.error = Date.now() > deadline ? TIME_LIMIT : error instanceof Error ? error.message.split("\n")[0] : String(error);
         }
         skills.push(row);
       }
