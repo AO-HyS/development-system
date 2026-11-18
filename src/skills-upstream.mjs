@@ -6,14 +6,12 @@
 // skill's path upstream; it does the same for the skills the `skills` CLI lock records from other repositories.
 // Read-only: one blobless clone per repository in a temporary folder removed at the end, public
 // HTTPS without credentials or the operator's Git configuration, and nothing about the operator is sent anywhere.
-import { execFile } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { promisify } from "node:util";
 
-const run = promisify(execFile);
 const OWN_REPOSITORY = "https://github.com/AO-HyS/development-system";
 const FULL_COMMIT = /^[a-f0-9]{40}$/u;
 // One Git call may not outlive this; a stalled connection is cut by Git itself after 30 s under 1 kB/s.
@@ -40,6 +38,51 @@ const gitEnvironment = (root) => ({
   GIT_ASKPASS: "",
   SSH_ASKPASS: "",
 });
+/**
+ * One Git call in its own process group. At the time limit the whole group is killed (Git and its helpers:
+ * `git-remote-https`, `index-pack`), and the call settles only when all of them have closed their output.
+ * Rejections carry `exitCode` (Git's own answer) or `timedOut`, so a caller can tell "no" from "could not ask".
+ * @param {string[]} args
+ * @param {{cwd: string, env: Record<string, string>, timeoutMs: number, children: Set<number>}} options
+ * @returns {Promise<Buffer>}
+ */
+function runGit(args, { cwd, env, timeoutMs, children }) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn("git", args, { cwd, env, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+    const pid = child.pid;
+    /** @type {Buffer[]} */
+    const output = [];
+    let size = 0;
+    let stderr = "";
+    /** @type {"timeout"|"overflow"|null} */
+    let stopped = null;
+    const killGroup = () => { if (pid) { try { process.kill(-pid, "SIGKILL"); } catch { /* the group is already gone */ } } };
+    if (pid) children.add(pid);
+    const timer = setTimeout(() => { stopped = "timeout"; killGroup(); }, timeoutMs);
+    child.stdout.on("data", (/** @type {Buffer} */ chunk) => {
+      size += chunk.length;
+      if (size > MAX_GIT_OUTPUT) { stopped = "overflow"; killGroup(); } else output.push(chunk);
+    });
+    child.stderr.on("data", (/** @type {Buffer} */ chunk) => { if (stderr.length < 4096) stderr += chunk.toString(); });
+    child.on("error", (error) => { clearTimeout(timer); if (pid) children.delete(pid); reject(error); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      killGroup();
+      if (pid) children.delete(pid);
+      if (!stopped && code === 0) return resolvePromise(Buffer.concat(output));
+      const what = `git ${args.slice(GIT_OPTIONS.length, GIT_OPTIONS.length + 2).join(" ")}`;
+      const error = /** @type {Error & {exitCode?: number|null, timedOut?: boolean}} */ (new Error(
+        stopped === "timeout" ? `${what} did not finish in ${Math.round(timeoutMs / 1000)} s` : stopped === "overflow" ? `${what} answered more than expected` : `${what} failed: ${stderr.trim().split("\n")[0] || `exit ${code}`}`,
+      ));
+      error.exitCode = stopped ? null : code;
+      error.timedOut = stopped === "timeout";
+      reject(error);
+    });
+  });
+}
+/** Git answered "no" with this exit code (not a timeout, a signal or a read failure). */
+const gitSaid = (/** @type {unknown} */ error, /** @type {number} */ code) => /** @type {{exitCode?: number|null}} */ (error)?.exitCode === code;
+const MAX_GIT_OUTPUT = 256 * 1024 * 1024;
 const GIT_OPTIONS = ["-c", "credential.helper=", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", "-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTime=30"];
 
 /**
@@ -52,11 +95,13 @@ export async function openUpstreamClones({ callTimeoutMs = GIT_CALL_TIMEOUT_MS, 
   const root = await mkdtemp(join(tmpdir(), "ds-skills-upstream-"));
   /** @type {Map<string, Promise<string>>} */
   const clones = new Map();
+  /** Process groups of the Git calls still running. @type {Set<number>} */
+  const children = new Set();
   /** @param {string} directory @param {string[]} args */
   const git = async (directory, ...args) => {
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error(TIME_LIMIT);
-    return (await run("git", [...GIT_OPTIONS, ...args], { cwd: directory, env: gitEnvironment(root), encoding: "buffer", maxBuffer: 256 * 1024 * 1024, timeout: Math.max(1, Math.min(callTimeoutMs, remaining)), killSignal: "SIGKILL" })).stdout;
+    return runGit([...GIT_OPTIONS, ...args], { cwd: directory, env: gitEnvironment(root), timeoutMs: Math.max(1, Math.min(callTimeoutMs, remaining)), children });
   };
   /** @param {string} repository */
   const clone = (repository) => {
@@ -69,7 +114,11 @@ export async function openUpstreamClones({ callTimeoutMs = GIT_CALL_TIMEOUT_MS, 
     }
     return pending;
   };
-  return { clone, git, close: () => rm(root, { recursive: true, force: true }) };
+  const close = async () => {
+    for (const pid of children) { try { process.kill(-pid, "SIGKILL"); } catch { /* already gone */ } }
+    await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  };
+  return { clone, git, close };
 }
 
 /**
@@ -169,7 +218,7 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
           const directory = await clones.clone(entry.repository);
           const text = async (/** @type {string[]} */ ...args) => (await clones.git(directory, ...args)).toString().trim();
           const pathspec = entry.path ? ["--", entry.path] : [];
-          const treeAt = (/** @type {string} */ commit) => text("rev-parse", "--verify", "--quiet", "--end-of-options", entry.path ? `${commit}:${entry.path}` : `${commit}^{tree}`).catch(() => null);
+          const treeAt = (/** @type {string} */ commit) => text("rev-parse", "--verify", "--quiet", "--end-of-options", entry.path ? `${commit}:${entry.path}` : `${commit}^{tree}`).catch((error) => { if (gitSaid(error, 1)) return null; throw error; });
           if (entry.path && !(await text("ls-tree", "--name-only", "HEAD", "--", entry.path))) {
             row.state = "ya-no-existe";
           } else {
@@ -177,9 +226,9 @@ export async function checkSkillsUpstream({ catalog, home = homedir(), lockPath,
             row.latest = latest;
             row.latestDate = date;
             if (entry.commit) {
-              row.pinnedDate = await text("log", "-1", "--format=%cs", "--end-of-options", `${entry.commit}^{commit}`).catch(() => null);
+              row.pinnedDate = await text("log", "-1", "--format=%cs", "--end-of-options", `${entry.commit}^{commit}`).catch((error) => { if (gitSaid(error, 128)) return null; throw error; });
               if (row.pinnedDate === null) throw new Error(`pinned commit ${entry.commit.slice(0, 12)} is not in ${entry.repository}`);
-              const behind = latest !== entry.commit && await clones.git(directory, "merge-base", "--is-ancestor", latest, entry.commit).then(() => false, () => true);
+              const behind = latest !== entry.commit && await clones.git(directory, "merge-base", "--is-ancestor", latest, entry.commit).then(() => false, (error) => { if (gitSaid(error, 1)) return true; throw error; });
               row.state = behind ? "atrasada" : "al-dia";
             } else if (FULL_COMMIT.test(entry.folderHash ?? "")) {
               // The `skills` CLI records the Git tree of the folder: find the commit that installed it.
