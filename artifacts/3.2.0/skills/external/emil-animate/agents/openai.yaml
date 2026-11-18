@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: construir una animación"
+  short_description: "Decide y construye una animación web desde cero"
+  default_prompt: "Usa $emil-animate para construir esta animación."
+policy:
+  allow_implicit_invocation: true

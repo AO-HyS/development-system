@@ -1,0 +1,3304 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "0.84.0",
+  "supportedHarnesses": [
+    {
+      "id": "codex",
+      "adapter": "native"
+    },
+    {
+      "id": "t3code",
+      "adapter": "codex"
+    },
+    {
+      "id": "claude",
+      "adapter": "native"
+    }
+  ],
+  "supportedRoots": [
+    ".agents/skills",
+    ".codex/skills",
+    ".factory/skills",
+    ".claude/skills"
+  ],
+  "maxCatalogEntries": 768,
+  "operationalEvidenceSkills": [
+    "behavioral-evidence",
+    "simplify-code"
+  ],
+  "operationalEvidenceContracts": {
+    "behavioral-evidence": {
+      "behaviorSignature": [
+        "check-no-tests",
+        "deleted",
+        "accepted objective"
+      ]
+    },
+    "simplify-code": {
+      "behaviorSignature": [
+        "deletion pass",
+        "dead code",
+        "what was deleted"
+      ]
+    }
+  },
+  "cleanup": [
+    ".factory/skills/wayfinder",
+    ".factory/skills/grill-with-docs",
+    ".factory/skills/grilling",
+    ".factory/skills/domain-modeling",
+    ".factory/skills/to-spec",
+    ".factory/skills/to-tickets",
+    ".factory/skills/implement",
+    ".factory/skills/code-review",
+    ".factory/skills/diagnosing-bugs",
+    ".factory/skills/prototype",
+    ".factory/skills/handoff",
+    ".factory/skills/qa",
+    ".factory/skills/research",
+    ".factory/skills/setup-matt-pocock-skills",
+    ".factory/skills/flow-code-review",
+    ".factory/skills/flow-implement",
+    ".factory/skills/flow-qa",
+    ".factory/skills/flow-research",
+    ".factory/skills/drive-development-flow",
+    ".factory/skills/coding-orchestration",
+    ".factory/skills/work-multiple",
+    ".factory/skills/working-backwards",
+    ".factory/skills/exa-search",
+    ".factory/skills/global-agent-guardrails",
+    ".factory/skills/decisions",
+    ".factory/skills/setup-help",
+    ".agents/skills/grill-me-workspace",
+    ".agents/skills/email-best-practices-repo",
+    ".codex/skills/agent-browser",
+    ".codex/skills/convex",
+    ".codex/skills/find-skills",
+    ".codex/skills/vercel-react-best-practices",
+    ".codex/skills/work-multiple",
+    ".agents/skills/batch-grill-me",
+    ".agents/skills/design-an-interface",
+    ".agents/skills/edit-article",
+    ".agents/skills/obsidian-vault",
+    ".agents/skills/qa",
+    ".agents/skills/request-refactor-plan",
+    ".agents/skills/ubiquitous-language",
+    ".agents/skills/writing-great-skills",
+    ".factory/skills/extract",
+    ".factory/skills/email-best-practices-repo",
+    ".factory/skills/frontend-design",
+    ".factory/skills/firecrawl-cli",
+    ".factory/skills/harden",
+    ".factory/skills/normalize",
+    ".factory/skills/onboard",
+    ".factory/skills/teach-impeccable",
+    ".factory/skills/vercel-deploy-claimable",
+    ".agents/skills/tdd",
+    ".claude/skills/tdd",
+    ".agents/skills/migrate-to-shoehorn",
+    ".claude/skills/migrate-to-shoehorn",
+    ".agents/skills/adapt",
+    ".codex/skills/adapt",
+    ".factory/skills/adapt",
+    ".claude/skills/adapt",
+    ".agents/skills/animate",
+    ".codex/skills/animate",
+    ".factory/skills/animate",
+    ".claude/skills/animate",
+    ".agents/skills/animation-vocabulary",
+    ".claude/skills/animation-vocabulary",
+    ".agents/skills/ask-matt",
+    ".claude/skills/ask-matt",
+    ".agents/skills/audit",
+    ".codex/skills/audit",
+    ".factory/skills/audit",
+    ".claude/skills/audit",
+    ".agents/skills/bolder",
+    ".codex/skills/bolder",
+    ".factory/skills/bolder",
+    ".claude/skills/bolder",
+    ".agents/skills/break",
+    ".claude/skills/break",
+    ".agents/skills/clarify",
+    ".codex/skills/clarify",
+    ".factory/skills/clarify",
+    ".claude/skills/clarify",
+    ".agents/skills/claude-handoff",
+    ".claude/skills/claude-handoff",
+    ".agents/skills/code-review",
+    ".claude/skills/code-review",
+    ".agents/skills/colorize",
+    ".codex/skills/colorize",
+    ".factory/skills/colorize",
+    ".claude/skills/colorize",
+    ".agents/skills/critique",
+    ".codex/skills/critique",
+    ".factory/skills/critique",
+    ".claude/skills/critique",
+    ".agents/skills/delight",
+    ".codex/skills/delight",
+    ".factory/skills/delight",
+    ".claude/skills/delight",
+    ".agents/skills/distill",
+    ".codex/skills/distill",
+    ".factory/skills/distill",
+    ".claude/skills/distill",
+    ".agents/skills/emil-prototype",
+    ".claude/skills/emil-prototype",
+    ".agents/skills/explain-interface",
+    ".claude/skills/explain-interface",
+    ".agents/skills/find-animation-opportunities",
+    ".claude/skills/find-animation-opportunities",
+    ".agents/skills/find-skills",
+    ".claude/skills/find-skills",
+    ".agents/skills/firecrawl",
+    ".claude/skills/firecrawl",
+    ".agents/skills/git-guardrails-claude-code",
+    ".claude/skills/git-guardrails-claude-code",
+    ".agents/skills/grill-me",
+    ".claude/skills/grill-me",
+    ".agents/skills/implement",
+    ".claude/skills/implement",
+    ".agents/skills/install-anti-slop",
+    ".claude/skills/install-anti-slop",
+    ".agents/skills/layout",
+    ".codex/skills/layout",
+    ".factory/skills/layout",
+    ".claude/skills/layout",
+    ".agents/skills/loop-me",
+    ".claude/skills/loop-me",
+    ".agents/skills/make-interfaces-feel-better",
+    ".claude/skills/make-interfaces-feel-better",
+    ".agents/skills/optimize",
+    ".codex/skills/optimize",
+    ".factory/skills/optimize",
+    ".claude/skills/optimize",
+    ".agents/skills/orchestrate-work",
+    ".claude/skills/orchestrate-work",
+    ".agents/skills/orchestration-pilot",
+    ".claude/skills/orchestration-pilot",
+    ".agents/skills/overdrive",
+    ".codex/skills/overdrive",
+    ".factory/skills/overdrive",
+    ".claude/skills/overdrive",
+    ".agents/skills/parallel-work",
+    ".claude/skills/parallel-work",
+    ".agents/skills/polish",
+    ".codex/skills/polish",
+    ".factory/skills/polish",
+    ".claude/skills/polish",
+    ".agents/skills/pr-lens",
+    ".claude/skills/pr-lens",
+    ".agents/skills/quieter",
+    ".codex/skills/quieter",
+    ".factory/skills/quieter",
+    ".claude/skills/quieter",
+    ".agents/skills/research",
+    ".claude/skills/research",
+    ".agents/skills/scaffold-exercises",
+    ".claude/skills/scaffold-exercises",
+    ".agents/skills/shape",
+    ".codex/skills/shape",
+    ".factory/skills/shape",
+    ".claude/skills/shape",
+    ".agents/skills/teach",
+    ".claude/skills/teach",
+    ".agents/skills/typeset",
+    ".codex/skills/typeset",
+    ".factory/skills/typeset",
+    ".claude/skills/typeset",
+    ".agents/skills/write-swift",
+    ".claude/skills/write-swift",
+    ".agents/skills/writing-beats",
+    ".claude/skills/writing-beats",
+    ".agents/skills/writing-fragments",
+    ".claude/skills/writing-fragments",
+    ".agents/skills/writing-shape",
+    ".claude/skills/writing-shape"
+  ],
+  "skills": [
+    {
+      "logicalName": "diagnosing-bugs",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/diagnosing-bugs",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/diagnosing-bugs",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "29faf0d352422aa58beb0ce4666a49bdfdd5d2cc065c9dfe9be7b7e89fbdf584"
+        }
+      },
+      "variants": [
+        {
+          "id": "diagnosing-bugs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/diagnosing-bugs",
+          "destination": ".agents/skills/diagnosing-bugs",
+          "folderSha256": "c3a6bd43d6e8d44d759ba115867cdeb95d6e2a905686e70012ad526b0d703c32",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "diagnosing-bugs.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/diagnosing-bugs",
+          "destination": ".claude/skills/diagnosing-bugs",
+          "folderSha256": "c3a6bd43d6e8d44d759ba115867cdeb95d6e2a905686e70012ad526b0d703c32",
+          "expectedMirrorOf": "diagnosing-bugs.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "wayfinder",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/wayfinder",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/wayfinder",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "62a0ab7262d40119da048328a71aeadaeaa21a4049ee9268d14500921bb6e257"
+        }
+      },
+      "variants": [
+        {
+          "id": "wayfinder.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wayfinder",
+          "destination": ".agents/skills/wayfinder",
+          "folderSha256": "15d6039ce9aa98772657906fffd139909a0cc0c38f3978d4c843385f4baa9c97",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "wayfinder.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wayfinder",
+          "destination": ".claude/skills/wayfinder",
+          "folderSha256": "15d6039ce9aa98772657906fffd139909a0cc0c38f3978d4c843385f4baa9c97",
+          "expectedMirrorOf": "wayfinder.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "triage",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/triage",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/engineering/triage",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "9c6b69d13831d354c1a62eaa047e3160617f9b035d411555268a343b51e96a0c"
+        }
+      },
+      "variants": [
+        {
+          "id": "triage.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/triage",
+          "destination": ".agents/skills/triage",
+          "folderSha256": "5bcf7a2803d817c7f11584b9cd42b6ea14ec53bf0287b27b4b480e345b526406",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "triage.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/triage",
+          "destination": ".claude/skills/triage",
+          "folderSha256": "5bcf7a2803d817c7f11584b9cd42b6ea14ec53bf0287b27b4b480e345b526406",
+          "expectedMirrorOf": "triage.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "improve-codebase-architecture",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/improve-codebase-architecture",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/improve-codebase-architecture",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "8d02654da91dea62336b390b4c77031629840aec40d604aa6aa08e78df98d7ea"
+        }
+      },
+      "variants": [
+        {
+          "id": "improve-codebase-architecture.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/improve-codebase-architecture",
+          "destination": ".agents/skills/improve-codebase-architecture",
+          "folderSha256": "06d6f3ecad384905d9d5cf81a23780c0e3b79d6fbda8d3d2d67e61902da07452",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "improve-codebase-architecture.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/improve-codebase-architecture",
+          "destination": ".claude/skills/improve-codebase-architecture",
+          "folderSha256": "06d6f3ecad384905d9d5cf81a23780c0e3b79d6fbda8d3d2d67e61902da07452",
+          "expectedMirrorOf": "improve-codebase-architecture.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-matt-pocock-skills",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/setup-matt-pocock-skills",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/setup-matt-pocock-skills",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "d1d1b40f71fcb294d27a1b00297d1d25bcff3bc1e8759794a4af906b243d8e31"
+        }
+      },
+      "variants": [
+        {
+          "id": "setup-matt-pocock-skills.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/setup-matt-pocock-skills",
+          "destination": ".agents/skills/setup-matt-pocock-skills",
+          "folderSha256": "f63d4b8dfe228170571525185e8c2892d7977c09d7100242b8ffe892f1569374",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "setup-matt-pocock-skills.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/setup-matt-pocock-skills",
+          "destination": ".claude/skills/setup-matt-pocock-skills",
+          "folderSha256": "f63d4b8dfe228170571525185e8c2892d7977c09d7100242b8ffe892f1569374",
+          "expectedMirrorOf": "setup-matt-pocock-skills.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "grilling",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/grilling",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/productivity/grilling",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8"
+        }
+      },
+      "variants": [
+        {
+          "id": "grilling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/grilling",
+          "destination": ".agents/skills/grilling",
+          "folderSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "grilling.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/grilling",
+          "destination": ".claude/skills/grilling",
+          "folderSha256": "27f71f106a7062691b2982d4f847304a62930ebed8b50734f4d4fd498d60afa8",
+          "expectedMirrorOf": "grilling.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "domain-modeling",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/domain-modeling",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/engineering/domain-modeling",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "18a9314d338b8135e4108d1d31d2fd57ad289cf8bf31d2acd6a6f3053ac22a38"
+        }
+      },
+      "variants": [
+        {
+          "id": "domain-modeling.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/domain-modeling",
+          "destination": ".agents/skills/domain-modeling",
+          "folderSha256": "18a9314d338b8135e4108d1d31d2fd57ad289cf8bf31d2acd6a6f3053ac22a38",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "domain-modeling.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/domain-modeling",
+          "destination": ".claude/skills/domain-modeling",
+          "folderSha256": "18a9314d338b8135e4108d1d31d2fd57ad289cf8bf31d2acd6a6f3053ac22a38",
+          "expectedMirrorOf": "domain-modeling.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "codebase-design",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/codebase-design",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/codebase-design",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "61f4936a45f334e894fe4c7e9b1bbaf509c1b451c2f8bddf91e563ac6ae82422"
+        }
+      },
+      "variants": [
+        {
+          "id": "codebase-design.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/codebase-design",
+          "destination": ".agents/skills/codebase-design",
+          "folderSha256": "c3e289981229312d56bc46395ebd056f2a4e39d1f1f0bb394cb5406f9abda2b3",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "codebase-design.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/codebase-design",
+          "destination": ".claude/skills/codebase-design",
+          "folderSha256": "c3e289981229312d56bc46395ebd056f2a4e39d1f1f0bb394cb5406f9abda2b3",
+          "expectedMirrorOf": "codebase-design.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "to-spec",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/upstream/to-spec",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/engineering/to-spec",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "f525dab8b9bd3961aa4813d8568ef6184f6e24aad5a020e129165ca6c220f836"
+        }
+      },
+      "variants": [
+        {
+          "id": "to-spec.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/to-spec",
+          "destination": ".agents/skills/to-spec",
+          "folderSha256": "80e015358e650768deddfb5b6f4aa96cf607258b547d81891a8fbc8a36594fb1",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "to-spec.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/to-spec",
+          "destination": ".claude/skills/to-spec",
+          "folderSha256": "80e015358e650768deddfb5b6f4aa96cf607258b547d81891a8fbc8a36594fb1",
+          "expectedMirrorOf": "to-spec.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "to-tickets",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/to-tickets",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/to-tickets",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "6eccfac132d92b949821d154679adc7f597bfc3e8c929f3c03786b92f91b961f"
+        }
+      },
+      "variants": [
+        {
+          "id": "to-tickets.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/to-tickets",
+          "destination": ".agents/skills/to-tickets",
+          "folderSha256": "c099869abae65d16f063c232d76d91f94377b23b117e6115f7fdc2398194064e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "to-tickets.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/to-tickets",
+          "destination": ".claude/skills/to-tickets",
+          "folderSha256": "c099869abae65d16f063c232d76d91f94377b23b117e6115f7fdc2398194064e",
+          "expectedMirrorOf": "to-tickets.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "resolving-merge-conflicts",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/upstream/resolving-merge-conflicts",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "6654f6b60cd9d5be8b54c6fafe44346dabeb3b76",
+          "path": "skills/engineering/resolving-merge-conflicts"
+        }
+      },
+      "variants": [
+        {
+          "id": "resolving-merge-conflicts.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/resolving-merge-conflicts",
+          "destination": ".agents/skills/resolving-merge-conflicts",
+          "folderSha256": "2503f51a1347cfa36c6c19d97733ceb0f5e8028d38c8c0c3eac3b0e1b46a9607",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "resolving-merge-conflicts.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/resolving-merge-conflicts",
+          "destination": ".claude/skills/resolving-merge-conflicts",
+          "folderSha256": "2503f51a1347cfa36c6c19d97733ceb0f5e8028d38c8c0c3eac3b0e1b46a9607",
+          "expectedMirrorOf": "resolving-merge-conflicts.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "wizard",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/wizard",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/engineering/wizard",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e"
+        }
+      },
+      "variants": [
+        {
+          "id": "wizard.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wizard",
+          "destination": ".agents/skills/wizard",
+          "folderSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "wizard.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/wizard",
+          "destination": ".claude/skills/wizard",
+          "folderSha256": "8fd93e38124bf81ad439231ba8af833b462ca9719c62373c87f25b06f6be776e",
+          "expectedMirrorOf": "wizard.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "prototype",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/prototype",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/engineering/prototype",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "c4efd5e0f1c302b6225be83e8e42abdb05e13fde900484e4e2240e90b4e83eb6"
+        }
+      },
+      "variants": [
+        {
+          "id": "prototype.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/prototype",
+          "destination": ".agents/skills/prototype",
+          "folderSha256": "30ca17753ee100877d4d3fea471d8c22cc14b25afa96022f1c4ba5a88e1a37ea",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "prototype.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/prototype",
+          "destination": ".claude/skills/prototype",
+          "folderSha256": "30ca17753ee100877d4d3fea471d8c22cc14b25afa96022f1c4ba5a88e1a37ea",
+          "expectedMirrorOf": "prototype.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "handoff",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/handoff",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+          "path": "skills/productivity/handoff",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da"
+        }
+      },
+      "variants": [
+        {
+          "id": "handoff.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/handoff",
+          "destination": ".agents/skills/handoff",
+          "folderSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "handoff.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/handoff",
+          "destination": ".claude/skills/handoff",
+          "folderSha256": "77c2607c751b7c522e0208ab113ba4949f8267610d6061323c7ccd3ace21d7da",
+          "expectedMirrorOf": "handoff.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "to-questionnaire",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/mattpocock/skills",
+        "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+        "path": "skills/productivity/to-questionnaire",
+        "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+        "capabilityTreeSha256": "560491db9f48174ca9f7b5dd1444bc9c3cb7ac2d9e3e673e48289ef3221f164e"
+      },
+      "variants": [
+        {
+          "id": "to-questionnaire.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.15/skills/upstream/to-questionnaire",
+          "destination": ".agents/skills/to-questionnaire",
+          "folderSha256": "560491db9f48174ca9f7b5dd1444bc9c3cb7ac2d9e3e673e48289ef3221f164e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "to-questionnaire.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.5.15/skills/upstream/to-questionnaire",
+          "destination": ".claude/skills/to-questionnaire",
+          "folderSha256": "560491db9f48174ca9f7b5dd1444bc9c3cb7ac2d9e3e673e48289ef3221f164e",
+          "expectedMirrorOf": "to-questionnaire.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "wait-what",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/wait-what",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/productivity/wait-what",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "7eb4f8dd850b68708fb62fe2d7486b633246bd388e745f6cb6744d47b7a73b2c"
+        }
+      },
+      "variants": [
+        {
+          "id": "wait-what.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/wait-what",
+          "destination": ".agents/skills/wait-what",
+          "folderSha256": "c2bd33f811864170db14435514fe854bbadb724597b28d0451aa8ed2a0310346",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "wait-what.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/wait-what",
+          "destination": ".claude/skills/wait-what",
+          "folderSha256": "c2bd33f811864170db14435514fe854bbadb724597b28d0451aa8ed2a0310346",
+          "expectedMirrorOf": "wait-what.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "writing-for-agents",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.21.0/skills/internal/writing-for-agents",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/productivity/writing-for-agents",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "dc53f07d1f662137317789b9b5d74cfcc26dbcfc15038a7faf676c844d8638e8"
+        }
+      },
+      "variants": [
+        {
+          "id": "writing-for-agents.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.21.0/skills/internal/writing-for-agents",
+          "destination": ".agents/skills/writing-for-agents",
+          "folderSha256": "76930e1840b808f0e69835431955045755379041202bf26ff1219199edd87230",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "writing-for-agents.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.21.0/skills/internal/writing-for-agents",
+          "destination": ".claude/skills/writing-for-agents",
+          "folderSha256": "76930e1840b808f0e69835431955045755379041202bf26ff1219199edd87230",
+          "expectedMirrorOf": "writing-for-agents.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "retro",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/retro",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/engineering/retro",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "09c4f9fe72fc5bc8e486a2bbb32dd785ca6264c56a53dd1bf9a334af72586efd"
+        }
+      },
+      "variants": [
+        {
+          "id": "retro.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/retro",
+          "destination": ".agents/skills/retro",
+          "folderSha256": "e8db7b7840811818fafcd948b04a4921c6ee754051374ff4d858d67539965966",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "retro.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/retro",
+          "destination": ".claude/skills/retro",
+          "folderSha256": "e8db7b7840811818fafcd948b04a4921c6ee754051374ff4d858d67539965966",
+          "expectedMirrorOf": "retro.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "jevgrep",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/jevgrep",
+        "upstreamReference": {
+          "package": "@dzhng/jevgrep",
+          "version": "0.7.0",
+          "path": "dist/skills/jevgrep",
+          "integrity": "sha512-1AZn+5EUFTcFsPkCYVLbyz8w5UnrmG2J1Z4DCuQIHkiphbneI26VmLibWcQog4eYAmaD/8fwGG7yENFKrkOlyw==",
+          "tarball": "https://registry.npmjs.org/@dzhng/jevgrep/-/jevgrep-0.7.0.tgz"
+        }
+      },
+      "variants": [
+        {
+          "id": "jevgrep.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/jevgrep",
+          "destination": ".agents/skills/jevgrep",
+          "folderSha256": "31899615015bd620fbffa1c724e7a7bb76cea46e26cc0227043431cc29f4e3c2",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "jevgrep.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/jevgrep",
+          "destination": ".claude/skills/jevgrep",
+          "folderSha256": "31899615015bd620fbffa1c724e7a7bb76cea46e26cc0227043431cc29f4e3c2",
+          "expectedMirrorOf": "jevgrep.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-ts-deep-modules",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/upstream/setup-ts-deep-modules",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/in-progress/setup-ts-deep-modules",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "f5e00a15b6051b0b875a3eb90f398184894e2039d871b31972ec45b039ecdaac"
+        }
+      },
+      "variants": [
+        {
+          "id": "setup-ts-deep-modules.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/setup-ts-deep-modules",
+          "destination": ".agents/skills/setup-ts-deep-modules",
+          "folderSha256": "6ebd5674ac31d86bd47560a501bbb1efa747c4a94f3e4818fcf052f21f74602d",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "setup-ts-deep-modules.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/upstream/setup-ts-deep-modules",
+          "destination": ".claude/skills/setup-ts-deep-modules",
+          "folderSha256": "6ebd5674ac31d86bd47560a501bbb1efa747c4a94f3e4818fcf052f21f74602d",
+          "expectedMirrorOf": "setup-ts-deep-modules.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-pre-commit",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.13.0/skills/upstream/setup-pre-commit",
+        "upstreamReference": {
+          "repository": "https://github.com/mattpocock/skills",
+          "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
+          "path": "skills/misc/setup-pre-commit",
+          "licenseSha256": "0e7ac423bf2c6e223b7c5b156f8cf72da49d748e56a1641402c31f22ad07dbb5",
+          "capabilityTreeSha256": "3b77ee3d6c0d69ecb5fcb700a84b857976dec4f9312b3ec249c79ff27a765328"
+        }
+      },
+      "variants": [
+        {
+          "id": "setup-pre-commit.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.13.0/skills/upstream/setup-pre-commit",
+          "destination": ".agents/skills/setup-pre-commit",
+          "folderSha256": "7367c12c0f8337d35d9ceb6dc23c22e225a60bf4bf5bb1e9b5cb0b58e2c4454c",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "setup-pre-commit.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.13.0/skills/upstream/setup-pre-commit",
+          "destination": ".claude/skills/setup-pre-commit",
+          "folderSha256": "7367c12c0f8337d35d9ceb6dc23c22e225a60bf4bf5bb1e9b5cb0b58e2c4454c",
+          "expectedMirrorOf": "setup-pre-commit.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "implement-spec",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/implement-spec"
+      },
+      "variants": [
+        {
+          "id": "implement-spec.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/implement-spec",
+          "destination": ".agents/skills/implement-spec",
+          "folderSha256": "9eaf933d3379faf8d7e34c9a48241a29e7a008e5ee921b39bb0e035ed6b32a09",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "implement-spec.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/implement-spec",
+          "destination": ".claude/skills/implement-spec",
+          "folderSha256": "9eaf933d3379faf8d7e34c9a48241a29e7a008e5ee921b39bb0e035ed6b32a09",
+          "expectedMirrorOf": "implement-spec.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-code-review",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/flow-code-review"
+      },
+      "variants": [
+        {
+          "id": "flow-code-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/flow-code-review",
+          "destination": ".agents/skills/flow-code-review",
+          "folderSha256": "da92e9157db4bdf9cbc8c44d1a734c41e0bed2455f5dade40e590ac1de371b5a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-code-review.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/flow-code-review",
+          "destination": ".claude/skills/flow-code-review",
+          "folderSha256": "da92e9157db4bdf9cbc8c44d1a734c41e0bed2455f5dade40e590ac1de371b5a",
+          "expectedMirrorOf": "flow-code-review.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-implement",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/flow-implement"
+      },
+      "variants": [
+        {
+          "id": "flow-implement.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/flow-implement",
+          "destination": ".agents/skills/flow-implement",
+          "folderSha256": "bc868ae32215dd2492ac33889eabeef537392aa4f48f7ab222d59bdc410b2062",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-implement.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/flow-implement",
+          "destination": ".claude/skills/flow-implement",
+          "folderSha256": "bc868ae32215dd2492ac33889eabeef537392aa4f48f7ab222d59bdc410b2062",
+          "expectedMirrorOf": "flow-implement.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-qa",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-qa"
+      },
+      "variants": [
+        {
+          "id": "flow-qa.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
+          "destination": ".agents/skills/flow-qa",
+          "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-qa.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-qa",
+          "destination": ".claude/skills/flow-qa",
+          "folderSha256": "2047a6205bfeabab9a4616c71b5eb70ad289666b36bd75a3f68d5ed62fbf3c3a",
+          "expectedMirrorOf": "flow-qa.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "flow-research",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/0.2.0/skills/internal/flow-research"
+      },
+      "variants": [
+        {
+          "id": "flow-research.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
+          "destination": ".agents/skills/flow-research",
+          "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "flow-research.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/0.2.0/skills/internal/flow-research",
+          "destination": ".claude/skills/flow-research",
+          "folderSha256": "47fd9cef47528955eb5e767f244cce087d5dbcba062cd9cd4f7194c3f683b5a6",
+          "expectedMirrorOf": "flow-research.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "drive-development-flow",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/drive-development-flow"
+      },
+      "variants": [
+        {
+          "id": "drive-development-flow.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/drive-development-flow",
+          "destination": ".codex/skills/drive-development-flow",
+          "folderSha256": "961fd5a49a75e030e10f7aa8c6312ce98850d24d488a0b535549ac98f5c66087",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "drive-development-flow.agents",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/drive-development-flow",
+          "destination": ".agents/skills/drive-development-flow",
+          "folderSha256": "961fd5a49a75e030e10f7aa8c6312ce98850d24d488a0b535549ac98f5c66087",
+          "expectedMirrorOf": "drive-development-flow.codex"
+        },
+        {
+          "id": "drive-development-flow.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/drive-development-flow",
+          "destination": ".claude/skills/drive-development-flow",
+          "folderSha256": "961fd5a49a75e030e10f7aa8c6312ce98850d24d488a0b535549ac98f5c66087",
+          "expectedMirrorOf": "drive-development-flow.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "coding-orchestration",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/coding-orchestration"
+      },
+      "variants": [
+        {
+          "id": "coding-orchestration.codex-adapter",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/coding-orchestration",
+          "destination": ".codex/skills/coding-orchestration",
+          "expectedMirrorOf": null,
+          "adapterContract": "authorized-initiative-orchestration-v2",
+          "folderSha256": "131033dbd75bf77c262c7153e8bca50cd1764a5ef6dd3ace1dffefd37766bae5"
+        },
+        {
+          "id": "coding-orchestration.agents",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/coding-orchestration",
+          "destination": ".agents/skills/coding-orchestration",
+          "expectedMirrorOf": "coding-orchestration.codex-adapter",
+          "adapterContract": "authorized-initiative-orchestration-v2",
+          "folderSha256": "131033dbd75bf77c262c7153e8bca50cd1764a5ef6dd3ace1dffefd37766bae5"
+        },
+        {
+          "id": "coding-orchestration.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/coding-orchestration",
+          "destination": ".claude/skills/coding-orchestration",
+          "expectedMirrorOf": "coding-orchestration.codex-adapter",
+          "install": "symlink",
+          "adapterContract": "authorized-initiative-orchestration-v2",
+          "folderSha256": "131033dbd75bf77c262c7153e8bca50cd1764a5ef6dd3ace1dffefd37766bae5"
+        }
+      ]
+    },
+    {
+      "logicalName": "pstack-engineering",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.18.0/skills/internal/pstack-engineering"
+      },
+      "variants": [
+        {
+          "id": "pstack-engineering.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.18.0/skills/internal/pstack-engineering",
+          "destination": ".agents/skills/pstack-engineering",
+          "folderSha256": "8f0d56be82840ba0143081c1c44e1448bfd20a1834cd0ab08a64b356b8fd771a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "pstack-engineering.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.18.0/skills/internal/pstack-engineering",
+          "destination": ".claude/skills/pstack-engineering",
+          "folderSha256": "8f0d56be82840ba0143081c1c44e1448bfd20a1834cd0ab08a64b356b8fd771a",
+          "expectedMirrorOf": "pstack-engineering.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "grill-with-docs",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/grill-with-docs"
+      },
+      "variants": [
+        {
+          "id": "grill-with-docs.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/grill-with-docs",
+          "destination": ".agents/skills/grill-with-docs",
+          "folderSha256": "fb47d664b83abfcd1aef9f5d37f4779bf0c6b865dfe62c0a1b766cab9b8c2d86",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "grill-with-docs.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/grill-with-docs",
+          "destination": ".claude/skills/grill-with-docs",
+          "folderSha256": "fb47d664b83abfcd1aef9f5d37f4779bf0c6b865dfe62c0a1b766cab9b8c2d86",
+          "expectedMirrorOf": "grill-with-docs.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "measure-development-run",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "availabilityReason": "Codex session JSONL and CODEX_THREAD_ID are required; Factory is intentionally out of scope.",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/internal/measure-development-run"
+      },
+      "variants": [
+        {
+          "id": "measure-development-run.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/measure-development-run",
+          "destination": ".codex/skills/measure-development-run",
+          "folderSha256": "0b932f4874f7914c768dd728a58c6edc1584be3c9ff560ff4ec0616623941bdf",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "measure-development-run.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/measure-development-run",
+          "destination": ".claude/skills/measure-development-run",
+          "folderSha256": "0b932f4874f7914c768dd728a58c6edc1584be3c9ff560ff4ec0616623941bdf",
+          "expectedMirrorOf": "measure-development-run.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "working-backwards",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/working-backwards"
+      },
+      "variants": [
+        {
+          "id": "working-backwards.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/working-backwards",
+          "destination": ".agents/skills/working-backwards",
+          "folderSha256": "3913fc5eb731520d048a5f570e159875dbee7fe4fe991665f8d132ecf79b4c10",
+          "executableFiles": [
+            "scripts/t3-workflow.mjs",
+            "scripts/t3-reader.mjs",
+            "scripts/topic-questions.mjs",
+            "scripts/reader-live.mjs",
+            "scripts/t3-report.mjs"
+          ],
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "working-backwards.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/working-backwards",
+          "destination": ".claude/skills/working-backwards",
+          "folderSha256": "3913fc5eb731520d048a5f570e159875dbee7fe4fe991665f8d132ecf79b4c10",
+          "executableFiles": [
+            "scripts/t3-workflow.mjs",
+            "scripts/t3-reader.mjs",
+            "scripts/topic-questions.mjs",
+            "scripts/reader-live.mjs",
+            "scripts/t3-report.mjs"
+          ],
+          "expectedMirrorOf": "working-backwards.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "release-train",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/release-train"
+      },
+      "variants": [
+        {
+          "id": "release-train.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/release-train",
+          "destination": ".agents/skills/release-train",
+          "folderSha256": "8ecb37194377fe66ac9845713d58b1a84e8aeeaadd69d54e3975cd2fde1c7e32",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "release-train.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/release-train",
+          "destination": ".claude/skills/release-train",
+          "folderSha256": "8ecb37194377fe66ac9845713d58b1a84e8aeeaadd69d54e3975cd2fde1c7e32",
+          "expectedMirrorOf": "release-train.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "check-in",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.5.0/skills/internal/check-in"
+      },
+      "variants": [
+        {
+          "id": "check-in.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/check-in",
+          "destination": ".agents/skills/check-in",
+          "folderSha256": "7b7eabac9da4ab9ce8a0b9e4f658abc369b69daa28943b47f2f322ed718d75f0",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "check-in.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.5.0/skills/internal/check-in",
+          "destination": ".claude/skills/check-in",
+          "folderSha256": "7b7eabac9da4ab9ce8a0b9e4f658abc369b69daa28943b47f2f322ed718d75f0",
+          "expectedMirrorOf": "check-in.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "linear-hygiene",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/linear-hygiene"
+      },
+      "variants": [
+        {
+          "id": "linear-hygiene.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/linear-hygiene",
+          "destination": ".agents/skills/linear-hygiene",
+          "folderSha256": "1a2c555d2edd83b8f25667e9550399be52b7b15ecbc214c846e8db4c310614fb",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "linear-hygiene.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/linear-hygiene",
+          "destination": ".claude/skills/linear-hygiene",
+          "folderSha256": "1a2c555d2edd83b8f25667e9550399be52b7b15ecbc214c846e8db4c310614fb",
+          "expectedMirrorOf": "linear-hygiene.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "development-steward",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/development-steward"
+      },
+      "variants": [
+        {
+          "id": "development-steward.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/development-steward",
+          "destination": ".agents/skills/development-steward",
+          "folderSha256": "c40869df7417277f1d1f247c4dbf9fc6ea6c327283ab28cb40d9c8f91fe75636",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "development-steward.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/development-steward",
+          "destination": ".claude/skills/development-steward",
+          "folderSha256": "c40869df7417277f1d1f247c4dbf9fc6ea6c327283ab28cb40d9c8f91fe75636",
+          "expectedMirrorOf": "development-steward.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "convex-guardian",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/convex-guardian"
+      },
+      "variants": [
+        {
+          "id": "convex-guardian.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/convex-guardian",
+          "destination": ".agents/skills/convex-guardian",
+          "folderSha256": "461805920f5b26905a968235f91c2c3d630c4b4665c659306c927fa643a87c75",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "convex-guardian.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/convex-guardian",
+          "destination": ".claude/skills/convex-guardian",
+          "folderSha256": "461805920f5b26905a968235f91c2c3d630c4b4665c659306c927fa643a87c75",
+          "expectedMirrorOf": "convex-guardian.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "posthog-observability",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/posthog-observability"
+      },
+      "variants": [
+        {
+          "id": "posthog-observability.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/posthog-observability",
+          "destination": ".agents/skills/posthog-observability",
+          "folderSha256": "9baf566cbb6e4ea39d70c767515ee70e392f505bd1eba123b2be7680dabd1346",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "posthog-observability.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/posthog-observability",
+          "destination": ".claude/skills/posthog-observability",
+          "folderSha256": "9baf566cbb6e4ea39d70c767515ee70e392f505bd1eba123b2be7680dabd1346",
+          "expectedMirrorOf": "posthog-observability.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "simplify-code",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/internal/simplify-code"
+      },
+      "variants": [
+        {
+          "id": "simplify-code.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/simplify-code",
+          "destination": ".agents/skills/simplify-code",
+          "folderSha256": "2ddba109095114801f15dbb3153e155ea5bf1fc01969d31a2ccd45decc5fb9d5",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "simplify-code.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/simplify-code",
+          "destination": ".claude/skills/simplify-code",
+          "folderSha256": "2ddba109095114801f15dbb3153e155ea5bf1fc01969d31a2ccd45decc5fb9d5",
+          "expectedMirrorOf": "simplify-code.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "behavioral-evidence",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/behavioral-evidence"
+      },
+      "variants": [
+        {
+          "id": "behavioral-evidence.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/behavioral-evidence",
+          "destination": ".agents/skills/behavioral-evidence",
+          "folderSha256": "c32d9befb6ccd6229fe5ad0ad99ff3b8209614c167128ecb17f52e31c2c4d604",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "behavioral-evidence.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/behavioral-evidence",
+          "destination": ".claude/skills/behavioral-evidence",
+          "folderSha256": "c32d9befb6ccd6229fe5ad0ad99ff3b8209614c167128ecb17f52e31c2c4d604",
+          "expectedMirrorOf": "behavioral-evidence.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "create-product-verification",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.3.0/skills/internal/create-product-verification"
+      },
+      "variants": [
+        {
+          "id": "create-product-verification.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.3.0/skills/internal/create-product-verification",
+          "destination": ".agents/skills/create-product-verification",
+          "folderSha256": "c52431f18f340439916b83e43950f9322dec1aaa2f22548e21808273d706df51",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "create-product-verification.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.3.0/skills/internal/create-product-verification",
+          "destination": ".claude/skills/create-product-verification",
+          "folderSha256": "c52431f18f340439916b83e43950f9322dec1aaa2f22548e21808273d706df51",
+          "expectedMirrorOf": "create-product-verification.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "maintain-product-verification",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.3.0/skills/internal/maintain-product-verification"
+      },
+      "variants": [
+        {
+          "id": "maintain-product-verification.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.3.0/skills/internal/maintain-product-verification",
+          "destination": ".agents/skills/maintain-product-verification",
+          "folderSha256": "8a18adeca18c4b12602f37081202c99e0cdbd5f7352547d3632c76c132c2c649",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "maintain-product-verification.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.3.0/skills/internal/maintain-product-verification",
+          "destination": ".claude/skills/maintain-product-verification",
+          "folderSha256": "8a18adeca18c4b12602f37081202c99e0cdbd5f7352547d3632c76c132c2c649",
+          "expectedMirrorOf": "maintain-product-verification.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "exa-search",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.1/skills/internal/exa-search"
+      },
+      "variants": [
+        {
+          "id": "exa-search.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.1/skills/internal/exa-search",
+          "destination": ".agents/skills/exa-search",
+          "folderSha256": "980af8c0d136ce9d261c214a35b4840af0fffe0c9e0c2a3d85e022e4cfee7fbb",
+          "executableFiles": [
+            "scripts/exa-search.mjs"
+          ],
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "exa-search.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.1.1/skills/internal/exa-search",
+          "destination": ".claude/skills/exa-search",
+          "folderSha256": "980af8c0d136ce9d261c214a35b4840af0fffe0c9e0c2a3d85e022e4cfee7fbb",
+          "executableFiles": [
+            "scripts/exa-search.mjs"
+          ],
+          "expectedMirrorOf": "exa-search.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "global-agent-guardrails",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.0.0/skills/internal/global-agent-guardrails"
+      },
+      "variants": [
+        {
+          "id": "global-agent-guardrails.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.0.0/skills/internal/global-agent-guardrails",
+          "destination": ".agents/skills/global-agent-guardrails",
+          "folderSha256": "856d015545b7f959df2300d9cb756de131db83f1b59f4d123ce7000c5d9b8dbb",
+          "executableFiles": [
+            "scripts/command-guard.mjs"
+          ],
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "global-agent-guardrails.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.0.0/skills/internal/global-agent-guardrails",
+          "destination": ".claude/skills/global-agent-guardrails",
+          "folderSha256": "856d015545b7f959df2300d9cb756de131db83f1b59f4d123ce7000c5d9b8dbb",
+          "executableFiles": [
+            "scripts/command-guard.mjs"
+          ],
+          "expectedMirrorOf": "global-agent-guardrails.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "decisions",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.34.1/skills/internal/decisions"
+      },
+      "variants": [
+        {
+          "id": "decisions.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/decisions",
+          "destination": ".agents/skills/decisions",
+          "folderSha256": "685e0afadb0f1b63a3075dc53523b9e97a68bd126fd53851112e4d2023f08605",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "decisions.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.34.1/skills/internal/decisions",
+          "destination": ".claude/skills/decisions",
+          "folderSha256": "685e0afadb0f1b63a3075dc53523b9e97a68bd126fd53851112e4d2023f08605",
+          "expectedMirrorOf": "decisions.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "setup-help",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.1.0/skills/internal/setup-help"
+      },
+      "variants": [
+        {
+          "id": "setup-help.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
+          "destination": ".agents/skills/setup-help",
+          "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "setup-help.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.1.0/skills/internal/setup-help",
+          "destination": ".claude/skills/setup-help",
+          "folderSha256": "0a75a0065952b89b36eba352b74806af03008e0b503b335459948be8a849c42b",
+          "expectedMirrorOf": "setup-help.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-accessibility",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-accessibility",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-accessibility",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-accessibility.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-accessibility",
+          "destination": ".agents/skills/better-accessibility",
+          "folderSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-accessibility.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-accessibility",
+          "destination": ".claude/skills/better-accessibility",
+          "folderSha256": "9e0a36328de8b7b3e51910e55a0b582464a931af52a23d309415d1643d80cc66",
+          "expectedMirrorOf": "better-accessibility.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-colors",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-colors",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-colors",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-colors.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-colors",
+          "destination": ".agents/skills/better-colors",
+          "folderSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-colors.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-colors",
+          "destination": ".claude/skills/better-colors",
+          "folderSha256": "b32c97d82c102db6097fe15b7c0032eacfd52370bd67ddf0fa29b0856da616af",
+          "expectedMirrorOf": "better-colors.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-interface",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/better-interface",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-interface",
+          "capabilityTreeSha256": "5e950666a548241452cdfda77ef15b9903e4d40de585fc680ddfaa2acae3b168"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-interface.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/better-interface",
+          "destination": ".agents/skills/better-interface",
+          "folderSha256": "6e5f5f5285038174d6d60267073ef47d52c0410beb50020849a6369033942164",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-interface.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/better-interface",
+          "destination": ".claude/skills/better-interface",
+          "folderSha256": "6e5f5f5285038174d6d60267073ef47d52c0410beb50020849a6369033942164",
+          "expectedMirrorOf": "better-interface.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-layout",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-layout",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-layout",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-layout.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-layout",
+          "destination": ".agents/skills/better-layout",
+          "folderSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-layout.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-layout",
+          "destination": ".claude/skills/better-layout",
+          "folderSha256": "167d4c42c8c9f1b107ea741ee364c9e72e901a637389d10b024b0b8a5f817049",
+          "expectedMirrorOf": "better-layout.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-typography",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-typography",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-typography",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-typography.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-typography",
+          "destination": ".agents/skills/better-typography",
+          "folderSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-typography.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-typography",
+          "destination": ".claude/skills/better-typography",
+          "folderSha256": "27f2879dbbe3a55fca9d50acecf4cca2a14936c29fcb639c09329a4a8ad1bbfa",
+          "expectedMirrorOf": "better-typography.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-ui",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-ui",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-ui",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-ui.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-ui",
+          "destination": ".agents/skills/better-ui",
+          "folderSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-ui.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-ui",
+          "destination": ".claude/skills/better-ui",
+          "folderSha256": "951569daf4e1c2d86e3f19a1658dd99e153741184a86f2400ccdb56cf315c4d3",
+          "expectedMirrorOf": "better-ui.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "better-writing",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/upstream/better-writing",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/better-writing",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "capabilityTreeSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb"
+        }
+      },
+      "variants": [
+        {
+          "id": "better-writing.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-writing",
+          "destination": ".agents/skills/better-writing",
+          "folderSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "better-writing.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/upstream/better-writing",
+          "destination": ".claude/skills/better-writing",
+          "folderSha256": "5cac27354855e763e1773eb814175cb88da58f2eeb4e6023032c917eab970dbb",
+          "expectedMirrorOf": "better-writing.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "interface-review",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/interface-review",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/interface-review",
+          "capabilityTreeSha256": "556b88bba63a485e061baa43c3b70643adc543e1fe8b1cea275d0b093719a6f1"
+        }
+      },
+      "variants": [
+        {
+          "id": "interface-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/interface-review",
+          "destination": ".agents/skills/interface-review",
+          "folderSha256": "cf312426056586c871ef74f56f68b9a4eccf70875025556d74966af671212d2e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "interface-review.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/interface-review",
+          "destination": ".claude/skills/interface-review",
+          "folderSha256": "cf312426056586c871ef74f56f68b9a4eccf70875025556d74966af671212d2e",
+          "expectedMirrorOf": "interface-review.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "variant",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/variant",
+        "upstreamReference": {
+          "repository": "https://github.com/jakubkrehel/skills",
+          "license": "MIT",
+          "licenseSha256": "ed1dfe988fc40511b4845ccd9050a143a2002fee3bedc8064c47fa342b5d8d4f",
+          "commit": "2136b60ecf0078f1556623f8b6d26a1563c03512",
+          "path": "skills/variant",
+          "capabilityTreeSha256": "f20f961d7ae69439d0be142352954726c72dc71c621ffcfdadc1e4c3fce2af4e"
+        }
+      },
+      "variants": [
+        {
+          "id": "variant.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/variant",
+          "destination": ".agents/skills/variant",
+          "folderSha256": "001d21772250c0967aec33057614cf5ee3ee50eb8497f56a7d693a55a1b55432",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "variant.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/variant",
+          "destination": ".claude/skills/variant",
+          "folderSha256": "001d21772250c0967aec33057614cf5ee3ee50eb8497f56a7d693a55a1b55432",
+          "expectedMirrorOf": "variant.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "show-me",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/show-me",
+        "upstreamReference": {
+          "repository": "https://github.com/humanlayer/skills",
+          "license": "MIT",
+          "licenseSha256": "5f13c18ea00ea5c1384f41745feeca774079164f7f59a92e4ac0899ad217b26f",
+          "commit": "ca7c8088db69e315a8b2deea43820270457f8f3c",
+          "path": "plugins/show-me/skills/show-me",
+          "capabilityTreeSha256": "ca28e76c6560586b69d2225f8e6fd57aa4969259a6e77488f860fbba7ad451f6"
+        }
+      },
+      "variants": [
+        {
+          "id": "show-me.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/show-me",
+          "destination": ".agents/skills/show-me",
+          "folderSha256": "ccf4fcfb8ad7a9cd9a3c658e9b1b18855f3fd82d3b40a02a5e5fbad9664ef38f",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "show-me.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/show-me",
+          "destination": ".claude/skills/show-me",
+          "folderSha256": "ccf4fcfb8ad7a9cd9a3c658e9b1b18855f3fd82d3b40a02a5e5fbad9664ef38f",
+          "expectedMirrorOf": "show-me.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "design-quality",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "variants": [
+        {
+          "id": "design-quality.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/design-quality",
+          "destination": ".agents/skills/design-quality",
+          "expectedMirrorOf": null,
+          "folderSha256": "b283c67df63524891d1b643dee07c099c38ce8b041d31bdac0f64bcc8d1ddfb3"
+        },
+        {
+          "id": "design-quality.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/design-quality",
+          "destination": ".claude/skills/design-quality",
+          "folderSha256": "b283c67df63524891d1b643dee07c099c38ce8b041d31bdac0f64bcc8d1ddfb3",
+          "expectedMirrorOf": "design-quality.codex",
+          "install": "symlink"
+        }
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/design-quality"
+      }
+    },
+    {
+      "logicalName": "evidence-capture",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "variants": [
+        {
+          "id": "evidence-capture.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/evidence-capture",
+          "destination": ".agents/skills/evidence-capture",
+          "expectedMirrorOf": null,
+          "folderSha256": "4db2c9ac374ccf75544293e4b5343de8aaa607836ab8ebc07f8d86e7b86d7f5e"
+        },
+        {
+          "id": "evidence-capture.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/evidence-capture",
+          "destination": ".claude/skills/evidence-capture",
+          "folderSha256": "4db2c9ac374ccf75544293e4b5343de8aaa607836ab8ebc07f8d86e7b86d7f5e",
+          "expectedMirrorOf": "evidence-capture.codex",
+          "install": "symlink"
+        }
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/evidence-capture"
+      }
+    },
+    {
+      "logicalName": "impeccable",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "variants": [
+        {
+          "id": "impeccable.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/impeccable",
+          "destination": ".agents/skills/impeccable",
+          "expectedMirrorOf": null,
+          "folderSha256": "d1bc85846fbc3ea8897ca29a7e9f2187c022a6c0e13e0b2e5eb6bb69eb55cbe4",
+          "executableFiles": [
+            "scripts/impeccable"
+          ]
+        },
+        {
+          "id": "impeccable.codex-compat",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/impeccable",
+          "destination": ".codex/skills/impeccable",
+          "expectedMirrorOf": "impeccable.codex",
+          "folderSha256": "d1bc85846fbc3ea8897ca29a7e9f2187c022a6c0e13e0b2e5eb6bb69eb55cbe4",
+          "executableFiles": [
+            "scripts/impeccable"
+          ]
+        },
+        {
+          "id": "impeccable.factory-compat",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/impeccable",
+          "destination": ".factory/skills/impeccable",
+          "expectedMirrorOf": "impeccable.codex",
+          "folderSha256": "d1bc85846fbc3ea8897ca29a7e9f2187c022a6c0e13e0b2e5eb6bb69eb55cbe4",
+          "executableFiles": [
+            "scripts/impeccable"
+          ]
+        },
+        {
+          "id": "impeccable.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/impeccable",
+          "destination": ".claude/skills/impeccable",
+          "folderSha256": "d1bc85846fbc3ea8897ca29a7e9f2187c022a6c0e13e0b2e5eb6bb69eb55cbe4",
+          "executableFiles": [
+            "scripts/impeccable"
+          ],
+          "expectedMirrorOf": "impeccable.codex",
+          "install": "symlink"
+        }
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/impeccable",
+        "upstreamReference": {
+          "repository": "https://github.com/pbakaus/impeccable",
+          "commit": "d41d9860b0094dcb68030657da63461212835aaa",
+          "version": "4.9.2",
+          "path": ".agents/skills/impeccable",
+          "license": "Apache-2.0",
+          "engine": {
+            "version": "0.1.25",
+            "sha256": "a91bc3ef3aefc8099475841565e4108b9c62b0302b7e7b61a457d5212d7abc3c",
+            "url": "https://github.com/pbakaus/impeccable/releases/download/engine-v0.1.25/impeccable-darwin-arm64"
+          },
+          "capabilityTreeSha256": "1f70665f42f95fb2bfc972e04107688f659728dc55a9a023a7fdfbb4af6720aa"
+        }
+      }
+    },
+    {
+      "logicalName": "design-direction",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.22.1/skills/internal/design-direction"
+      },
+      "variants": [
+        {
+          "id": "design-direction.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/1.22.1/skills/internal/design-direction",
+          "destination": ".agents/skills/design-direction",
+          "expectedMirrorOf": null,
+          "folderSha256": "a574fddeedba8417540316fc70abcf3b434d0637dc8e7b8d35fb9a7e63235e41"
+        },
+        {
+          "id": "design-direction.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.22.1/skills/internal/design-direction",
+          "destination": ".claude/skills/design-direction",
+          "folderSha256": "a574fddeedba8417540316fc70abcf3b434d0637dc8e7b8d35fb9a7e63235e41",
+          "expectedMirrorOf": "design-direction.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "agent-browser",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/agent-browser",
+        "upstreamReference": {
+          "repository": "https://github.com/vercel-labs/agent-browser",
+          "license": "Apache-2.0",
+          "commit": "b06e2533ba9b3823b8a96c859d455cb55f4d7893",
+          "path": "skills/agent-browser",
+          "licenseSha256": "014bb31e83d5c2e76aea1cc6e82217346ab41362f32cb355ad0f5c10aa0aeaff",
+          "capabilityTreeSha256": "bb10760ef4a133f773d663dcf6085af2e4b45846822e8f1794daefe01efa1821"
+        }
+      },
+      "variants": [
+        {
+          "id": "agent-browser.codex",
+          "harness": "codex",
+          "destination": ".agents/skills/agent-browser",
+          "expectedMirrorOf": null,
+          "sourceDirectory": "artifacts/3.2.0/skills/external/agent-browser",
+          "folderSha256": "0e017627ce69437426af818423b5dede0f9a515ab6ca8a89b12d569c9c052a02"
+        },
+        {
+          "id": "agent-browser.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/agent-browser",
+          "destination": ".claude/skills/agent-browser",
+          "folderSha256": "0e017627ce69437426af818423b5dede0f9a515ab6ca8a89b12d569c9c052a02",
+          "expectedMirrorOf": "agent-browser.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "review-thread",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/review-thread"
+      },
+      "variants": [
+        {
+          "id": "review-thread.codex",
+          "harness": "codex",
+          "destination": ".agents/skills/review-thread",
+          "expectedMirrorOf": null,
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/review-thread",
+          "folderSha256": "1c4982a1b31342c14267c27bbeb621e097229023884aed57da8ba66051a349d6"
+        },
+        {
+          "id": "review-thread.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/review-thread",
+          "destination": ".claude/skills/review-thread",
+          "folderSha256": "1c4982a1b31342c14267c27bbeb621e097229023884aed57da8ba66051a349d6",
+          "expectedMirrorOf": "review-thread.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "shadcn",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/shadcn",
+        "upstreamReference": {
+          "repository": "https://github.com/shadcn/ui",
+          "license": "MIT",
+          "commit": "968d8cb9dc42ae5d52e8fd356cf84596ec832a26",
+          "path": "skills/shadcn",
+          "licenseSha256": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f",
+          "capabilityTreeSha256": "221a317e591a76c27ba2801b60048ef05596d3550c6d8daf70a8016086b00d07"
+        }
+      },
+      "variants": [
+        {
+          "id": "shadcn.codex",
+          "harness": "codex",
+          "destination": ".agents/skills/shadcn",
+          "expectedMirrorOf": null,
+          "sourceDirectory": "artifacts/3.2.0/skills/external/shadcn",
+          "folderSha256": "3a3d7201f3a24839c20d4c6b64ffc5c8fb0d546a4d20c40548bc42004d7f7afd"
+        },
+        {
+          "id": "shadcn.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/shadcn",
+          "destination": ".claude/skills/shadcn",
+          "folderSha256": "3a3d7201f3a24839c20d4c6b64ffc5c8fb0d546a4d20c40548bc42004d7f7afd",
+          "expectedMirrorOf": "shadcn.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "vercel-react-best-practices",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/1.38.0/skills/external/vercel-react-best-practices",
+        "upstreamReference": {
+          "repository": "https://github.com/vercel-labs/agent-skills",
+          "license": "MIT",
+          "commit": "063bee94c3f4df8453406c830b0a7df0f2860278",
+          "path": "skills/react-best-practices",
+          "capabilityTreeSha256": "e3f2294574b469c7c198373a443a86571012769d0bbeed68854bd55642ec0d7b"
+        }
+      },
+      "variants": [
+        {
+          "id": "vercel-react-best-practices.codex",
+          "harness": "codex",
+          "destination": ".agents/skills/vercel-react-best-practices",
+          "expectedMirrorOf": null,
+          "sourceDirectory": "artifacts/1.38.0/skills/external/vercel-react-best-practices",
+          "folderSha256": "212b34d359e961c1f6822e65fd7d9312ce4ed2c2bfab9c963981a3079024d0f4"
+        },
+        {
+          "id": "vercel-react-best-practices.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/1.38.0/skills/external/vercel-react-best-practices",
+          "destination": ".claude/skills/vercel-react-best-practices",
+          "folderSha256": "212b34d359e961c1f6822e65fd7d9312ce4ed2c2bfab9c963981a3079024d0f4",
+          "expectedMirrorOf": "vercel-react-best-practices.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "bootstrap-development-system",
+      "description": "Task-relevant repository discovery and shared installation audit; no adapters",
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.0.0/skills/internal/bootstrap-development-system"
+      },
+      "variants": [
+        {
+          "id": "bootstrap-development-system.codex",
+          "harness": "codex",
+          "destination": ".agents/skills/bootstrap-development-system",
+          "sourceDirectory": "artifacts/2.0.0/skills/internal/bootstrap-development-system",
+          "folderSha256": "92a99804c0fc57ddcd2cf4710a934813368c8850294b460ec645a38947b472fe",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "bootstrap-development-system.codex-mirror",
+          "harness": "codex",
+          "destination": ".codex/skills/bootstrap-development-system",
+          "sourceDirectory": "artifacts/2.0.0/skills/internal/bootstrap-development-system",
+          "folderSha256": "92a99804c0fc57ddcd2cf4710a934813368c8850294b460ec645a38947b472fe",
+          "expectedMirrorOf": "bootstrap-development-system.codex",
+          "install": "symlink"
+        },
+        {
+          "id": "bootstrap-development-system.claude",
+          "harness": "claude",
+          "destination": ".claude/skills/bootstrap-development-system",
+          "sourceDirectory": "artifacts/2.0.0/skills/internal/bootstrap-development-system",
+          "folderSha256": "92a99804c0fc57ddcd2cf4710a934813368c8850294b460ec645a38947b472fe",
+          "expectedMirrorOf": "bootstrap-development-system.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "correct",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/correct",
+        "upstreamReference": {
+          "repository": "https://github.com/cursor/plugins",
+          "license": "MIT",
+          "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+          "path": "pstack/skills/correct",
+          "capabilityTreeSha256": "e86f41b862349cc7019815c374a21074e3e2087618cf0fe8f2f869059f4d9937"
+        }
+      },
+      "variants": [
+        {
+          "id": "correct.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/correct",
+          "destination": ".agents/skills/correct",
+          "folderSha256": "993da78efa1b9433acf6d055ec8bba90daff7f830459c47de5035001bc86abfe",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "correct.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/correct",
+          "destination": ".claude/skills/correct",
+          "folderSha256": "993da78efa1b9433acf6d055ec8bba90daff7f830459c47de5035001bc86abfe",
+          "expectedMirrorOf": "correct.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "architect",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/architect",
+        "upstreamReference": {
+          "repository": "https://github.com/cursor/plugins",
+          "license": "MIT",
+          "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+          "path": "pstack/skills/architect",
+          "capabilityTreeSha256": "03a99fd5880e986f1d8ae4b2ba87c18a4f4365bfe3b54f61eae69a765ce1359c"
+        }
+      },
+      "variants": [
+        {
+          "id": "architect.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/architect",
+          "destination": ".agents/skills/architect",
+          "folderSha256": "c90e69ec04aff6e3e27a3e978c25954af52e0073d2f7d8dc7a85df6f6e481919",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "architect.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/architect",
+          "destination": ".claude/skills/architect",
+          "folderSha256": "c90e69ec04aff6e3e27a3e978c25954af52e0073d2f7d8dc7a85df6f6e481919",
+          "expectedMirrorOf": "architect.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "benchmark-checklist",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/benchmark-checklist",
+        "upstreamReference": {
+          "repository": "https://github.com/cursor/plugins",
+          "license": "MIT",
+          "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+          "path": "pstack/skills/benchmark-checklist",
+          "capabilityTreeSha256": "3aebce401509c6c2d3192e4b74088cebe95ff80e7d67ab4ecb3b4b644cb0264d"
+        }
+      },
+      "variants": [
+        {
+          "id": "benchmark-checklist.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/benchmark-checklist",
+          "destination": ".agents/skills/benchmark-checklist",
+          "folderSha256": "83dfbdb37e0773ada82e5ccbf314908732854cc0b5dfdfe3b1bbb5815421acf3",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "benchmark-checklist.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/benchmark-checklist",
+          "destination": ".claude/skills/benchmark-checklist",
+          "folderSha256": "83dfbdb37e0773ada82e5ccbf314908732854cc0b5dfdfe3b1bbb5815421acf3",
+          "expectedMirrorOf": "benchmark-checklist.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "emil-animate",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/emil-animate",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/animate",
+          "capabilityTreeSha256": "9ed1cb9472ac6d83549ab0714eddb7ee3b123b19d1ea7982a837aaac4cac02d8"
+        }
+      },
+      "variants": [
+        {
+          "id": "emil-animate.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/emil-animate",
+          "destination": ".agents/skills/emil-animate",
+          "folderSha256": "b544dc09fa8a4e36a94cd3bba80ca174aa8022c1196f6d6262b3a2eb7db93de7",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "emil-animate.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/emil-animate",
+          "destination": ".claude/skills/emil-animate",
+          "folderSha256": "b544dc09fa8a4e36a94cd3bba80ca174aa8022c1196f6d6262b3a2eb7db93de7",
+          "expectedMirrorOf": "emil-animate.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "animate-expo",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/animate-expo",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/animate-expo",
+          "capabilityTreeSha256": "d058dfdb745b5e361548796caa7c5753fb40630ec85c03d2dab10146bf612215"
+        }
+      },
+      "variants": [
+        {
+          "id": "animate-expo.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/animate-expo",
+          "destination": ".agents/skills/animate-expo",
+          "folderSha256": "e29bfc13e04e7ac0ce7764c238c1628d06f427ebca8a95ba7f4b7ddf95185cfd",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "animate-expo.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/animate-expo",
+          "destination": ".claude/skills/animate-expo",
+          "folderSha256": "e29bfc13e04e7ac0ce7764c238c1628d06f427ebca8a95ba7f4b7ddf95185cfd",
+          "expectedMirrorOf": "animate-expo.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "animation-performance",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/animation-performance",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/animation-performance",
+          "capabilityTreeSha256": "522ba92abc2c1159f289b6c5da4dd68fe14bfd456e91d54e3d56708ebbe7eb92"
+        }
+      },
+      "variants": [
+        {
+          "id": "animation-performance.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/animation-performance",
+          "destination": ".agents/skills/animation-performance",
+          "folderSha256": "9447f970870acef591b4fb7977f0e1811b5aa0a3cd4b23642478c20c94dab714",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "animation-performance.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/animation-performance",
+          "destination": ".claude/skills/animation-performance",
+          "folderSha256": "9447f970870acef591b4fb7977f0e1811b5aa0a3cd4b23642478c20c94dab714",
+          "expectedMirrorOf": "animation-performance.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "apple-design",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/apple-design",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/apple-design",
+          "capabilityTreeSha256": "1900b9ad2df87d469a93a152f3823e0ad3ae81337b0bc900acd54366bbf21f2a"
+        }
+      },
+      "variants": [
+        {
+          "id": "apple-design.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/apple-design",
+          "destination": ".agents/skills/apple-design",
+          "folderSha256": "63ce0ea86fa7a58f1c10356f46b5e6dcf8e2a3250dfd9bf86abfdfa267f765c3",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "apple-design.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/apple-design",
+          "destination": ".claude/skills/apple-design",
+          "folderSha256": "63ce0ea86fa7a58f1c10356f46b5e6dcf8e2a3250dfd9bf86abfdfa267f765c3",
+          "expectedMirrorOf": "apple-design.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "ask-sonner",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/ask-sonner",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/ask-sonner",
+          "capabilityTreeSha256": "809f54290a5efa5e6fc1bf89aa9a2dfa68bef56fdb1d7a188feda65eab46fe1d"
+        }
+      },
+      "variants": [
+        {
+          "id": "ask-sonner.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/ask-sonner",
+          "destination": ".agents/skills/ask-sonner",
+          "folderSha256": "d9ac447b47cf4031c975f5cf2d8fc682867cca51721589411220e224235fe90f",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "ask-sonner.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/ask-sonner",
+          "destination": ".claude/skills/ask-sonner",
+          "folderSha256": "d9ac447b47cf4031c975f5cf2d8fc682867cca51721589411220e224235fe90f",
+          "expectedMirrorOf": "ask-sonner.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "break-ui",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/break-ui",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/break-ui",
+          "capabilityTreeSha256": "6cb4cbf0aeb953d4ec9df20d4762badeb548af76ca1d30fa0da360cd435540f3"
+        }
+      },
+      "variants": [
+        {
+          "id": "break-ui.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/break-ui",
+          "destination": ".agents/skills/break-ui",
+          "folderSha256": "6256b7788555f3cc3207b644ef9a5c2ff367ace5803d7bf6eada3e1971dacf4a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "break-ui.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/break-ui",
+          "destination": ".claude/skills/break-ui",
+          "folderSha256": "6256b7788555f3cc3207b644ef9a5c2ff367ace5803d7bf6eada3e1971dacf4a",
+          "expectedMirrorOf": "break-ui.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "emil-design-eng",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/emil-design-eng",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/emil-design-eng",
+          "capabilityTreeSha256": "affe7d211378e3af446572c5e73e687121b26e912a8449ea5aea2b33599c8811"
+        }
+      },
+      "variants": [
+        {
+          "id": "emil-design-eng.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/emil-design-eng",
+          "destination": ".agents/skills/emil-design-eng",
+          "folderSha256": "5973fc128655308cce845414ce226af2806120a952854efec0b48a2e8e753173",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "emil-design-eng.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/emil-design-eng",
+          "destination": ".claude/skills/emil-design-eng",
+          "folderSha256": "5973fc128655308cce845414ce226af2806120a952854efec0b48a2e8e753173",
+          "expectedMirrorOf": "emil-design-eng.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "improve-animations",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/improve-animations",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/improve-animations",
+          "capabilityTreeSha256": "73928feb8f7aef251b69600b0ff97bad3b6e36157fc7a9b6030035671745612a"
+        }
+      },
+      "variants": [
+        {
+          "id": "improve-animations.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/improve-animations",
+          "destination": ".agents/skills/improve-animations",
+          "folderSha256": "2cfe4009312f7d317044560152cc5880efccdedbaeda3dd8507bba55ae143b2e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "improve-animations.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/improve-animations",
+          "destination": ".claude/skills/improve-animations",
+          "folderSha256": "2cfe4009312f7d317044560152cc5880efccdedbaeda3dd8507bba55ae143b2e",
+          "expectedMirrorOf": "improve-animations.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "mobile-native",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/mobile-native",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/mobile-native",
+          "capabilityTreeSha256": "e7e77032273082652f728f9ebbd8e450ea38e6ef67262263f3c2a743ff905301"
+        }
+      },
+      "variants": [
+        {
+          "id": "mobile-native.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/mobile-native",
+          "destination": ".agents/skills/mobile-native",
+          "folderSha256": "3fca485e79dd370596ae91b489081e8734e2ca0e953072088f945014f0bb3076",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "mobile-native.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/mobile-native",
+          "destination": ".claude/skills/mobile-native",
+          "folderSha256": "3fca485e79dd370596ae91b489081e8734e2ca0e953072088f945014f0bb3076",
+          "expectedMirrorOf": "mobile-native.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "pick-ui-library",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/pick-ui-library",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/pick-ui-library",
+          "capabilityTreeSha256": "243506e4b7863267ca2a859930f2a7f27e4997bba8fe00c220f65aaec200e3b6"
+        }
+      },
+      "variants": [
+        {
+          "id": "pick-ui-library.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/pick-ui-library",
+          "destination": ".agents/skills/pick-ui-library",
+          "folderSha256": "52e3167b939151369ef3697a0dc300582d777fda454992c1729258f5dccb129a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "pick-ui-library.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/pick-ui-library",
+          "destination": ".claude/skills/pick-ui-library",
+          "folderSha256": "52e3167b939151369ef3697a0dc300582d777fda454992c1729258f5dccb129a",
+          "expectedMirrorOf": "pick-ui-library.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "review-animations",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/review-animations",
+        "upstreamReference": {
+          "repository": "https://github.com/emilkowalski/skills",
+          "license": "MIT",
+          "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+          "path": "skills/review-animations",
+          "capabilityTreeSha256": "49bb0ae215623f12f8fb5fe3890a423b800aecf721d7457588114a0b223e21a4"
+        }
+      },
+      "variants": [
+        {
+          "id": "review-animations.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/review-animations",
+          "destination": ".agents/skills/review-animations",
+          "folderSha256": "b423255b2fee2dcc49c3209835fbc6addfa29a5ecbc494a6cdeb29a531cac68f",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "review-animations.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/review-animations",
+          "destination": ".claude/skills/review-animations",
+          "folderSha256": "b423255b2fee2dcc49c3209835fbc6addfa29a5ecbc494a6cdeb29a531cac68f",
+          "expectedMirrorOf": "review-animations.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "good-css",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/external/good-css",
+        "upstreamReference": {
+          "repository": "https://github.com/vojtaholik/good-css",
+          "license": "MIT",
+          "commit": "92d436ba1937d1b1407c47e35abb3e199eaace2e",
+          "path": "skills/good-css",
+          "capabilityTreeSha256": "2eb2124227837e44bcb4d5902fda1a99f7c946d5149bb5b60b040a89b0e5a943"
+        }
+      },
+      "variants": [
+        {
+          "id": "good-css.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/good-css",
+          "destination": ".agents/skills/good-css",
+          "folderSha256": "32e21cab35ffd7a5bdd27899823e48249d8fa992ae5d04971f4c302eebeb1a3c",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "good-css.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/external/good-css",
+          "destination": ".claude/skills/good-css",
+          "folderSha256": "32e21cab35ffd7a5bdd27899823e48249d8fa992ae5d04971f4c302eebeb1a3c",
+          "expectedMirrorOf": "good-css.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "system-recap",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.3.1/skills/internal/system-recap"
+      },
+      "variants": [
+        {
+          "id": "system-recap.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.3.1/skills/internal/system-recap",
+          "destination": ".agents/skills/system-recap",
+          "folderSha256": "e8a5060ef72346e032ab64ff3d0fd6854295c94d69cddf06d42968d4d49f5697",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "system-recap.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.3.1/skills/internal/system-recap",
+          "destination": ".claude/skills/system-recap",
+          "folderSha256": "e8a5060ef72346e032ab64ff3d0fd6854295c94d69cddf06d42968d4d49f5697",
+          "expectedMirrorOf": "system-recap.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "primitives-gardener",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/primitives-gardener"
+      },
+      "variants": [
+        {
+          "id": "primitives-gardener.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/primitives-gardener",
+          "destination": ".agents/skills/primitives-gardener",
+          "folderSha256": "9d016a1e51aad682bfca89c96883305b61d7946f036dad636224ffd72da7771a",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "primitives-gardener.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/primitives-gardener",
+          "destination": ".claude/skills/primitives-gardener",
+          "folderSha256": "9d016a1e51aad682bfca89c96883305b61d7946f036dad636224ffd72da7771a",
+          "expectedMirrorOf": "primitives-gardener.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "cross-review",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/3.2.0/skills/internal/cross-review"
+      },
+      "variants": [
+        {
+          "id": "cross-review.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/cross-review",
+          "destination": ".agents/skills/cross-review",
+          "folderSha256": "a9c88d12dcb860306ebff289d4fec08a48638ab83da022d7fdd7e44ae3abb91e",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "cross-review.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/3.2.0/skills/internal/cross-review",
+          "destination": ".claude/skills/cross-review",
+          "folderSha256": "a9c88d12dcb860306ebff289d4fec08a48638ab83da022d7fdd7e44ae3abb91e",
+          "expectedMirrorOf": "cross-review.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "in-your-own-words",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.11.0/skills/external/in-your-own-words",
+        "upstreamReference": {
+          "repository": "https://github.com/cursor/plugins",
+          "commit": "c86f349b102feb91f1966f8a6a60882a4e601b50",
+          "path": "pstack/skills/in-your-own-words",
+          "license": "MIT",
+          "capabilityTreeSha256": "49d983cb552ece1cc4b6a8e16f48dc90611f3c1a2d834507ec48fa80f30fa044"
+        }
+      },
+      "variants": [
+        {
+          "id": "in-your-own-words.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.11.0/skills/external/in-your-own-words",
+          "destination": ".agents/skills/in-your-own-words",
+          "folderSha256": "f9d5038aa0e7b9c82a0f26be8ca54ff223c81dfb8c5cc30263dc1aa54c23fdd8",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "in-your-own-words.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.11.0/skills/external/in-your-own-words",
+          "destination": ".claude/skills/in-your-own-words",
+          "folderSha256": "f9d5038aa0e7b9c82a0f26be8ca54ff223c81dfb8c5cc30263dc1aa54c23fdd8",
+          "expectedMirrorOf": "in-your-own-words.codex",
+          "install": "symlink"
+        }
+      ]
+    },
+    {
+      "logicalName": "visual-explain",
+      "physicalHarnesses": [
+        "codex",
+        "claude"
+      ],
+      "source": {
+        "repository": "https://github.com/AO-HyS/development-system",
+        "commit": "$INSTALL_COMMIT",
+        "path": "artifacts/2.14.0/skills/internal/visual-explain"
+      },
+      "variants": [
+        {
+          "id": "visual-explain.codex",
+          "harness": "codex",
+          "sourceDirectory": "artifacts/2.14.0/skills/internal/visual-explain",
+          "destination": ".agents/skills/visual-explain",
+          "folderSha256": "94b9164d6ebcae5a2f1ed43b23f09f1ddfe62f4fe8001c57f831dfd22ef65f5f",
+          "expectedMirrorOf": null
+        },
+        {
+          "id": "visual-explain.claude",
+          "harness": "claude",
+          "sourceDirectory": "artifacts/2.14.0/skills/internal/visual-explain",
+          "destination": ".claude/skills/visual-explain",
+          "folderSha256": "94b9164d6ebcae5a2f1ed43b23f09f1ddfe62f4fe8001c57f831dfd22ef65f5f",
+          "expectedMirrorOf": "visual-explain.codex",
+          "install": "symlink"
+        }
+      ]
+    }
+  ]
+}

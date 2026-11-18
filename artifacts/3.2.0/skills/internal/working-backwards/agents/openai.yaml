@@ -1,0 +1,4 @@
+interface:
+  display_name: "Working Backwards"
+  short_description: "Define one product document at a time"
+  default_prompt: "Use $working-backwards to define this feature progressively, starting with the future customer story."

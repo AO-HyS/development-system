@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: sentirse nativo en móvil"
+  short_description: "Arreglos de CSS y meta para que la web se sienta nativa"
+  default_prompt: "Usa $mobile-native para que esta app se sienta nativa en el teléfono."
+policy:
+  allow_implicit_invocation: true

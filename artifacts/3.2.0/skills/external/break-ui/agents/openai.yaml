@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: romper la UI"
+  short_description: "Prueba un componente con datos extremos"
+  default_prompt: "Usa $break-ui para estresar este componente con datos extremos."
+policy:
+  allow_implicit_invocation: true

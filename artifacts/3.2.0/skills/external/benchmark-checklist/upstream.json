@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/cursor/plugins",
+  "commit": "93b916d4a1e806507e22f4716b352fa91f2b227e",
+  "path": "pstack/skills/benchmark-checklist",
+  "license": "MIT",
+  "capabilityTreeSha256": "3aebce401509c6c2d3192e4b74088cebe95ff80e7d67ab4ecb3b4b644cb0264d",
+  "files": {
+    "SKILL.md": "5efd79495e3eebf3b53814861330fe812458212958f8f009492e866c329161f6"
+  }
+}

@@ -87,13 +87,17 @@ async function readSkillCatalog(explicitVersion) {
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, sinUpstream?: boolean, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token === "--json") {
       options.json = true;
+      continue;
+    }
+    if (token === "--sin-upstream" && command === "development-steward") {
+      options.sinUpstream = true;
       continue;
     }
     const value = tokens[index + 1];
@@ -235,7 +239,9 @@ function formatHuman(result) {
   }
   if (result.operation === "development-steward") {
     const report = result.report && typeof result.report === "object" ? result.report : {};
-    return `Development Steward: ${"summary" in report ? report.summary : "report unproven"}`;
+    const upstream = /** @type {any} */ (report).skillsUpstream;
+    const skills = upstream?.failed ? ` Skills de otro autor: sin leer (${upstream.failed}).` : upstream ? ` Skills de otro autor: ${upstream.behind.length} atrasadas${upstream.behind.length ? ` (${upstream.behind.map((/** @type {{name: string}} */ row) => row.name).join(", ")})` : ""}, ${upstream.gone.length} ya no existen arriba${upstream.unread.length ? `, ${upstream.unread.length} sin leer` : ""}.` : "";
+    return `Development Steward: ${"summary" in report ? report.summary : "report unproven"}${skills}`;
   }
   if (result.operation === "development-steward-scheduler") {
     return `Development Steward scheduler: ${String(result.status ?? "unproven")}.`;
@@ -463,7 +469,8 @@ const COMMAND_TABLE = [
   ["release-train-v2", `--input <file> ${COMMON_OPTIONS}`],
   ["check-in", `--input <file> ${COMMON_OPTIONS}`],
   ["linear-hygiene", `--input <file> ${COMMON_OPTIONS}`],
-  ["development-steward", `--input <file> ${COMMON_OPTIONS}`],
+  ["development-steward", `--input <file> [--sin-upstream] ${COMMON_OPTIONS}`],
+  ["skills-upstream", "[--home <dir>] [--lock <skill-lock.json>] [--json] (3.2.0: read-only; lists the skills of other authors, catalogued or recorded in ~/.agents/.skill-lock.json, that fell behind their source)"],
   ["development-steward-schedule-enable", `[options] ${COMMON_OPTIONS}`],
   ["development-steward-schedule-audit", COMMON_OPTIONS],
   ["development-steward-schedule-disable", COMMON_OPTIONS],
@@ -585,6 +592,7 @@ async function runCommand(argv) {
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
   }
   if (argv[0] === "quicke2e") return (await import("./quicke2e.mjs")).runQuicke2eCommand(argv.slice(1));
+  if (argv[0] === "skills-upstream") return (await import("./skills-upstream.mjs")).runSkillsUpstreamCommand(argv.slice(1));
   if (argv[0] === "check-file-size") return (await import("./file-size.mjs")).runFileSizeCommand(argv.slice(1));
   if (argv[0] === "clean-cache") return (await import("./clean-cache.mjs")).runCleanCacheCommand(argv.slice(1));
   if (argv[0] === "allow-tests" || argv[0] === "test-grants") {
@@ -940,7 +948,11 @@ async function runCommand(argv) {
   } else if (command === "development-steward") {
     if (!options.input) throw new Error("development-steward requires --input <json-path>");
     const input = JSON.parse(await readFile(resolve(options.input), "utf8"));
-    result = await processDevelopmentStewardReview(input, { home: options.home });
+    // 3.2.0: the weekly report lists every catalogued skill of another author that fell behind its source.
+    // A failed or stalled comparison never holds the report: it is recorded as not read.
+    const skillsUpstream = options.sinUpstream ? null : await (await import("./skills-upstream.mjs")).checkSkillsUpstream({ home: options.home })
+      .catch((error) => ({ failed: error instanceof Error ? error.message.split("\n")[0] : String(error) }));
+    result = await processDevelopmentStewardReview(input, { home: options.home, skillsUpstream });
   } else if (command === "development-steward-schedule-enable") {
     if (!options.projectsRoot) throw new Error("development-steward-schedule-enable requires --projects-root <path>");
     if (!options.codexPath) throw new Error("development-steward-schedule-enable requires --codex-path <absolute-path>");

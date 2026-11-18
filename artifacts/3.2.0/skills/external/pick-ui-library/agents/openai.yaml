@@ -1,0 +1,6 @@
+interface:
+  display_name: "Emil: elegir librería UI"
+  short_description: "Elige la librería adecuada para una tarea de frontend"
+  default_prompt: "Usa $pick-ui-library para elegir una librería para esto."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/emilkowalski/skills",
+  "commit": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+  "path": "skills/improve-animations",
+  "license": "MIT",
+  "capabilityTreeSha256": null,
+  "files": {
+    "AUDIT.md": "90312d201cd8ce7dc8add4147570cd47cdb6c901e9980951d9f7b4851b738524",
+    "PLAN-TEMPLATE.md": "e25250c49937e183cca5bc42a057d9f5407a0cacd30d0aad1a4b6d59d7b2a844",
+    "SKILL.md": "632be90e04261192112571b05abd5708fbb846808a4a7780717ee206daa6c6f6"
+  }
+}
