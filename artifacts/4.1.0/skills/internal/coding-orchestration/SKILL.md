@@ -13,9 +13,9 @@ Preserve behavior, data boundaries and authorization.
 
 In Claude Code the parent of a product ask manages and does not write product
 code: it follows `~/.claude/skills/flow-implement/references/forma-af.md`,
-read before the first `Agent`. `escritor-rapido` writes from a packet of files,
-decision, lines and lint/type commands (the older eleven-field packet is
-optional there); corrections go to the same writer by `SendMessage`; one fresh
+read before the first `Agent`. `escritor-rapido` writes from the guard's typed
+packet, one short line per field (files, decision and lines go in `Actions`,
+lint/type commands in `Checks`); corrections go to the same writer by `SendMessage`; one fresh
 `verificador-pantalla` proves the screen lines. No `Explore` or other model's
 read inside the run; the integration read, `listo` and the close stay. The
 sections below are the Codex path and stay as they were.

@@ -53,7 +53,7 @@
       "sourcePath": "config/4.1.0/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "a61adb16e86b9de74b1a9b164e217332cda4036307688bb1e774d304a6f4676b",
+      "sha256": "754dbb795051fa0f4deef6a3b9abaaf46759804ad0f35a73efcaee921a319baa",
       "expectedMirrorOf": null
     },
     {
@@ -71,7 +71,7 @@
       "sourcePath": "catalog/0.86.0.json",
       "destination": ".codex/development-system/skills.json",
       "harness": "codex",
-      "sha256": "f398f8d287fb5c52e37f69bdf4a1e394b2bfeae741fb771ae8b6f312c0da2de4",
+      "sha256": "419f374a3b8e06e94e987a89edc45e65a7dc54364785e33993218df08054b54a",
       "expectedMirrorOf": null
     },
     {
@@ -800,7 +800,7 @@
       "sourcePath": "artifacts/4.1.0/claude/rules/orchestration.md",
       "destination": ".claude/rules/orchestration.md",
       "harness": "claude",
-      "sha256": "b3e55f225d064ee7f70cde2567059040f6ca5dd4e85b34628f8b4c16e887837b",
+      "sha256": "ee52e9cb15ab2257215fa4a9798053dbda040042e935ffd52f22558ba7f87805",
       "expectedMirrorOf": null
     },
     {

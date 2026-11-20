@@ -1087,7 +1087,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/4.1.0/skills/internal/flow-implement",
           "destination": ".agents/skills/flow-implement",
-          "folderSha256": "c65a57972684a6ef3800765c58884f3b37cd53bb79acfdf220f5f9a3d15da912",
+          "folderSha256": "d95ca2dd70f45c08f7ecff312b000406642f7f47ffc56f8f533fd8d96d040854",
           "expectedMirrorOf": null
         },
         {
@@ -1095,7 +1095,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/4.1.0/skills/internal/flow-implement",
           "destination": ".claude/skills/flow-implement",
-          "folderSha256": "c65a57972684a6ef3800765c58884f3b37cd53bb79acfdf220f5f9a3d15da912",
+          "folderSha256": "d95ca2dd70f45c08f7ecff312b000406642f7f47ffc56f8f533fd8d96d040854",
           "expectedMirrorOf": "flow-implement.codex",
           "install": "symlink"
         }
@@ -1221,7 +1221,7 @@
           "destination": ".codex/skills/coding-orchestration",
           "expectedMirrorOf": null,
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "f5265a1d6d8a58eca218e44afd1707cb8db08a7a4a0fa908ea7f3fb4aa783f1e"
+          "folderSha256": "96ec97238d1c417189f212be2224638b823319df30c25c698259eafe8a36af58"
         },
         {
           "id": "coding-orchestration.agents",
@@ -1230,7 +1230,7 @@
           "destination": ".agents/skills/coding-orchestration",
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "f5265a1d6d8a58eca218e44afd1707cb8db08a7a4a0fa908ea7f3fb4aa783f1e"
+          "folderSha256": "96ec97238d1c417189f212be2224638b823319df30c25c698259eafe8a36af58"
         },
         {
           "id": "coding-orchestration.claude",
@@ -1240,7 +1240,7 @@
           "expectedMirrorOf": "coding-orchestration.codex-adapter",
           "install": "symlink",
           "adapterContract": "authorized-initiative-orchestration-v2",
-          "folderSha256": "f5265a1d6d8a58eca218e44afd1707cb8db08a7a4a0fa908ea7f3fb4aa783f1e"
+          "folderSha256": "96ec97238d1c417189f212be2224638b823319df30c25c698259eafe8a36af58"
         }
       ]
     },

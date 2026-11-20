@@ -24,9 +24,14 @@ runs, the parent moves other work of the same ask forward without polling.
 2. **Writer now.** As soon as that rule lets you go on (right after the first
    reply, or right after his yes when it requires one), call
    `Agent(subagent_type="escritor-rapido", prompt=<packet>)` with no model
-   override. The packet: files, decision, the lines it must meet, and the lint
-   and type commands it leaves green; root, revision and authorization travel
-   in the context. The writer finds with `rg` every path that writes the
+   override. The Claude orchestration guard admits a writer only with its
+   typed packet, so write every field, one short line each, in the prompt:
+   `Objective`, `Root` (this session's cwd), `Revision` (the 40-character
+   SHA), `Owned paths`, `Settled decisions`, `Actions` (files, decision and
+   the lines it must meet), `Authorization`, `Checks` (the lint and type
+   commands it leaves green), `Stop conditions`, `Evidence receipt` and
+   `Done when: <command> -> <observation>`. A denied dispatch names the
+   missing field: add it and dispatch again, never drop the guard. The writer finds with `rg` every path that writes the
    affected state (create, change, delete, move, import, data already stored)
    before editing. Do not start `Explore`, `implementer` or another model's
    read inside the run.
