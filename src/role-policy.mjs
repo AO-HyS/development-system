@@ -14,6 +14,13 @@ export function renderHostInstructions(host) {
   return instructions;
 }
 
+/** The Claude-only rule (`~/.claude/rules/orchestration.md`): the AF way, kept off the shared page and Codex. */
+export function renderClaudeRule() {
+  const rule = profiles.instructions.claudeRule;
+  if (typeof rule !== 'string' || !rule.trim()) throw new Error('Missing hostProfiles.instructions.claudeRule');
+  return rule;
+}
+
 /** @param {string} agentName */
 export function codexRoleProfile(agentName) {
   const normalized = agentName.replaceAll('_', '-');
@@ -27,7 +34,7 @@ export function renderRolePolicyOutputs() {
   /** @type {Record<string, string>} */
   const outputs = {
     'claude/orchestration/policy.json': `${JSON.stringify(profiles.claude.policy, null, 2)}\n`,
-    'claude/rules/orchestration.md': '# Claude Code orchestration (generated from config/agent-roster.json)\n\nThe shared host rules and the Claude Code host section live in ~/.claude/CLAUDE.md; this file adds nothing to them.\n',
+    'claude/rules/orchestration.md': renderClaudeRule(),
   };
   for (const [name, template] of Object.entries(profiles.claude.agents)) {
     if (!/^[A-Za-z][A-Za-z-]*$/.test(name)) throw new Error(`Invalid Claude role name: ${name}`);

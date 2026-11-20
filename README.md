@@ -98,6 +98,20 @@ once per computer; product deployments are not required. Existing Codex-only
 profiles are explicit alternatives, never automatic fallback. See
 [the decision](docs/adr/0070-haiku55-bounded-roles.md).
 
+## The AF way in Claude Code (4.1.0)
+
+In Claude Code the parent of a product ask manages and does not write product
+code: `escritor-rapido` (Sonnet 5.5 medium, writer Git hook) writes from a short
+packet and one fresh `verificador-pantalla` (Sonnet 5.5 medium, Browse by MCP,
+no product edits) proves the screen lines in one round. The steps are in the
+Claude-only rule `~/.claude/rules/orchestration.md` and the full recipe in
+`flow-implement/references/forma-af.md`; the global page and the Codex host do
+not change. Helpers: `~/.codex/development-system/runtime/forma-af/tabla-maquina.mjs`
+and `lock-solo.py`. A product repository can start lighter with
+`development-system claude-light apply <repo>` and go back with
+`development-system claude-light undo <repo>`. See
+[the decision](docs/adr/0075-af-way-and-claude-light.md).
+
 ## Orchestration and maintenance
 
 Preserve the selected parent. Use native supported same-provider agents and

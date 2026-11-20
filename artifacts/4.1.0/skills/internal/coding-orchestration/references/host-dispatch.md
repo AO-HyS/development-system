@@ -1,0 +1,31 @@
+# Host-specific dispatch
+
+Read this only when a selected worker needs an external CLI or a provider
+availability failure needs handling. Prefer the host's native lifecycle; a
+skill does not add capability or authorize provider substitution.
+
+## Native execution
+
+Use native host tools for new advisory work. Advice does not grant permission
+or launch workers. Preserve ownership and observe completion before handing a
+surface to another writer. Old governed runs require explicit recovery.
+
+When using the Development System resolver, use the real argument array for
+the parent-selected model and verify the host's supported model and effort.
+Record observed runtime identity before claiming resolution. The resolver
+grants no permissions or publication authority.
+
+For a typed quota or availability failure, retain one bounded observation and
+respect the user's provider and family constraints. Do not retry the same
+unavailable provider without a changed observation.
+
+For T3-owned child tasks use native subagents or delegate_task with the live
+provider catalog; T3 owns task cancellation and completion events. Never route
+these tasks through run-worker. Optional external CLI process recovery retains
+its exact owner and confinement checks; it grants no source-writing permission.
+Process completion does not prove correctness. Other hosts use their native
+cancellation lifecycle.
+
+## Optional Headroom launch
+
+Headroom runs only when explicitly invoked with the private configuration. Preserve the caller-selected model, effort, service tier, sandbox and approval mode. It forwards the supplied Codex arguments and only selects its per-invocation provider. Native usage and actual descendant identities need independent evidence; proxy counters are not a savings claim. Use launch and completion events, with bounded readiness and cancellation. See the installed runtime README.

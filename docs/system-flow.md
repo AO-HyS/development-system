@@ -53,6 +53,7 @@ skill ni orden de trabajo es obligatorio.
 - Fable 5.2 queda fuera de la rutina.
 - Opus 5.5, Sonnet 5.5 y Haiku 5.5 (`claude-haiku-5-5`): los agentes con nombre conservan su modelo; ninguno es obligatorio.
 - Terra 6.1 fast (prioridad): uso de computadora y navegador para lo que QuickE2E y Playwright no alcanzan.
+- Claude Code, forma AF (4.1.0): el padre administra; `escritor-rapido` (Sonnet 5.5 medium) escribe el producto y un `verificador-pantalla` fresco (Sonnet 5.5 medium, Browse por MCP) prueba los renglones de pantalla. Los pasos están en `~/.claude/rules/orchestration.md` y en `flow-implement/references/forma-af.md`; sin otra lectura de modelos dentro de la corrida. Codex no cambia.
 
 El guard del roster y la puerta de cierre ya no están conectados. Lo que pasa
 cada cambio está en [listo.md](listo.md): el nivel sale de `config/niveles.json`

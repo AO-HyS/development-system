@@ -42,6 +42,13 @@ unreconciled drift; `recover-shared` resumes an interrupted transaction. Process
 death releases the lock. Unrelated HOME files, credentials, private transcripts,
 product checkouts and paid infrastructure are outside this managed scope.
 
+Since 4.1.0, `development-system claude-light apply <repo>` writes one file
+outside HOME: it merges a light Claude Code profile into
+`<repo>/.claude/settings.local.json` from the four profiles inside the package.
+`rollback` does not find or restore it. The way back is two steps:
+`claude-light undo <repo>` in each repository where it was applied, then
+`rollback`; open a new thread after either.
+
 `doctor` identifies the actual invoked package, active package, contract/catalog
 pair and managed drift. Completion reports reject a CLI that differs from the
 active shared installation; `document --mode historical` is an explicit exception

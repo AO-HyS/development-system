@@ -1,5 +1,14 @@
 # Current work
 
+## 4.1.0 — the AF way of working (in progress, branch `feat/ds-410-forma-af`)
+
+- Owner, 2026-11-19, after the hill climb summary: «Creo que con estos resultados ya podemos decir que estamos listos… qué tenemos que cambiar, qué cambiamos, cómo va a salir la nueva versión.» Then: «Está increíble esto. Vamos a continuar con lo que hiciste. Adelante. Saben la división… vamos a seguir todas tus recomendaciones. Adelante.»
+- Measured on local Barber copies (two tickets, one run each, Claude Code with an Opus 5.5 High parent): DS 4.0.0 as installed 6.7, form AF 9.3 on the same measure and 9.7 on the final one (v4.1, every finding adjudicated by Sol). Data: `~/.development-system/private/medicion-20261118/datos.json`, log `~/.development-system/private/banco/registro.txt`.
+- Approved split: the generic AF way goes to the DS for every repository (the parent manages and does not write product code, a Sonnet writer and a Sonnet screen verifier, light start per repository, the XState table and lockfile helpers, no other model's read inside the run); the XState machine-shape rules go only to Barber; everything else stays. The Codex host does not change in this version.
+- Approved recommendations: before publishing, run AF on one new real ticket of NutriPlan or Planeta Aula, launched by the owner; production only with his explicit answer.
+- Plan: Sol 6.1 High writes it, a fresh Opus 5.5 reviews it (`~/.development-system/private/cross-review/ds-410-forma-af/`).
+- Built (W1, uncommitted, sin verificar): agents `escritor-rapido` and `verificador-pantalla` in the roster; the AF steps in the Claude-only rule from `hostProfiles.instructions.claudeRule` (page unchanged at 4.0.0 bytes); skills `flow-implement` (with `references/forma-af.md`), `coding-orchestration`, `behavioral-evidence` and `verificar` under `artifacts/4.1.0/`; helpers `runtime/forma-af/tabla-maquina.mjs` and `lock-solo.py`; builder `scripts/build-release-410.mjs` (catalog 0.86.0, page ≤ 7,956 and rule ≤ 2,500 bytes); ADR 0075.
+
 ## 4.0.0 — how an ask runs (catalog 0.85.0; released and installed on 2026-11-18)
 
 - Owner requests, verbatim. The goal (2026-11-17): «Creo que Browser por NCP es lo mejor, entonces vamos a utilizarlo para las verificaciones. Ya no hace falta testear nada más… Tiene que, por lo menos, darnos la misma calificación que obtuvimos en la mejor versión del development system… Ya limpiamos los scripts y queremos que carguen. Realmente no queremos un loop infinito de reviews. Todo debería ser todo lo que se pueda capturar con lint rules» (dictated: «NCP» is MCP, «scripts» are skills). The approval: «in your own words, aparte de decir lo que entendiste, das una definición de don. También tiene un pedacito donde pregunta cómo es que lo mejoraría… lo que tiene ahora no hay ningún problema. Lo podemos mejorar, pero sin perder lo que ya nos está dando. Entonces, ya inicia a implementar todo.»

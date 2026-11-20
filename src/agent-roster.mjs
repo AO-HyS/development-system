@@ -68,6 +68,7 @@ export function validateAgentRoster(input) {
     else {
       const instructions = profiles.instructions;
       if (!isRecord(instructions) || !nonEmpty(instructions.shared) || !nonEmpty(instructions.codex) || !nonEmpty(instructions.claude)) errors.push('hostProfiles.instructions requires shared, codex and claude sections');
+      else if (instructions.claudeRule !== undefined && !nonEmpty(instructions.claudeRule)) errors.push('hostProfiles.instructions.claudeRule must be a non-empty Claude-only rule');
       const codex = profiles.codex;
       if (!isRecord(codex) || !isRecord(codex.roles) || Object.keys(codex.roles).length === 0) errors.push('hostProfiles.codex.roles must be non-empty');
       else for (const [name, role] of Object.entries(codex.roles)) {
@@ -113,8 +114,22 @@ export function validateAgentRoster(input) {
           if (role.writer === true) {
             if (Array.isArray(policy.readOnlyModels) && policy.readOnlyModels.includes(role.model)) errors.push(`Writer model is read-only: ${name}`);
             if (!String(template).includes('roster-guard.mjs" writer-bash')) errors.push(`Writer Git protection missing: ${name}`);
-            if (role.model === 'sonnet' && !['mechanical-worker', 'exact-implementer', 'implementer'].includes(name)) errors.push(`Sonnet writer must be a named protected role: ${name}`);
+            if (/^(?:sonnet$|claude-sonnet-)/.test(String(role.model)) && !['mechanical-worker', 'exact-implementer', 'implementer', 'escritor-rapido'].includes(name)) errors.push(`Sonnet writer must be a named protected role: ${name}`);
           }
+        }
+        // AF (4.1.0): a pinned Sonnet 5.5 medium writer and a read-only screen verifier with exactly these tools.
+        /** @type {Record<string, {writer: boolean, tools: string}>} */
+        const afRoles = {
+          'escritor-rapido': { writer: true, tools: 'Read, Edit, Write, Bash, Grep, Glob' },
+          'verificador-pantalla': { writer: false, tools: 'Bash, Read, Write, mcp__browse__execute, mcp__browse__session_new, mcp__browse__session_delete, mcp__browse__session_reset, mcp__browse__status' },
+        };
+        for (const [name, expected] of Object.entries(afRoles)) {
+          const role = /** @type {Record<string, unknown>} */ (policy.roster)[name];
+          if (role === undefined) continue;
+          const template = String(claude.agents[name] ?? '');
+          if (!isRecord(role) || role.model !== 'claude-sonnet-5-5' || role.writer !== expected.writer || (!expected.writer && role.sourceWrites !== false)) errors.push(`AF role boundary mismatch: ${name}`);
+          if (!template.includes('effort: medium\n') || !template.includes(`tools: ${expected.tools}\n`) || /^disallowedTools:|^tools:.*\b(?:Agent|Task|NotebookEdit)\b/m.test(template)) errors.push(`AF role template mismatch: ${name}`);
+          if (!expected.writer && /^tools:.*\bEdit\b/m.test(template)) errors.push(`AF verifier must not edit: ${name}`);
         }
         for (const name of Object.keys(claude.agents)) if (!(name in /** @type {Record<string, unknown>} */ (policy.roster))) errors.push(`Claude template lacks role: ${name}`);
       }

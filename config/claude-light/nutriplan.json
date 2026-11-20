@@ -1,0 +1,41 @@
+{
+  "profile": "nutriplan",
+  "remotes": [
+    "AO-HyS/nutri-plan"
+  ],
+  "keep": {
+    "skills": [
+      "in-your-own-words",
+      "flow-implement",
+      "coding-orchestration",
+      "verificar",
+      "diagnosing-bugs",
+      "convex",
+      "convex-functions",
+      "convex-best-practices",
+      "convex-realtime",
+      "nutriplan-auth",
+      "nutriplan-convex",
+      "nutriplan-deployment",
+      "nutriplan-email",
+      "nutriplan-frontend",
+      "nutriplan-routing",
+      "nutriplan-verification",
+      "verify-nutriplan",
+      "verify-appointments",
+      "verify-billing",
+      "verify-clinical-access",
+      "verify-consultations",
+      "verify-private-media",
+      "verify-record-exports"
+    ],
+    "plugins": [
+      "convex@claude-plugins-official",
+      "linear@claude-plugins-official"
+    ],
+    "mcp": [
+      "browse",
+      "t3-code"
+    ]
+  }
+}

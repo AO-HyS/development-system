@@ -15,6 +15,7 @@ they are installed to be used when they make the work faster or better.
 - Fable 5.2: not part of the routine.
 - Opus 5.5, Sonnet 5.5 and Haiku 5.5 (pinned `claude-haiku-5-5`): the named Claude Code agents keep their pinned models; none is mandatory.
 - Terra 6.1 fast (`serviceTier` priority): computer use and browser work for what QuickE2E and Playwright cannot reach.
+- Claude Code, the AF way (4.1.0): the parent manages; `escritor-rapido` (Sonnet 5.5 medium) writes product code and one fresh `verificador-pantalla` (Sonnet 5.5 medium, Browse by MCP) proves the screen lines. The steps are in `~/.claude/rules/orchestration.md` and `flow-implement/references/forma-af.md`; no other model read inside the run. Codex keeps its routing.
 
 The roster guard and the stop gate are no longer wired. What a change goes
 through is in [listo.md](listo.md): the level from `config/niveles.json`, Codex
