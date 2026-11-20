@@ -145,7 +145,7 @@
       "writer": false,
       "sourceWrites": false,
       "jev": false,
-      "family": "browser",
+      "family": "verify",
       "tier": "sonnet"
     }
   },
@@ -176,6 +176,7 @@
   "imageBudget": {
     "main": 2,
     "visual-reviewer": 12,
+    "verificador-pantalla": 12,
     "ui-implementer": 5,
     "senior-implementer": 5,
     "browser-qa": 2,

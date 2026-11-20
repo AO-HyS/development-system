@@ -53,7 +53,7 @@
       "sourcePath": "config/4.1.0/agent-roster.json",
       "destination": ".codex/development-system/agent-roster.json",
       "harness": "codex",
-      "sha256": "754dbb795051fa0f4deef6a3b9abaaf46759804ad0f35a73efcaee921a319baa",
+      "sha256": "28a48e49b62239ce8904d60435bdc0d93d2845f892c31487a21f7e3deebf55f3",
       "expectedMirrorOf": null
     },
     {
@@ -617,10 +617,10 @@
     {
       "id": "claude-orchestration-roster-guard-mjs.claude",
       "logicalName": "claude-orchestration-roster-guard-mjs",
-      "sourcePath": "artifacts/4.0.0/runtime/claude-orchestration/roster-guard.mjs",
+      "sourcePath": "artifacts/4.1.0/runtime/claude-orchestration/roster-guard.mjs",
       "destination": ".codex/development-system/runtime/claude-orchestration/roster-guard.mjs",
       "harness": "claude",
-      "sha256": "8cae122d9cb372be36c662e4a028a3250a27fe4aaebd036acffa5c7d385aa99a",
+      "sha256": "afcc3c8c33faa5c5fab666db6ead9865e4e663e33f01d29268e5a5a3e0b0f78b",
       "expectedMirrorOf": null
     },
     {
@@ -629,7 +629,7 @@
       "sourcePath": "artifacts/4.1.0/runtime/claude-orchestration/policy.json",
       "destination": ".codex/development-system/runtime/claude-orchestration/policy.json",
       "harness": "claude",
-      "sha256": "e0b1082459a94b77af0a8de6a71a0a44deb86211003a5fe48ab84b03d0b4b622",
+      "sha256": "423772b0c0812f12a505a91bc5f5dd888a383414c8bf7720f17f9a34d6ee37da",
       "expectedMirrorOf": null
     },
     {
@@ -899,7 +899,7 @@
       "sourcePath": "artifacts/4.1.0/runtime/forma-af/lock-solo.py",
       "destination": ".codex/development-system/runtime/forma-af/lock-solo.py",
       "harness": "claude",
-      "sha256": "675c0550e92eeee53a8441a493b31cab6b4a533bd9bdd00dfed7855e906e18de",
+      "sha256": "23d78409cc9bd2b8cf6822e3d3034a067b7b920275a99dd04627b9221a4f8c7e",
       "expectedMirrorOf": null
     }
   ],

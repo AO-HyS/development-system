@@ -10,7 +10,7 @@
 import { createHash } from "node:crypto";
 import {
   chmodSync, closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync,
-  realpathSync, renameSync, rmSync, rmdirSync, unlinkSync, writeSync,
+  realpathSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeSync,
 } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -148,11 +148,20 @@ function isIgnored(root, relative) {
   throw new Error(`claude-light: git check-ignore failed for ${relative}; nothing was written`);
 }
 
-/** @param {string} root */
+/**
+ * The file to edit for .git/info/exclude. A link is followed, so the link stays and its target keeps its own mode.
+ * @param {string} root
+ */
 function excludePath(root) {
   const resolved = git(root, ["rev-parse", "--git-path", "info/exclude"]).stdout.trim();
   if (!resolved) throw new Error("claude-light: cannot locate .git/info/exclude; nothing was written");
-  return path.resolve(root, resolved);
+  const file = path.resolve(root, resolved);
+  const stat = lstatOrUndefined(file);
+  if (stat?.isSymbolicLink()) {
+    try { return realpathSync(file); } catch { throw new Error("claude-light: .git/info/exclude is a broken link; nothing was written"); }
+  }
+  if (stat && !stat.isFile()) throw new Error("claude-light: .git/info/exclude is not a regular file; nothing was written");
+  return file;
 }
 
 /** @param {string} root @param {string} line */
@@ -161,7 +170,7 @@ function addExcludeLine(root, line) {
   mkdirSync(path.dirname(file), { recursive: true });
   const current = existsSync(file) ? readFileSync(file, "utf8") : "";
   if (current.split("\n").includes(line)) return false;
-  writeAtomic(file, `${current}${current === "" || current.endsWith("\n") ? "" : "\n"}${line}\n`, existsSync(file) ? lstatSync(file).mode & 0o777 : 0o644);
+  writeAtomic(file, `${current}${current === "" || current.endsWith("\n") ? "" : "\n"}${line}\n`, existsSync(file) ? statSync(file).mode & 0o777 : 0o644);
   return true;
 }
 
@@ -173,7 +182,21 @@ function removeExcludeLine(root, line) {
   const index = lines.indexOf(line);
   if (index < 0) return;
   lines.splice(index, 1);
-  writeAtomic(file, lines.join("\n"), lstatSync(file).mode & 0o777);
+  writeAtomic(file, lines.join("\n"), statSync(file).mode & 0o777);
+}
+
+/**
+ * Refuses when a folder between the repository root and `relative` is a link or not a folder, so nothing is read,
+ * written or deleted outside the checkout through a parent link.
+ * @param {string} root @param {string} relative
+ */
+function assertPlainParents(root, relative) {
+  let current = root;
+  for (const part of path.dirname(relative).split(path.sep).filter((piece) => piece && piece !== ".")) {
+    current = path.join(current, part);
+    const stat = lstatOrUndefined(current);
+    if (stat && (stat.isSymbolicLink() || !stat.isDirectory())) throw new Error(`claude-light: ${path.relative(root, current)} is a link or not a directory; nothing was written`);
+  }
 }
 
 /** @param {string} directory @returns {{[name: string]: string} | undefined} */
@@ -207,6 +230,8 @@ export function applyClaudeLight({ root: requested, home = homedir(), agentsFrom
   if (targetStat && (targetStat.isSymbolicLink() || !targetStat.isFile())) throw new Error(`claude-light: ${SETTINGS_RELATIVE} is a link or not a regular file; nothing was written`);
   const sources = agentsFrom === undefined ? undefined : findAgentSources(agentsFrom);
   if (agentsFrom !== undefined && !sources) throw new Error(`claude-light: ${agentsFrom} does not hold ${AGENT_NAMES.map((name) => `${name}.md`).join(" and ")}; nothing was written`);
+  if (sources) assertPlainParents(root, path.join(".claude/agents", `${AGENT_NAMES[0]}.md`));
+  excludePath(root);
 
   const location = stateLocation(home, root, profile.profile);
   const previousBytes = targetStat ? readFileSync(target) : undefined;
@@ -305,6 +330,9 @@ export function undoClaudeLight({ root: requested, home = homedir() }) {
   const location = stateLocation(home, root, profile.profile);
   if (!existsSync(location.state)) throw new Error(`claude-light: no apply is recorded for ${root}; nothing was written`);
   const state = readState(location.state);
+  assertPlainParents(root, SETTINGS_RELATIVE);
+  for (const record of state.agents) assertPlainParents(root, record.path);
+  excludePath(root);
   const target = path.join(root, SETTINGS_RELATIVE);
   const stat = lstatOrUndefined(target);
   if (stat && (stat.isSymbolicLink() || !stat.isFile())) throw new Error(`claude-light: ${SETTINGS_RELATIVE} is a link or not a regular file; nothing was written`);

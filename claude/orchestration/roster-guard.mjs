@@ -528,6 +528,13 @@ async function agentCall() {
       if (/^\s*(Owned paths|Writer|Source writes):/mi.test(prompt) || ti.writer === true) deny('Primary visual review is independent read-only critique; source ownership is forbidden.', { ...entry, blockedBy: 'primary-visual-ownership' });
       allow(null, { ...entry, jev: 'skipped', why: 'fresh independent primary visual critique' });
     }
+    // 4.1.0 (AF): the screen verifier is its own family, not the Terra computer-use fallback. It is admitted fresh
+    // and read-only; every browser, review and visual fallback keeps its receipt.
+    if (role.family === 'verify') {
+      if (ti.resume !== undefined) deny(`${type} proves screen lines in a fresh context; resume is forbidden.`, { ...entry, blockedBy: 'verify-fresh' });
+      if (/^\s*(Owned paths|Writer|Source writes):/mi.test(prompt) || ti.writer === true || role.sourceWrites !== false) deny(`${type} never owns source paths; send fixes to the writer.`, { ...entry, blockedBy: 'verify-ownership' });
+      allow(null, { ...entry, jev: 'skipped', why: 'fresh AF screen verifier' });
+    }
     const fallbackReason = prompt.match(/^\s*Codex fallback:\s*(\S.*)$/m)?.[1]?.slice(0, 300) ?? null;
     if (role.family === 'browser' && !fallbackLine) deny(`${type} is a fallback: computer use (changing dashboards or tools, testing the real app) runs on Terra 6.1 fast through node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs --computer-use --packet <file> --root <repo> (low effort; add --flow browser-testing for real-app testing on high or --flow video for recordings on medium), with Bash run_in_background: true. Claude Code wakes you when it exits: do not poll or sleep. Use browser-qa only when Codex fails or has no quota, with a "Codex fallback: <reason>" line.`, { ...entry, blockedBy: 'codex-computer-use' });
     if (['review', 'visual'].includes(role.family) && !fallbackEnvelope) deny(`${type} is a receipt-bound fallback. ${launch}`, { ...entry, blockedBy: 'codex-review' });
