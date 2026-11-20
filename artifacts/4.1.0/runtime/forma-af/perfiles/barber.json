@@ -1,0 +1,42 @@
+{
+  "profile": "barber",
+  "remotes": [
+    "AO-HyS/the-barber-central"
+  ],
+  "keep": {
+    "skills": [
+      "in-your-own-words",
+      "flow-implement",
+      "coding-orchestration",
+      "verificar",
+      "diagnosing-bugs",
+      "convex",
+      "convex-functions",
+      "convex-best-practices",
+      "convex-realtime",
+      "barber-auth",
+      "barber-convex",
+      "barber-deployment",
+      "barber-email",
+      "barber-frontend",
+      "barber-improve",
+      "barber-routing",
+      "barber-stripe",
+      "verify-the-barber-central",
+      "verify-appointments",
+      "verify-broker",
+      "verify-outbound-effects",
+      "verify-reset-media",
+      "verify-signup",
+      "verify-webhooks"
+    ],
+    "plugins": [
+      "convex@claude-plugins-official",
+      "linear@claude-plugins-official"
+    ],
+    "mcp": [
+      "browse",
+      "t3-code"
+    ]
+  }
+}

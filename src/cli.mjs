@@ -415,6 +415,8 @@ const COMMAND_TABLE = [
   ["test-grants", COMMON_OPTIONS],
   ["check-agents-rules", "[<file>...] [--base <ref>] [--head <ref>] [--root <dir>] [--allow <rule>]... [--threshold N] [--json]"],
   ["check-lint-floor", "[--root <dir>] [--snapshot <file> | --write <file>] [--allow <rule>]... [--json]"],
+  ["claude-light apply", "<repo-absoluto> [--agentes <carpeta-del-candidato>] [--home <dir>] [--json] (4.1.0: merges light-start reduction keys into <repo>/.claude/settings.local.json with a backup; --agentes also places the two temporary agents)"],
+  ["claude-light undo", "<repo-absoluto> [--home <dir>] [--json] (restores the exact previous bytes only while the file is still what apply wrote; otherwise refuses without writing)"],
   ["clean-cache", "<cache entry> [--dry-run] [--home <dir>] [--json] (allowlisted regenerable caches; moves to the Trash)"],
   ["quicke2e", "install | status | discover|check|run <args> [--repo <checkout>] (pinned QuickE2E; run writes a hashed run.json)"],
   ["check-file-size", "[--root <dir>] [--base <ref>] [--json] (staged by default; optional .file-size-budget.json)"],
@@ -489,7 +491,7 @@ const COMMAND_TABLE = [
 ];
 
 /** Command groups whose leaf subcommands are listed individually, so `mistake --help` still resolves. */
-const COMMAND_GROUPS = ["mistake", "friction", "evidence", "review", "governance", "browser-pool"];
+const COMMAND_GROUPS = ["mistake", "friction", "evidence", "review", "governance", "browser-pool", "claude-light"];
 
 function topLevelUsage() {
   const names = [...new Set(COMMAND_TABLE.map(([path]) => path.split(" ")[0]))];
@@ -594,6 +596,10 @@ async function runCommand(argv) {
     const result = { ok: true, ...checkLintFloor({ root, snapshot: values.snapshot && resolve(values.snapshot), write: values.write && resolve(values.write), allow }) };
     result.ok = result.valid;
     return { result, output: json ? JSON.stringify(result) : formatLintFloor(result), json };
+  }
+  if (argv[0] === "claude-light") {
+    rejectUnlistedSubcommand(argv);
+    return (await import("./claude-light.mjs")).runClaudeLightCommand(argv.slice(1));
   }
   if (argv[0] === "quicke2e") return (await import("./quicke2e.mjs")).runQuicke2eCommand(argv.slice(1));
   if (argv[0] === "skills-upstream") return (await import("./skills-upstream.mjs")).runSkillsUpstreamCommand(argv.slice(1));
