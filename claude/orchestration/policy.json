@@ -130,6 +130,23 @@
       "family": "browser",
       "tier": "opus_low",
       "jev": false
+    },
+    "escritor-rapido": {
+      "model": "claude-sonnet-5-5",
+      "route": "exact_implementation",
+      "writer": true,
+      "jev": false,
+      "family": "implement",
+      "tier": "sonnet"
+    },
+    "verificador-pantalla": {
+      "model": "claude-sonnet-5-5",
+      "route": "browser_executor",
+      "writer": false,
+      "sourceWrites": false,
+      "jev": false,
+      "family": "verify",
+      "tier": "sonnet"
     }
   },
   "builtinsAllowed": [
@@ -159,6 +176,7 @@
   "imageBudget": {
     "main": 2,
     "visual-reviewer": 12,
+    "verificador-pantalla": 12,
     "ui-implementer": 5,
     "senior-implementer": 5,
     "browser-qa": 2,
