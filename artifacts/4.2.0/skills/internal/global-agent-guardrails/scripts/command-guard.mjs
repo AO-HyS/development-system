@@ -1864,8 +1864,12 @@ function checkTarget(word, kind, ctx, effect) {
     }
   }
   if (!matchedRoot && ctx.strictAntigravity) {
+    const posixAbsolute = absolute.replaceAll(sep, "/").replace(/^\/+/u, "");
     const baseRel = basename(absolute);
-    if (testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(baseRel)) && !(grantable(word, text, ctx) && grantedTestWrite(absolute))) {
+    if (
+      testFilePatterns.some((/** @type {RegExp} */ pattern) => pattern.test(posixAbsolute) || pattern.test(baseRel)) &&
+      !(grantable(word, text, ctx) && grantedTestWrite(absolute))
+    ) {
       throw new Block("test-file-write", `${structural["test-file-write"]} Target: ${absolute}`);
     }
   }
@@ -6292,6 +6296,32 @@ function secretText(text) {
   return secretRoots.some((root) => text.includes(root.tail));
 }
 
+/** Protected parent directories whose recursive copy/archive/search would sweep up Antigravity OAuth tokens or secrets. */
+const protectedSecretContainers = [
+  ...forms(join(HOME, ".t3", "userdata", "providers", "antigravity")),
+  ...forms(join(HOME, ".t3", "userdata", "providers")),
+  ...forms(join(HOME, ".gemini", "antigravity")),
+  ...forms(join(HOME, ".gemini", "antigravity-cli")),
+  ...forms(join(HOME, ".mcp-auth")),
+];
+
+/** Convert a shell path glob (`*`, `?`, `[...]`) into a regex matching any concrete path it could expand to. @param {string} globPath */
+function globPathRegex(globPath) {
+  let out = "^";
+  for (let i = 0; i < globPath.length; i += 1) {
+    const ch = globPath[i];
+    if (ch === "*") out += globPath[i + 1] === "*" ? (i += 1, ".*") : "[^/]*";
+    else if (ch === "?") out += "[^/]";
+    else if (ch === "[") {
+      const close = globPath.indexOf("]", i + 1);
+      if (close > i + 1) { out += globPath.slice(i, close + 1); i = close; }
+      else out += "\\[";
+    } else out += ch.replace(/[.+^${}()|\\]/gu, "\\$&");
+  }
+  out += "$";
+  try { return new RegExp(out, foldCase ? "iu" : "u"); } catch { return null; }
+}
+
 /** Whether a word (or the value after any `=` in it, as in `--file=…`) is a path in a secrets folder or credential store. @param {string} value @param {Context} ctx */
 function secretPath(value, ctx) {
   /** @type {string[]} */
@@ -6311,6 +6341,20 @@ function secretPath(value, ctx) {
     const candidateForms = forms(absolute);
     if (secretRoots.some((root) => root.forms.some((form) => candidateForms.some((candidate) => candidate === form || candidate.startsWith(`${form}${sep}`))))) return true;
     if (candidateForms.some((candidate) => dynamicSecretPatterns.some((pattern) => pattern.test(candidate)))) return true;
+    // Block copying/archiving/searching known OAuth/secret container directories directly (e.g. `cp -r ~/.t3/userdata/providers/antigravity ...`).
+    if (protectedSecretContainers.some((container) => candidateForms.some((candidate) => candidate === container))) return true;
+    // Block shell globs (`*`, `?`, `[...]`) that can match any secret root or dynamic Antigravity OAuth store.
+    if (/[*?[]/u.test(text)) {
+      const rx = globPathRegex(absolute);
+      if (rx) {
+        if (secretRoots.some((root) => root.forms.some((form) => rx.test(form)))) return true;
+        if (protectedSecretContainers.some((container) => rx.test(container))) return true;
+        // Also test against a synthetic ACP profile token path so `.../.t3/userdata/providers/antigravity/*/antigravity-acp/*` is blocked even before any profile exists.
+        if (rx.test(join(HOME, ".t3", "userdata", "providers", "antigravity", "profile", "antigravity-acp", "antigravity-oauth-token"))) return true;
+        if (rx.test(join(HOME, ".gemini", "antigravity", "antigravity-oauth-token"))) return true;
+        if (rx.test(join(HOME, ".gemini", "antigravity-cli", "antigravity-oauth-token"))) return true;
+      }
+    }
   }
   return false;
 }

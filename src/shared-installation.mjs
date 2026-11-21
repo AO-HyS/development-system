@@ -412,13 +412,20 @@ async function restore(home, journal, requireAfter) {
   }
 
   const backupRoot = await confined(home, journal.backupRoot);
-  /** @type {Map<string, {bytes: Buffer, mode: number}>} */
-  const surgicalPayloads = new Map();
 
-  for (const entry of journal.entries) {
+  for (const [index, entry] of journal.entries.entries()) {
     const target = await confined(home, entry.path, true);
     const backup = await confined(home, `${journal.backupRoot}/${entry.backup}`, true);
     if (entry.before !== null && await integrity(backup) !== entry.before) throw new Error(`Recovery backup integrity mismatch: ${entry.path}`);
+    if (entry.surgicalBackup) {
+      if (entry.surgicalBackup !== `surgical/${index}` || !/^[a-f0-9]{64}$/.test(entry.surgicalTarget ?? '')) {
+        throw new Error(`Invalid persisted surgical backup metadata: ${entry.path}`);
+      }
+      const surgicalFile = await confined(home, `${journal.backupRoot}/${entry.surgicalBackup}`, true);
+      if (await integrity(surgicalFile) !== entry.surgicalTarget) {
+        throw new Error(`Persisted surgical backup integrity mismatch: ${entry.path}`);
+      }
+    }
     const actual = await integrity(target);
     if (entry.surgicalTarget && actual === entry.surgicalTarget) continue;
     if (requireAfter && actual !== entry.after && actual !== entry.before && !(journal.restoring === entry.path && actual === null)) {
@@ -434,8 +441,21 @@ async function restore(home, journal, requireAfter) {
           if (entry.surgicalTarget && entry.surgicalTarget !== expectedSurgicalHash) {
             throw new Error(`Concurrent managed drift blocks rollback: ${entry.path}`);
           }
+          // Persist surgical payload durably inside backupRoot BEFORE mutating live targets so
+          // recovery after a crash mid-swap never drops owner edits (Codex P2 / Opus N1).
+          const surgicalRel = `surgical/${index}`;
+          const surgicalDest = await confined(home, `${journal.backupRoot}/${surgicalRel}`, true);
+          await mkdir(dirname(surgicalDest), { recursive: true, mode: 0o700 });
+          const tempSurgical = `${surgicalDest}.${randomUUID()}.tmp`;
+          await writeFile(tempSurgical, surgicalBytes, { mode });
+          await chmod(tempSurgical, mode);
+          await rename(tempSurgical, surgicalDest);
+          if (await integrity(surgicalDest) !== expectedSurgicalHash) {
+            throw new Error(`Persisted surgical payload integrity mismatch: ${entry.path}`);
+          }
+          entry.surgicalBackup = surgicalRel;
+          entry.surgicalMode = mode;
           entry.surgicalTarget = expectedSurgicalHash;
-          surgicalPayloads.set(entry.path, { bytes: surgicalBytes, mode });
           continue;
         }
       }
@@ -443,7 +463,7 @@ async function restore(home, journal, requireAfter) {
     }
   }
 
-  // Persist phase and any computed surgicalTarget hashes atomically BEFORE any disk mutation.
+  // Persist phase and any computed surgicalTarget + surgicalBackup fields atomically BEFORE any disk mutation.
   journal.phase = 'restoring';
   await atomicJson(await confined(home, journalPath), journal);
 
@@ -469,10 +489,8 @@ async function restore(home, journal, requireAfter) {
     journal.restoring = entry.path;
     await atomicJson(await confined(home, journalPath), journal);
     const stage = resolve(backupRoot, `restore-${randomUUID()}`);
-    if (surgicalPayloads.has(entry.path)) {
-      const payload = /** @type {{bytes: Buffer, mode: number}} */ (surgicalPayloads.get(entry.path));
-      await writeFile(stage, payload.bytes, { mode: payload.mode });
-      await chmod(stage, payload.mode);
+    if (entry.surgicalBackup) {
+      await cp(await confined(home, `${journal.backupRoot}/${entry.surgicalBackup}`, true), stage, { recursive: true, dereference: false, verbatimSymlinks: true });
       if (await integrity(stage) !== entry.surgicalTarget) throw new Error(`Staged surgical recovery integrity mismatch: ${entry.path}`);
     } else if (entry.before !== null) {
       await cp(await confined(home, `${journal.backupRoot}/${entry.backup}`, true), stage, { recursive: true, dereference: false, verbatimSymlinks: true });
@@ -482,7 +500,7 @@ async function restore(home, journal, requireAfter) {
     // destination could be interrupted with a partial hash that cannot resume.
     const trash = resolve(backupRoot, `retired-${randomUUID()}`);
     if (await statOrNull(target)) await rename(target, trash);
-    if (surgicalPayloads.has(entry.path) || entry.before !== null) {
+    if (entry.surgicalBackup || entry.before !== null) {
       await mkdir(dirname(target), { recursive: true, mode: 0o700 });
       await rename(stage, target);
     }

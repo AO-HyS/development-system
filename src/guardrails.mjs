@@ -471,6 +471,11 @@ export async function auditGlobalGuardrails({ home }) {
         if (spend.status !== 2) problems.push(`${adapter.label} guard did not stop the MCP purchase probe`);
         const read = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_vercel_vercel__list_projects", cwd: resolvedHome, tool_input: {} }, resolvedHome);
         if (read.status !== 0) problems.push(`${adapter.label} guard did not allow the MCP read probe`);
+        // Policy 2.0.0 (DS 4.2.0): Claude plugin prefixes for new servers (Expo, Sentry, Cloudflare, Stripe) resolve to their stop rules.
+        const expoSpend = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_expo_expo__build_run", cwd: resolvedHome, tool_input: {} }, resolvedHome);
+        if (expoSpend.status !== 2) problems.push(`${adapter.label} guard did not stop the Claude plugin Expo spend probe`);
+        const sentrySpend = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_sentry_sentry__create_project", cwd: resolvedHome, tool_input: {} }, resolvedHome);
+        if (sentrySpend.status !== 2) problems.push(`${adapter.label} guard did not stop the Claude plugin Sentry spend probe`);
       }
     }
   }

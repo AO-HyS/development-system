@@ -293,6 +293,25 @@ export async function linkAntigravityProfile(options) {
         entry.afterHash = await integrity(targetPath);
       }
 
+      // If the profile was previously linked with MCP and is now re-linked with --sin-mcp,
+      // retain the prior MCP entry and carry its original backup into the new snapshot so
+      // `antigravity-unlink --include-mcp` can still restore the pre-link MCP config (Codex P2 / Opus N6).
+      const carriedEntries = [];
+      if (!mcpLinked) {
+        const priorMcp = /** @type {any} */ (priorEntriesByName.get(ANTIGRAVITY_MCP_ARTIFACT));
+        if (priorMcp && priorProfile?.snapshotRelative) {
+          let backup = null;
+          if (priorMcp.beforeHash !== null && priorMcp.backup) {
+            const priorBackup = await confined(home, `${priorProfile.snapshotRelative}/${priorMcp.backup}`, true);
+            if ((await integrity(priorBackup)) === priorMcp.beforeHash) {
+              backup = `entries/${entries.length}`;
+              await cp(priorBackup, resolve(snapshotRoot, backup), { recursive: true, dereference: false, verbatimSymlinks: true });
+            }
+          }
+          carriedEntries.push({ ...priorMcp, backup });
+        }
+      }
+
       const nextProfiles = { ...(previousState?.profiles ?? {}) };
       nextProfiles[selected.profileId] = {
         profileId: selected.profileId,
@@ -300,7 +319,7 @@ export async function linkAntigravityProfile(options) {
         linkedAt: new Date().toISOString(),
         snapshotId,
         snapshotRelative,
-        entries,
+        entries: [...entries, ...carriedEntries],
       };
       const nextState = {
         schemaVersion: 1,

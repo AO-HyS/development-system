@@ -149,6 +149,12 @@ function parseJson(text) {
  * @returns {Clasificacion}
  */
 export function classifyFiles({ config, files, content }) {
+  // Changing config/niveles.json itself can never merge as normal: it could lower levels or disable smoke.
+  for (const file of files) {
+    if (namesOf(file).includes(CONFIG_PATH)) {
+      return { nivel: "crítico", motivos: [{ file: CONFIG_PATH, regla: `cambio en ${CONFIG_PATH} (siempre crítico)` }] };
+    }
+  }
   if (!config) return { nivel: "normal", motivos: [{ file: "", regla: `sin ${CONFIG_PATH} en la rama base` }] };
   if (files.length === 0) return { nivel: "normal", motivos: [{ file: "", regla: "el PR no cambia archivos" }] };
   /** @type {Motivo[]} */

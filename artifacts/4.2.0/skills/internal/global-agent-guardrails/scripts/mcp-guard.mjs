@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 const policy = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "..", "references", "mcp-policy.json"), "utf8"));
 
-/** Map Antigravity/direct server names to their policy entries when Claude stored them under a plugin prefix. @type {Record<string, string>} */
+/** Bidirectional server aliases bridging Antigravity/Codex direct names and Claude plugin/connector prefixes. @type {Record<string, string>} */
 const SERVER_ALIASES = {
   vercel: "plugin_vercel_vercel",
   linear: "plugin_linear_linear",
@@ -23,6 +23,18 @@ const SERVER_ALIASES = {
   google_drive: "claude_ai_Google_Drive",
   notion: "claude_ai_Notion",
   "mercadopago-mcp-server": "mercadopago",
+  // Reverse aliases: Claude Code plugin/connector prefixes -> canonical keys added in 4.2.0
+  plugin_sentry_sentry: "sentry",
+  plugin_expo_expo: "expo",
+  plugin_cloudflare_cloudflare: "cloudflare",
+  claude_ai_Stripe: "stripe",
+  plugin_stripe_stripe: "stripe",
+  plugin_posthog_posthog: "posthog",
+  plugin_mercadopago_mercadopago: "mercadopago",
+  plugin_github_github: "github",
+  plugin_mobbin_mobbin: "mobbin",
+  plugin_context7_context7: "context7",
+  plugin_shadcn_shadcn: "shadcn",
 };
 
 /** All known server prefixes (direct keys + aliases), sorted longest-first for unambiguous `mcp_<server>_<tool>` splitting. */
