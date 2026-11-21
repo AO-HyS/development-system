@@ -6305,21 +6305,59 @@ const protectedSecretContainers = [
   ...forms(join(HOME, ".mcp-auth")),
 ];
 
-/** Convert a shell path glob (`*`, `?`, `[...]`) into a regex matching any concrete path it could expand to. @param {string} globPath */
-function globPathRegex(globPath) {
+/** Convert one shell path segment glob (`*`, `?`, `[...]`, `{a,b}`) into a regex with POSIX leading-dot semantics. @param {string} seg */
+function globSegmentRegex(seg) {
   let out = "^";
-  for (let i = 0; i < globPath.length; i += 1) {
-    const ch = globPath[i];
-    if (ch === "*") out += globPath[i + 1] === "*" ? (i += 1, ".*") : "[^/]*";
-    else if (ch === "?") out += "[^/]";
+  let i = 0;
+  // In POSIX/zsh, a leading wildcard (`*`, `?`) never matches a leading dot unless written literally.
+  if (seg.startsWith("*") || seg.startsWith("?")) {
+    out += "(?!\\.)";
+  }
+  while (i < seg.length) {
+    const ch = seg[i];
+    if (ch === "*") { out += "[^/]*"; i += 1; }
+    else if (ch === "?") { out += "[^/]"; i += 1; }
     else if (ch === "[") {
-      const close = globPath.indexOf("]", i + 1);
-      if (close > i + 1) { out += globPath.slice(i, close + 1); i = close; }
-      else out += "\\[";
-    } else out += ch.replace(/[.+^${}()|\\]/gu, "\\$&");
+      const close = seg.indexOf("]", i + 1);
+      if (close > i + 1) { out += seg.slice(i, close + 1); i = close + 1; }
+      else { out += "\\["; i += 1; }
+    } else if (ch === "{") {
+      const close = seg.indexOf("}", i + 1);
+      if (close > i + 1) {
+        const alts = seg.slice(i + 1, close).split(",").map((part) => part.replace(/[.+^${}()|[\]\\]/gu, "\\$&").replaceAll("*", "[^/]*").replaceAll("?", "[^/]"));
+        out += `(?:${alts.join("|")})`;
+        i = close + 1;
+      } else { out += "\\{"; i += 1; }
+    } else { out += ch.replace(/[.+^${}()|[\]\\]/gu, "\\$&"); i += 1; }
   }
   out += "$";
   try { return new RegExp(out, foldCase ? "iu" : "u"); } catch { return null; }
+}
+
+/**
+ * Whether a glob/brace path (`absolute`) can match a protected target or any path inside it.
+ * Checks segment-by-segment up to `targetSegs.length` (so wildcard paths into protected dirs
+ * are blocked while `ls ~/*` does not match dot-folders). @param {string} globAbs @param {string} targetAbs @param {boolean} isDir
+ */
+function globMatchesTargetOrDescendant(globAbs, targetAbs, isDir) {
+  const gSegs = globAbs.split(sep).filter(Boolean);
+  const tSegs = targetAbs.split(sep).filter(Boolean);
+  if (gSegs.length < tSegs.length) return false;
+  if (!isDir && gSegs.length !== tSegs.length) return false;
+  // Support `**` wildcard crossing segments conservatively.
+  if (gSegs.includes("**")) {
+    const prefix = gSegs.slice(0, gSegs.indexOf("**"));
+    if (prefix.length > tSegs.length) return false;
+    return prefix.every((seg, idx) => {
+      const rx = globSegmentRegex(seg);
+      return rx ? rx.test(tSegs[idx]) : false;
+    });
+  }
+  for (let idx = 0; idx < tSegs.length; idx += 1) {
+    const rx = globSegmentRegex(gSegs[idx]);
+    if (!rx || !rx.test(tSegs[idx])) return false;
+  }
+  return true;
 }
 
 /** Whether a word (or the value after any `=` in it, as in `--file=…`) is a path in a secrets folder or credential store. @param {string} value @param {Context} ctx */
@@ -6334,6 +6372,16 @@ function secretPath(value, ctx) {
       // `"$SOMEWHERE/.development-system/private/secrets/x"`: the written tail is enough.
       const tail = `/${text.slice(unknown + 1).replace(/^\/+/u, "")}`;
       if (secretRoots.some((root) => tail === root.tail || tail.startsWith(`${root.tail}/`) || tail.includes(`${root.tail}/`) || tail.endsWith(root.tail))) return true;
+      if (/\/(?:antigravity-oauth-token|cache\/acp-auth-state\.json|mcp-oauth(?:\/|$))/iu.test(tail)) return true;
+      // Also evaluate the full path with UNKNOWN replaced by `*` (covers brace expansions like `{p1,}` or `$VAR` mid-path).
+      if (unknown >= 0) {
+        const starText = text.replaceAll(UNKNOWN, "*");
+        const starAbs = starText === "~" || starText.startsWith("~/") ? homePath(starText) : resolve(ctx.cwd ?? ctx.scope, starText);
+        for (const candidate of forms(starAbs)) {
+          if (secretRoots.some((root) => root.forms.some((form) => globMatchesTargetOrDescendant(candidate, form, true)))) return true;
+          if (protectedSecretContainers.some((container) => globMatchesTargetOrDescendant(candidate, container, true))) return true;
+        }
+      }
       continue;
     }
     // A quoted `~/…` reaches the program unexpanded; it is read as the home folder all the same.
@@ -6343,16 +6391,20 @@ function secretPath(value, ctx) {
     if (candidateForms.some((candidate) => dynamicSecretPatterns.some((pattern) => pattern.test(candidate)))) return true;
     // Block copying/archiving/searching known OAuth/secret container directories directly (e.g. `cp -r ~/.t3/userdata/providers/antigravity ...`).
     if (protectedSecretContainers.some((container) => candidateForms.some((candidate) => candidate === container))) return true;
-    // Block shell globs (`*`, `?`, `[...]`) that can match any secret root or dynamic Antigravity OAuth store.
-    if (/[*?[]/u.test(text)) {
-      const rx = globPathRegex(absolute);
-      if (rx) {
-        if (secretRoots.some((root) => root.forms.some((form) => rx.test(form)))) return true;
-        if (protectedSecretContainers.some((container) => rx.test(container))) return true;
-        // Also test against a synthetic ACP profile token path so `.../.t3/userdata/providers/antigravity/*/antigravity-acp/*` is blocked even before any profile exists.
-        if (rx.test(join(HOME, ".t3", "userdata", "providers", "antigravity", "profile", "antigravity-acp", "antigravity-oauth-token"))) return true;
-        if (rx.test(join(HOME, ".gemini", "antigravity", "antigravity-oauth-token"))) return true;
-        if (rx.test(join(HOME, ".gemini", "antigravity-cli", "antigravity-oauth-token"))) return true;
+    // Block shell globs (`*`, `?`, `[...]`) and brace expansions (`{a,b}`) that can match any secret root,
+    // descendant inside a protected folder, or dynamic Antigravity OAuth store.
+    if (/[*?[{]/u.test(text)) {
+      const syntheticAcpToken = join(HOME, ".t3", "userdata", "providers", "antigravity", "profile", "antigravity-acp", "antigravity-oauth-token");
+      const syntheticGeminiToken = join(HOME, ".gemini", "antigravity", "antigravity-oauth-token");
+      const syntheticCliToken = join(HOME, ".gemini", "antigravity-cli", "antigravity-oauth-token");
+      for (const candidate of candidateForms) {
+        if (secretRoots.some((root) => root.forms.some((form) => globMatchesTargetOrDescendant(candidate, form, true)))) return true;
+        if (protectedSecretContainers.some((container) => globMatchesTargetOrDescendant(candidate, container, true))) return true;
+        if (
+          globMatchesTargetOrDescendant(candidate, syntheticAcpToken, false) ||
+          globMatchesTargetOrDescendant(candidate, syntheticGeminiToken, false) ||
+          globMatchesTargetOrDescendant(candidate, syntheticCliToken, false)
+        ) return true;
       }
     }
   }
