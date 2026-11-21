@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "desde": "8c7a1e919263a91c1dc8707d6d4ec1c52d255e0d",
+  "desde": "8c7a1e91ed4b5bd7f35eb675a61b396023f7c105",
   "critico": {
     "rutas": [
       "src/guardrails.mjs",
