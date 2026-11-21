@@ -2193,7 +2193,7 @@
           "harness": "codex",
           "sourceDirectory": "artifacts/4.2.0/skills/internal/global-agent-guardrails",
           "destination": ".agents/skills/global-agent-guardrails",
-          "folderSha256": "4e108791deb1ecbaa801c49473cfa954b9fd1dfb1589dc27e5d66698b7180b14",
+          "folderSha256": "6d201c53b8a3bdff9942afa18b17da5c2aad546c4fec24e0a3e6456a56139231",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -2204,7 +2204,7 @@
           "harness": "claude",
           "sourceDirectory": "artifacts/4.2.0/skills/internal/global-agent-guardrails",
           "destination": ".claude/skills/global-agent-guardrails",
-          "folderSha256": "4e108791deb1ecbaa801c49473cfa954b9fd1dfb1589dc27e5d66698b7180b14",
+          "folderSha256": "6d201c53b8a3bdff9942afa18b17da5c2aad546c4fec24e0a3e6456a56139231",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
@@ -2216,7 +2216,7 @@
           "harness": "antigravity",
           "sourceDirectory": "artifacts/4.2.0/skills/internal/global-agent-guardrails",
           "destination": ".gemini/config/skills/global-agent-guardrails",
-          "folderSha256": "4e108791deb1ecbaa801c49473cfa954b9fd1dfb1589dc27e5d66698b7180b14",
+          "folderSha256": "6d201c53b8a3bdff9942afa18b17da5c2aad546c4fec24e0a3e6456a56139231",
           "executableFiles": [
             "scripts/command-guard.mjs"
           ],
