@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "desde": "8c7a1e91ed4b5bd7f35eb675a61b396023f7c105",
+  "critico": {
+    "rutas": [
+      "src/guardrails.mjs",
+      "src/shared-installation.mjs",
+      "src/antigravity-link.mjs",
+      "src/listo.mjs",
+      "src/niveles.mjs",
+      "src/skills.mjs",
+      "src/core.mjs",
+      "artifacts/**/global-agent-guardrails/**",
+      "manifests/**",
+      "catalog/**",
+      "config/agent-roster.json",
+      "config/global-instructions.md",
+      "config/niveles.json"
+    ],
+    "contenido": []
+  },
+  "mecanico": {
+    "rutas": [
+      "docs/current-work.md",
+      "docs/adr/**"
+    ],
+    "soloBaja": []
+  },
+  "smoke": {
+    "rutas": [],
+    "aplica": false,
+    "motivo": "paquete CLI/contrato sin app web; verificación mediante --home aislado y sesiones reales de los hosts"
+  },
+  "comprobaciones": [
+    "pnpm run roster:check",
+    "pnpm run typecheck",
+    "pnpm run release:prepare",
+    "pnpm run check:no-tests"
+  ]
+}

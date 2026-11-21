@@ -21,7 +21,8 @@ import {
 } from "./lifecycle.mjs";
 import { createCommandDeliveryRuntime, runImplementPreview } from "./delivery.mjs";
 import { writeTechnicalDocument } from "./technical-documents.mjs";
-import { auditSkillCatalog, rollbackSkillSync, synchronizeSkillCatalog } from "./skills.mjs";
+import { auditSkillCatalog, rollbackSkillSync, syncAntigravitySkillsJson, synchronizeSkillCatalog } from "./skills.mjs";
+import { linkAntigravityProfile, unlinkAntigravityProfile } from "./antigravity-link.mjs";
 import { auditRepository, initializeRepository, normalizeRepository } from "./repositories.mjs";
 import {
   auditGlobalGuardrails,
@@ -88,7 +89,7 @@ async function readSkillCatalog(explicitVersion) {
 /** @param {string[]} argv */
 function parseArguments(argv) {
   const [command, ...tokens] = argv;
-  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, sinUpstream?: boolean, json: boolean}} */
+  /** @type {{home: string, version?: string, sourceCommit?: string, sourceRoot?: string, evidence?: string, workflow?: string, mode?: string, request?: string, terminalSlice?: string, lifecycleOperation?: string, plan?: string, repository?: string, confirm?: string, input?: string, projectsRoot?: string, codexPath?: string, nodePath?: string, root?: string, duringActiveRuns?: string, profile?: string, sinUpstream?: boolean, sinMcp?: boolean, includeMcp?: boolean, json: boolean}} */
   const options = { home: homedir(), json: false };
 
   for (let index = 0; index < tokens.length; index += 1) {
@@ -99,6 +100,14 @@ function parseArguments(argv) {
     }
     if (token === "--sin-upstream" && command === "development-steward") {
       options.sinUpstream = true;
+      continue;
+    }
+    if (token === "--sin-mcp" && command === "antigravity-link") {
+      options.sinMcp = true;
+      continue;
+    }
+    if (token === "--include-mcp" && command === "antigravity-unlink") {
+      options.includeMcp = true;
       continue;
     }
     const value = tokens[index + 1];
@@ -125,6 +134,7 @@ function parseArguments(argv) {
     else if (token === "--node-path") options.nodePath = value;
     else if (token === "--root") options.root = value;
     else if (token === "--during-active-runs") options.duringActiveRuns = value;
+    else if (token === "--profile") options.profile = value;
     else throw new Error(`Unknown option: ${token}`);
     index += 1;
   }
@@ -175,6 +185,14 @@ function formatHuman(result) {
   if (result.operation === "claude-orchestration-rollback") return `Claude orchestration rollback ${result.status}.`;
   if (result.operation === "report-gate-enable") return `Report gate ${result.status}${result.changed ? "" : " (unchanged)"}.`;
   if (result.operation === "report-gate-audit") return `Report gate ${result.status}.`;
+  if (result.operation === "antigravity-link") {
+    const linked = Array.isArray(result.linkedArtifacts) ? result.linkedArtifacts.join(", ") : "";
+    return `Linked Antigravity ACP profile ${result.profileId} (${linked}).`;
+  }
+  if (result.operation === "antigravity-unlink") {
+    const reverted = Array.isArray(result.revertedProfiles) ? result.revertedProfiles : [];
+    return reverted.length ? `Unlinked Antigravity ACP profile(s): ${reverted.join(", ")}.` : "No linked Antigravity ACP profile to unlink.";
+  }
   if (result.operation === "report-gate-rollback") return `Report gate rollback ${result.status}.`;
   if (result.operation === "check-no-tests") {
     const findings = /** @type {{path: string, kind: string, detail: string}[]} */ (Array.isArray(result.findings) ? result.findings : []);
@@ -410,6 +428,8 @@ const COMMAND_TABLE = [
   ["report-gate-enable", COMMON_OPTIONS],
   ["report-gate-audit", COMMON_OPTIONS],
   ["report-gate-rollback", COMMON_OPTIONS],
+  ["antigravity-link", `[--profile <id>] [--sin-mcp] ${COMMON_OPTIONS}`],
+  ["antigravity-unlink", `[--profile <id>] [--include-mcp] ${COMMON_OPTIONS}`],
   ["check-no-tests", `[--root <dir>] ${COMMON_OPTIONS}`],
   ["allow-tests", "<directory> [--hours N] [--reason text] | --revoke <directory> [--home <dir>] [--json]"],
   ["test-grants", COMMON_OPTIONS],
@@ -748,12 +768,14 @@ async function runCommand(argv) {
         governance = await enableGovernanceHooks({ home: options.home });
       }
       const skills = await synchronizeSkillCatalog({ home: options.home, sourceRoot: repositoryRoot, sourceCommit: options.sourceCommit, catalog });
+      const supportsAntigravity = Array.isArray(manifest.supportedHarnesses) && manifest.supportedHarnesses.some((/** @type {{id?: string}} */ h) => h.id === "antigravity");
+      const antigravitySkillsJson = supportsAntigravity ? await syncAntigravitySkillsJson({ home: options.home }) : undefined;
       // Activation belongs to this complete transaction; standalone mutators
       // cannot change the receipt or race a shared update.
       const guardrails = await enableGlobalGuardrails({ home: options.home });
       const claudeOrchestration = await enableClaudeOrchestration({ home: options.home });
       const reportGate = await enableReportGate({ home: options.home });
-      return { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, guardrails, claudeOrchestration, reportGate, ...(governance ? { governance } : {}) };
+      return { operation: "setup", ok: true, version, catalogVersion: catalog.catalogVersion, installation, skills, ...(antigravitySkillsJson ? { antigravitySkillsJson } : {}), guardrails, claudeOrchestration, reportGate, ...(governance ? { governance } : {}) };
     }});
   } else if (command === "install") {
     if (!options.version) throw new Error("install requires --version <semver>");
@@ -815,6 +837,10 @@ async function runCommand(argv) {
     result = await auditReportGate({ home: options.home });
   } else if (command === "report-gate-rollback") {
     result = await rollbackReportGate({ home: options.home });
+  } else if (command === "antigravity-link") {
+    result = await linkAntigravityProfile({ home: options.home, profile: options.profile, includeMcp: !options.sinMcp });
+  } else if (command === "antigravity-unlink") {
+    result = await unlinkAntigravityProfile({ home: options.home, profile: options.profile, includeMcp: Boolean(options.includeMcp) });
   } else if (command === "check-no-tests") {
     result = findAutomatedTests({ root: options.root ?? process.cwd() });
   } else if (command === "governance-hooks-enable") {
