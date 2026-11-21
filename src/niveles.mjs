@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 
 /** @typedef {{rutas: string[], patron: string}} ContentRule */
 /**
- * @typedef {{version: 1, desde?: string, critico: {rutas: string[], contenido: ContentRule[]}, mecanico: {rutas: string[], soloBaja: string[]}, smoke: {rutas: string[]}, comprobaciones: string[]}} Niveles
+ * @typedef {{version: 1, desde?: string, critico: {rutas: string[], contenido: ContentRule[]}, mecanico: {rutas: string[], soloBaja: string[]}, smoke: {rutas: string[], aplica: boolean, motivo?: string}, comprobaciones: string[]}} Niveles
  * @typedef {"crítico" | "mecánico" | "normal"} Nivel
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  * @typedef {{file: string, regla: string}} Motivo
@@ -77,12 +77,18 @@ export function parseNiveles(raw) {
     try { new RegExp(rule.patron, "m"); } catch (error) { throw new Error(`${CONFIG_PATH}: critico.contenido[${index}].patron no es una expresión válida (${error instanceof Error ? error.message : error})`); }
     return { rutas, patron: String(rule.patron) };
   });
+  const smokeAplica = raw.smoke?.aplica === undefined ? true : raw.smoke.aplica;
+  if (typeof smokeAplica !== "boolean") throw new Error(`${CONFIG_PATH}: smoke.aplica debe ser booleano`);
+  const smokeMotivo = raw.smoke?.motivo;
+  if (!smokeAplica && (typeof smokeMotivo !== "string" || !smokeMotivo.trim())) {
+    throw new Error(`${CONFIG_PATH}: smoke.motivo es obligatorio cuando smoke.aplica es false`);
+  }
   return {
     version: 1,
     ...(raw.desde ? { desde: String(raw.desde) } : {}),
     critico: { rutas: strings(raw.critico?.rutas, "critico.rutas"), contenido: rules },
     mecanico: { rutas: strings(raw.mecanico?.rutas, "mecanico.rutas"), soloBaja: strings(raw.mecanico?.soloBaja, "mecanico.soloBaja") },
-    smoke: { rutas: strings(raw.smoke?.rutas, "smoke.rutas") },
+    smoke: { rutas: strings(raw.smoke?.rutas, "smoke.rutas"), aplica: smokeAplica, ...(smokeMotivo ? { motivo: String(smokeMotivo).trim() } : {}) },
     comprobaciones: strings(raw.comprobaciones, "comprobaciones"),
   };
 }
@@ -143,6 +149,12 @@ function parseJson(text) {
  * @returns {Clasificacion}
  */
 export function classifyFiles({ config, files, content }) {
+  // Changing config/niveles.json itself can never merge as normal: it could lower levels or disable smoke.
+  for (const file of files) {
+    if (namesOf(file).includes(CONFIG_PATH)) {
+      return { nivel: "crítico", motivos: [{ file: CONFIG_PATH, regla: `cambio en ${CONFIG_PATH} (siempre crítico)` }] };
+    }
+  }
   if (!config) return { nivel: "normal", motivos: [{ file: "", regla: `sin ${CONFIG_PATH} en la rama base` }] };
   if (files.length === 0) return { nivel: "normal", motivos: [{ file: "", regla: "el PR no cambia archivos" }] };
   /** @type {Motivo[]} */

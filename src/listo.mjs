@@ -678,11 +678,12 @@ export function listoProduccion(options) {
     if (pendingThreads.length) { pendiente.push(CODEX_PENDIENTE); hilos.push(...pendingThreads); }
     rows.push({ pr: pull.number, nivel, pendiente, motivo: formatMotivos(classified) });
   }
-  const smoke = smokeStatus(owner, repo, headSha);
+  const smokeAplica = loaded.config?.smoke?.aplica !== false;
+  const smoke = smokeAplica ? smokeStatus(owner, repo, headSha) : `no aplica (${loaded.config?.smoke?.motivo ?? "sin app web"})`;
   /** @type {Map<string, number[]>} */
   const byReason = new Map();
   for (const row of rows) for (const reason of row.pendiente) byReason.set(reason.replace(/ \([0-9a-f]+\)$/, ""), [...(byReason.get(reason.replace(/ \([0-9a-f]+\)$/, "")) ?? []), row.pr]);
-  const smokeMissing = smoke !== "success";
+  const smokeMissing = smokeAplica && smoke !== "success";
   const pending = byReason.size > 0 || smokeMissing;
   let estadoGithub = "no publicado (--sin-estado)";
   const firstReason = [...byReason.entries()][0];

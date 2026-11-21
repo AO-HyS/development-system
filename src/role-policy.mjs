@@ -21,6 +21,13 @@ export function renderClaudeRule() {
   return rule;
 }
 
+/** The Antigravity-only rule (`~/.gemini/config/rules/orchestration.md`), with YAML frontmatter `trigger: always_on`. */
+export function renderAntigravityRule() {
+  const rule = profiles.instructions.antigravityRule;
+  if (typeof rule !== 'string' || !rule.trim()) throw new Error('Missing hostProfiles.instructions.antigravityRule');
+  return rule;
+}
+
 /** @param {string} agentName */
 export function codexRoleProfile(agentName) {
   const normalized = agentName.replaceAll('_', '-');
@@ -36,6 +43,9 @@ export function renderRolePolicyOutputs() {
     'claude/orchestration/policy.json': `${JSON.stringify(profiles.claude.policy, null, 2)}\n`,
     'claude/rules/orchestration.md': renderClaudeRule(),
   };
+  if (typeof profiles.instructions.antigravityRule === 'string' && profiles.instructions.antigravityRule.trim()) {
+    outputs['antigravity/rules/orchestration.md'] = renderAntigravityRule();
+  }
   for (const [name, template] of Object.entries(profiles.claude.agents)) {
     if (!/^[A-Za-z][A-Za-z-]*$/.test(name)) throw new Error(`Invalid Claude role name: ${name}`);
     outputs[`claude/agents/${name}.md`] = template;

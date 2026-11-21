@@ -1,0 +1,4 @@
+interface:
+  display_name: "Global Agent Guardrails"
+  short_description: "Executable destructive-command protection"
+  default_prompt: "Use $global-agent-guardrails to install or audit the versioned Codex/T3 destructive-command hook without overwriting existing settings."

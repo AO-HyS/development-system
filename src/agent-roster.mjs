@@ -68,7 +68,14 @@ export function validateAgentRoster(input) {
     else {
       const instructions = profiles.instructions;
       if (!isRecord(instructions) || !nonEmpty(instructions.shared) || !nonEmpty(instructions.codex) || !nonEmpty(instructions.claude)) errors.push('hostProfiles.instructions requires shared, codex and claude sections');
-      else if (instructions.claudeRule !== undefined && !nonEmpty(instructions.claudeRule)) errors.push('hostProfiles.instructions.claudeRule must be a non-empty Claude-only rule');
+      else {
+        if (instructions.claudeRule !== undefined && !nonEmpty(instructions.claudeRule)) errors.push('hostProfiles.instructions.claudeRule must be a non-empty Claude-only rule');
+        if (instructions.antigravityRule !== undefined) {
+          if (!nonEmpty(instructions.antigravityRule) || !/^---\n[\s\S]*?trigger:\s*always_on\b[\s\S]*?\n---/u.test(String(instructions.antigravityRule))) {
+            errors.push('hostProfiles.instructions.antigravityRule must be a non-empty rule with YAML frontmatter trigger: always_on');
+          }
+        }
+      }
       const codex = profiles.codex;
       if (!isRecord(codex) || !isRecord(codex.roles) || Object.keys(codex.roles).length === 0) errors.push('hostProfiles.codex.roles must be non-empty');
       else for (const [name, role] of Object.entries(codex.roles)) {

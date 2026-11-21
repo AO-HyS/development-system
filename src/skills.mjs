@@ -353,7 +353,7 @@ async function entryIntegrityHash(root) {
 /**
  * @typedef {{id: string, harness: string, destination: string, sourceDirectory?: string, folderSha256?: string, executableFiles?: string[], expectedMirrorOf: string | null, adapterContract?: string, install?: "symlink"}} SkillVariant
  * @typedef {{logicalName: string, physicalHarnesses?: string[], availabilityReason?: string, source?: {repository?: string, commit?: string, path?: string}, variants: SkillVariant[]}} LogicalSkill
- * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: Array<string | string[]>}>}} SkillCatalog
+ * @typedef {{catalogVersion?: string, maxCatalogEntries: number, supportedRoots: string[], skills: LogicalSkill[], cleanup?: string[], brokenSymlinkCleanup?: string[], operationalEvidenceSkills?: string[], operationalEvidenceContracts?: Record<string, {behaviorSignature: Array<string | string[]>}>}} SkillCatalog
  * @typedef {{catalogued?: boolean, loaded?: boolean, influenced?: boolean, catalogWarning?: boolean, catalogOverflow?: boolean, scannerErrors?: string[], command?: string, version?: string}} HarnessEvidence
  */
 
@@ -771,7 +771,7 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
         !Array.isArray(skill.physicalHarnesses) ||
         skill.physicalHarnesses.length === 0 ||
         new Set(skill.physicalHarnesses).size !== skill.physicalHarnesses.length ||
-        skill.physicalHarnesses.some((harness) => !["codex", "factory", "claude"].includes(harness))
+        skill.physicalHarnesses.some((harness) => !["codex", "factory", "claude", "antigravity"].includes(harness))
       ) {
         errors.push(`${skill.logicalName} physicalHarnesses is invalid`);
       } else {
@@ -836,11 +836,22 @@ export async function validateSkillCatalog(catalog, sourceRoot) {
       errors.push(`${variant.id} is not an identical declared mirror of ${variant.expectedMirrorOf}`);
     }
   }
+  const cleanupSet = new Set(catalog.cleanup ?? []);
   for (const cleanup of catalog.cleanup ?? []) {
     if (!catalog.supportedRoots.some((root) => isDirectChildPath(root, cleanup))) {
       errors.push(`cleanup path is outside supported roots: ${cleanup}`);
     }
     if (destinations.has(cleanup)) errors.push(`cleanup path is also a managed destination: ${cleanup}`);
+  }
+  const seenBrokenCleanup = new Set();
+  for (const broken of catalog.brokenSymlinkCleanup ?? []) {
+    if (!catalog.supportedRoots.some((root) => isDirectChildPath(root, broken))) {
+      errors.push(`brokenSymlinkCleanup path is outside supported roots: ${broken}`);
+    }
+    if (destinations.has(broken)) errors.push(`brokenSymlinkCleanup path is also a managed destination: ${broken}`);
+    if (cleanupSet.has(broken)) errors.push(`brokenSymlinkCleanup path duplicates cleanup: ${broken}`);
+    if (seenBrokenCleanup.has(broken)) errors.push(`duplicate brokenSymlinkCleanup path: ${broken}`);
+    seenBrokenCleanup.add(broken);
   }
   return errors;
 }
@@ -858,6 +869,7 @@ function catalogManagedPaths(catalog) {
   return [
     ...catalog.skills.flatMap((skill) => skill.variants.map((variant) => variant.destination)),
     ...(catalog.cleanup ?? []),
+    ...(catalog.brokenSymlinkCleanup ?? []),
     ".development-system/skills-lock.json",
     ".agents/.skill-lock.json",
   ];
@@ -1051,11 +1063,23 @@ export async function synchronizeSkillCatalog(options) {
     }
     /** @type {Array<{path: string, existed: boolean, kind: string, backup: string | null, linkTarget: string | null, integritySha256: string | null}>} */
     const entries = [];
+    const brokenSymlinkCleanupSet = new Set(options.catalog.brokenSymlinkCleanup ?? []);
+    /** @type {string[]} */
+    const cleanedBrokenSymlinks = [];
 
-    for (const [index, managedPath] of managedPaths.entries()) {
+    for (const managedPath of managedPaths) {
       await assertSafeManagedParent(home, managedPath);
       const destination = resolveInsideHome(home, managedPath);
       const metadata = await entryMetadata(destination);
+      if (brokenSymlinkCleanupSet.has(managedPath)) {
+        // Only remove declared broken-symlink cleanup targets when they are actually
+        // dangling symbolic links; preserve real files, directories, and live links.
+        if (!metadata.exists || metadata.kind !== "symlink") continue;
+        const isBroken = await realpath(destination).then(() => false, (error) => isMissing(error));
+        if (!isBroken) continue;
+        cleanedBrokenSymlinks.push(managedPath);
+      }
+      const index = entries.length;
       entries.push({
         path: managedPath,
         existed: metadata.exists,
@@ -1176,7 +1200,7 @@ export async function synchronizeSkillCatalog(options) {
       snapshotId,
       logicalSkillCount: options.catalog.skills.length,
       physicalVariantCount: variants.length,
-      cleaned: options.catalog.cleanup ?? [],
+      cleaned: [...(options.catalog.cleanup ?? []), ...cleanedBrokenSymlinks],
     };
   } catch (error) {
     if (recovery) {
@@ -1314,4 +1338,87 @@ export async function rollbackSkillSync(options) {
   await rm(statePath, { force: true });
   await rm(snapshotRoot, { recursive: true, force: true });
   return { ok: true, operation: "rollback-skills", snapshotId: state.snapshotId };
+}
+
+export const antigravitySkillsJsonRelative = ".gemini/config/skills.json";
+
+/** @param {string} home */
+export function managedAntigravitySkillsDir(home) {
+  return resolve(resolve(home), ".agents/skills");
+}
+
+/**
+ * Remove the DS-managed `<home>/.agents/skills` entry from an Antigravity skills.json object
+ * while preserving every foreign entry and top-level key (`inherits`, etc.).
+ * @param {Record<string, unknown>} parsed
+ * @param {string} home
+ */
+export function removeManagedAntigravitySkillsEntry(parsed, home) {
+  const managedDir = managedAntigravitySkillsDir(home);
+  const next = { ...parsed };
+  const currentEntries = Array.isArray(parsed.entries) ? parsed.entries : [];
+  next.entries = currentEntries.filter((entry) => {
+    if (!isRecord(entry) || typeof entry.path !== "string") return true;
+    return resolve(entry.path) !== managedDir;
+  });
+  return next;
+}
+
+/**
+ * Ensure `<home>/.gemini/config/skills.json` registers `<home>/.agents/skills` so Antigravity
+ * discovers both catalog and external user skills without creating unmanifested symlinks.
+ * @param {{home: string}} options
+ */
+export async function syncAntigravitySkillsJson({ home }) {
+  const resolvedHome = resolve(home);
+  await assertSafeManagedParent(resolvedHome, antigravitySkillsJsonRelative);
+  const target = resolveInsideHome(resolvedHome, antigravitySkillsJsonRelative);
+  const managedDir = managedAntigravitySkillsDir(resolvedHome);
+  /** @type {Record<string, unknown>} */
+  let current = {};
+  let existed = false;
+  try {
+    const status = await lstat(target);
+    if (status.isSymbolicLink() || !status.isFile()) {
+      throw new Error(`Antigravity skills.json must be a regular file: ${target}`);
+    }
+    const parsed = JSON.parse(await readFile(target, "utf8"));
+    if (!isRecord(parsed)) throw new Error("Antigravity skills.json must contain a JSON object");
+    current = parsed;
+    existed = true;
+  } catch (error) {
+    if (!isMissing(error)) throw error;
+  }
+  const existingEntries = Array.isArray(current.entries) ? [...current.entries] : [];
+  const hasManaged = existingEntries.some(
+    (entry) =>
+      isRecord(entry) &&
+      typeof entry.path === "string" &&
+      resolve(entry.path) === managedDir &&
+      Object.keys(entry).length === 1,
+  );
+  if (existed && hasManaged && Array.isArray(current.entries)) {
+    return {
+      ok: true,
+      operation: "sync-antigravity-skills-json",
+      path: target,
+      managedPath: managedDir,
+      changed: false,
+    };
+  }
+  const filteredEntries = existingEntries.filter(
+    (entry) => !(isRecord(entry) && typeof entry.path === "string" && resolve(entry.path) === managedDir),
+  );
+  const next = {
+    ...current,
+    entries: [...filteredEntries, { path: managedDir }],
+  };
+  await atomicWriteJson(target, next);
+  return {
+    ok: true,
+    operation: "sync-antigravity-skills-json",
+    path: target,
+    managedPath: managedDir,
+    changed: true,
+  };
 }
