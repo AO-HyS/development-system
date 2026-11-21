@@ -49,6 +49,7 @@ const runtimeTopLevelPaths = [
   "manifests",
   "catalog",
   "claude",
+  "antigravity",
   "scripts",
   "benchmarks/suite.json",
   "docs/architecture-reference-pack.md",

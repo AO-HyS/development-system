@@ -3,24 +3,38 @@
 // destinations; they remain private and never enter a report or package.
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { cp, lstat, mkdir, readFile, readdir, readlink, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, cp, lstat, mkdir, readFile, readdir, readlink, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { loadPackageSource, verifyPackageFile } from './package-source.mjs';
-import { auditGlobalGuardrails } from './guardrails.mjs';
+import { antigravityHookName, auditGlobalGuardrails } from './guardrails.mjs';
 import { auditClaudeOrchestration, managedEnv } from './claude-orchestration.mjs';
 import { auditReportGate } from './report-gate.mjs';
+import { antigravitySkillsJsonRelative, managedAntigravitySkillsDir, removeManagedAntigravitySkillsEntry } from './skills.mjs';
+import {
+  auditAntigravityLink,
+  hasPendingAntigravityLink,
+  prevalidateAntigravityRollback,
+  recoverAntigravityLink,
+  unlinkAntigravityProfile,
+} from './antigravity-link.mjs';
 
 const statePath = '.development-system/shared-installation.json';
 const journalPath = '.development-system/shared-installation-pending.json';
 const lockPath = '.development-system/shared-installation-lock.sqlite';
 const launchers = ['.local/bin/development-system', '.local/bin/aohys-development-system'];
-// Shared host settings files: the owner may add their own keys (env, plugins, permissions, autoMode).
-// Only an allowlist of owner keys is free; everything else (hooks, disableAllHooks, allowManagedHooksOnly,
-// unknown future keys) stays protected, so a change that can turn hooks off is still drift
-// (friction whole-file-drift-on-shared-settings, 2026-11-03; review DS188-01).
-const ownerEditableSettings = new Set(['.claude/settings.json', '.codex/hooks.json']);
+const recoveryLauncher = '.local/bin/development-system-recover';
+const antigravityHooksRelative = '.gemini/config/hooks.json';
+// Shared host settings files: the owner may add their own keys (env, plugins, permissions, autoMode)
+// or sibling hooks/entries in Antigravity config files. Only protected views stay locked so a change
+// that disables or weakens managed hooks/skills is still drift (review DS188-01; DS 4.2.0 R2/R3).
+const ownerEditableSettings = new Set([
+  '.claude/settings.json',
+  '.codex/hooks.json',
+  antigravityHooksRelative,
+  antigravitySkillsJsonRelative,
+]);
 const ownerKeys = new Set(['$schema', 'env', 'enabledPlugins', 'extraKnownMarketplaces', 'pluginConfigs', 'effortLevel', 'model',
   'autoUpdatesChannel', 'skipDangerousModePermissionPrompt', 'skipAutoPermissionPrompt', 'permissions', 'autoMode', 'theme',
   'outputStyle', 'language', 'alwaysThinkingEnabled', 'showThinkingSummaries', 'fastMode', 'autoCompactWindow', 'modelSettings',
@@ -35,6 +49,7 @@ const managedHookCommand = /\/\.agents\/skills\/global-agent-guardrails\/scripts
 // A managed hook and its group may carry only the fields the installers write; any other field
 // (if, async, asyncRewake, once, shell, ...) can narrow or defer execution (reviews DS188-02, DS188-03).
 const managedHookFields = new Set(['type', 'command', 'timeout', 'statusMessage']);
+const antigravityManagedHookFields = new Set(['type', 'command', 'timeout']);
 const managedGroupFields = new Set(['matcher', 'hooks']);
 // Environment that can change how a hook or the host runs stays protected; other owner env (API keys,
 // tool settings) is free. Prefixes cover the host, our runtime and process loaders (review DS188-01).
@@ -50,19 +65,61 @@ async function settingsObject(file) {
   if (!(await statOrNull(file))?.isFile()) return undefined;
   try { const parsed = JSON.parse(await readFile(file, 'utf8')); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : undefined; } catch { return undefined; }
 }
-/** Everything outside the owner allowlist, plus env entries that can change execution. @param {any} parsed */
-function protectedView(parsed) {
+/** Everything outside the owner allowlist, plus env entries that can change execution.
+ * @param {any} parsed @param {string} [entryPath] @param {string} [home] */
+function protectedView(parsed, entryPath, home) {
+  if (entryPath === antigravityHooksRelative) {
+    return { [antigravityHookName]: parsed?.[antigravityHookName] ?? null };
+  }
+  if (entryPath === antigravitySkillsJsonRelative && home) {
+    const managedDir = managedAntigravitySkillsDir(home);
+    const entries = Array.isArray(parsed?.entries) ? parsed.entries : [];
+    const matched = entries.filter((/** @type {any} */ e) => e && typeof e === 'object' && typeof e.path === 'string' && resolve(e.path) === managedDir);
+    return { '#managed-skills-entries': matched };
+  }
   const view = Object.fromEntries(Object.entries(parsed).filter(([key]) => !ownerKeys.has(key)));
   const env = parsed.env && typeof parsed.env === 'object' ? Object.fromEntries(Object.entries(parsed.env).filter(([name]) => executionEnv(name))) : {};
   return { ...view, '#env-execution': env };
 }
-/** @param {string} file @returns {Promise<string|null>} */
-async function protectedIntegrity(file) {
+/** @param {string} file @param {string} [entryPath] @param {string} [home] @returns {Promise<string|null>} */
+async function protectedIntegrity(file, entryPath, home) {
   const parsed = await settingsObject(file);
-  return parsed === undefined ? null : hash(`protected:${JSON.stringify(canonical(protectedView(parsed)))}`);
+  return parsed === undefined ? null : hash(`protected:${JSON.stringify(canonical(protectedView(parsed, entryPath, home)))}`);
 }
-/** Managed hooks (or their groups) carrying fields that can narrow, defer or replace execution. @param {any} parsed @returns {string[]} */
-function weakenedHooks(parsed) {
+/** Managed hooks (or their groups) carrying fields that can narrow, defer or replace execution.
+ * @param {any} parsed @param {string} [entryPath] @param {string} [home] @returns {string[]} */
+function weakenedHooks(parsed, entryPath, home) {
+  if (entryPath === antigravityHooksRelative) {
+    const found = [];
+    const block = parsed?.[antigravityHookName];
+    if (!block || typeof block !== 'object' || Array.isArray(block)) {
+      return [`${antigravityHookName} block is missing or invalid`];
+    }
+    const blockExtra = Object.keys(block).filter(key => key !== 'PreToolUse');
+    if (blockExtra.length) found.push(`${antigravityHookName} has extra keys ${blockExtra.join(', ')}`);
+    const groups = Array.isArray(block.PreToolUse) ? block.PreToolUse : [];
+    if (!groups.length) found.push(`${antigravityHookName}.PreToolUse is empty`);
+    for (const group of groups) {
+      const hooks = Array.isArray(group?.hooks) ? group.hooks : [];
+      const managed = hooks.filter((/** @type {any} */ hook) => managedHookCommand.test(String(hook?.command ?? '')));
+      if (!managed.length) { found.push(`${antigravityHookName}.PreToolUse group has no managed hook`); continue; }
+      const groupExtra = Object.keys(group).filter(key => !managedGroupFields.has(key));
+      if (groupExtra.length) found.push(`PreToolUse managed hook group has ${groupExtra.join(', ')}`);
+      for (const hook of managed) {
+        const extra = Object.keys(hook).filter(key => !antigravityManagedHookFields.has(key));
+        if (extra.length || hook.type !== 'command') found.push(`PreToolUse managed hook has ${extra.length ? extra.join(', ') : `type ${hook.type}`}`);
+      }
+    }
+    return found;
+  }
+  if (entryPath === antigravitySkillsJsonRelative && home) {
+    const managedDir = managedAntigravitySkillsDir(home);
+    if (!Array.isArray(parsed?.entries)) return ['skills.json entries must be an array'];
+    const matched = parsed.entries.filter((/** @type {any} */ e) => e && typeof e === 'object' && typeof e.path === 'string' && resolve(e.path) === managedDir);
+    if (matched.length !== 1) return ['skills.json managed .agents/skills entry is missing or duplicated'];
+    const extra = Object.keys(matched[0]).filter(key => key !== 'path');
+    return extra.length ? [`skills.json managed entry has extra keys ${extra.join(', ')}`] : [];
+  }
   const found = [];
   for (const [event, groups] of Object.entries(parsed?.hooks ?? {})) {
     for (const group of Array.isArray(groups) ? groups : []) {
@@ -78,6 +135,55 @@ function weakenedHooks(parsed) {
     }
   }
   return found;
+}
+/** Compute surgical restore bytes preserving legitimate owner edits while reverting DS-managed sections to `before`.
+ * @param {string} entryPath @param {any} current @param {Buffer | null} beforeBytes @param {string} home @returns {Buffer} */
+function computeSurgicalRestoreBytes(entryPath, current, beforeBytes, home) {
+  let before = {};
+  if (beforeBytes !== null) {
+    try {
+      const parsedBefore = JSON.parse(beforeBytes.toString('utf8'));
+      if (parsedBefore && typeof parsedBefore === 'object' && !Array.isArray(parsedBefore)) before = parsedBefore;
+    } catch { before = {}; }
+  }
+  if (entryPath === antigravityHooksRelative) {
+    const next = { ...current };
+    if (Object.hasOwn(before, antigravityHookName)) next[antigravityHookName] = /** @type {any} */ (before)[antigravityHookName];
+    else delete next[antigravityHookName];
+    return Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
+  }
+  if (entryPath === antigravitySkillsJsonRelative) {
+    const managedDir = managedAntigravitySkillsDir(home);
+    const beforeHadManaged = Array.isArray(/** @type {any} */ (before).entries) &&
+      /** @type {any[]} */ (/** @type {any} */ (before).entries).some(
+        (e) => e && typeof e === 'object' && typeof e.path === 'string' && resolve(e.path) === managedDir,
+      );
+    const next = beforeHadManaged ? { ...current } : removeManagedAntigravitySkillsEntry(current, home);
+    return Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
+  }
+  // Claude / Codex shared settings: keep owner allowlisted keys and non-execution env from `current`; restore protected keys from `before`.
+  /** @type {Record<string, any>} */
+  const next = {};
+  for (const [key, value] of Object.entries(before)) {
+    if (!ownerKeys.has(key)) next[key] = value;
+  }
+  for (const [key, value] of Object.entries(current)) {
+    if (ownerKeys.has(key) && key !== 'env') next[key] = value;
+  }
+  const currentEnv = current?.env && typeof current.env === 'object' && !Array.isArray(current.env) ? current.env : {};
+  const beforeEnv = /** @type {any} */ (before)?.env && typeof /** @type {any} */ (before).env === 'object' && !Array.isArray(/** @type {any} */ (before).env) ? /** @type {any} */ (before).env : {};
+  /** @type {Record<string, any>} */
+  const mergedEnv = {};
+  for (const [name, value] of Object.entries(currentEnv)) {
+    if (!executionEnv(name)) mergedEnv[name] = value;
+  }
+  for (const [name, value] of Object.entries(beforeEnv)) {
+    if (executionEnv(name)) mergedEnv[name] = value;
+  }
+  if (Object.keys(mergedEnv).length > 0 || Object.hasOwn(current, 'env') && Object.keys(currentEnv).some(name => !executionEnv(name))) {
+    next.env = mergedEnv;
+  }
+  return Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
 }
 /** Hash of the canonical `hooks` subtree, as recorded by receipts that carry afterHooks. @param {any} parsed */
 const hooksIntegrity = parsed => hash(`hooks:${JSON.stringify(canonical(parsed?.hooks ?? null))}`);
@@ -183,11 +289,21 @@ async function releaseInputs(root, version) {
   const catalog = JSON.parse(await readFile(resolve(root, artifact.sourcePath), 'utf8'));
   return { manifest, catalog };
 }
+/** @param {any} manifest */
+function manifestSupportsAntigravity(manifest) {
+  return Array.isArray(manifest?.supportedHarnesses) &&
+    manifest.supportedHarnesses.some((/** @type {any} */ harness) => harness?.id === 'antigravity');
+}
 /** @param {any} manifest @param {any} catalog */
 function managedPaths(manifest, catalog) {
+  const antigravityPaths = manifestSupportsAntigravity(manifest)
+    ? [...(catalog.brokenSymlinkCleanup ?? []), antigravityHooksRelative, antigravitySkillsJsonRelative]
+    : [];
+  // Note: `.development-system/antigravity-link/state.json` is intentionally NOT in managedPaths;
+  // `src/antigravity-link.mjs` is its sole authority so linking after setup never triggers drift.
   return [...manifest.artifacts.map((/** @type {any} */ row) => row.destination),
     ...catalog.skills.flatMap((/** @type {any} */ row) => row.variants.map((/** @type {any} */ variant) => variant.destination)),
-    ...(catalog.cleanup ?? []), '.development-system/state.json', '.development-system/installed-manifest.json',
+    ...(catalog.cleanup ?? []), ...antigravityPaths, '.development-system/state.json', '.development-system/installed-manifest.json',
     '.development-system/snapshots', '.development-system/skills-lock.json', '.development-system/skill-sync-state.json',
     '.development-system/skill-snapshots', '.agents/.skill-lock.json', '.codex/hooks.json', '.claude/settings.json',
     '.development-system/governance-hooks.json', '.development-system/guardrails/state.json',
@@ -220,6 +336,7 @@ export async function auditSharedInstallation(options) {
   const problems = [];
   if (pending) problems.push('Incomplete shared transaction; use recover-shared before delivery');
   if (!state) problems.push('Shared installation not adopted; run the verified package setup');
+  let antigravityLink = null;
   if (state) {
     if (state.packageRoot !== runtime.packageRoot || state.sourceCommit !== runtime.sourceCommit || state.packageVersion !== runtime.packageVersion) problems.push('Invoked CLI differs from the active shared package');
     /** @type {any[]} */
@@ -236,9 +353,9 @@ export async function auditSharedInstallation(options) {
     for (const entry of settingsEntries) {
       const target = await confined(home, entry.path, true);
       const parsed = await settingsObject(target);
-      const weakened = parsed === undefined ? ['not a JSON object'] : weakenedHooks(parsed);
+      const weakened = parsed === undefined ? ['not a JSON object'] : weakenedHooks(parsed, entry.path, home);
       if (entry.afterProtected) {
-        if (weakened.length || await protectedIntegrity(target) !== entry.afterProtected) problems.push(`Managed drift: ${entry.path} (managed hooks or hook switches changed${weakened.length ? `: ${weakened.join('; ')}` : ''})`);
+        if (weakened.length || await protectedIntegrity(target, entry.path, home) !== entry.afterProtected) problems.push(`Managed drift: ${entry.path} (managed hooks or hook switches changed${weakened.length ? `: ${weakened.join('; ')}` : ''})`);
         continue;
       }
       // Legacy receipt: no protected hash was recorded, so only owner keys may sit beside hooks, execution env
@@ -254,37 +371,110 @@ export async function auditSharedInstallation(options) {
     const contract = await jsonOrNull(await confined(home, '.development-system/state.json'));
     const skills = await jsonOrNull(await confined(home, '.development-system/skills-lock.json'));
     if (contract?.currentVersion !== state.contractVersion || skills?.catalogVersion !== state.catalogVersion) problems.push('Active package, contract and catalog tuple differs');
+    const activeSupportsAntigravity = Array.isArray(state.entries) && state.entries.some((/** @type {any} */ e) => e.path === antigravityHooksRelative);
+    if (activeSupportsAntigravity || await hasPendingAntigravityLink(home)) {
+      antigravityLink = await auditAntigravityLink({ home });
+      if (!antigravityLink.ok) problems.push(...antigravityLink.problems);
+    }
+  } else if (await hasPendingAntigravityLink(home)) {
+    antigravityLink = await auditAntigravityLink({ home });
+    if (!antigravityLink.ok) problems.push(...antigravityLink.problems);
   }
-  return { operation: 'shared-installation-audit', ok: problems.length === 0, runtime, active: state ? { packageRoot: state.packageRoot, packageVersion: state.packageVersion, sourceCommit: state.sourceCommit, contractVersion: state.contractVersion, catalogVersion: state.catalogVersion } : null, problems, operationalLoading: 'requires-fresh-task-observation' };
+  return {
+    operation: 'shared-installation-audit',
+    ok: problems.length === 0,
+    runtime,
+    active: state ? { packageRoot: state.packageRoot, packageVersion: state.packageVersion, sourceCommit: state.sourceCommit, contractVersion: state.contractVersion, catalogVersion: state.catalogVersion } : null,
+    ...(antigravityLink ? { antigravityLink } : {}),
+    problems,
+    operationalLoading: 'requires-fresh-task-observation',
+  };
 }
 /** @param {string} home @param {any} journal @param {boolean} requireAfter */
 async function restore(home, journal, requireAfter) {
   if (journal?.schemaVersion !== 1 || !/^\d+\.\d+\.\d+$/.test(journal.contractVersion ?? '') || !['prepared', 'installing', 'committed', 'restoring'].includes(journal.phase) || !/^\.development-system\/shared-snapshots\/\d{10,16}-[a-f0-9-]{36}$/.test(journal.backupRoot ?? '') || !Array.isArray(journal.entries)) throw new Error('Invalid recovery journal');
   let allowed = [];
+  let currentSupportsAntigravity = false;
+  let previousSupportsAntigravity = false;
   for (const version of [journal.contractVersion, journal.previousContractVersion].filter(Boolean)) {
     if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Invalid recovery contract version');
     const release = await releaseInputs(runtimeRoot, version);
+    if (version === journal.contractVersion) currentSupportsAntigravity = manifestSupportsAntigravity(release.manifest);
+    if (version === journal.previousContractVersion) previousSupportsAntigravity = manifestSupportsAntigravity(release.manifest);
     allowed.push(...managedPaths(release.manifest, release.catalog));
   }
   const expected = compactPaths(allowed);
   if (JSON.stringify(journal.entries.map((/** @type {any} */ entry) => entry.path)) !== JSON.stringify(expected) || journal.entries.some((/** @type {any} */ entry, /** @type {number} */ index) => entry.backup !== `entries/${index}` || [entry.before, entry.after].some(value => value !== null && !/^[a-f0-9]{64}$/.test(value)))) throw new Error('Recovery journal declares incomplete or unauthorized paths or hashes');
+
+  const shouldRevertAntigravityLink = (currentSupportsAntigravity && !previousSupportsAntigravity) || await hasPendingAntigravityLink(home);
+  if (shouldRevertAntigravityLink) {
+    await prevalidateAntigravityRollback({ home, dsOnly: true });
+  }
+
   const backupRoot = await confined(home, journal.backupRoot);
+  /** @type {Map<string, {bytes: Buffer, mode: number}>} */
+  const surgicalPayloads = new Map();
+
   for (const entry of journal.entries) {
     const target = await confined(home, entry.path, true);
     const backup = await confined(home, `${journal.backupRoot}/${entry.backup}`, true);
     if (entry.before !== null && await integrity(backup) !== entry.before) throw new Error(`Recovery backup integrity mismatch: ${entry.path}`);
     const actual = await integrity(target);
-    if (requireAfter && actual !== entry.after && actual !== entry.before && !(journal.restoring === entry.path && actual === null)) throw new Error(`Concurrent managed drift blocks rollback: ${entry.path}`);
+    if (entry.surgicalTarget && actual === entry.surgicalTarget) continue;
+    if (requireAfter && actual !== entry.after && actual !== entry.before && !(journal.restoring === entry.path && actual === null)) {
+      if (ownerEditableSettings.has(entry.path) && entry.afterProtected && (await statOrNull(target))?.isFile()) {
+        const parsed = await settingsObject(target);
+        const weakened = parsed === undefined ? ['not a JSON object'] : weakenedHooks(parsed, entry.path, home);
+        if (weakened.length === 0 && await protectedIntegrity(target, entry.path, home) === entry.afterProtected) {
+          const beforeBytes = entry.before !== null ? await readFile(backup) : null;
+          const surgicalBytes = computeSurgicalRestoreBytes(entry.path, parsed, beforeBytes, home);
+          const stat = await statOrNull(target);
+          const mode = (stat?.mode ?? 0o600) & 0o777;
+          const expectedSurgicalHash = hash(`${mode}:${hash(surgicalBytes)}`);
+          if (entry.surgicalTarget && entry.surgicalTarget !== expectedSurgicalHash) {
+            throw new Error(`Concurrent managed drift blocks rollback: ${entry.path}`);
+          }
+          entry.surgicalTarget = expectedSurgicalHash;
+          surgicalPayloads.set(entry.path, { bytes: surgicalBytes, mode });
+          continue;
+        }
+      }
+      throw new Error(`Concurrent managed drift blocks rollback: ${entry.path}`);
+    }
   }
+
+  // Persist phase and any computed surgicalTarget hashes atomically BEFORE any disk mutation.
   journal.phase = 'restoring';
   await atomicJson(await confined(home, journalPath), journal);
-  for (const entry of [...journal.entries].reverse()) {
+
+  // Step 1: Revert ACP profile links first while launchers still point to the newer runtime.
+  if (shouldRevertAntigravityLink) {
+    if (await hasPendingAntigravityLink(home)) {
+      await recoverAntigravityLink({ home, lockHeld: true });
+    }
+    if (currentSupportsAntigravity && !previousSupportsAntigravity) {
+      await unlinkAntigravityProfile({ home, includeMcp: false, allProfiles: true, lockHeld: true });
+    }
+  }
+
+  const nonLauncherEntries = [...journal.entries].reverse().filter(entry => !launchers.includes(entry.path));
+  const launcherEntries = [...journal.entries].reverse().filter(entry => launchers.includes(entry.path));
+
+  /** @param {any} entry */
+  async function restoreOneEntry(entry) {
     const target = await confined(home, entry.path, true);
-    if (await integrity(target) === entry.before) continue;
+    const currentHash = await integrity(target);
+    if (entry.surgicalTarget && currentHash === entry.surgicalTarget) return;
+    if (!entry.surgicalTarget && currentHash === entry.before) return;
     journal.restoring = entry.path;
     await atomicJson(await confined(home, journalPath), journal);
     const stage = resolve(backupRoot, `restore-${randomUUID()}`);
-    if (entry.before !== null) {
+    if (surgicalPayloads.has(entry.path)) {
+      const payload = /** @type {{bytes: Buffer, mode: number}} */ (surgicalPayloads.get(entry.path));
+      await writeFile(stage, payload.bytes, { mode: payload.mode });
+      await chmod(stage, payload.mode);
+      if (await integrity(stage) !== entry.surgicalTarget) throw new Error(`Staged surgical recovery integrity mismatch: ${entry.path}`);
+    } else if (entry.before !== null) {
       await cp(await confined(home, `${journal.backupRoot}/${entry.backup}`, true), stage, { recursive: true, dereference: false, verbatimSymlinks: true });
       if (await integrity(stage) !== entry.before) throw new Error(`Staged recovery integrity mismatch: ${entry.path}`);
     }
@@ -292,12 +482,35 @@ async function restore(home, journal, requireAfter) {
     // destination could be interrupted with a partial hash that cannot resume.
     const trash = resolve(backupRoot, `retired-${randomUUID()}`);
     if (await statOrNull(target)) await rename(target, trash);
-    if (entry.before !== null) {
+    if (surgicalPayloads.has(entry.path) || entry.before !== null) {
       await mkdir(dirname(target), { recursive: true, mode: 0o700 });
       await rename(stage, target);
     }
     await rm(trash, { recursive: true, force: true });
   }
+
+  // Step 2: Restore all non-launcher entries first.
+  for (const entry of nonLauncherEntries) {
+    await restoreOneEntry(entry);
+  }
+
+  // Step 3: Pin a temporary recovery launcher to this runtime before swapping launchers back to the older release.
+  const anyLauncherNeedsRestore = (await Promise.all(
+    launcherEntries.map(async (entry) => (await integrity(await confined(home, entry.path, true))) !== entry.before),
+  )).some(Boolean);
+  if (anyLauncherNeedsRestore) {
+    const recoverTarget = await confined(home, recoveryLauncher, true);
+    await mkdir(dirname(recoverTarget), { recursive: true });
+    const temporary = `${recoverTarget}.${randomUUID()}.tmp`;
+    await symlink(resolve(runtimeRoot, 'bin/development-system.mjs'), temporary);
+    await rename(temporary, recoverTarget);
+  }
+
+  // Step 4: Restore launchers last.
+  for (const entry of launcherEntries) {
+    await restoreOneEntry(entry);
+  }
+
   journal.restoring = null;
   await atomicJson(await confined(home, journalPath), journal);
 }
@@ -384,9 +597,9 @@ export async function setupSharedInstallation(options) {
         const target = await confined(home, entry.path, true);
         entry.after = await integrity(target);
         if (ownerEditableSettings.has(entry.path) && entry.after !== null) {
-          const weakened = weakenedHooks(await settingsObject(target));
+          const weakened = weakenedHooks(await settingsObject(target), entry.path, home);
           if (weakened.length) throw new Error(`Managed hooks in ${entry.path} would not block: ${weakened.join('; ')}`);
-          /** @type {any} */ (entry).afterProtected = await protectedIntegrity(target);
+          /** @type {any} */ (entry).afterProtected = await protectedIntegrity(target, entry.path, home);
         }
       }
       const state = { schemaVersion: 1, ...provenance, packageRoot, contractVersion: options.version, catalogVersion: release.catalog.catalogVersion, backupRoot: backupRelative, previous, entries: entries.filter(entry => entry.path !== statePath), installedAt: new Date().toISOString() };
@@ -401,7 +614,8 @@ export async function setupSharedInstallation(options) {
       // Hold the lock while restoring the exact pre-invocation tuple.
       for (const entry of entries) entry.after = await integrity(await confined(home, entry.path, true));
       await restore(home, journal, true);
-      await rm(await confined(home, journalPath));
+      await rm(await confined(home, journalPath), { force: true });
+      await rm(await confined(home, recoveryLauncher, true), { force: true });
       throw new Error(`Shared setup failed; previous complete installation restored: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
   } finally { await releaseLock(); }
@@ -412,13 +626,21 @@ export async function rollbackSharedInstallation(options) {
   try {
     const pending = await jsonOrNull(await confined(home, journalPath));
     const state = await jsonOrNull(await confined(home, statePath));
+    const pendingLink = await hasPendingAntigravityLink(home);
     if (pending && !options.recover) throw new Error('Pending transaction requires recover-shared');
-    if (!pending && options.recover) throw new Error('No pending shared transaction exists');
+    if (!pending && options.recover) {
+      if (pendingLink) {
+        const recovered = await recoverAntigravityLink({ home, lockHeld: true });
+        return { operation: 'recover-shared', ok: true, recoveredAntigravityLink: true, profileId: recovered.profileId ?? null };
+      }
+      throw new Error('No pending shared transaction exists');
+    }
     if (!pending && !state) throw new Error('No shared installation exists');
     const journal = pending ?? await jsonOrNull(await confined(home, `${state.backupRoot}/receipt.json`));
     if (!journal) throw new Error('Recovery receipt is missing');
     await restore(home, journal, !pending || pending.phase === 'restoring');
-    await rm(await confined(home, journalPath));
+    await rm(await confined(home, journalPath), { force: true });
+    await rm(await confined(home, recoveryLauncher, true), { force: true });
     return { operation: options.recover ? 'recover-shared' : 'rollback', ok: true, packageVersion: journal.previous?.packageVersion ?? null, restoredCompleteTuple: true };
   } finally { await releaseLock(); }
 }

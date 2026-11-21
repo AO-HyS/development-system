@@ -2,25 +2,32 @@
 // What the last sessions of each host really announced and loaded. A copied skill folder proves nothing: the host
 // decides what the model sees. Claude Code writes its listing as a `skill_listing` attachment in the session log and
 // drops descriptions when the listing overflows its budget; Codex writes one line per skill in its first developer
-// message and shortens each description to fit. This module only reads those logs.
+// message and shortens each description to fit; Antigravity does not log the `<skills>` block in its transcripts so we
+// report only observed SKILL.md reads without fabricating announced counts. This module only reads those logs.
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
-/** @typedef {{ session: string, at: string, announced: number, withDescription: number, withoutDescription: string[], listingChars: number, loaded: { bySkillCall: string[], byReadingItsFile: string[] } }} SessionListing */
+/** @typedef {{ session: string, at: string, announced: number | null, withDescription: number | null, withoutDescription: string[], listingChars: number, loaded: { bySkillCall: string[], byReadingItsFile: string[] } }} SessionListing */
+
+const MAX_ANTIGRAVITY_TRANSCRIPT_BYTES = 20 * 1024 * 1024;
 
 /** @param {string} directory @param {(name: string) => boolean} keep @param {number} depth */
 async function newestFiles(directory, keep, depth) {
-  /** @type {{ path: string, mtimeMs: number }[]} */
+  /** @type {{ path: string, mtimeMs: number, size: number }[]} */
   const found = [];
   /** @param {string} current @param {number} left */
   async function walk(current, left) {
     let entries;
     try { entries = await readdir(current, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
       const path = join(current, entry.name);
       if (entry.isDirectory()) { if (left > 0) await walk(path, left - 1); }
       else if (entry.isFile() && keep(entry.name)) {
-        try { found.push({ path, mtimeMs: (await stat(path)).mtimeMs }); } catch { /* removed meanwhile */ }
+        try {
+          const info = await stat(path);
+          found.push({ path, mtimeMs: info.mtimeMs, size: info.size });
+        } catch { /* removed meanwhile */ }
       }
     }
   }
@@ -111,21 +118,72 @@ async function codexSession(path, mtimeMs) {
 }
 
 /**
- * The newest session of each host that carries a skill listing. Descriptive only: it never changes `ok`.
+ * One Antigravity session (standalone CLI/App or T3 Code ACP). Bounded and fail-safe on corrupt/binary
+ * files; never prints transcript contents and never fabricates announced counts when the host omits `<skills>`.
+ * @param {string} path @param {number} mtimeMs @param {number} size
+ */
+async function antigravitySession(path, mtimeMs, size) {
+  if (size > MAX_ANTIGRAVITY_TRANSCRIPT_BYTES) return null;
+  const rows = await jsonLines(path);
+  if (rows.length === 0) return null;
+  const reads = new Set();
+  let validRows = 0;
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    validRows += 1;
+    const toolCalls = Array.isArray(row.tool_calls) ? row.tool_calls : [];
+    for (const call of toolCalls) {
+      const name = String(call?.name ?? call?.function?.name ?? "");
+      if (!["read_file", "view_file"].includes(name)) continue;
+      let args = call?.arguments ?? call?.args ?? call?.function?.arguments ?? null;
+      if (typeof args === "string") {
+        try { args = JSON.parse(args); } catch { args = null; }
+      }
+      const candidate = args?.Path ?? args?.AbsolutePath ?? args?.path ?? null;
+      const skill = skillOfPath(candidate);
+      if (skill) reads.add(skill);
+    }
+  }
+  if (validRows === 0) return null;
+  // Directory layout: .../brain/<conversationId>/.system_generated/logs/transcript.jsonl
+  const logsDir = dirname(path);
+  const generatedDir = dirname(logsDir);
+  const sessionId = basename(dirname(generatedDir)) || basename(path, ".jsonl");
+  return {
+    session: sessionId,
+    at: new Date(mtimeMs).toISOString(),
+    announced: null,
+    withDescription: null,
+    withoutDescription: [],
+    listingChars: 0,
+    listingLogged: false,
+    loaded: { bySkillCall: [], byReadingItsFile: [...reads].sort() },
+  };
+}
+
+/**
+ * The newest session of each host that carries a skill listing (or observed reads for Antigravity).
+ * Descriptive only: it never changes `ok`.
  * @param {{ home: string, scan?: number }} options `scan` bounds how many recent logs are opened per host
  */
 export async function skillListingReport({ home, scan = 12 }) {
-  /** @param {{ path: string, mtimeMs: number }[]} logs @param {(path: string, mtimeMs: number) => Promise<any>} reader */
+  /** @param {{ path: string, mtimeMs: number, size: number }[]} logs @param {(path: string, mtimeMs: number, size: number) => Promise<any>} reader */
   const first = async (logs, reader) => {
     for (const log of logs.slice(0, scan)) {
-      const session = await reader(log.path, log.mtimeMs).catch(() => null);
+      const session = await reader(log.path, log.mtimeMs, log.size).catch(() => null);
       if (session) return session;
     }
     return null;
   };
   const claude = await first(await newestFiles(join(home, ".claude", "projects"), (name) => name.endsWith(".jsonl"), 1), claudeSession);
   const codex = await first(await newestFiles(join(home, ".codex", "sessions"), (name) => name.startsWith("rollout-") && name.endsWith(".jsonl"), 3), codexSession);
-  return { claude, codex };
+  const agLogs = [
+    ...(await newestFiles(join(home, ".gemini", "antigravity", "brain"), (name) => name === "transcript.jsonl", 4)),
+    ...(await newestFiles(join(home, ".gemini", "antigravity-cli", "brain"), (name) => name === "transcript.jsonl", 4)),
+    ...(await newestFiles(join(home, ".t3", "userdata", "providers", "antigravity"), (name) => name === "transcript.jsonl", 6)),
+  ].sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const antigravity = await first(agLogs, antigravitySession);
+  return { claude, codex, antigravity };
 }
 
 /** @param {Awaited<ReturnType<typeof skillListingReport>>} report */
@@ -134,8 +192,11 @@ export function formatSkillListing(report) {
   const line = (host, session) => {
     if (!session) return `skills ${host}: no session log with a skill listing`;
     const loaded = [...new Set([...session.loaded.bySkillCall, ...session.loaded.byReadingItsFile])];
+    if (session.announced === null) {
+      return `skills ${host}: listing not logged by host; loaded in latest session: ${loaded.length}${loaded.length ? ` (${loaded.join(", ")})` : ""}`;
+    }
     const median = "medianDescriptionChars" in session ? `, median description ${session.medianDescriptionChars} characters` : "";
     return `skills ${host}: ${session.announced} announced, ${session.withDescription} with description, ${session.withoutDescription.length} without${median}; loaded in that session: ${loaded.length}${loaded.length ? ` (${loaded.join(", ")})` : ""}`;
   };
-  return [line("claude", report.claude), line("codex", report.codex)];
+  return [line("claude", report.claude), line("codex", report.codex), line("antigravity", report.antigravity)];
 }

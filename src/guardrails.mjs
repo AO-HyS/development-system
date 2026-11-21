@@ -9,19 +9,25 @@ import { fileURLToPath } from "node:url";
 const marker = "AOHYS_GLOBAL_AGENT_GUARDRAILS=1";
 const stateRelative = ".development-system/guardrails/state.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-/** Catalog 0.83.0 ships policy 3.0.0, the small lock (production, destruction of uncommitted work, a forced push to develop or main, new spend, the secrets folder, test files), from artifacts/3.0.0/skills/internal/global-agent-guardrails. */
-const guardCatalogVersion = "0.83.0";
+/** Catalog 0.87.0 ships policy 3.1.0 (adds Antigravity fail-closed hook, ACP OAuth protection, multi-root test-write guard, and unconditional MCP merge stops), from artifacts/4.2.0/skills/internal/global-agent-guardrails. */
+const guardCatalogVersion = "0.87.0";
 /** The contract release that installs the guard of guardCatalogVersion; mismatched HOMEs are told to run its setup. */
-const guardSetupVersion = "3.0.0";
-/** The Codex adapter also accepts the 1.5.2 engine (catalog 0.13.0); only the 0.52.0 engine understands --harness claude and --tool-json. */
-const legacyCodexCatalogVersion = "0.13.0";
+const guardSetupVersion = "4.2.0";
+/** Previous catalogued guard versions still accepted during audits of un-upgraded HOMEs. */
+const legacyGuardCatalogVersions = /** @type {const} */ ([
+  { version: "0.83.0", harnesses: ["codex", "claude"] },
+  { version: "0.13.0", harnesses: ["codex"] },
+]);
+export const antigravityHookName = "development-system-guardrails";
 /**
- * Codex hooks also cover T3 Codex threads; Claude Code reads its user settings. Both run the
- * canonical engine: the Claude skill variant is a link to it, and links are not managed paths.
+ * Codex hooks also cover T3 Codex threads; Claude Code reads its user settings; Antigravity reads
+ * `.gemini/config/hooks.json` (and T3 Antigravity ACP links to it via `antigravity-link`). All three
+ * execute the canonical engine under `.agents/skills/global-agent-guardrails`.
  */
 const adapters = /** @type {const} */ ([
   { key: "codex", config: ".codex/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".agents/skills/global-agent-guardrails", matcher: "Bash|exec|apply_patch|mcp__.*", label: "Codex" },
   { key: "claude", config: ".claude/settings.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".claude/skills/global-agent-guardrails", matcher: "Bash|Monitor|Edit|Write|MultiEdit|NotebookEdit|mcp__.*", label: "Claude Code" },
+  { key: "antigravity", config: ".gemini/config/hooks.json", engine: ".agents/skills/global-agent-guardrails/scripts/command-guard.mjs", installed: ".gemini/config/skills/global-agent-guardrails", matcher: "run_command|write_to_file|replace_file_content|multi_replace_file_content|write_file|edit_file|view_file|read_file|grep_search|find_by_name|list_dir|call_mcp_tool|mcp_.*", label: "Antigravity" },
 ]);
 
 /** @param {unknown} error */
@@ -111,6 +117,10 @@ function shellQuote(value) {
 
 /** @param {string} engine @param {string} harness */
 function managedCommand(engine, harness) {
+  if (harness === "antigravity") {
+    // Antigravity evaluates JSON on stdout; on missing/crashing engine emit an explicit deny decision.
+    return `${marker} node ${shellQuote(engine)} hook --harness antigravity || printf '{"decision":"deny","reason":"[guard-unavailable] Guard engine missing or crashed"}\\n'`;
+  }
   // `|| exit 2` fails closed: a missing, unreadable or crashing engine blocks instead of allowing.
   return `${marker} node ${shellQuote(engine)} hook --harness ${harness} || exit 2`;
 }
@@ -122,9 +132,14 @@ function isManagedEntry(entry) {
   return entryHooks.some((hook) => hook && typeof hook === "object" && typeof hook.command === "string" && hook.command.includes(marker));
 }
 
-/** @param {Buffer} contents @param {string} label */
-function withoutManagedEntry(contents, label) {
+/** @param {Buffer} contents @param {string} label @param {string} [adapterKey] */
+function withoutManagedEntry(contents, label, adapterKey = "codex") {
   const settings = parseObject(contents, label);
+  if (adapterKey === "antigravity") {
+    const next = { ...settings };
+    delete next[antigravityHookName];
+    return Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
+  }
   const preToolUse = /** @type {any[]} */ (Array.isArray(settings.hooks?.PreToolUse) ? settings.hooks.PreToolUse : []);
   const hooks = { ...settings.hooks, PreToolUse: preToolUse.filter((entry) => !isManagedEntry(entry)) };
   if (hooks.PreToolUse.length === 0) delete hooks.PreToolUse;
@@ -149,6 +164,24 @@ function mergedHooks(container, matcher, command) {
   return hooks;
 }
 
+/** @param {any} config @param {string} adapterKey @param {string} matcher @param {string} command */
+function withManagedAdapterConfig(config, adapterKey, matcher, command) {
+  if (adapterKey === "antigravity") {
+    return {
+      ...config,
+      [antigravityHookName]: {
+        PreToolUse: [
+          {
+            matcher,
+            hooks: [{ type: "command", command, timeout: 10 }],
+          },
+        ],
+      },
+    };
+  }
+  return { ...config, hooks: mergedHooks(config.hooks, matcher, command) };
+}
+
 /** @param {string} home */
 function paths(home) {
   return {
@@ -157,15 +190,26 @@ function paths(home) {
     claudeConfig: insideHome(home, adapters[1].config),
     claudeEngine: insideHome(home, adapters[1].engine),
     claudeSkill: insideHome(home, adapters[1].installed),
+    antigravityConfig: insideHome(home, adapters[2].config),
+    antigravityEngine: insideHome(home, adapters[2].engine),
+    antigravitySkill: insideHome(home, adapters[2].installed),
     state: insideHome(home, stateRelative),
   };
 }
 
-/** Codex is always managed; Claude Code only once its catalogued guard skill is installed. */
+/** Codex is always managed; Claude Code and Antigravity once their catalogued guard skill is installed. */
 /** @param {ReturnType<typeof paths>} managed */
 async function activeAdapters(managed) {
   const all = adapterPaths(managed);
-  return await existsFile(managed.claudeSkill) ? all : all.filter((adapter) => adapter.key !== "claude");
+  const [hasClaude, hasAntigravity] = await Promise.all([
+    existsFile(managed.claudeSkill),
+    existsFile(managed.antigravitySkill),
+  ]);
+  return all.filter((adapter) => {
+    if (adapter.key === "claude") return hasClaude;
+    if (adapter.key === "antigravity") return hasAntigravity;
+    return true;
+  });
 }
 
 /** @param {string} version */
@@ -180,8 +224,18 @@ async function guardHashes(version) {
 function adapterPaths(managed) {
   return adapters.map((adapter) => ({
     ...adapter,
-    configPath: adapter.key === "codex" ? managed.codexConfig : managed.claudeConfig,
-    enginePath: adapter.key === "codex" ? managed.codexEngine : managed.claudeEngine,
+    configPath:
+      adapter.key === "codex"
+        ? managed.codexConfig
+        : adapter.key === "claude"
+          ? managed.claudeConfig
+          : managed.antigravityConfig,
+    enginePath:
+      adapter.key === "codex"
+        ? managed.codexEngine
+        : adapter.key === "claude"
+          ? managed.claudeEngine
+          : managed.antigravityEngine,
   }));
 }
 
@@ -191,8 +245,33 @@ async function assertEngine(path) {
   if (!status?.isFile()) throw new Error(`Guard engine is not installed: ${path}`);
 }
 
-/** @param {any} config @param {string} command @param {string} matcher */
-function exactEntry(config, command, matcher) {
+/** @param {any} config @param {string} command @param {string} matcher @param {string} [adapterKey] */
+function exactEntry(config, command, matcher, adapterKey = "codex") {
+  if (adapterKey === "antigravity") {
+    const block = config?.[antigravityHookName];
+    if (!block || typeof block !== "object" || Array.isArray(block)) return false;
+    const blockKeys = Object.keys(block);
+    if (blockKeys.length !== 1 || blockKeys[0] !== "PreToolUse") return false;
+    if (!Array.isArray(block.PreToolUse) || block.PreToolUse.length !== 1) return false;
+    const entry = block.PreToolUse[0];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
+    const entryKeys = Object.keys(entry).sort();
+    if (entryKeys.length !== 2 || entryKeys[0] !== "hooks" || entryKeys[1] !== "matcher") return false;
+    if (entry.matcher !== matcher) return false;
+    if (!Array.isArray(entry.hooks) || entry.hooks.length !== 1) return false;
+    const hook = entry.hooks[0];
+    if (!hook || typeof hook !== "object" || Array.isArray(hook)) return false;
+    const hookKeys = Object.keys(hook).sort();
+    return (
+      hookKeys.length === 3 &&
+      hookKeys[0] === "command" &&
+      hookKeys[1] === "timeout" &&
+      hookKeys[2] === "type" &&
+      hook.type === "command" &&
+      hook.command === command &&
+      hook.timeout === 10
+    );
+  }
   if (!Array.isArray(config?.hooks?.PreToolUse)) return false;
   const preToolUse = /** @type {any[]} */ (config.hooks.PreToolUse);
   return preToolUse.some((entry) => {
@@ -238,6 +317,19 @@ function probePayload(engine, payload, home, extra = []) {
   return spawnSync(process.execPath, [engine, "check", "--tool-json", JSON.stringify(payload), ...extra], { encoding: "utf8", env: { ...process.env, HOME: home } });
 }
 
+/** Run an Antigravity PreToolUse hook probe over stdin and parse its fail-closed JSON decision.
+ * @param {string} engine @param {string} rawStdin @param {string} home @param {Record<string, string>} [extraEnv] */
+function probeAntigravityHook(engine, rawStdin, home, extraEnv = {}) {
+  const result = spawnSync(process.execPath, [engine, "hook", "--harness", "antigravity"], {
+    input: rawStdin,
+    encoding: "utf8",
+    env: { ...process.env, HOME: home, ...extraEnv },
+  });
+  let parsed = null;
+  try { parsed = JSON.parse((result.stdout ?? "").trim()); } catch { parsed = null; }
+  return { status: result.status, decision: parsed?.decision ?? null, reason: parsed?.reason ?? null };
+}
+
 /** @param {{home: string}} options */
 export async function auditGlobalGuardrails({ home }) {
   const resolvedHome = resolve(home);
@@ -249,13 +341,16 @@ export async function auditGlobalGuardrails({ home }) {
   }
   /** @type {Map<string, Set<string>>} */
   const expectedByHarness = new Map();
-  /** Hashes of the current catalogued guard; only that engine understands the 2.0.0 probes. @type {Map<string, string>} */
+  /** Hashes of the current catalogued guard; only that engine understands the latest probes. @type {Map<string, string>} */
   const currentByHarness = new Map();
   try {
-    for (const version of [guardCatalogVersion, legacyCodexCatalogVersion]) {
-      for (const [harness, hash] of await guardHashes(version)) {
-        if (version === legacyCodexCatalogVersion && harness !== "codex") continue;
-        if (version === guardCatalogVersion) currentByHarness.set(harness, hash);
+    for (const [harness, hash] of await guardHashes(guardCatalogVersion)) {
+      currentByHarness.set(harness, hash);
+      expectedByHarness.set(harness, (expectedByHarness.get(harness) ?? new Set()).add(hash));
+    }
+    for (const legacy of legacyGuardCatalogVersions) {
+      for (const [harness, hash] of await guardHashes(legacy.version)) {
+        if (!/** @type {readonly string[]} */ (legacy.harnesses).includes(harness)) continue;
         expectedByHarness.set(harness, (expectedByHarness.get(harness) ?? new Set()).add(hash));
       }
     }
@@ -279,11 +374,86 @@ export async function auditGlobalGuardrails({ home }) {
     let config = {};
     try { config = parseObject(await readOptional(adapter.configPath), `${adapter.label} hooks`); }
     catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
-    if (!exactEntry(config, managedCommand(adapter.enginePath, adapter.key), adapter.matcher)) {
+    if (!exactEntry(config, managedCommand(adapter.enginePath, adapter.key), adapter.matcher, adapter.key)) {
       problems.push(`${adapter.label} managed PreToolUse hook is missing or drifted`);
     }
     if (await readOptional(adapter.enginePath)) {
       const current = skillHash !== null && skillHash === currentByHarness.get(adapter.key);
+      if (adapter.key === "antigravity") {
+        const probeRootA = resolve(resolvedHome, "guard-probe-a");
+        const probeRootB = resolve(resolvedHome, "guard-probe-b");
+        const agSafe = probeAntigravityHook(
+          adapter.enginePath,
+          JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA], toolCall: { id: "p1", name: "run_command", args: { CommandLine: "git status --short", Cwd: probeRootA } } }),
+          resolvedHome,
+        );
+        if (agSafe.status !== 0 || agSafe.decision !== "allow") problems.push("Antigravity guard did not allow the safe run_command probe");
+        const agDestructive = probeAntigravityHook(
+          adapter.enginePath,
+          JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA], toolCall: { id: "p2", name: "run_command", args: { CommandLine: "git reset --hard", Cwd: probeRootA } } }),
+          resolvedHome,
+        );
+        if (agDestructive.status !== 0 || agDestructive.decision !== "deny") problems.push("Antigravity guard did not deny the destructive run_command probe");
+        const agMalformed = probeAntigravityHook(adapter.enginePath, "{not-json", resolvedHome);
+        if (agMalformed.status !== 0 || agMalformed.decision !== "deny") problems.push("Antigravity guard did not fail closed on malformed stdin");
+        if (current) {
+          const agMultiWrite = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA, probeRootB], toolCall: { id: "p3", name: "write_to_file", args: { TargetFile: resolve(probeRootB, "src/a.test.ts") } } }),
+            resolvedHome,
+          );
+          if (agMultiWrite.status !== 0 || agMultiWrite.decision !== "deny") problems.push("Antigravity guard did not block the multi-root test-file write probe");
+          const agCrossShell = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA, probeRootB], toolCall: { id: "p4", name: "run_command", args: { CommandLine: `echo x > ${resolve(probeRootB, "src/b.test.ts")}`, Cwd: probeRootA } } }),
+            resolvedHome,
+          );
+          if (agCrossShell.status !== 0 || agCrossShell.decision !== "deny") problems.push("Antigravity guard did not block the cross-root shell test-file write probe");
+          const agOauthRead = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA], toolCall: { id: "p5", name: "view_file", args: { AbsolutePath: resolve(resolvedHome, ".t3/userdata/providers/antigravity/deadbeef/antigravity-acp/antigravity-oauth-token") } } }),
+            resolvedHome,
+          );
+          if (agOauthRead.status !== 0 || agOauthRead.decision !== "deny") problems.push("Antigravity guard did not block reading the ACP OAuth token");
+          const agOauthSearch = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, workspacePaths: [probeRootA], toolCall: { id: "p6", name: "grep_search", args: { SearchPath: resolve(resolvedHome, ".t3/userdata/providers/antigravity"), Query: "token" } } }),
+            resolvedHome,
+          );
+          if (agOauthSearch.status !== 0 || agOauthSearch.decision !== "deny") problems.push("Antigravity guard did not block searching an ancestor of the ACP OAuth store");
+          const agMcpEagerDeny = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, toolCall: { id: "p7", name: "mcp_vercel_buy_domain", args: { name: "guard-probe.invalid" } } }),
+            resolvedHome,
+          );
+          if (agMcpEagerDeny.status !== 0 || agMcpEagerDeny.decision !== "deny") problems.push("Antigravity guard did not stop the eager MCP purchase probe");
+          const agMcpLazyDeny = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, toolCall: { id: "p8", name: "call_mcp_tool", args: { ServerName: "vercel", ToolName: "buy_domain", Arguments: { name: "guard-probe.invalid" } } } }),
+            resolvedHome,
+          );
+          if (agMcpLazyDeny.status !== 0 || agMcpLazyDeny.decision !== "deny") problems.push("Antigravity guard did not stop the lazy MCP purchase probe");
+          const agMcpRead = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, toolCall: { id: "p9", name: "call_mcp_tool", args: { ServerName: "vercel", ToolName: "list_projects", Arguments: {} } } }),
+            resolvedHome,
+          );
+          if (agMcpRead.status !== 0 || agMcpRead.decision !== "allow") problems.push("Antigravity guard did not allow the lazy MCP read probe");
+          const agGithubMerge = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, toolCall: { id: "p10", name: "mcp_github_merge_pull_request", args: { owner: "AO-HyS", repo: "development-system", pullNumber: 1 } } }),
+            resolvedHome,
+          );
+          if (agGithubMerge.status !== 0 || agGithubMerge.decision !== "deny") problems.push("Antigravity guard did not stop github/merge_pull_request");
+          const agT3Merge = probeAntigravityHook(
+            adapter.enginePath,
+            JSON.stringify({ cwd: probeRootA, toolCall: { id: "p11", name: "mcp_t3-code_pull_request_merge", args: { expectedHeadSha: "deadbeef" } } }),
+            resolvedHome,
+          );
+          if (agT3Merge.status !== 0 || agT3Merge.decision !== "deny") problems.push("Antigravity guard did not stop t3-code/pull_request_merge");
+        }
+        continue;
+      }
       const safe = probe(adapter.enginePath, current ? 'grep -n "x" f 2>/dev/null | head' : "git status --short", resolvedHome);
       const blocked = probe(adapter.enginePath, "git reset --hard", resolvedHome);
       if (safe.status !== 0) problems.push(`${adapter.label} guard did not allow the safe probe`);
@@ -296,7 +466,7 @@ export async function auditGlobalGuardrails({ home }) {
         if (grantWrite.status !== 2) problems.push(`${adapter.label} guard did not block the test-grant file write probe`);
         const selfGrant = probe(adapter.enginePath, "pnpm exec development-system allow-tests guard-probe", resolvedHome);
         if (selfGrant.status !== 2) problems.push(`${adapter.label} guard did not block the agent self-grant probe`);
-        // Policy 2.5.0: the MCP spend guard stops a purchase and lets a listed read through.
+        // Policy 2.5.0+: the MCP spend guard stops a purchase and lets a listed read through.
         const spend = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_vercel_vercel__buy_domain", cwd: resolvedHome, tool_input: { name: "guard-probe.invalid" } }, resolvedHome);
         if (spend.status !== 2) problems.push(`${adapter.label} guard did not stop the MCP purchase probe`);
         const read = probePayload(adapter.enginePath, { tool_name: "mcp__plugin_vercel_vercel__list_projects", cwd: resolvedHome, tool_input: {} }, resolvedHome);
@@ -304,11 +474,16 @@ export async function auditGlobalGuardrails({ home }) {
       }
     }
   }
+  const t3Summary = audited.some((adapter) => adapter.key === "antigravity")
+    ? "inherits its Codex, Claude Code, or Antigravity provider"
+    : audited.length > 1
+      ? "inherits its Codex or Claude Code provider"
+      : "inherits Codex";
   return {
     ok: problems.length === 0,
     operation: "guardrails-audit",
     status: problems.length === 0 ? "healthy" : "invalid",
-    adapters: Object.fromEntries([...audited.map((adapter) => [adapter.key, `PreToolUse ${adapter.matcher}`]), ["t3code", audited.length > 1 ? "inherits its Codex or Claude Code provider" : "inherits Codex"]]),
+    adapters: Object.fromEntries([...audited.map((adapter) => [adapter.key, `PreToolUse ${adapter.matcher}`]), ["t3code", t3Summary]]),
     paths: managed,
     problems,
     externalSideEffects: [],
@@ -331,8 +506,8 @@ export async function enableGlobalGuardrails({ home }) {
     before[adapter.key] = await readOptional(adapter.configPath);
     const config = parseObject(before[adapter.key], `${adapter.label} hooks`);
     const command = managedCommand(adapter.enginePath, adapter.key);
-    if (!exactEntry(config, command, adapter.matcher)) {
-      installed[adapter.key] = Buffer.from(`${JSON.stringify({ ...config, hooks: mergedHooks(config.hooks, adapter.matcher, command) }, null, 2)}\n`);
+    if (!exactEntry(config, command, adapter.matcher, adapter.key)) {
+      installed[adapter.key] = Buffer.from(`${JSON.stringify(withManagedAdapterConfig(config, adapter.key, adapter.matcher, command), null, 2)}\n`);
     }
   }
   if (Object.keys(installed).length === 0) {
@@ -351,7 +526,7 @@ export async function enableGlobalGuardrails({ home }) {
       ? prior.before
       : prior === undefined || current === null
         ? currentBase64
-        : withoutManagedEntry(current, `${adapter.label} hooks`).toString("base64");
+        : withoutManagedEntry(current, `${adapter.label} hooks`, adapter.key).toString("base64");
     files[adapter.key] = {
       before: priorBefore,
       installed: (installed[adapter.key] ?? current ?? Buffer.alloc(0)).toString("base64"),
@@ -391,7 +566,7 @@ export async function enableGlobalGuardrails({ home }) {
 export async function rollbackGlobalGuardrails({ home }) {
   const resolvedHome = resolve(home);
   const managed = paths(resolvedHome);
-  for (const path of [managed.codexConfig, managed.claudeConfig, managed.state]) {
+  for (const path of [managed.codexConfig, managed.claudeConfig, managed.antigravityConfig, managed.state]) {
     await assertNoSymlinkParents(resolvedHome, path);
   }
   const contents = await readOptional(managed.state);
@@ -401,7 +576,7 @@ export async function rollbackGlobalGuardrails({ home }) {
     throw new Error("Guardrail activation snapshot is invalid");
   }
   const entries = [];
-  for (const { key, configPath: path } of adapterPaths(managed)) {
+  for (const { key, label, configPath: path } of adapterPaths(managed)) {
     if (key !== "codex" && !(key in state.files)) continue;
     const file = state.files[key];
     if (!file || typeof file !== "object" || !("before" in file) || typeof file.installed !== "string") {
@@ -416,9 +591,8 @@ export async function rollbackGlobalGuardrails({ home }) {
     } else if (current === null) {
       // The configuration was removed after activation, so the managed hook is already gone.
     } else {
-      // Claude Code rewrites its user settings and other features (report gate, orchestration)
-      // add their own hooks after activation; remove only the managed guard hook.
-      entries.push({ path, before: withoutManagedEntry(current, key === "claude" ? "Claude Code settings" : "Codex hooks") });
+      // Remove only the managed guard hook so user hooks added later survive rollback.
+      entries.push({ path, before: withoutManagedEntry(current, `${label} hooks`, key) });
     }
   }
   for (const { path, before } of entries) {
