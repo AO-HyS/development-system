@@ -151,8 +151,14 @@ Para cada fusión de la base cuyo árbol difiere de `git merge-tree --write-tree
 1. abre un worktree temporal en el primer padre (la rama) y pone ahí la fusión automática; un generado en conflicto
    empieza como lo tiene la base;
 2. corre `generados.comandos` en orden (20 minutos en total; cualquier salida distinta de 0 falla);
-3. compara byte a byte cada archivo cambiado a mano con el del commit. Uno que no coincide, un enlace, un submódulo o
-   cualquier otro archivo cambiado a mano deja la fusión sin probar, como antes.
+3. compara con el commit cada salida declarada y cada archivo cambiado a mano: que exista o falte igual, el mismo modo
+   (100644 o 100755) y los mismos bytes. Uno que no coincide, un enlace, un submódulo, un conflicto fuera de prosa y
+   generados, un comando que falla o cualquier otro archivo cambiado a mano deja la fusión sin probar, como antes.
+
+`generados.rutas` es una lista cerrada de rutas exactas: `listo` rechaza comodines, `..` y `config/niveles.json`. Un
+comodín como `architecture/*.json` mezclaría archivos de reglas, y `_generated/*` es código que se ejecuta. La copia
+del generado que trae el commit nunca entra en la copia temporal: nada del candidato se prueba a sí mismo. Siguen
+igual las comprobaciones de dos padres y de que el segundo esté en la base.
 
 No confía en el mensaje ni en el autor del commit: solo en lo que regenera localmente. Los generadores corren sobre la
 fusión automática, que trae solo commits de la rama (juzgados aparte) y de la base. Un pase se guarda por commit,

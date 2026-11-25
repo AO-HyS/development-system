@@ -15,8 +15,8 @@
 //   normal    everything else, unknown paths included
 //
 // `generados` (sobre 4.2.0) (optional): files a base merge may change on top of git's automatic merge when `listo` can rebuild
-// them itself. `rutas` are their globs and `comandos` the shell commands, run in order in a temporary checkout of the
-// automatic merge, that rebuild them (generados.mjs). Read from the base branch like the rest.
+// them itself. `rutas` are their exact paths and `comandos` the shell commands, run in order in a temporary checkout of the
+// automatic merge, that rebuild them (generados.mjs). `rutas` is a closed list of exact file paths, never a glob. Read from the base branch like the rest.
 import { readFileSync } from "node:fs";
 
 /** @typedef {{rutas: string[], patron: string}} ContentRule */
@@ -105,7 +105,10 @@ function parseGenerados(raw) {
   const rutas = strings(raw.rutas, "generados.rutas");
   const comandos = strings(raw.comandos, "generados.comandos");
   if (!rutas.length || !comandos.length) throw new Error(`${CONFIG_PATH}: generados.rutas y generados.comandos no pueden estar vacíos`);
-  if (rutas.some((glob) => matchesGlob(glob, CONFIG_PATH))) throw new Error(`${CONFIG_PATH}: generados.rutas no puede incluir ${CONFIG_PATH}`);
+  // A closed list of exact outputs: a wildcard would let a rule file or executable code pass as generated.
+  const bad = rutas.find((name) => /[*?[\]{}\\]/.test(name) || name.startsWith("/") || name.endsWith("/") || name.split("/").some((part) => part === "" || part === "." || part === ".."));
+  if (bad) throw new Error(`${CONFIG_PATH}: generados.rutas lleva rutas exactas de archivo, sin comodines ni «..» (${bad})`);
+  if (rutas.includes(CONFIG_PATH)) throw new Error(`${CONFIG_PATH}: generados.rutas no puede incluir ${CONFIG_PATH}`);
   return { rutas, comandos };
 }
 

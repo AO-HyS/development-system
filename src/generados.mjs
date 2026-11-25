@@ -11,8 +11,10 @@
 //      generated file git could not merge (conflict markers) starts as the base's version (P2), or absent there;
 //   3. `generados.comandos` of the base branch run in order there, with the caller's environment minus GIT_* overrides;
 //      any non-zero exit, timeout or missing file fails the proof;
-//   4. every file changed by hand must then be byte-identical to M's (a removed file must be absent; a link, a
-//      submodule or another mode than a regular file fails).
+//   4. every declared output and every file changed by hand must then match M exactly: present or absent alike,
+//      the same mode (100644 or 100755; a link or a submodule fails) and the same bytes.
+// `rutas` is a closed list of exact paths on the base branch (niveles.mjs refuses globs); the commit's own copy of a
+// generated file never enters the temporary checkout, so nothing of the candidate proves itself.
 // Every other file of M equals the automatic merge by construction (the caller checks it first), so the generators
 // run on reviewed inputs: the PR's commits, which the coverage walk judges on their own, and the base branch.
 // Residual trust: the generators are the repository's code; a generator that reads M's objects from the repository
@@ -23,7 +25,6 @@ import { createHash } from "node:crypto";
 import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { matchesGlob } from "./niveles.mjs";
 
 /** @typedef {import("./niveles.mjs").Generados} Generados */
 /** @typedef {{config: Generados, cacheDir: string}} GeneradosContext */
@@ -32,7 +33,7 @@ const TIMEOUT_MS = 20 * 60_000;
 
 /** True when the base branch declares `name` generated. @param {GeneradosContext | null | undefined} context @param {string} name */
 export function isGenerated(context, name) {
-  return Boolean(context) && /** @type {GeneradosContext} */ (context).config.rutas.some((glob) => matchesGlob(glob, name));
+  return Boolean(context) && /** @type {GeneradosContext} */ (context).config.rutas.includes(name);
 }
 
 /** @type {Map<string, {ok: boolean, reason: string}>} */
@@ -55,7 +56,7 @@ function cleanEnv() {
  * @returns {{ok: boolean, reason: string}}
  */
 export function proveRegenerated({ context, sha, first, second, written, tree, files, conflicted }) {
-  const key = createHash("sha256").update(JSON.stringify({ sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
+  const key = createHash("sha256").update(JSON.stringify({ prueba: 2, sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
   const cached = memo.get(key);
   if (cached) return cached;
   const cacheFile = path.join(context.cacheDir, `${key}.json`);
@@ -113,15 +114,18 @@ function rebuild({ context, first, second, written, tree, files, conflicted }) {
     }
     /** @type {string[]} */
     const differ = [];
-    for (const file of files) {
-      const expected = entry(tree, file.filename);
-      const target = path.join(dir, file.filename);
+    // Every declared output, not only the ones the commit changed: presence, mode and bytes must all match, so an
+    // output the generator adds or drops that the commit does not (or the reverse) also fails.
+    for (const name of [...new Set([...context.config.rutas, ...files.map((file) => file.filename)])]) {
+      const expected = entry(tree, name);
+      const target = path.join(dir, name);
       let stat = null;
       try { stat = lstatSync(target); } catch { stat = null; }
-      if (!expected) { if (stat) differ.push(`${file.filename} (el commit lo borra; regenerado existe)`); continue; }
-      if (expected.type !== "blob" || !/^1006[0-7]{2}$/.test(expected.mode)) { differ.push(`${file.filename} (modo ${expected.mode} en el commit)`); continue; }
-      if (!stat?.isFile()) { differ.push(`${file.filename} (no se regeneró)`); continue; }
-      if (!readFileSync(target).equals(blob(expected.object))) differ.push(file.filename);
+      if (!expected) { if (stat) differ.push(`${name} (el commit no lo tiene; la regeneración sí)`); continue; }
+      if (expected.type !== "blob" || (expected.mode !== "100644" && expected.mode !== "100755")) { differ.push(`${name} (modo ${expected.mode} en el commit)`); continue; }
+      if (!stat?.isFile()) { differ.push(`${name} (la regeneración no lo produce)`); continue; }
+      if ((expected.mode === "100755") !== ((stat.mode & 0o111) !== 0)) { differ.push(`${name} (modo distinto)`); continue; }
+      if (!readFileSync(target).equals(blob(expected.object))) differ.push(name);
     }
     if (differ.length) return { ok: false, reason: `no coinciden con lo regenerado: ${differ.slice(0, 5).join(", ")}` };
     return { ok: true, reason: `regenerados byte a byte: ${files.map((file) => file.filename).slice(0, 5).join(", ")}${files.length > 5 ? ` y ${files.length - 5} más` : ""}` };
