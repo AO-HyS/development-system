@@ -5,7 +5,9 @@
 - Pedido: en NutriPlan cada carril fusiona `origin/develop` y regenera ledgers (`packages/config/architecture/*.json`); `cleanBaseMerge` solo aceptaba prosa encima de la fusión automática, así que cada fusión pedía otra revisión de Codex (≥ 15 min).
 - Hecho: bloque opcional `generados: {rutas, comandos}` en `config/niveles.json` (leído de la rama base). `src/generados.mjs` arma un worktree temporal en el primer padre con la fusión automática (un generado en conflicto empieza como en la base), corre los comandos y compara byte a byte; cualquier otro archivo o un byte distinto deja la fusión sin probar. Un pase se guarda por commit en `~/.development-system/private/listo/generados/`.
 - Medido en un clon de NutriPlan (`~/.development-system/private/scratch/ds-generados/`): la fusión real `5951544` queda limpia (45 s; 15 s de `pnpm install --offline`); la misma con un total del ledger cambiado a mano y con una línea de código a mano quedan sin probar. `convex codegen` necesita `CONVEX_DEPLOYMENT`: `_generated/**` queda fuera de `generados` y su fusión sigue pidiendo revisión.
-- Falta: PR, lectura de Sol, fusión a develop, instalación y el bloque `generados` en `config/niveles.json` de NutriPlan (lo hace su hilo).
+- Fusionado: #244 (punta `00bb8a2`, fusión `9740df4` en develop) tras dos lecturas de Sol 6.1 High (todos sus P1/P2 arreglados en `d938974` y `00bb8a2`; el sandbox se rechazó: los generadores son el mismo código que `comprobaciones` ya corre) y el P1 de Codex respondido.
+- Paquete 4.2.1 (contrato y catálogo siguen en 4.2.0; `build-release-420.mjs` acepta un parche del paquete sobre el contrato) para instalarlo de forma global.
+- Falta: el bloque `generados` en `config/niveles.json` de NutriPlan (lo hace su hilo).
 
 ## 4.1.0 — the AF way of working (catalog 0.86.0; released and installed on 2026-11-19)
 

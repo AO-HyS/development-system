@@ -325,7 +325,9 @@ await addArtifact({
 
 await output(`manifests/${version}.json`, JSON.stringify(manifest, null, 2) + '\n');
 const pkg = JSON.parse((await bytes('package.json')).toString());
-if (pkg.version !== version || pkg.contractVersion !== version) throw new Error('Package version mismatch');
+// The package may carry a patch over the contract (4.2.1 ships 4.2.0's artifacts with a fix in src/); the contract stays exact.
+const patchOf = version.replace(/\.\d+$/, '.');
+if (pkg.contractVersion !== version || !(pkg.version === version || (pkg.version.startsWith(patchOf) && /^\d+$/.test(pkg.version.slice(patchOf.length))))) throw new Error('Package version mismatch');
 if (!String(pkg.scripts?.['skills:audit']).includes(`--version ${catalogVersion}`)) throw new Error(`package.json skills:audit must audit catalog ${catalogVersion}`);
 await checkActiveToolingDocs();
 console.log(JSON.stringify({
