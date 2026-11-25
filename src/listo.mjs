@@ -226,15 +226,24 @@ export function checksPart({ config, owner, repo, head, rulesFrom, home, checkou
     else if (localHead !== head) blocked = `el checkout ${top} está en ${short(localHead)}, no en la punta ${short(head)}`;
     else if (dirty) blocked = `el checkout ${top} tiene cambios sin commit o archivos sin seguir`;
     else {
+      /** @type {typeof store.resultados} */
+      const ran = {};
       for (const command of pending) {
         process.stderr.write(`listo: corriendo «${command}» en ${top} (árbol ${short(tree)})\n`);
         const started = Date.now();
         const child = spawnSync(command, { cwd: top, shell: true, stdio: ["ignore", 2, 2], timeout: CHECK_TIMEOUT_MS });
-        store.resultados = { ...store.resultados, [command]: { ok: child.status === 0, en: new Date().toISOString(), ms: Date.now() - started, sha: head, salida: child.status ?? -1 } };
+        ran[command] = { ok: child.status === 0, en: new Date().toISOString(), ms: Date.now() - started, sha: head, salida: child.status ?? -1 };
+        // A command that moved HEAD or wrote into the checkout makes every later result about other files: keep none.
+        const afterHead = execFileSync("git", ["-C", top, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+        const afterDirty = execFileSync("git", ["-C", top, "status", "--porcelain"], { encoding: "utf8" }).trim() !== "";
+        if (afterHead !== head || afterDirty) { blocked = `«${command}» ${afterHead !== head ? `movió el checkout a ${short(afterHead)}` : "dejó cambios en el checkout"}; ningún resultado de esta corrida cuenta`; break; }
       }
-      mkdirSync(directory, { recursive: true, mode: 0o700 });
-      writeFileSync(file, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
-      chmodSync(file, 0o600);
+      if (!blocked) {
+        store.resultados = { ...store.resultados, ...ran };
+        mkdirSync(directory, { recursive: true, mode: 0o700 });
+        writeFileSync(file, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
+        chmodSync(file, 0o600);
+      }
     }
   }
   /** @type {Falta[]} */
@@ -371,9 +380,11 @@ export function listo(options) {
   if (!draft && !/^[0-9a-f]{40}$/.test(baseSha)) throw new Error(`GitHub no dio la punta de ${baseRef}`);
   const loaded = loadNiveles({ gh, owner, repo, ref: draft ? baseRef : baseSha, file: draft, label: `${baseRef}@${short(baseSha)}` });
   const rulesFrom = draft ? `borrador:${createHash("sha256").update(readFileSync(draft)).digest("hex")}` : baseSha;
+  // Rules, base-merge membership and checks all judge against that one commit; `pinnedBase` stands for the branch.
+  const pinnedBase = baseSha || baseRef;
   const files = pullFiles(owner, repo, pull);
   const prChanged = new Set(files.flatMap(namesOf));
-  const classified = classifyFiles({ config: loaded.config, files, content: contentReader(owner, repo, head, mergeBaseOf(owner, repo, baseRef, head)) });
+  const classified = classifyFiles({ config: loaded.config, files, content: contentReader(owner, repo, head, mergeBaseOf(owner, repo, pinnedBase, head)) });
   let nivel = classified.nivel;
   /** @type {string[]} */
   const raised = [];
@@ -403,7 +414,7 @@ export function listo(options) {
   const prCommits = ghList(`${base}/pulls/${number}/commits?per_page=100`).map((commit) => String(commit.sha));
   const threads = codexThreads(gh, owner, repo, number);
   const generados = generadosContext(loaded.config, home, owner, repo);
-  const codex = codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, threads, registros, prChanged, now, generados });
+  const codex = codexRule({ owner, repo, pull, head, baseRef: pinnedBase, prCommits, comments, threads, registros, prChanged, now, generados });
   if (codex.criticos.length) { nivel = raise(nivel, "crítico"); raised.push(`rechazo crítico de Codex ${codex.criticos.map((thread) => thread.id).join(", ")}`); }
   if (codex.estado === "vencido" || codex.estado === "falló") { nivel = raise(nivel, "crítico"); raised.push(codex.estado === "vencido" ? "reloj de Codex vencido" : "Codex no puede revisar"); }
   parts.push({ parte: "Nivel", linea: `${nivel}${nivel === classified.nivel ? "" : ` (por rutas ${classified.nivel}; sube por: ${raised.join(", ")})`} — ${formatMotivos(classified)}${nivel === classified.nivel && raised.length ? `; también: ${raised.join(", ")}` : ""} [${loaded.fuente}]` });
@@ -429,12 +440,17 @@ export function listo(options) {
   const registroCommand = (/** @type {string[]} */ cubre) => `development-system registro ${prKey} --sha ${head} --entorno <url|local> --lector <modelo> --lectura <hilo de la lectura> --veredicto sin-vivos|vivos --necesario "N1: <caso>" --caso "pass: N1 <qué se intentó> => <qué se observó>" --autor <modelo que escribió el cambio>${cubre.map((id) => ` --cubre ${id}`).join("")}`;
   const unclosed = codex.criticos.filter((thread) => !thread.cerrado);
   if (nivel === "crítico") {
-    record = recordPart({ registros, head, merge: mergeSha, cover: (from) => coverage({ base, from, to: head, findings: allFindings, peers: [], records: [], baseRef, prChanged, generados }) });
+    record = recordPart({ registros, head, merge: mergeSha, cover: (from) => coverage({ base, from, to: head, findings: allFindings, peers: [], records: [], baseRef: pinnedBase, prChanged, generados }) });
     parts.push({ parte: "Registro", linea: record.linea });
     for (const texto of record.faltas) faltas.push({ texto, comando: registroCommand(unclosed.map((thread) => thread.id)) });
     for (const thread of unclosed) faltas.push({ texto: `el rechazo de ${thread.id}${thread.priority === null ? "" : ` (P${thread.priority})`} en ${thread.path} necesita una lectura posterior que lo nombre`, comando: registroCommand(unclosed.map((entry) => entry.id)) });
   } else if (nivel === "normal") parts.push({ parte: "Lectura", linea: "queda sin verificar hasta la lectura por lote (antes de pasar a main)" });
   else parts.push({ parte: "Lectura", linea: "mecánico: sin lectura" });
+  // A base that moved while listo ran may carry other rules or checks: judge again, never publish the old verdict.
+  if (baseSha) {
+    const now = String(ghJson(`${base}/commits/${encodeURIComponent(baseRef)}`).sha ?? "");
+    if (now !== baseSha) faltas.push({ texto: `${baseRef} avanzó de ${short(baseSha)} a ${now ? short(now) : "?"} mientras listo corría`, comando: `development-system listo ${prKey}` });
+  }
   /** @type {"listo" | "espera" | "falta"} */
   const resultado = faltas.length ? "falta" : codex.estado === "espera" ? "espera" : "listo";
   const first = faltas[0]?.texto ?? (resultado === "espera" ? `Codex en espera hasta las ${clock(Date.parse(codex.vence))}` : "listo");
