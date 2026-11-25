@@ -62,7 +62,7 @@ export function gitEnv() {
  * @returns {{ok: boolean, reason: string}}
  */
 export function proveRegenerated({ context, sha, first, second, written, tree, files, conflicted }) {
-  const key = createHash("sha256").update(JSON.stringify({ prueba: 3, sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
+  const key = createHash("sha256").update(JSON.stringify({ prueba: 4, sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
   const cached = memo.get(key);
   if (cached) return cached;
   const cacheFile = path.join(context.cacheDir, `${key}.json`);
@@ -132,7 +132,7 @@ function rebuild({ context, first, second, written, tree, files, conflicted }) {
       if (!expected) { if (stat) differ.push(`${name} (el commit no lo tiene; la regeneración sí)`); continue; }
       if (expected.type !== "blob" || (expected.mode !== "100644" && expected.mode !== "100755")) { differ.push(`${name} (modo ${expected.mode} en el commit)`); continue; }
       if (!stat?.isFile()) { differ.push(`${name} (la regeneración no lo produce)`); continue; }
-      if ((expected.mode === "100755") !== ((stat.mode & 0o111) !== 0)) { differ.push(`${name} (modo distinto)`); continue; }
+      if ((expected.mode === "100755") !== ((stat.mode & 0o100) !== 0)) { differ.push(`${name} (modo distinto)`); continue; }
       if (!readFileSync(target).equals(blob(expected.object))) differ.push(name);
     }
     if (differ.length) return { ok: false, reason: `no coinciden con lo regenerado: ${differ.slice(0, 5).join(", ")}` };

@@ -362,7 +362,9 @@ export function coverage({ base, from, to, findings, peers = [], records, baseRe
   if (commits.length === 0) return uncovered("no commits after the reviewed head");
   if (!filtersPass) return { ...uncovered("a commit after the reviewed head is not a cited fix of its findings"), commits };
   // Only now, with every other commit of the interval covered, run the generators of the base merges that need them.
-  for (const { sha: merge, prove } of proofs) {
+  // Oldest first, stopping at the first failure: a later merge's generators load its first parent, which holds the
+  // earlier merge's generated files, so those must be proven before anything runs on top of them.
+  for (const { sha: merge, prove } of [...proofs].reverse()) {
     if (!generados) return { ...uncovered(`${merge.slice(0, 12)}: no generados context`, true), commits };
     const proof = proveRegenerated({ context: generados, sha: merge, ...prove });
     if (!proof.ok) {
