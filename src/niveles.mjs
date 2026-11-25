@@ -13,11 +13,16 @@
 //   mecánico  every name matches `mecanico.rutas`, or the file is listed in `mecanico.soloBaja` and its JSON at the
 //             head differs from the base only in numeric leaves that went down
 //   normal    everything else, unknown paths included
+//
+// `generados` (sobre 4.2.0) (optional): files a base merge may change on top of git's automatic merge when `listo` can rebuild
+// them itself. `rutas` are their exact paths and `comandos` the shell commands, run in order in a temporary checkout of the
+// automatic merge, that rebuild them (generados.mjs). `rutas` is a closed list of exact file paths, never a glob. Read from the base branch like the rest.
 import { readFileSync } from "node:fs";
 
 /** @typedef {{rutas: string[], patron: string}} ContentRule */
 /**
- * @typedef {{version: 1, desde?: string, critico: {rutas: string[], contenido: ContentRule[]}, mecanico: {rutas: string[], soloBaja: string[]}, smoke: {rutas: string[], aplica: boolean, motivo?: string}, comprobaciones: string[]}} Niveles
+ * @typedef {{version: 1, desde?: string, critico: {rutas: string[], contenido: ContentRule[]}, mecanico: {rutas: string[], soloBaja: string[]}, smoke: {rutas: string[], aplica: boolean, motivo?: string}, comprobaciones: string[], generados?: Generados}} Niveles
+ * @typedef {{rutas: string[], comandos: string[]}} Generados
  * @typedef {"crítico" | "mecánico" | "normal"} Nivel
  * @typedef {{filename: string, status?: string, previous_filename?: string}} ChangedFile
  * @typedef {{file: string, regla: string}} Motivo
@@ -90,7 +95,21 @@ export function parseNiveles(raw) {
     mecanico: { rutas: strings(raw.mecanico?.rutas, "mecanico.rutas"), soloBaja: strings(raw.mecanico?.soloBaja, "mecanico.soloBaja") },
     smoke: { rutas: strings(raw.smoke?.rutas, "smoke.rutas"), aplica: smokeAplica, ...(smokeMotivo ? { motivo: String(smokeMotivo).trim() } : {}) },
     comprobaciones: strings(raw.comprobaciones, "comprobaciones"),
+    ...(raw.generados === undefined ? {} : { generados: parseGenerados(raw.generados) }),
   };
+}
+
+/** The optional `generados` block: both lists non-empty, and never this file itself. @param {any} raw @returns {Generados} */
+function parseGenerados(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`${CONFIG_PATH}: generados debe ser un objeto con rutas y comandos`);
+  const rutas = strings(raw.rutas, "generados.rutas");
+  const comandos = strings(raw.comandos, "generados.comandos");
+  if (!rutas.length || !comandos.length) throw new Error(`${CONFIG_PATH}: generados.rutas y generados.comandos no pueden estar vacíos`);
+  // A closed list of exact outputs: a wildcard would let a rule file or executable code pass as generated.
+  const bad = rutas.find((name) => /[*?[\]{}\\]/.test(name) || name.startsWith("/") || name.endsWith("/") || name.split("/").some((part) => part === "" || part === "." || part === ".."));
+  if (bad) throw new Error(`${CONFIG_PATH}: generados.rutas lleva rutas exactas de archivo, sin comodines ni «..» (${bad})`);
+  if (rutas.includes(CONFIG_PATH)) throw new Error(`${CONFIG_PATH}: generados.rutas no puede incluir ${CONFIG_PATH}`);
+  return { rutas, comandos };
 }
 
 /**

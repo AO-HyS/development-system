@@ -17,6 +17,9 @@
 //
 // 3.1.0: Codex also reads the merged head and often answers minutes after the merge, when nobody looks. `--barrido`
 // lists the unanswered threads of recently merged PRs and `--produccion` holds while one exists (pendingCodexThreads).
+//
+// Generados (sobre 4.2.0): a base merge whose changes on top of git's automatic merge are only files the base branch declares in
+// `generados` stays a clean merge when listo rebuilds those files itself and they match byte for byte (generados.mjs).
 import { execFileSync, spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -25,6 +28,7 @@ import { codexThreads, threadStates } from "./codex-threads.mjs";
 import { changedFile, parsePrReference } from "./evidence.mjs";
 import { classifyFiles, firstMatch, formatMotivos, loadNiveles, namesOf, raise } from "./niveles.mjs";
 import { ancestorOrEqual, coverage, parsePr, summaryStates } from "./pr-review-status.mjs";
+/** @typedef {import("./generados.mjs").GeneradosContext} GeneradosContext */
 import { evaluateRegistro, registrosOf } from "./registro.mjs";
 import { SMOKE_CONTEXT } from "./smoke.mjs";
 
@@ -122,9 +126,9 @@ function pullFiles(owner, repo, pull) {
 
 /**
  * The Codex rule for one pull request.
- * @param {{owner: string, repo: string, pull: any, head: string, baseRef: string, prCommits: string[], comments: any[], threads: any[], registros: import("./registro.mjs").RegistroLeido[], prChanged: Set<string>, now: number}} input
+ * @param {{owner: string, repo: string, pull: any, head: string, baseRef: string, prCommits: string[], comments: any[], threads: any[], registros: import("./registro.mjs").RegistroLeido[], prChanged: Set<string>, now: number, generados: GeneradosContext | null}} input
  */
-function codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, threads, registros, prChanged, now }) {
+function codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, threads, registros, prChanged, now, generados }) {
   const base = `repos/${owner}/${repo}`;
   const reviews = ghList(`${base}/pulls/${pull.number}/reviews?per_page=100`).filter((review) => isCodexApp(review.user) && /Codex Review|Reviewed commit/.test(String(review.body)));
   const appComments = comments.filter((comment) => isCodexApp(comment.user)).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
@@ -140,7 +144,7 @@ function codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, thre
   /** @type {ReturnType<typeof coverage> | null} */
   let cover = null;
   if (latest && latest !== head) {
-    cover = coverage({ base, from: latest, to: head, findings: findings.filter((finding) => finding.origin === latest), peers: findings.filter((finding) => finding.origin && finding.origin !== latest), records: [], baseRef, prChanged });
+    cover = coverage({ base, from: latest, to: head, findings: findings.filter((finding) => finding.origin === latest), peers: findings.filter((finding) => finding.origin && finding.origin !== latest), records: [], baseRef, prChanged, generados });
   }
   const covered = latest !== "" && (latest === head || cover?.covered === true);
   const requests = comments.filter((comment) => comment.user?.type === "User" && REQUEST.test(String(comment.body))).sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
@@ -171,8 +175,10 @@ function codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, thre
   const from = requests.length ? "la primera petición" : "la creación del PR";
   const answered = states.filter((state) => state.state === "fixed" || state.state === "rejected" || state.state === "rejected-needs-sol");
   const threadsText = threads.length ? `; hilos: ${answered.length} de ${threads.length} contestados` : "; sin hilos";
+  const regenerated = (cover?.commits ?? []).filter((commit) => commit.regenerated?.length).map((commit) => `${short(commit.sha)}: ${commit.regenerated?.join(", ")}`);
+  const regeneratedText = regenerated.length ? `; fusiones con generados regenerados byte a byte: ${regenerated.join("; ")}` : "";
   let linea;
-  if (estado === "cumple") linea = `revisó ${short(latest)}${latest === head ? " (la punta)" : ` y la punta está cubierta (${cover?.reason})`}${threadsText}`;
+  if (estado === "cumple") linea = `revisó ${short(latest)}${latest === head ? " (la punta)" : ` y la punta está cubierta (${cover?.reason})`}${regeneratedText}${threadsText}`;
   else if (estado === "espera") linea = `en espera hasta las ${clock(deadline)} (faltan ${Math.max(1, Math.ceil((deadline - now) / 60_000))} min, reloj desde ${from}); ${why}${threadsText}`;
   else if (estado === "falló") linea = `Codex no puede revisar («${String(terminal?.body ?? "").replace(/\s+/g, " ").trim().slice(0, 80)}»): se deja Codex y el PR pasa a crítico${threadsText}`;
   else linea = `el reloj venció a las ${clock(deadline)} (desde ${from}), ${why}: se deja Codex y el PR pasa a crítico${threadsText}`;
@@ -228,6 +234,15 @@ function checksPart({ config, owner, repo, head, home, checkout, prKey }) {
   }
   const passed = commands.filter((command) => store.resultados?.[command]?.ok === true);
   return { linea: `${passed.length} de ${commands.length} pasadas en el árbol ${short(tree)}${faltas.length ? "" : ` (${passed.join(", ")})`}`, faltas, arbol: tree };
+}
+
+/**
+ * The base branch's `generados` block with the folder where passing rebuilds are cached, or null without one.
+ * @param {Niveles | null} config @param {string} home @param {string} owner @param {string} repo @returns {GeneradosContext | null}
+ */
+function generadosContext(config, home, owner, repo) {
+  if (!config?.generados) return null;
+  return { config: config.generados, cacheDir: path.join(home, ".development-system/private/listo/generados", `${owner}-${repo}`.toLowerCase()) };
 }
 
 /** The `smoke` commit status of a commit: success, failure, pending, error or «sin correr». @param {string} owner @param {string} repo @param {string} sha */
@@ -370,7 +385,8 @@ export function listo(options) {
   const registros = registrosOf(comments);
   const prCommits = ghList(`${base}/pulls/${number}/commits?per_page=100`).map((commit) => String(commit.sha));
   const threads = codexThreads(gh, owner, repo, number);
-  const codex = codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, threads, registros, prChanged, now });
+  const generados = generadosContext(loaded.config, home, owner, repo);
+  const codex = codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, threads, registros, prChanged, now, generados });
   if (codex.criticos.length) { nivel = raise(nivel, "crítico"); raised.push(`rechazo crítico de Codex ${codex.criticos.map((thread) => thread.id).join(", ")}`); }
   if (codex.estado === "vencido" || codex.estado === "falló") { nivel = raise(nivel, "crítico"); raised.push(codex.estado === "vencido" ? "reloj de Codex vencido" : "Codex no puede revisar"); }
   parts.push({ parte: "Nivel", linea: `${nivel}${nivel === classified.nivel ? "" : ` (por rutas ${classified.nivel}; sube por: ${raised.join(", ")})`} — ${formatMotivos(classified)}${nivel === classified.nivel && raised.length ? `; también: ${raised.join(", ")}` : ""} [${loaded.fuente}]` });
@@ -396,7 +412,7 @@ export function listo(options) {
   const registroCommand = (/** @type {string[]} */ cubre) => `development-system registro ${prKey} --sha ${head} --entorno <url|local> --lector <modelo> --lectura <hilo de la lectura> --veredicto sin-vivos|vivos --necesario "N1: <caso>" --caso "pass: N1 <qué se intentó> => <qué se observó>" --autor <modelo que escribió el cambio>${cubre.map((id) => ` --cubre ${id}`).join("")}`;
   const unclosed = codex.criticos.filter((thread) => !thread.cerrado);
   if (nivel === "crítico") {
-    record = recordPart({ registros, head, merge: mergeSha, cover: (from) => coverage({ base, from, to: head, findings: allFindings, peers: [], records: [], baseRef, prChanged }) });
+    record = recordPart({ registros, head, merge: mergeSha, cover: (from) => coverage({ base, from, to: head, findings: allFindings, peers: [], records: [], baseRef, prChanged, generados }) });
     parts.push({ parte: "Registro", linea: record.linea });
     for (const texto of record.faltas) faltas.push({ texto, comando: registroCommand(unclosed.map((thread) => thread.id)) });
     for (const thread of unclosed) faltas.push({ texto: `el rechazo de ${thread.id}${thread.priority === null ? "" : ` (P${thread.priority})`} en ${thread.path} necesita una lectura posterior que lo nombre`, comando: registroCommand(unclosed.map((entry) => entry.id)) });
@@ -605,6 +621,7 @@ export function listoProduccion(options) {
   if (options.repo) process.chdir(path.resolve(options.repo));
   const headSha = String(ghJson(`${api}/commits/${encodeURIComponent(headBranch)}`).sha);
   const loaded = loadNiveles({ gh, owner, repo, ref: headBranch, file: draft });
+  const generados = generadosContext(loaded.config, path.resolve(options.home ?? homedir()), owner, repo);
   const range = rangeCommits(owner, repo, baseBranch, headSha);
   const inRange = new Set(range.map((commit) => String(commit.sha)));
   /** @type {Set<string> | null} */
@@ -662,7 +679,7 @@ export function listoProduccion(options) {
         const coveredByHead = () => {
           if (!/^[0-9a-f]{40}$/.test(sha)) return false;
           const findings = threads.map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)] }));
-          try { return coverage({ base: api, from: sha, to: head, findings, peers: [], records: [], baseRef: headBranch, prChanged: new Set(files.flatMap(namesOf)) }).covered === true; } catch { return false; }
+          try { return coverage({ base: api, from: sha, to: head, findings, peers: [], records: [], baseRef: headBranch, prChanged: new Set(files.flatMap(namesOf)), generados }).covered === true; } catch { return false; }
         };
         if (!atHead && !coveredByHead()) pendiente.push(`registro de otro commit (${short(sha)})`);
         else {

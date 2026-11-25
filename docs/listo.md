@@ -128,5 +128,49 @@ explícita del dueño.
 - NutriPlan: `develop` no despliega solo; se despliega con `pnpm deploy:develop`. El smoke corre contra lo desplegado o
   contra local.
 - Una fusión limpia de la rama base dentro del PR no invalida la revisión de Codex ni el registro.
+- Desde la instalación de generados sobre 4.2.0, también es limpia la fusión que, encima de la fusión automática de git, solo cambia archivos generados
+  que `listo` regenera él mismo y salen idénticos byte a byte. Ver «Generados» abajo.
+
+## Generados
+
+Un repositorio con ledgers que solo se encogen o con código generado reescribe esos archivos en cada fusión de
+`develop` en su rama (la `revision` y los totales de un baseline). Antes, ese cambio encima de la fusión automática
+invalidaba la revisión de Codex. Ahora el repositorio los declara en `config/niveles.json` (leído de la rama base,
+como el resto):
+
+```json
+"generados": {
+  "rutas": ["packages/config/architecture/baseline.json"],
+  "comandos": ["pnpm install --offline --frozen-lockfile --ignore-scripts", "node scripts/quality/run-shared-rules.mjs --write"]
+}
+```
+
+Para cada fusión de la base cuyo árbol difiere de `git merge-tree --write-tree` solo en prosa o en rutas de
+`generados.rutas` (también si git marcó conflicto en ellas), `listo`:
+
+1. abre un worktree temporal en el primer padre (la rama) y pone ahí la fusión automática; un generado en conflicto
+   empieza como lo tiene la base;
+2. corre `generados.comandos` en orden (20 minutos en total; cualquier salida distinta de 0 falla);
+3. compara con el commit cada salida declarada y cada archivo cambiado a mano: que exista o falte igual, el mismo modo
+   (100644 o 100755) y los mismos bytes. Uno que no coincide, un enlace, un submódulo, un conflicto fuera de prosa y
+   generados, un comando que falla o cualquier otro archivo cambiado a mano deja la fusión sin probar, como antes.
+
+`generados.rutas` es una lista cerrada de rutas exactas: `listo` rechaza comodines, `..` y `config/niveles.json`. Un
+comodín como `architecture/*.json` mezclaría archivos de reglas, y `_generated/*` es código que se ejecuta. La copia
+del generado que trae el commit nunca entra en la copia temporal: nada del candidato se prueba a sí mismo. Siguen
+igual las comprobaciones de dos padres y de que el segundo esté en la base.
+
+La regeneración corre solo después de que todos los demás commits del intervalo pasaron (arreglos citados), y con un
+merge regenerado en el intervalo ningún archivo queda exento por «sin cambio neto»: el generador que usó el merge es
+código revisado o citado. Un generado en conflicto siempre se regenera, aunque el commit haya dejado la versión de git.
+Los comandos corren como el operador, igual que `comprobaciones` en la punta: no es una caja de arena. Git y los
+comandos corren sin ninguna variable `GIT_*` y sin hooks.
+
+No confía en el mensaje ni en el autor del commit: solo en lo que regenera localmente. Los generadores corren sobre la
+fusión automática, que trae solo commits de la rama (juzgados aparte) y de la base. Un pase se guarda por commit,
+rutas y comandos en `~/.development-system/private/listo/generados/`; un fallo se vuelve a probar. Corre `listo` desde
+el checkout del repositorio después de `git fetch`. Un generador que necesita red o un despliegue (por ejemplo
+`convex codegen`, que pide `CONVEX_DEPLOYMENT`) no sirve aquí: deja esa ruta fuera de `generados` y su fusión sigue
+pidiendo revisión.
 - Una dispensa del dueño (`--dispensa "<sus palabras>"`) deja el caso como «no alcanzado». La comprobación de
   producción la reconoce dentro de su alcance; nunca es una autorización de producción.

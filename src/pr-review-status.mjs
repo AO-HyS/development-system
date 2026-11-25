@@ -29,7 +29,9 @@
 //                           (at most 20 first-parent commits; any API error fails closed). A clean base merge is covered:
 //                           exactly 2 parents, the second an ancestor-or-equal of the base branch, and `git merge-tree
 //                           --write-tree p1 p2` (local checkout) equal to its tree; the base history it imports is not a
-//                           PR commit; missing objects -> uncovered. Every other first-parent commit cites `fixes: <id>`
+//                           PR commit; missing objects -> uncovered. Generados (sobre 4.2.0): from listo, changes on top of that merge
+//                           in files the base's config/niveles.json declares `generados` count when rebuilt byte for
+//                           byte (generados.mjs). Every other first-parent commit cites `fixes: <id>`
 //                           of this PR's reviews (any recorded round; Codex threads: for Codex only those the review of
 //                           that head opened) and touches only those findings' paths. 2.14.3: a file the interval leaves
 //                           as it was read, or that the PR no longer changes, needs no citation; `covers: <sha>` in a
@@ -56,6 +58,7 @@ import { BUDGET as SOL_BUDGET, CRITICAL_LIMIT, advanceProblem, chainGap, isCriti
 import { dispositionsOf } from "./review-advance.mjs";
 import { lineageNext, solNextStep } from "./review-next.mjs";
 import { productionBase, towardDevelop } from "./review-stack.mjs";
+import { gitEnv, isGenerated, proveRegenerated } from "./generados.mjs";
 
 // The Codex GitHub app: REST reports its login with the [bot] suffix and type "Bot"; GraphQL
 // reports the bare login with __typename "Bot". A user account can never have either shape.
@@ -147,7 +150,7 @@ export function summaryStates(appComments) {
 /**
  * @typedef {{id: string, paths: string[]}} Finding
  * @typedef {"pending" | "requested" | "running" | "answered" | "failed-terminal" | "unknown"} CodexState
- * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean, settled?: boolean, undone?: boolean}} CoveredCommit
+ * @typedef {{sha: string, message: string, fixes: string[], files: string[], problem?: string, baseMerge?: boolean, regenerated?: string[], settled?: boolean, undone?: boolean}} CoveredCommit
  * @typedef {{from: string, to: string, covered: boolean, error: boolean, filtersPass: boolean, reason: string, commits: CoveredCommit[]}} Coverage
  */
 
@@ -163,11 +166,17 @@ export function ancestorOrEqual(base, ancestor, descendant) {
  * tree. 2.15.0: it also counts when what was changed by hand on top of that automatic merge (a conflict that was
  * resolved, or an edit made in the merge) is only prose documentation, the same files that stay covered on their
  * own after the last round: two PRs that both edit docs/current-work.md conflict there every day. Missing local
- * objects or another repository leave it unproven, with the reason.
+ * objects or another repository leave it unproven, with the reason. Generados (sobre 4.2.0): with `generados` (the base branch's
+ * `config/niveles.json`), a conflict or a change by hand may also be in a declared generated file, and then every such
+ * file must come out byte-identical when listo rebuilds it from the automatic merge (generados.mjs). Without it, or
+ * when one file differs, the merge stays unproven as before.
  * @param {string} base @param {any} entry a commit as GitHub's commits API reports it @param {string} baseRef
- * @returns {{merge: boolean, clean?: boolean, error?: boolean, reason?: string}}
+ * @param {import("./generados.mjs").GeneradosContext | null} [generados]
+ * The rebuild itself is not run here: a merge that needs it comes back clean with `prove`, and coverage() runs it only
+ * after every other commit of the interval passed (nothing uncovered is executed first).
+ * @returns {{merge: boolean, clean?: boolean, error?: boolean, reason?: string, regenerated?: string[], prove?: {first: string, second: string, written: string, tree: string, files: {filename: string, status: string}[], conflicted: string[]}}}
  */
-function cleanBaseMerge(base, entry, baseRef) {
+export function cleanBaseMerge(base, entry, baseRef, generados = null) {
   const parents = Array.isArray(entry.parents) ? entry.parents.map((/** @type {any} */ parent) => String(parent?.sha ?? "")) : [];
   if (parents.length !== 2) return { merge: false };
   const [first, second] = parents;
@@ -179,9 +188,11 @@ function cleanBaseMerge(base, entry, baseRef) {
   } catch { return { merge: true, clean: false, error: true, reason: `GitHub could not compare ${second.slice(0, 12)} with ${baseRef}` }; }
   const unbuilt = "the local checkout cannot rebuild the merge (missing objects or another repository: run from the PR's checkout after git fetch)";
   /** @param {string[]} args */
-  const git = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
+  const git = (args) => execFileSync("git", args, { encoding: "utf8", env: gitEnv(), stdio: ["ignore", "pipe", "pipe"], maxBuffer: 8 * 1024 * 1024 });
   let written;
   let conflicts = false;
+  /** @type {string[]} */
+  let conflicted = [];
   try { written = git(["merge-tree", "--write-tree", "--name-only", first, second]).split("\n")[0].trim(); } catch (error) {
     const failed = /** @type {{status?: number, stdout?: string}} */ (error);
     if (failed.status !== 1) return { merge: true, clean: false, reason: unbuilt };
@@ -193,10 +204,11 @@ function cleanBaseMerge(base, entry, baseRef) {
     const end = printed.indexOf("", 1);
     // A conflict git cannot mark in the file (one side deleted it, a binary, a submodule) leaves that file in the
     // automatic tree as one side had it, so keeping it does not show as a change by hand: every conflicted path
-    // must itself be prose.
+    // must itself be prose, or a declared generated file that is then rebuilt and compared.
     const listed = printed.slice(1, end < 0 ? printed.length : end);
-    const code = listed.filter((name) => !isNonFunctionalChange({ filename: name, status: "modified" }));
-    if (end < 0 || !listed.length || code.length) return { merge: true, clean: false, reason: `git merge-tree reports conflicts outside prose documentation (${code.slice(0, 5).join(", ") || "paths not listed"})` };
+    const code = listed.filter((name) => !isNonFunctionalChange({ filename: name, status: "modified" }) && !isGenerated(generados, name));
+    if (end < 0 || !listed.length || code.length) return { merge: true, clean: false, reason: `git merge-tree reports conflicts outside prose documentation${generados ? " and declared generated files" : ""} (${code.slice(0, 5).join(", ") || "paths not listed"})` };
+    conflicted = listed;
     // git labels its markers with what was merged, so a commit that kept them differs from the automatic tree only in
     // those labels and would read as a resolution in prose.
     const marked = listed.filter((name) => { try { const text = git(["show", `${tree}:${name}`]); return /^<{7} /m.test(text) && /^>{7} /m.test(text); } catch { return false; } });
@@ -210,7 +222,15 @@ function cleanBaseMerge(base, entry, baseRef) {
     if (!/^[0-9a-f]{40}$/.test(written)) throw new Error("no tree");
     byHand = git(["diff", "--name-status", "--no-renames", "--ignore-submodules=none", written, tree]).split("\n").filter(Boolean).map((line) => { const [status, ...name] = line.split("\t"); return { filename: name.join("\t"), status: status === "A" ? "added" : status === "D" ? "removed" : "modified" }; });
   } catch { return { merge: true, clean: false, reason: unbuilt }; }
-  if (byHand.length && byHand.every(isNonFunctionalChange)) return { merge: true, clean: true };
+  const rest = byHand.filter((file) => !isNonFunctionalChange(file));
+  // A generated file git could not merge must be rebuilt even when the commit kept git's version of it (a binary or
+  // modify/delete conflict leaves no markers), so it never rides along with a prose-only resolution.
+  const generatedConflicts = conflicted.filter((name) => isGenerated(generados, name));
+  if (byHand.length && rest.length === 0 && generatedConflicts.length === 0) return { merge: true, clean: true };
+  if (generados && rest.every((file) => isGenerated(generados, file.filename))) {
+    const regenerated = [...new Set([...rest.map((file) => file.filename), ...generatedConflicts])];
+    return { merge: true, clean: true, regenerated, prove: { first, second, written, tree, files: rest, conflicted } };
+  }
   const names = byHand.map((file) => file.filename).slice(0, 5).join(", ");
   return { merge: true, clean: false, reason: conflicts ? `git merge-tree reports conflicts, and their resolution changes more than prose documentation (${names})` : `its tree ${tree.slice(0, 12)} differs from the clean merge ${written.slice(0, 12)} in more than prose documentation (${names})` };
 }
@@ -247,9 +267,11 @@ function cleanBaseMerge(base, entry, baseRef) {
  *                   Markdown file with a path segment that contains `verif` (docs/project-skills/verify-billing/SKILL.md,
  *                   docs/verification.md). Prose only; a commit without a valid `fixes:` line is still refused.
  * Anything GitHub or the local checkout cannot prove leaves the interval uncovered with the reason.
- * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string, prChanged?: Set<string> | null}} input @returns {Coverage}
+ * Generados (sobre 4.2.0): `generados` (listo passes the base branch's `config/niveles.json` block) lets a base merge whose changes by hand
+ * are only declared generated files count as clean once they are rebuilt byte for byte (cleanBaseMerge).
+ * @param {{base: string, from: string, to: string, findings: Finding[], peers?: Finding[], records: any[], baseRef: string, prChanged?: Set<string> | null, generados?: import("./generados.mjs").GeneradosContext | null}} input @returns {Coverage}
  */
-export function coverage({ base, from, to, findings, peers = [], records, baseRef, prChanged = null }) {
+export function coverage({ base, from, to, findings, peers = [], records, baseRef, prChanged = null, generados = null }) {
   /** @type {CoveredCommit[]} */
   const commits = [];
   /** @param {string} reason @param {boolean} [error] @returns {Coverage} */
@@ -272,7 +294,12 @@ export function coverage({ base, from, to, findings, peers = [], records, baseRe
   /** The interval left the file as the reviewer read it. @param {string} name */
   const untouched = (name) => net !== null && !net.has(name) && !merged.has(name);
   /** A file the reviewer has nothing new to read in. @param {string} name */
-  const settled = (name) => untouched(name) || (prChanged !== null && !prChanged.has(name));
+  // A merge rebuilt from its first parent used that parent's generator: a commit before it that a later one undid
+  // still fed the rebuild, so with any rebuilt merge in the interval no file is settled and every commit is cited.
+  let rebuilt = false;
+  const settled = (/** @type {string} */ name) => !rebuilt && (untouched(name) || (prChanged !== null && !prChanged.has(name)));
+  /** Merges whose generated files are rebuilt once every other commit passed. @type {{sha: string, prove: NonNullable<ReturnType<typeof cleanBaseMerge>["prove"]>}[]} */
+  const proofs = [];
   /** Commits that are not clean base merges, judged after the walk: a base merge is older than the commit that undoes it. @type {{commit: CoveredCommit, merge: ReturnType<typeof cleanBaseMerge>, parents: number}[]} */
   const judged = [];
   /** `covers:` lines seen so far, newest commit first: [sha prefix, the ids that commit cites]. @type {[string, string[]][]} */
@@ -288,14 +315,15 @@ export function coverage({ base, from, to, findings, peers = [], records, baseRe
     const parents = Array.isArray(detail.parents) ? detail.parents.map((/** @type {any} */ parent) => String(parent?.sha ?? "")) : [];
     if (String(detail.sha) !== sha || parents.length === 0 || !parents.every((/** @type {string} */ parent) => /^[0-9a-f]{40}$/.test(parent))) return { ...uncovered(`GitHub did not report the parents of ${sha.slice(0, 12)}`, true), commits };
     const message = String(detail.commit?.message ?? "");
-    const merge = cleanBaseMerge(base, detail, baseRef);
+    const merge = cleanBaseMerge(base, detail, baseRef, generados);
     if (merge.error) return { ...uncovered(`${sha.slice(0, 12)}: ${merge.reason}`, true), commits };
     if (merge.clean) {
       // GitHub lists a merge's files against its first parent; an unlisted, empty or partial list means "every file".
       if (Array.isArray(detail.files) && detail.files.length > 0 && detail.files.length < 300) for (const file of detail.files) { merged.add(String(file.filename)); if (file.previous_filename) merged.add(String(file.previous_filename)); }
       else net = null;
-      commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true });
+      commits.push({ sha, message: message.split("\n")[0].slice(0, 120), fixes: [], files: [], baseMerge: true, ...(merge.regenerated ? { regenerated: merge.regenerated } : {}) });
       baseMerges += 1;
+      if (merge.prove) { rebuilt = true; proofs.push({ sha, prove: merge.prove }); }
       sha = parents[0];
       continue;
     }
@@ -333,6 +361,18 @@ export function coverage({ base, from, to, findings, peers = [], records, baseRe
   }
   if (commits.length === 0) return uncovered("no commits after the reviewed head");
   if (!filtersPass) return { ...uncovered("a commit after the reviewed head is not a cited fix of its findings"), commits };
+  // Only now, with every other commit of the interval covered, run the generators of the base merges that need them.
+  // Oldest first, stopping at the first failure: a later merge's generators load its first parent, which holds the
+  // earlier merge's generated files, so those must be proven before anything runs on top of them.
+  for (const { sha: merge, prove } of [...proofs].reverse()) {
+    if (!generados) return { ...uncovered(`${merge.slice(0, 12)}: no generados context`, true), commits };
+    const proof = proveRegenerated({ context: generados, sha: merge, ...prove });
+    if (!proof.ok) {
+      const row = commits.find((commit) => commit.sha === merge);
+      if (row) { row.baseMerge = false; row.problem = `not a clean base merge: what it changes on top of the clean merge ${prove.written.slice(0, 12)} is declared generated, but ${proof.reason}`; }
+      return { ...uncovered("a base merge's declared generated files do not match what listo rebuilds"), filtersPass: false, commits };
+    }
+  }
   if (baseMerges === commits.length) return { from, to, covered: true, error: false, filtersPass, reason: `only clean merges of ${baseRef} after the reviewed head`, commits };
   const forHead = records.filter((record) => record.type === "coverage" && record.to === to);
   if (forHead.some((record) => record.verdict === "out-of-scope")) return { ...uncovered(`a coverage record for ${to.slice(0, 12)} says out-of-scope`), filtersPass, commits };
