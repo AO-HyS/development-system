@@ -21,6 +21,7 @@
 // Generados (sobre 4.2.0): a base merge whose changes on top of git's automatic merge are only files the base branch declares in
 // `generados` stays a clean merge when listo rebuilds those files itself and they match byte for byte (generados.mjs).
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
@@ -186,22 +187,34 @@ function codexRule({ owner, repo, pull, head, baseRef, prCommits, comments, thre
 }
 
 /**
- * lint/typecheck once per tree: a pass record per tree hash; a command runs only when that tree has no pass and the
- * local checkout is clean and at the head.
- * @param {{config: Niveles | null, owner: string, repo: string, head: string, home: string, checkout: string, prKey: string}} input
+ * lint/typecheck once per head: a pass record per head commit, its parents and tree, and the exact base commit whose
+ * `config/niveles.json` named the commands; a command runs only when that record has no pass and the local checkout is
+ * clean and at the head. Two histories with the same tree, or the same head judged against another base, never share a
+ * pass (sobre 4.2.1: the record used to be keyed by tree alone).
+ * @param {{config: Niveles | null, owner: string, repo: string, head: string, rulesFrom: string, home: string, checkout: string, prKey: string}} input
  */
-function checksPart({ config, owner, repo, head, home, checkout, prKey }) {
+export function checksPart({ config, owner, repo, head, rulesFrom, home, checkout, prKey }) {
   const commands = config?.comprobaciones ?? [];
   if (commands.length === 0) return { linea: "las comprobaciones corren en los hooks del repositorio", faltas: /** @type {Falta[]} */ ([]), arbol: "" };
-  const tree = String(ghJson(`repos/${owner}/${repo}/git/commits/${head}`).tree?.sha ?? "");
+  const commit = ghJson(`repos/${owner}/${repo}/git/commits/${head}`);
+  const tree = String(commit.tree?.sha ?? "");
   if (!/^[0-9a-f]{40}$/.test(tree)) throw new Error(`GitHub no dio el árbol de ${short(head)}`);
+  const parents = (Array.isArray(commit.parents) ? commit.parents : []).map((/** @type {{sha?: string}} */ parent) => String(parent.sha ?? ""));
+  if (!/^[0-9a-f]{40}$/.test(rulesFrom) && !rulesFrom.startsWith("borrador:")) throw new Error("listo no sabe de qué commit de la base salieron las comprobaciones");
+  const identity = { head, parents, tree, base: rulesFrom };
   // Lowercase owner and repo, as the evidence receipts key them, so one repository has one folder.
   const key = parsePrReference(prKey);
   const directory = path.join(home, ".development-system/private/listo/checks", `${key.owner}-${key.repo}`);
-  const file = path.join(directory, `${tree}.json`);
-  /** @type {{tree: string, resultados: Record<string, {ok: boolean, en: string, ms: number, sha: string, salida?: number}>}} */
-  let store = { tree, resultados: {} };
-  if (existsSync(file)) { try { store = JSON.parse(readFileSync(file, "utf8")); } catch { store = { tree, resultados: {} }; } }
+  const recordKey = createHash("sha256").update(JSON.stringify({ comprobaciones: 2, ...identity })).digest("hex");
+  const file = path.join(directory, `${recordKey}.json`);
+  /** @type {{head: string, parents: string[], tree: string, base: string, resultados: Record<string, {ok: boolean, en: string, ms: number, sha: string, salida?: number}>}} */
+  let store = { ...identity, resultados: {} };
+  if (existsSync(file)) {
+    try {
+      const stored = JSON.parse(readFileSync(file, "utf8"));
+      if (stored?.head === head && stored.tree === tree && stored.base === rulesFrom && JSON.stringify(stored.parents) === JSON.stringify(parents)) store = { ...identity, resultados: stored.resultados ?? {} };
+    } catch { /* recompute */ }
+  }
   const pending = commands.filter((command) => store.resultados?.[command]?.ok !== true);
   let blocked = "";
   if (pending.length) {
@@ -353,7 +366,11 @@ export function listo(options) {
   /** @type {Falta[]} */
   const faltas = [];
   // 2. Level from the base branch tip (or a local draft when only evaluating).
-  const loaded = loadNiveles({ gh, owner, repo, ref: baseRef, file: draft });
+  // One exact base commit for the rules and the checks' pass: the branch can move while listo runs.
+  const baseSha = draft ? "" : String(ghJson(`${base}/commits/${encodeURIComponent(baseRef)}`).sha ?? "");
+  if (!draft && !/^[0-9a-f]{40}$/.test(baseSha)) throw new Error(`GitHub no dio la punta de ${baseRef}`);
+  const loaded = loadNiveles({ gh, owner, repo, ref: draft ? baseRef : baseSha, file: draft, label: `${baseRef}@${short(baseSha)}` });
+  const rulesFrom = draft ? `borrador:${createHash("sha256").update(readFileSync(draft)).digest("hex")}` : baseSha;
   const files = pullFiles(owner, repo, pull);
   const prChanged = new Set(files.flatMap(namesOf));
   const classified = classifyFiles({ config: loaded.config, files, content: contentReader(owner, repo, head, mergeBaseOf(owner, repo, baseRef, head)) });
@@ -397,8 +414,8 @@ export function listo(options) {
   for (const thread of codex.abiertos) {
     faltas.push({ texto: `hilo de Codex ${thread.id} sin contestar${thread.priority === null ? "" : ` (P${thread.priority})`} en ${thread.path}: ${thread.finding} (${thread.detail})`, comando: `contesta en ese hilo con el commit del arreglo (posterior a lo revisado y que toque ${thread.path}) o «Rechazado: <motivo>»; después development-system listo ${prKey}` });
   }
-  // 4. Checks once per tree.
-  const checks = checksPart({ config: loaded.config, owner, repo, head, home, checkout, prKey });
+  // 4. Checks once per head and base.
+  const checks = checksPart({ config: loaded.config, owner, repo, head, rulesFrom, home, checkout, prKey });
   parts.push({ parte: "Comprobaciones", linea: checks.linea });
   faltas.push(...checks.faltas);
   // 5. Smoke, informative only.

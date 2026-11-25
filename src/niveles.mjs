@@ -116,20 +116,21 @@ function parseGenerados(raw) {
  * The rules for one repository: a local draft (`file`, only for evaluating) or `config/niveles.json` at `ref` on
  * GitHub. A missing file at the ref gives null and a warning; any other read error throws, so a level is never
  * decided from a file nobody could read.
- * @param {{gh: (args: string[]) => string, owner: string, repo: string, ref: string, file?: string}} input
+ * @param {{gh: (args: string[]) => string, owner: string, repo: string, ref: string, file?: string, label?: string}} input
+ *   `label` names `ref` in messages (a branch and its pinned commit)
  * @returns {{config: Niveles | null, fuente: string, aviso?: string}}
  */
-export function loadNiveles({ gh, owner, repo, ref, file }) {
+export function loadNiveles({ gh, owner, repo, ref, file, label = ref }) {
   if (file) return { config: parseNiveles(JSON.parse(readFileSync(file, "utf8"))), fuente: `${file} (borrador local)` };
   let text;
   try {
     text = gh(["api", "-H", "Accept: application/vnd.github.raw", `repos/${owner}/${repo}/contents/${CONFIG_PATH}?ref=${encodeURIComponent(ref)}`]);
   } catch (error) {
     const message = String(/** @type {{stderr?: string}} */ (error)?.stderr ?? (error instanceof Error ? error.message : error));
-    if (/HTTP 404|Not Found/i.test(message)) return { config: null, fuente: `${owner}/${repo}@${ref}`, aviso: `sin ${CONFIG_PATH} en ${ref}: todo cambio es normal hasta que el repositorio lo tenga` };
+    if (/HTTP 404|Not Found/i.test(message)) return { config: null, fuente: `${owner}/${repo}@${label}`, aviso: `sin ${CONFIG_PATH} en ${label}: todo cambio es normal hasta que el repositorio lo tenga` };
     throw new Error(`no pude leer ${CONFIG_PATH} en ${owner}/${repo}@${ref}: ${message.trim().split("\n")[0]}`);
   }
-  return { config: parseNiveles(JSON.parse(text)), fuente: `${CONFIG_PATH} en ${ref}` };
+  return { config: parseNiveles(JSON.parse(text)), fuente: `${CONFIG_PATH} en ${label}` };
 }
 
 /** Every name a changed file goes by: the new one and, for a rename, the previous one. @param {ChangedFile} file */

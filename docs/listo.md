@@ -20,8 +20,9 @@ archivo, todo es normal y `listo` lo avisa. En un movimiento cuentan el nombre n
 - **Normal**: todo lo demás, incluido lo desconocido. Se fusiona sin esperar lectura y queda **sin verificar** hasta la
   lectura por lote, que es obligatoria antes de pasar a `main`.
 
-Para los tres: Codex terminado (abajo) y, si el repositorio define `comprobaciones`, que hayan pasado en el árbol de la
-punta.
+Para los tres: Codex terminado (abajo) y, si el repositorio define `comprobaciones`, que hayan pasado en la
+punta. El pase se guarda por punta, sus padres, su árbol y el commit exacto de la base del que salió
+`config/niveles.json`: otra historia con el mismo árbol, u otra base, vuelve a correrlas.
 
 ## Codex
 
