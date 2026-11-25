@@ -160,6 +160,12 @@ comodín como `architecture/*.json` mezclaría archivos de reglas, y `_generated
 del generado que trae el commit nunca entra en la copia temporal: nada del candidato se prueba a sí mismo. Siguen
 igual las comprobaciones de dos padres y de que el segundo esté en la base.
 
+La regeneración corre solo después de que todos los demás commits del intervalo pasaron (arreglos citados), y con un
+merge regenerado en el intervalo ningún archivo queda exento por «sin cambio neto»: el generador que usó el merge es
+código revisado o citado. Un generado en conflicto siempre se regenera, aunque el commit haya dejado la versión de git.
+Los comandos corren como el operador, igual que `comprobaciones` en la punta: no es una caja de arena. Git y los
+comandos corren sin ninguna variable `GIT_*` y sin hooks.
+
 No confía en el mensaje ni en el autor del commit: solo en lo que regenera localmente. Los generadores corren sobre la
 fusión automática, que trae solo commits de la rama (juzgados aparte) y de la base. Un pase se guarda por commit,
 rutas y comandos en `~/.development-system/private/listo/generados/`; un fallo se vuelve a probar. Corre `listo` desde

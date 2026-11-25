@@ -19,10 +19,13 @@
 // run on reviewed inputs: the PR's commits, which the coverage walk judges on their own, and the base branch.
 // Residual trust: the generators are the repository's code; a generator that reads M's objects from the repository
 // could copy them. That is code a reviewer reads in the PR or the base, never bytes only the merge carries.
+// It runs only after every other commit of the interval is covered (pr-review-status.mjs coverage), so the generators
+// are reviewed code or cited fixes, the same code `listo` already runs as `comprobaciones` on the head. It is not a
+// sandbox: they run as the operator, like those checks.
 // A passing proof is cached per merge commit, commands and globs under the caller's cache folder; a failure is not.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -39,11 +42,14 @@ export function isGenerated(context, name) {
 /** @type {Map<string, {ok: boolean, reason: string}>} */
 const memo = new Map();
 
-/** Environment for git and the generators: no GIT_* variable may point them at another repository or index. */
-function cleanEnv() {
+/**
+ * Environment for git and the generators: no GIT_* variable at all, so none can point them at another repository,
+ * index or work tree or inject configuration (GIT_CONFIG_COUNT/KEY/VALUE, GIT_CONFIG_PARAMETERS).
+ */
+export function gitEnv() {
   /** @type {NodeJS.ProcessEnv} */
   const env = {};
-  for (const [key, value] of Object.entries(process.env)) if (!/^GIT_(DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|COMMON_DIR|NAMESPACE|CEILING_DIRECTORIES|DISCOVERY_ACROSS_FILESYSTEM)$/.test(key)) env[key] = value;
+  for (const [key, value] of Object.entries(process.env)) if (!key.startsWith("GIT_")) env[key] = value;
   return env;
 }
 
@@ -56,7 +62,7 @@ function cleanEnv() {
  * @returns {{ok: boolean, reason: string}}
  */
 export function proveRegenerated({ context, sha, first, second, written, tree, files, conflicted }) {
-  const key = createHash("sha256").update(JSON.stringify({ prueba: 2, sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
+  const key = createHash("sha256").update(JSON.stringify({ prueba: 3, sha, tree, rutas: context.config.rutas, comandos: context.config.comandos })).digest("hex").slice(0, 40);
   const cached = memo.get(key);
   if (cached) return cached;
   const cacheFile = path.join(context.cacheDir, `${key}.json`);
@@ -78,7 +84,7 @@ export function proveRegenerated({ context, sha, first, second, written, tree, f
 
 /** @param {{context: GeneradosContext, first: string, second: string, written: string, tree: string, files: {filename: string, status: string}[], conflicted: string[]}} input @returns {{ok: boolean, reason: string}} */
 function rebuild({ context, first, second, written, tree, files, conflicted }) {
-  const env = cleanEnv();
+  const env = gitEnv();
   /** @param {string[]} args @param {string} [cwd] */
   const git = (args, cwd) => execFileSync("git", args, { cwd, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024 });
   /** @param {string} object @param {string} [cwd] */
@@ -95,9 +101,11 @@ function rebuild({ context, first, second, written, tree, files, conflicted }) {
   try {
     // A run killed mid-proof leaves a registration whose folder is gone; drop such leftovers first.
     try { git(["worktree", "prune"]); } catch { /* best effort */ }
-    git(["worktree", "add", "--detach", "--no-checkout", dir, first]);
+    // No hook runs for the temporary checkout, and its work tree is the temporary folder whatever the config says.
+    git(["-c", "core.hooksPath=/dev/null", "worktree", "add", "--detach", "--no-checkout", dir, first]);
     added = true;
-    git(["read-tree", "--reset", "-u", written], dir);
+    if (git(["rev-parse", "--show-toplevel"], dir).trim() !== realpathSync(dir)) return { ok: false, reason: "la copia temporal no es su propio árbol de trabajo" };
+    git(["-c", "core.hooksPath=/dev/null", "read-tree", "--reset", "-u", written], dir);
     for (const name of conflicted.filter((file) => isGenerated(context, file))) {
       const target = path.join(dir, name);
       const base = entry(second, name);
