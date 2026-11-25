@@ -7,6 +7,7 @@
 - Medido en un clon de NutriPlan (`~/.development-system/private/scratch/ds-generados/`): la fusión real `5951544` queda limpia (45 s; 15 s de `pnpm install --offline`); la misma con un total del ledger cambiado a mano y con una línea de código a mano quedan sin probar. `convex codegen` necesita `CONVEX_DEPLOYMENT`: `_generated/**` queda fuera de `generados` y su fusión sigue pidiendo revisión.
 - Fusionado: #244 (punta `00bb8a2`, fusión `9740df4` en develop) tras dos lecturas de Sol 6.1 High (todos sus P1/P2 arreglados en `d938974` y `00bb8a2`; el sandbox se rechazó: los generadores son el mismo código que `comprobaciones` ya corre) y el P1 de Codex respondido.
 - Paquete 4.2.1 (contrato y catálogo siguen en 4.2.0; `build-release-420.mjs` acepta un parche del paquete sobre el contrato) para instalarlo de forma global.
+- 4.2.2: el pase de `comprobaciones` se guardaba por árbol (P1 de Sol en NutriPlan #829, friction `listo-checks-cache-por-arbol-sin-base`); ahora por punta, padres, árbol y el commit exacto de la base, y `config/niveles.json` se lee de ese commit. Recibo: `~/.development-system/private/scratch/ds-generados/cache-checks/recibo.txt`.
 - Falta: el bloque `generados` en `config/niveles.json` de NutriPlan (lo hace su hilo).
 
 ## 4.1.0 — the AF way of working (catalog 0.86.0; released and installed on 2026-11-19)
