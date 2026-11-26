@@ -309,6 +309,22 @@ function mergeMethod(owner, repo) {
 }
 
 /**
+ * Otros PRs abiertos a la misma base que regeneran los mismos registros formales.
+ * Solo informa: un choque no cambia los requisitos ni el resultado del PR.
+ * @param {string} owner @param {string} repo @param {any} pull @param {ReturnType<typeof pullFiles>} files
+ * @returns {{pr: number, archivos: string[]}[]}
+ */
+function choquesFormales(owner, repo, pull, files) {
+  const registros = new Set(files.flatMap(namesOf).filter((name) => /(^|\/)run-record\.json$/.test(name)));
+  if (!registros.size) return [];
+  const peers = ghList(`repos/${owner}/${repo}/pulls?state=open&base=${encodeURIComponent(pull.base.ref)}&per_page=100`);
+  return peers.filter((peer) => peer.number !== pull.number).flatMap((peer) => {
+    const archivos = [...new Set(pullFiles(owner, repo, peer).flatMap(namesOf).filter((name) => registros.has(name)))].sort();
+    return archivos.length ? [{ pr: Number(peer.number), archivos }] : [];
+  }).sort((a, b) => a.pr - b.pr);
+}
+
+/**
  * @typedef {{pr?: string, produccion?: string, barrido?: string, dias?: string, base?: string, head?: string, subir?: string, pedir: boolean, sinEstado: boolean, niveles?: string, repo?: string, home?: string, json: boolean}} ListoOptions
  */
 
@@ -383,6 +399,11 @@ export function listo(options) {
   // Rules, base-merge membership and checks all judge against that one commit; `pinnedBase` stands for the branch.
   const pinnedBase = baseSha || baseRef;
   const files = pullFiles(owner, repo, pull);
+  /** @type {{pr: number, archivos: string[]}[]} */
+  let choqueFormal = [];
+  let avisoChoqueFormal = "";
+  try { choqueFormal = choquesFormales(owner, repo, pull, files); }
+  catch (error) { avisoChoqueFormal = `no pude comprobar el choque formal: ${errorText(error)}`; }
   const prChanged = new Set(files.flatMap(namesOf));
   const classified = classifyFiles({ config: loaded.config, files, content: contentReader(owner, repo, head, mergeBaseOf(owner, repo, pinnedBase, head)) });
   let nivel = classified.nivel;
@@ -465,9 +486,11 @@ export function listo(options) {
   const result = {
     ok: resultado === "listo", operation: "listo", pr: prKey, head, base: baseRef, estadoPr: state, nivel, nivelPorRutas: classified.nivel, motivos: classified.motivos, subePor: raised, aviso: loaded.aviso ?? null, fuente: loaded.fuente,
     codex: { estado: codex.estado, revisado: codex.revisado, inicio: codex.inicio, vence: codex.vence, pedidos: codex.pedidos, hilos: codex.hilos, criticos: codex.criticos, cobertura: codex.cobertura },
-    comprobaciones: checks, registro: record, resultado, faltas, estadoGithub, ...(labelNote ? { etiqueta: labelNote } : {}), fusion: merge, siguiente,
+    choqueFormal, avisoChoqueFormal: avisoChoqueFormal || null, comprobaciones: checks, registro: record, resultado, faltas, estadoGithub, ...(labelNote ? { etiqueta: labelNote } : {}), fusion: merge, siguiente,
   };
   const lines = parts.map((part) => `${part.parte}: ${part.linea}`);
+  if (avisoChoqueFormal) lines.push(`Aviso: ${avisoChoqueFormal}`);
+  for (const choque of choqueFormal) lines.push(`Choque formal: #${choque.pr} también regenera ${choque.archivos.join(", ")}; fusiona en el orden del coordinador`);
   lines.push(`Resultado: ${resultado} (${nivel})${resultado === "espera" ? ` — ${first}` : ""}`);
   if (faltas.length) { lines.push("Falta:"); for (const falta of faltas) lines.push(`- ${falta.texto}`); }
   lines.push(`Estado en GitHub: ${estadoGithub}`);
@@ -679,6 +702,10 @@ export function listoProduccion(options) {
     // A PR merged into the range was updated no earlier than its merge commit; a day of slack covers clock skew.
     if (batch.every((pull) => Date.parse(pull.updated_at) < oldest - 86_400_000)) break;
   }
+  const hotfix = headBranch !== "develop";
+  const abiertos = hotfix ? ghList(`${api}/pulls?state=open&base=${encodeURIComponent(baseBranch)}&head=${encodeURIComponent(`${owner}:${headBranch}`)}&per_page=100`).filter((pull) => pull.head.ref === headBranch && pull.base.ref === baseBranch && pull.head.repo?.full_name?.toLowerCase() === `${owner}/${repo}`.toLowerCase()) : [];
+  for (const pull of abiertos) if (!pulls.some((entry) => entry.number === pull.number)) pulls.push(pull);
+  const sinPr = hotfix && abiertos.length === 0 ? `sin PR abierto de ${headBranch} a ${baseBranch}` : "";
   pulls.sort((a, b) => a.number - b.number);
   /** @type {{pr: number, nivel: Nivel, pendiente: string[], motivo: string}[]} */
   const rows = [];
@@ -712,7 +739,7 @@ export function listoProduccion(options) {
         const coveredByHead = () => {
           if (!/^[0-9a-f]{40}$/.test(sha)) return false;
           const findings = threads.map((thread) => ({ id: `codex:${thread.comments.nodes[0].databaseId}`, paths: [String(thread.path)] }));
-          try { return coverage({ base: api, from: sha, to: head, findings, peers: [], records: [], baseRef: headBranch, prChanged: new Set(files.flatMap(namesOf)), generados }).covered === true; } catch { return false; }
+          try { return coverage({ base: api, from: sha, to: head, findings, peers: [], records: [], baseRef: pull.merged_at ? headBranch : String(pull.base.ref), prChanged: new Set(files.flatMap(namesOf)), generados }).covered === true; } catch { return false; }
         };
         if (!atHead && !coveredByHead()) pendiente.push(`registro de otro commit (${short(sha)})`);
         else {
@@ -734,22 +761,23 @@ export function listoProduccion(options) {
   const byReason = new Map();
   for (const row of rows) for (const reason of row.pendiente) byReason.set(reason.replace(/ \([0-9a-f]+\)$/, ""), [...(byReason.get(reason.replace(/ \([0-9a-f]+\)$/, "")) ?? []), row.pr]);
   const smokeMissing = smokeAplica && smoke !== "success";
+  if (sinPr) byReason.set(sinPr, []);
   const pending = byReason.size > 0 || smokeMissing;
   let estadoGithub = "no publicado (--sin-estado)";
   const firstReason = [...byReason.entries()][0];
-  const description = pending ? (firstReason ? `${firstReason[0]}: ${firstReason[1].map((n) => `#${n}`).join(", ")}` : `smoke ${smoke} en la punta`) : `${rows.length} PRs sin pendientes`;
+  const description = pending ? (firstReason ? `${firstReason[0]}${firstReason[1].length ? `: ${firstReason[1].map((n) => `#${n}`).join(", ")}` : ""}` : `smoke ${smoke} en la punta`) : `${rows.length} PRs sin pendientes`;
   if (!options.sinEstado) {
     gh(["api", `${api}/statuses/${headSha}`, "-f", `state=${pending ? "failure" : "success"}`, "-f", `context=${PRODUCCION_CONTEXT}`, "-f", `description=${description.slice(0, 140)}`]);
     estadoGithub = `«${PRODUCCION_CONTEXT}» = ${pending ? "failure" : "success"} en ${short(headSha)}`;
   }
   const unread = rows.filter((row) => row.pendiente.some((reason) => reason !== CODEX_PENDIENTE) && row.nivel !== "mecánico").map((row) => row.pr);
   // The sweep reads the same threads; its window reaches the oldest merge that still has one.
-  const oldestThread = Math.min(...pulls.filter((pull) => hilos.some((thread) => thread.pr === pull.number)).map((pull) => Date.parse(pull.merged_at)));
+  const oldestThread = Math.min(...pulls.filter((pull) => hilos.some((thread) => thread.pr === pull.number)).map((pull) => Date.parse(pull.merged_at ?? pull.created_at)));
   const sweepDays = Math.max(BARRIDO_DIAS, Math.ceil(((options.now ?? Date.now()) - oldestThread) / 86_400_000) + 1);
-  const codexStep = hilos.length ? `contesta cada hilo de Codex que lista development-system listo --barrido ${owner}/${repo}${headBranch === "develop" ? "" : ` --head ${headBranch}`}${sweepDays === BARRIDO_DIAS ? "" : ` --dias ${sweepDays}`}` : "";
+  const codexStep = hilos.length && hotfix ? `contesta los hilos de Codex listados arriba en ${[...new Set(hilos.map((thread) => `#${thread.pr}`))].join(", ")}` : hilos.length ? `contesta cada hilo de Codex que lista development-system listo --barrido ${owner}/${repo}${headBranch === "develop" ? "" : ` --head ${headBranch}`}${sweepDays === BARRIDO_DIAS ? "" : ` --dias ${sweepDays}`}` : "";
   const readStep = unread.length ? `una lectura por lote de lo pendiente, sus casos recorridos y: development-system registro --lote ${owner}/${repo} --prs ${unread.join(",")} --entorno <url|local> --lector <modelo> --lectura <hilo> --veredicto sin-vivos|vivos --necesario "N1: <caso>" --caso "pass: N1 … => …" --autor <modelo>` : "";
   const smokeStep = smokeMissing ? `development-system smoke --repo <checkout limpio en ${short(headSha)}> --base <url>` : "";
-  const siguiente = !pending ? `pasa a producción con la aprobación del dueño (${baseBranch} ← ${headBranch} en ${short(headSha)})` : [codexStep, readStep, smokeStep].filter(Boolean).join("; y ");
+  const siguiente = !pending ? `pasa a producción con la aprobación del dueño (${baseBranch} ← ${headBranch} en ${short(headSha)})` : [sinPr ? `abre un PR de ${headBranch} a ${baseBranch}` : "", codexStep, readStep, smokeStep].filter(Boolean).join("; y ");
   const lines = [`Producción ${owner}/${repo}: ${baseBranch}...${headBranch} (punta ${short(headSha)}), ${desdeText}: ${rows.length} PRs [${loaded.fuente}]`];
   if (loaded.aviso) lines.push(`Aviso: ${loaded.aviso}`);
   const count = (/** @type {Nivel} */ level) => rows.filter((row) => row.nivel === level).length;
@@ -758,7 +786,7 @@ export function listoProduccion(options) {
   lines.push(`Smoke en la punta: ${smoke}`);
   if (pending) {
     lines.push("Pendiente:");
-    for (const [reason, prs] of byReason) lines.push(`- ${reason} (${prs.length}): ${prs.map((n) => `#${n}`).join(", ")}`);
+    for (const [reason, prs] of byReason) lines.push(`- ${reason}${prs.length ? ` (${prs.length}): ${prs.map((n) => `#${n}`).join(", ")}` : ""}`);
     if (smokeMissing) lines.push(`- smoke: la punta ${short(headSha)} no tiene smoke success (${smoke})`);
   }
   if (hilos.length) { lines.push("Hilos de Codex sin contestar:"); for (const thread of hilos) lines.push(pendingLine(thread)); }
