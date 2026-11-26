@@ -706,6 +706,8 @@ export function listoProduccion(options) {
   const abiertos = hotfix ? ghList(`${api}/pulls?state=open&base=${encodeURIComponent(baseBranch)}&head=${encodeURIComponent(`${owner}:${headBranch}`)}&per_page=100`).filter((pull) => pull.head.ref === headBranch && pull.base.ref === baseBranch && pull.head.repo?.full_name?.toLowerCase() === `${owner}/${repo}`.toLowerCase()) : [];
   for (const pull of abiertos) if (!pulls.some((entry) => entry.number === pull.number)) pulls.push(pull);
   const sinPr = hotfix && abiertos.length === 0 ? `sin PR abierto de ${headBranch} a ${baseBranch}` : "";
+  // An open PR whose head is not the captured SHA would lend its record to another commit: block on any mismatch.
+  const movidos = abiertos.filter((pull) => String(pull.head.sha) !== headSha).map((pull) => Number(pull.number));
   pulls.sort((a, b) => a.number - b.number);
   /** @type {{pr: number, nivel: Nivel, pendiente: string[], motivo: string}[]} */
   const rows = [];
@@ -762,6 +764,10 @@ export function listoProduccion(options) {
   for (const row of rows) for (const reason of row.pendiente) byReason.set(reason.replace(/ \([0-9a-f]+\)$/, ""), [...(byReason.get(reason.replace(/ \([0-9a-f]+\)$/, "")) ?? []), row.pr]);
   const smokeMissing = smokeAplica && smoke !== "success";
   if (sinPr) byReason.set(sinPr, []);
+  if (movidos.length) byReason.set(`la punta del PR no es ${short(headSha)}`, movidos);
+  // The branch can move while the PRs are read: a status is only published on the SHA that is still the head.
+  const finalSha = String(ghJson(`${api}/commits/${encodeURIComponent(headBranch)}`).sha);
+  if (finalSha !== headSha) byReason.set(`${headBranch} se movió a ${short(finalSha)} durante la comprobación`, []);
   const pending = byReason.size > 0 || smokeMissing;
   let estadoGithub = "no publicado (--sin-estado)";
   const firstReason = [...byReason.entries()][0];
