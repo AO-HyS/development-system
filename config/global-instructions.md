@@ -33,7 +33,7 @@ Standing decisions of the owner:
 ## How an ask runs
 
 1. **First reply.** Answer a product ask, dictated or naming a Linear ticket,
-   with the five parts of the `in-your-own-words` skill. Its «Terminado»
+   with the parts of the `in-your-own-words` skill. Its «Terminado»
    lines (`acción -> lo que se ve`) are the contract; the skill says when to
    wait for his yes.
 2. **Build.** Load the skills the work calls for. Four defences, in order:
