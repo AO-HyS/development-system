@@ -88,18 +88,19 @@ export function isBudgetedSource(file, config) {
 
 /**
  * Changed files with the path their baseline lives at: a rename or copy is sized against its source blob, so moving
- * an oversized file without growing it passes. @param {string} output `git diff --name-status -z` output
- * @returns {Map<string, string>} new path -> baseline path
+ * an oversized file without growing it passes. Deleted files are included with `deleted: true` so deleting an
+ * oversized file counts toward reducing net file-size debt. @param {string} output `git diff --name-status -z` output
+ * @returns {Map<string, {from: string, deleted: boolean}>} path -> baseline path and deletion flag
  */
 function changedPaths(output) {
   const parts = output.split("\0");
-  /** @type {Map<string, string>} */
+  /** @type {Map<string, {from: string, deleted: boolean}>} */
   const changed = new Map();
   for (let index = 0; index < parts.length - 1;) {
     const status = parts[index];
     if (!status) { index += 1; continue; }
-    if (/^[RC]/u.test(status)) { changed.set(parts[index + 2], parts[index + 1]); index += 3; }
-    else { changed.set(parts[index + 1], parts[index + 1]); index += 2; }
+    if (/^[RC]/u.test(status)) { changed.set(parts[index + 2], { from: parts[index + 1], deleted: false }); index += 3; }
+    else { changed.set(parts[index + 1], { from: parts[index + 1], deleted: status === "D" }); index += 2; }
   }
   return changed;
 }
@@ -107,24 +108,25 @@ function changedPaths(output) {
 /** @param {string} root @param {string|undefined} base */
 function candidates(root, base) {
   if (!base) {
-    return [...changedPaths(git(root, ["diff", "--cached", "--name-status", "--diff-filter=ACMR", "-z"]))]
-      .map(([file, from]) => ({ file, before: blobSize(root, `HEAD:${from}`), after: blobSize(root, `:${file}`) }));
+    return [...changedPaths(git(root, ["diff", "--cached", "--name-status", "--diff-filter=ACMRD", "-z"]))]
+      .map(([file, { from, deleted }]) => ({ file, before: blobSize(root, `HEAD:${from}`), after: deleted ? 0 : blobSize(root, `:${file}`) }));
   }
   const mergeBase = git(root, ["merge-base", base, "HEAD"]).trim();
-  const changed = changedPaths(git(root, ["diff", "--name-status", "--diff-filter=ACMR", "-z", mergeBase]));
+  const changed = changedPaths(git(root, ["diff", "--name-status", "--diff-filter=ACMRD", "-z", mergeBase]));
   // Untracked files count too, so a local --base run sees new modules before they are committed.
-  for (const file of git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean)) if (!changed.has(file)) changed.set(file, file);
+  for (const file of git(root, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean)) if (!changed.has(file)) changed.set(file, { from: file, deleted: false });
   return [...changed]
-    .map(([file, from]) => {
+    .map(([file, { from, deleted }]) => {
       const absolute = path.join(root, file);
-      return { file, before: blobSize(root, `${mergeBase}:${from}`), after: existsSync(absolute) ? statSync(absolute).size : null };
+      return { file, before: blobSize(root, `${mergeBase}:${from}`), after: deleted ? 0 : (existsSync(absolute) ? statSync(absolute).size : null) };
     });
 }
 
 /**
  * Checks changed source files against the token budget.
+ * Never blocks a diff whose net file-size debt decreases unless it introduces a new over-budget file.
  * @param {{root?: string, base?: string}} [options]
- * @returns {{ok: boolean, operation: "check-file-size", root: string, mode: "staged"|"base", base?: string, budgetTokens: number, growthBytes: number, checked: number, findings: FileSizeFinding[]}}
+ * @returns {{ok: boolean, operation: "check-file-size", root: string, mode: "staged"|"base", base?: string, budgetTokens: number, growthBytes: number, checked: number, debtBeforeBytes: number, debtAfterBytes: number, netDebtDelta: number, netDebtReduced: boolean, findings: FileSizeFinding[]}}
  */
 export function checkFileSize({ root = process.cwd(), base } = {}) {
   const top = git(root, ["rev-parse", "--show-toplevel"]).trim();
@@ -134,9 +136,15 @@ export function checkFileSize({ root = process.cwd(), base } = {}) {
   /** @type {FileSizeFinding[]} */
   const findings = [];
   let checked = 0;
+  let debtBeforeBytes = 0;
+  let debtAfterBytes = 0;
   for (const { file, before, after } of candidates(top, base)) {
     if (after === null || !isBudgetedSource(file, config)) continue;
     checked += 1;
+    const debtBefore = before !== null && before > budgetBytes ? before - budgetBytes : 0;
+    const debtAfter = after > budgetBytes ? after - budgetBytes : 0;
+    debtBeforeBytes += debtBefore;
+    debtAfterBytes += debtAfter;
     if (after <= budgetBytes) continue;
     const wasOversized = before !== null && before > budgetBytes;
     if (wasOversized && after - before <= config.growthBytes) continue;
@@ -146,14 +154,24 @@ export function checkFileSize({ root = process.cwd(), base } = {}) {
       : { path: file, beforeBytes: before, afterBytes: after, kind: "over-budget",
         detail: `~${tokens(after)} tokens, over the ${config.budgetTokens}-token budget. Split it by responsibility into focused modules before committing.` });
   }
-  return { ok: findings.length === 0, operation: "check-file-size", root: top, mode: base ? "base" : "staged", ...(base ? { base } : {}),
-    budgetTokens: config.budgetTokens, growthBytes: config.growthBytes, checked, findings };
+  const netDebtDelta = debtAfterBytes - debtBeforeBytes;
+  const hasNewOverBudget = findings.some(finding => finding.kind === "over-budget");
+  const netDebtReduced = netDebtDelta < 0;
+  const ok = findings.length === 0 || (netDebtReduced && !hasNewOverBudget);
+  return { ok, operation: "check-file-size", root: top, mode: base ? "base" : "staged", ...(base ? { base } : {}),
+    budgetTokens: config.budgetTokens, growthBytes: config.growthBytes, checked, debtBeforeBytes, debtAfterBytes, netDebtDelta, netDebtReduced, findings };
 }
 
 /** @param {ReturnType<typeof checkFileSize>} result */
 export function formatFileSize(result) {
   const scope = result.mode === "base" ? `changes since ${result.base}` : "staged changes";
   if (result.findings.length === 0) return `File size budget OK: ${result.checked} source files in ${scope} (budget ${result.budgetTokens} tokens).`;
+  if (result.ok) {
+    return [
+      `file-size ok (deuda neta reducida en ${Math.abs(result.netDebtDelta)} bytes; ${result.findings.length} avisos de crecimiento en ${scope}):`,
+      ...result.findings.map(finding => `- ${finding.path} [${finding.kind}] ${finding.detail}`),
+    ].join("\n");
+  }
   return [`File size budget: ${result.findings.length} files over budget in ${scope}:`, ...result.findings.map(finding => `- ${finding.path} [${finding.kind}] ${finding.detail}`)].join("\n");
 }
 

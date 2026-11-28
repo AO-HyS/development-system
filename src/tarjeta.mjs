@@ -23,11 +23,12 @@ const VERDICTS = /** @type {const} */ ({ "pasa": "PASA", "no-pasa": "NO PASA", "
 /**
  * @typedef {{ n: string, donde: "pantalla"|"servidor"|"regla", texto: string, desde: string }} Renglon
  * @typedef {{ en: string, veredicto: "PASA"|"NO PASA"|"NO ALCANZADO", recibo: string, nota: string | null }} Resultado
+ * @typedef {{ schema: 1, pr: string, prCreado: string | null, primerListo: string, primerListoParaFusionar: string | null, ultimoListoParaFusionar: string | null, prAPrimerListoMin: number | null, primerListoAFusionarMin: number | null, prAFusionarMin: number | null }} CicloPr
  * @typedef {{ schema: 1, id: string, repo: string, tipo: string, pedido: string, ticket: string | null, dsVersion: string,
  *   abierta: string, cerrada: string | null, estado: "abierta"|"cerrada"|"cerrada-con-pendientes"|"fallida",
  *   terminado: { renglones: Renglon[], primerRenglon: string | null, antesDelPrimerCambio: boolean | null, si: { en: string, palabras: string } | null, sinEspera: string | null, cambiosTrasElSi: number },
  *   resultados: Record<string, Resultado[]>,
- *   cierre: { prs: string[], empujones: number | null, correcciones: number | null, lecturas: number | null, hallazgosDeRegla: number | null, objetivosFaltantes: string[], relojMinutos: number | null, minutosDeAgente: number | null, motivoFallido: string | null } }} Tarjeta
+ *   cierre: { prs: string[], empujones: number | null, correcciones: number | null, lecturas: number | null, hallazgosDeRegla: number | null, objetivosFaltantes: string[], relojMinutos: number | null, minutosDeAgente: number | null, motivoFallido: string | null, cicloPrs?: CicloPr[] } }} Tarjeta
  */
 
 /** @param {string[]} argv */
@@ -155,6 +156,28 @@ function marks(card) {
   return card.terminado.renglones.map((line) => ({ line, last: (card.resultados[line.n] ?? []).filter((item) => item.en > line.desde).at(-1) ?? null }));
 }
 
+/**
+ * Reads local PR cycle-time files recorded by `listo` for any `<owner/repo#n>` in `prs`.
+ * Never fails when a file is missing or unreadable.
+ * @param {string} home @param {string[]} prs @returns {CicloPr[]}
+ */
+function readCicloPrs(home, prs) {
+  /** @type {CicloPr[]} */
+  const ciclos = [];
+  for (const pr of prs) {
+    const match = /^([^/\s]+)\/([^/#\s]+)#(\d+)$/.exec(pr.trim());
+    if (!match) continue;
+    const [, owner, repo, number] = match;
+    const file = resolve(home, ".development-system/private/listo/ciclo", `${owner}-${repo}`.toLowerCase(), `${number}.json`);
+    if (!existsSync(file)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(file, "utf8"));
+      if (parsed && typeof parsed === "object" && typeof parsed.pr === "string") ciclos.push(/** @type {CicloPr} */ (parsed));
+    } catch { /* ignore unreadable cycle file */ }
+  }
+  return ciclos;
+}
+
 /** @param {Tarjeta} card */
 export function formatTarjeta(card) {
   const rows = marks(card).map(({ line, last }) => `  ${line.n} [${line.donde}] ${last ? last.veredicto : "SIN RECIBO"} · ${line.texto}${last ? ` · ${last.recibo}` : ""}`);
@@ -162,11 +185,14 @@ export function formatTarjeta(card) {
   const close = card.cerrada
     ? `cierre: ${card.cierre.relojMinutos} min de reloj, empujones ${card.cierre.empujones ?? "?"}, correcciones ${card.cierre.correcciones ?? "?"}, lecturas ${card.cierre.lecturas ?? "?"}, hallazgos que una regla atraparía ${card.cierre.hallazgosDeRegla ?? "?"}, objetivos del dueño fuera del terminado ${card.cierre.objetivosFaltantes.length}${card.cierre.prs.length ? `, ${card.cierre.prs.join(" ")}` : ""}`
     : "sin cerrar";
+  const cycle = card.cierre?.cicloPrs?.length
+    ? `ciclo PR: ${card.cierre.cicloPrs.map((item) => `${item.pr} ${item.prAFusionarMin !== null && item.prAFusionarMin !== undefined ? `${item.prAFusionarMin} min` : "?"}`).join(", ")}`
+    : null;
   return [
     `Tarjeta ${card.id} · ${card.repo} · ${card.tipo} · DS ${card.dsVersion} · ${card.estado}`,
     `pedido: ${card.pedido}${card.ticket ? ` (${card.ticket})` : ""}`,
     `terminado: ${card.terminado.renglones.length} renglones, ${card.terminado.antesDelPrimerCambio === null ? "no se sabe si" : card.terminado.antesDelPrimerCambio ? "escrito antes" : "escrito después"} del primer cambio de código, ${card.terminado.cambiosTrasElSi} cambios después del sí; ${yes}`,
-    ...rows, close,
+    ...rows, close, ...(cycle ? [cycle] : []),
   ].join("\n");
 }
 
@@ -261,12 +287,15 @@ export function runTarjetaCommand(argv) {
     if (!failed && card.terminado.renglones.length === 0) throw new Error("no se cierra: la tarjeta no tiene renglones de «Terminado» (o ciérrala con --fallido \"<motivo>\")");
     if (!failed && missing.length) throw new Error(`no se cierra: sin recibo ${missing.join(", ")} (cada renglón necesita PASA, NO PASA o NO ALCANZADO con su recibo; o ciérrala con --fallido "<motivo>")`);
     const pending = marks(card).filter((item) => item.last?.veredicto !== "PASA").map((item) => item.line.n);
+    const prs = values.pr ?? card.cierre.prs;
+    const cicloPrs = readCicloPrs(home, prs);
     card.cerrada = now;
     card.estado = failed ? "fallida" : pending.length ? "cerrada-con-pendientes" : "cerrada";
     card.cierre = {
-      prs: values.pr ?? card.cierre.prs, empujones: count(values, "empujones"), correcciones: count(values, "correcciones"), lecturas: count(values, "lecturas"),
+      prs, empujones: count(values, "empujones"), correcciones: count(values, "correcciones"), lecturas: count(values, "lecturas"),
       hallazgosDeRegla: count(values, "hallazgos-de-regla"), objetivosFaltantes: values["objetivo-faltante"] ?? [],
       relojMinutos: Math.round((Date.parse(now) - Date.parse(card.abierta)) / 60000), minutosDeAgente: null, motivoFallido: failed ?? null,
+      ...(cicloPrs.length ? { cicloPrs } : {}),
     };
     write(path, card);
     return done(card, pending.length && !failed ? [`quedan sin PASA: ${pending.join(", ")}. Dilo en el cierre; no cuentan como pase.`] : []);

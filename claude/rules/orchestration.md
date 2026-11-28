@@ -12,4 +12,4 @@ The shared host rules and the Claude Code host section live in ~/.claude/CLAUDE.
 5. Seed exact records by script before proof. One fresh `verificador-pantalla` via Agent, one round, five minutes, receipt per screen line; run server/rule lines alongside. No extra model read or visual council in AF.
 6. Send each NO PASA to the same writer with SendMessage, or record «Rechazado: motivo» with its real verdict. Recheck affected lines after a fix; the third NO PASA is diagnosed and left failed. Commit with hooks.
 
-Integration reads, `listo`, Codex answers, the smoke, the five stops and the close stay as the page says.
+Integration reads, `listo`, the smoke, the five stops and the close stay as the page says.
