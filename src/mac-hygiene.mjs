@@ -11,7 +11,6 @@ const DEFAULT_TMP_WARN_BYTES = 50 * 1024 * 1024;
 const DEFAULT_TMP_WARN_FILES = 500;
 const MAX_TMP_ENTRIES = 5000;
 const MAX_ORPHAN_REPORTED = 20;
-const MAX_COMMAND_LENGTH = 160;
 const PS_TIMEOUT_MS = 2000;
 
 const MCP_PATTERN = /\bmcp\b|@modelcontextprotocol|mcp-server|opencode-browse|playwright-mcp|convex-mcp|linear-mcp|context7/i;
@@ -42,7 +41,7 @@ const SYSTEM_PATH_PATTERN = /^\/(?:System|usr\/libexec|sbin)\//u;
  * @typedef {{
  *   pid: number,
  *   ppid: number,
- *   command: string,
+ *   executable: string,
  * }} OrphanMcpProcess
  */
 
@@ -156,6 +155,19 @@ function readProcessTable() {
 }
 
 /**
+ * Extracts only a safe executable basename from a raw `ps` command line so CLI arguments
+ * (which may hold tokens or headers) are never retained or serialized.
+ * @param {string} command
+ * @returns {string}
+ */
+function safeExecutable(command) {
+  const firstToken = command.split(/\s+/u)[0] ?? "";
+  const cleaned = firstToken.replace(/^['"]|['"]$/gu, "");
+  const base = path.basename(cleaned);
+  return base || "unknown";
+}
+
+/**
  * Finds orphan MCP / agent helper processes (ppid === 1).
  * @param {string | undefined} psOutput
  * @returns {OrphanMcpReport}
@@ -178,7 +190,7 @@ function scanOrphanMcps(psOutput) {
     matches.push({
       pid,
       ppid,
-      command: command.length > MAX_COMMAND_LENGTH ? `${command.slice(0, MAX_COMMAND_LENGTH - 3)}...` : command,
+      executable: safeExecutable(command),
     });
   }
   return {
