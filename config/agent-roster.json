@@ -26,8 +26,28 @@
         "integrar trabajo y resolver correcciones",
         "aceptar comportamiento con evidencia"
       ],
-      "when": "Las sesiones nuevas solicitan Sol 6.1 High normal; el modelo elegido al iniciar conserva la orquestacion y decide la delegacion.",
+      "when": "T3 Code orchestration defaults to Gemini 4 Neon High (rotating acpRegistry_devin_vian -> acpRegistry_devin -> antigravity -> acpRegistry_factory_droid with freshContext per batch; Fusion is not default). The session-selected parent keeps orchestration and decides delegation.",
       "candidates": [
+        {
+          "id": "devin-neon-orchestration",
+          "harness": "devin",
+          "model": "gemini-4-neon-high",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "session-selected parent owns integration in T3 Code; rotate accounts with freshContext per batch; do not default to Fusion (1.4x-2.8x slower in 2026-11-28 benchmark)",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "antigravity-orchestration",
+          "harness": "antigravity",
+          "model": "gemini-4-neon",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "session-selected parent owns integration; requires observed provider, model, thought_level and effective permissions",
+          "requiresVerifiedRuntimeAvailability": true
+        },
         {
           "id": "advisory-orchestration",
           "harness": "codex",
@@ -41,16 +61,6 @@
             "label": "normal",
             "status": "runtime-required"
           }
-        },
-        {
-          "id": "antigravity-orchestration",
-          "harness": "antigravity",
-          "model": "gemini-4-neon",
-          "reasoning": "high",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "session-selected parent owns integration; requires observed provider, model, thought_level and effective permissions",
-          "requiresVerifiedRuntimeAvailability": true
         }
       ]
     },
@@ -64,8 +74,43 @@
         "ejecutar paquetes acotados",
         "corregir codigo y verificacion real dentro del ownership asignado"
       ],
-      "when": "Sol 6.1 Medium escribe paquetes generales con ownership exclusivo y verificacion del parent.",
+      "when": "Logic work (frontend XState, backend/permissions, bugfixes; 0 OpenCode Go): swe-2-1-medium standard ($0 promo through 2026-12-08) and direct gemini-4-neon-high for architectural/UI changes; reserve swe-2-1-medium ultrafast (600 tok/s) for urgent/complex logic sprints when weekly Devin quota is available. Always include full surface gates in no-plan contracts; never default to Fusion.",
       "candidates": [
+        {
+          "id": "devin-swe21std-implementation",
+          "harness": "devin",
+          "model": "swe-2-1-medium",
+          "reasoning": "medium",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "no-plan bounded logic packet in standard speed with full surface gates ($0 promo until 2026-12-08 even on exhausted weekly Devin quota; 9.6/10, 0 P0/P1 across #921/#943/#962); 0 OpenCode Go on logic",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "devin-neon-implementation",
+          "harness": "devin",
+          "model": "gemini-4-neon-high",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "direct architectural/UI logic implementation (9.9/10, 0 P0/P1 in 2026-11-28 benchmark); prefer direct T3 coordination over Fusion",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "devin-swe21ultra-implementation",
+          "harness": "devin",
+          "model": "swe-2-1-medium",
+          "reasoning": "medium",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "urgent/complex logic sprint when weekly Devin quota is available (speed: ultrafast, 600 tok/s, 10.8/10, 2x-3.6x faster with 0 P0/P1); never use ultrafast on mechanical tasks",
+          "serviceTier": {
+            "tier": "priority",
+            "label": "ultrafast",
+            "status": "runtime-observed"
+          },
+          "requiresVerifiedRuntimeAvailability": true
+        },
         {
           "id": "mixed-general-implementation",
           "harness": "claude",
@@ -106,8 +151,38 @@
         "generar y editar codigo",
         "aplicar correcciones"
       ],
-      "when": "Haiku 5.5 Medium executes exact and mechanical packets through a protected native Claude role; parent resolves decisions and verifies behavior. No automatic provider fallback.",
+      "when": "Mechanical, codemod, and UI-token batches: 1st opencode-go/glm-5.3-flash ($0 Devin quota, 11.9/10 across #959/#937), 2nd swe-2-1-medium standard ($0 promo through 2026-12-08, 10.9/10), 3rd swe-2-flash-medium for short mechanical packets (<15 files). Never use ultrafast on mechanical work. Native Claude Code keeps protected Haiku 5.5 Medium.",
       "candidates": [
+        {
+          "id": "opencode-go-fast-glm",
+          "harness": "opencode",
+          "model": "opencode-go/glm-5.3-flash",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "no-plan bounded mechanical/codemod/UI-token packet with explicit full gate commands ($0 Devin quota, 11.9/10 across #959 and #937, 0 P0/P1)",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "devin-swe21std-fast",
+          "harness": "devin",
+          "model": "swe-2-1-medium",
+          "reasoning": "medium",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "no-plan bounded mechanical packet in standard speed with full gate commands (never ultrafast on mechanical; $0 promo until 2026-12-08 even on exhausted weekly Devin quota; 10.9/10)",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "devin-swe2flash-fast",
+          "harness": "devin",
+          "model": "swe-2-flash-medium",
+          "reasoning": "medium",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "short mechanical packets (<15 files) only; slow on 40+ file refactors (10.2/10; $0 promo until 2026-12-04)",
+          "requiresVerifiedRuntimeAvailability": true
+        },
         {
           "id": "haiku55-fast-execution",
           "harness": "claude",
@@ -131,21 +206,31 @@
         "detectar regresiones",
         "verificar el objetivo sin editar"
       ],
-      "when": "The plan gets one review, and one more only for a blocking finding. Independent Sol 6.1 High reviews integrated behavior before acceptance, in the rounds the gate orders; Fable 5.2 reviews security work and hard reviews. Candidates are advisory, not automatic dispatch.",
+      "when": "One independent P0/P1 pass only (no review loops; 22-38s/PR, 0 nitpicks in 2026-11-28 benchmark) from a model family distinct from the author: Sol 6.1 High when Neon/SWE/Claude write, Gemini 4 Neon High when Codex writes. Repeated defects become lint/type rules via correct.",
       "candidates": [
         {
           "id": "advisory-adversarial-review",
           "harness": "codex",
           "model": "gpt-6.1-sol",
           "reasoning": "high",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "fresh context and distinct mandate for review",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "fresh read-only 1-pass P0/P1 review, distinct model family from author (10/10, 0 P0/P1 false positives in 2026-11-28 benchmark)",
           "serviceTier": {
             "tier": "default",
             "label": "normal",
-            "status": "runtime-required"
+            "status": "runtime-observed"
           }
+        },
+        {
+          "id": "devin-neon-adversarial-review",
+          "harness": "devin",
+          "model": "gemini-4-neon-high",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "fresh read-only 1-pass P0/P1 review when Codex is author; named in registro when substituting Sol",
+          "requiresVerifiedRuntimeAvailability": true
         },
         {
           "id": "antigravity-adversarial-review",
@@ -170,21 +255,31 @@
         "buscar regresiones",
         "evaluar mantenibilidad"
       ],
-      "when": "Cuando se necesita juicio independiente fuera del protocolo adversarial.",
+      "when": "One independent P0/P1 pass from a model family distinct from the author (no nitpick loops).",
       "candidates": [
         {
           "id": "advisory-general-review",
           "harness": "codex",
           "model": "gpt-6.1-sol",
           "reasoning": "high",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "fresh context and distinct mandate for review",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "fresh read-only 1-pass P0/P1 review, distinct model family from author",
           "serviceTier": {
             "tier": "default",
             "label": "normal",
-            "status": "runtime-required"
+            "status": "runtime-observed"
           }
+        },
+        {
+          "id": "devin-neon-general-review",
+          "harness": "devin",
+          "model": "gemini-4-neon-high",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "fresh read-only 1-pass P0/P1 review when Codex is author; named in registro when substituting Sol",
+          "requiresVerifiedRuntimeAvailability": true
         },
         {
           "id": "antigravity-general-review",
@@ -351,26 +446,16 @@
         "mapear APIs y versiones",
         "entregar evidencia sin editar producto"
       ],
-      "when": "Haiku 5.5 Medium collects bounded source facts and research through an observed available native Claude or T3 read-only route. No automatic provider fallback.",
+      "when": "Read-only exploration and code mapping (replaces Haiku as default): 1st devin/swe-2-flash-medium (200 tok/s, 42.1s, 11.8/10, $0 promo through 2026-12-04 even on exhausted weekly Devin quota), 2nd opencode-go/glm-5.3-flash ($0 Devin quota, 9.8/10), 3rd native Claude Haiku 5.5 Medium (61.5s, 10.0/10 baseline).",
       "candidates": [
         {
-          "id": "haiku55-research",
-          "harness": "claude",
-          "model": "claude-haiku-5-5",
+          "id": "devin-swe2flash-research",
+          "harness": "devin",
+          "model": "swe-2-flash-medium",
           "reasoning": "medium",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "bounded read-only task; no source ownership or descendants",
-          "requiresVerifiedRuntimeAvailability": true
-        },
-        {
-          "id": "antigravity-research-flash",
-          "harness": "antigravity",
-          "model": "gemini-3.8-flash",
-          "reasoning": "medium",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "bounded read-only research; requires observed provider/model/effort and read-only permissions; no source writes",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "bounded read-only exploration (200 tok/s, 42.1s, 11.8/10 in 2026-11-28 benchmark; $0 promo until 2026-12-04 even on exhausted weekly Devin quota); no source writes",
           "requiresVerifiedRuntimeAvailability": true
         },
         {
@@ -378,9 +463,19 @@
           "harness": "opencode",
           "model": "opencode-go/glm-5.3-flash",
           "reasoning": "high",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "bounded read-only research; requires observed provider/model/effort and read-only permissions; no source writes",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "bounded read-only research ($0 Devin quota, 105.4s, 9.8/10 in 2026-11-28 benchmark); no source writes",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "haiku55-research",
+          "harness": "claude",
+          "model": "claude-haiku-5-5",
+          "reasoning": "medium",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "bounded read-only task (61.5s, 10.0/10 baseline); no source ownership or descendants",
           "requiresVerifiedRuntimeAvailability": true
         },
         {
@@ -392,6 +487,17 @@
           "mappingStatus": "runtime-required",
           "independenceBoundary": "bounded read-only research; requires observed provider/model/effort and read-only permissions; no source writes",
           "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "antigravity-research-flash",
+          "harness": "antigravity",
+          "model": "gemini-3.8-flash",
+          "reasoning": "medium",
+          "evidenceStatus": "provisional",
+          "mappingStatus": "runtime-required",
+          "independenceBoundary": "fallback read-only research; shares Antigravity quota with Neon (hit quota failure in 2026-11-28 benchmark); no source writes",
+          "requiresVerifiedRuntimeAvailability": true,
+          "fallbackOnly": true
         }
       ],
       "aliases": [
@@ -409,20 +515,30 @@
         "capturar evidencia neutral",
         "detenerse al salir del alcance"
       ],
-      "when": "Solo cuando la aceptacion exige un flujo real de UI o navegador.",
+      "when": "Deep interactive UI flows ($0 Devin/Codex quota, 5/5 completeness): opencode-go/glm-5.3-flash; fast accessible-ref UI smokes (<30s): codex/gpt-6.1-terra low priority. Use OpenCode Browse MCP / T3 preview (Terra native browser pipe fails in T3 Code).",
       "candidates": [
+        {
+          "id": "opencode-go-computer-use-glm",
+          "harness": "opencode",
+          "model": "opencode-go/glm-5.3-flash",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "deep interactive DOM/UI verification ($0 Devin/Codex quota, 5/5 completeness including mobile details/a11y in 96s, 8.8/10 in 2026-11-28 benchmark)",
+          "requiresVerifiedRuntimeAvailability": true
+        },
         {
           "id": "advisory-computer-use",
           "harness": "codex",
           "model": "gpt-6.1-terra",
           "reasoning": "low",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "fresh context and distinct mandate for review",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "fast accessible-ref UI smoke (<30s; 23s, 9.6/10 in 2026-11-28 benchmark); use OpenCode Browse MCP inside T3 Code",
           "serviceTier": {
             "tier": "priority",
             "label": "fast",
-            "status": "runtime-required"
+            "status": "runtime-observed"
           }
         }
       ]
@@ -466,8 +582,28 @@
         "resolver decisiones tecnicas",
         "dividir paquetes y dependencias"
       ],
-      "when": "The parent or its planner role authors; a fresh independent Sol 6.1 High reviews before writers (Fable 5.2 when the plan is security work or hard). Preserve the parent. Use existing native/T3 read-only routes; candidates are advisory, not automatic dispatch.",
+      "when": "Default technical coordination and contracts use Gemini 4 Neon High (without separate step-by-step plan ceremonies; writers execute bounded no-plan contracts with full surface gates). Candidates are advisory, not automatic dispatch.",
       "candidates": [
+        {
+          "id": "devin-neon-implementation-planning",
+          "harness": "devin",
+          "model": "gemini-4-neon-high",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "parent defines bounded no-plan contracts and full surface gates; cross-family reader reviews critical/batch diffs",
+          "requiresVerifiedRuntimeAvailability": true
+        },
+        {
+          "id": "antigravity-implementation-planning",
+          "harness": "antigravity",
+          "model": "gemini-4-neon",
+          "reasoning": "high",
+          "evidenceStatus": "measured",
+          "mappingStatus": "runtime-observed",
+          "independenceBoundary": "plan author must differ from fresh plan reviewer; requires observed provider/model/effort",
+          "requiresVerifiedRuntimeAvailability": true
+        },
         {
           "id": "governed-implementation-planning",
           "harness": "codex",
@@ -481,16 +617,6 @@
             "label": "normal",
             "status": "runtime-required"
           }
-        },
-        {
-          "id": "antigravity-implementation-planning",
-          "harness": "antigravity",
-          "model": "gemini-4-neon",
-          "reasoning": "high",
-          "evidenceStatus": "provisional",
-          "mappingStatus": "runtime-required",
-          "independenceBoundary": "plan author must differ from fresh plan reviewer; requires observed provider/model/effort",
-          "requiresVerifiedRuntimeAvailability": true
         }
       ]
     }
@@ -498,11 +624,11 @@
   "hostProfiles": {
     "schemaVersion": 1,
     "instructions": {
-      "shared": "## Tools and reads\n\nA missing or failing tool, skill or agent is a gap you report, never a blocker. The independent read of a critical change or of a batch is done by Sol 6.1 High (`gpt-6.1-sol`, reasoning high) in a fresh context that did not write the change; without Sol, another model that is not the author, said in the record. Fable 5.2 only judges how a screen looks. A mistake seen twice goes to `development-system mistake add`, a paper cut to `friction add`.\n",
+      "shared": "## Tools and reads\n\nA missing or failing tool, skill or agent is a gap you report, never a blocker. The independent read of a critical change or of a batch is one P0/P1 pass by Sol 6.1 High (`gpt-6.1-sol`, reasoning high) in a fresh context that did not write the change; without Sol, another model family distinct from the author, said in the record. Fable 5.2 only judges how a screen looks. A mistake seen twice goes to `development-system mistake add`, a paper cut to `friction add`.\n",
       "codex": "## Codex host\n\nFor the independent read start a fresh read-only Sol 6.1 High child (native, or `delegate_task`) with the diff and the question; never reuse the thread that wrote the change.\n",
       "claude": "## Claude Code host\n\nFor the independent read use `delegate_task` to `codex` / `gpt-6.1-sol` with reasoning high, read-only, or `node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs`.\n",
-      "claudeRule": "# Claude Code orchestration (generated from config/agent-roster.json)\n\nThe shared host rules and the Claude Code host section live in ~/.claude/CLAUDE.md. This file adds the AF way for the parent of a product ask in Claude Code; a subagent ignores it. Codex does not read it.\n\n## AF: the parent manages, `escritor-rapido` writes product code\n\n0. In your second message load in one call only the deferred tools you will use: `select:SendMessage`, plus the Linear tools for the close when the ask names a ticket. Then load nothing else: completion notices wake you, never poll.\n1. Read `~/.claude/skills/flow-implement/references/forma-af.md` before the first Agent; it holds the full recipe.\n2. First reply: the five short parts of `in-your-own-words`; keep its yes/pause rule.\n3. Start the writer as soon as that rule permits: Agent, `escritor-rapido`, no model override. The guard admits only its typed packet, one short line each: Objective, Root (this cwd), Revision (40-char SHA), Owned paths, Settled decisions, Actions (files, decision, done lines), Authorization, Checks (lint/type commands), Stop conditions, Evidence receipt, Done when: <command> -> <observation>.\n4. Meanwhile check entries, load/save errors, retry, double click and navigation failure apart from saving; keep scope closed and record unrelated defects.\n5. Seed exact records by script before proof. One fresh `verificador-pantalla` via Agent, one round, five minutes, receipt per screen line; run server/rule lines alongside. No extra model read or visual council in AF.\n6. Send each NO PASA to the same writer with SendMessage, or record «Rechazado: motivo» with its real verdict. Recheck affected lines after a fix; the third NO PASA is diagnosed and left failed. Commit with hooks.\n\nIntegration reads, `listo`, Codex answers, the smoke, the five stops and the close stay as the page says.\n",
-      "antigravityRule": "---\ntrigger: always_on\ndescription: \"Antigravity host orchestration rules (DS 4.2.0): parent writes directly, subagents stay read-only, cross-family independent reads, and provisional model boundaries.\"\n---\n\n# Antigravity host orchestration (generated from config/agent-roster.json)\n\nThe shared Development System page lives in `~/.gemini/config/AGENTS.md`. This rule applies only in Antigravity (`gemini-4-neon` High parent); Claude Code and Codex do not read it.\n\n## Parent writes; subagents stay read-only\n\n1. Follow `in-your-own-words`, the four defences (lint, types, reads, `verificar`), `listo`, `tarjeta`, and the five stops from `AGENTS.md`.\n2. The Antigravity parent (`gemini-4-neon` High) edits source code directly. All subagents—both native (`research`, `self`) and delegated (`gemini-3.8-flash`, OpenCode Go `opencode-go/glm-5.3-flash`, `opencode-go/kimi-k3.1-pro`)—are strictly read-only until protected write admission is verified (`t3.sourceWritersAdmitted: false`).\n3. Never self-review: for an independent read of a critical change or batch, call `delegate_task` to a fresh read-only cross-family model (`codex` / `gpt-6.2-sol` or `gpt-6.1-sol` High; or `claudeAgent` / `claude-opus-5-5` High when Codex is unavailable), and record the exact reader in `development-system registro`.\n4. As a third independent model family (Google), `antigravity` / `gemini-4-neon` High may perform fresh read-only reviews for Claude or Codex authors when named in `registro`.\n5. All Antigravity and OpenCode Go roster mappings remain `provisional` until runtime evidence records provider, model, effort (`thought_level`), and effective permissions.\n6. Never merge pull requests via MCP (`github/merge_pull_request`, `t3-code/pull_request_merge`, `linear/merge_diff` are blocked): run `development-system listo` and merge via `gh pr merge --match-head-commit <sha>`.\n"
+      "claudeRule": "# Claude Code orchestration (generated from config/agent-roster.json)\n\nThe shared host rules and the Claude Code host section live in ~/.claude/CLAUDE.md. This file adds the AF way for the parent of a product ask in Claude Code; a subagent ignores it. Codex does not read it.\n\n## AF: the parent manages, `escritor-rapido` writes product code\n\n0. In your second message load in one call only the deferred tools you will use: `select:SendMessage`, plus the Linear tools for the close when the ask names a ticket. Then load nothing else: completion notices wake you, never poll.\n1. Read `~/.claude/skills/flow-implement/references/forma-af.md` before the first Agent; it holds the full recipe.\n2. First reply: the short parts of `in-your-own-words`; keep its yes/pause rule.\n3. Start the writer as soon as that rule permits: Agent, `escritor-rapido`, no model override. The guard admits only its typed packet, one short line each: Objective, Root (this cwd), Revision (40-char SHA), Owned paths, Settled decisions, Actions (files, decision, done lines), Authorization, Checks (lint/type commands), Stop conditions, Evidence receipt, Done when: <command> -> <observation>.\n4. Meanwhile check entries, load/save errors, retry, double click and navigation failure apart from saving; keep scope closed and record unrelated defects.\n5. Seed exact records by script before proof. One fresh `verificador-pantalla` via Agent, one round, five minutes, receipt per screen line; run server/rule lines alongside. No extra model read or visual council in AF.\n6. Send each NO PASA to the same writer with SendMessage, or record «Rechazado: motivo» with its real verdict. Recheck affected lines after a fix; the third NO PASA is diagnosed and left failed. Commit with hooks.\n\nIntegration reads, `listo`, the smoke, the five stops and the close stay as the page says.\n",
+      "antigravityRule": "---\ntrigger: always_on\ndescription: \"Antigravity host orchestration rules (DS 4.4.0): parent writes directly, subagents stay read-only, cross-family independent reads, and measured model boundaries.\"\n---\n\n# Antigravity host orchestration (generated from config/agent-roster.json)\n\nThe shared Development System page lives in `~/.gemini/config/AGENTS.md`. This rule applies only in Antigravity (`gemini-4-neon` High parent); Claude Code and Codex do not read it.\n\n## Parent writes; subagents stay read-only\n\n1. Follow `in-your-own-words`, the four defences (lint, types, one P0/P1 read, `verificar`), `listo`, `tarjeta`, and the five stops from `AGENTS.md`.\n2. The Antigravity parent (`gemini-4-neon` High) edits source code directly. All subagents—both native (`research`, `self`) and delegated (`swe-2-flash-medium`, `opencode-go/glm-5.3-flash`, `opencode-go/kimi-k3.1-pro`)—are strictly read-only until protected write admission is verified (`t3.sourceWritersAdmitted: false`).\n3. Never self-review: for an independent read of a critical change or batch, call `delegate_task` to a fresh read-only cross-family model (`codex` / `gpt-6.1-sol` High; or `claudeAgent` / `claude-opus-5-5` High when Codex is unavailable), and record the exact reader in `development-system registro`.\n4. As a third independent model family (Google), `antigravity` / `gemini-4-neon` High may perform fresh read-only reviews for Claude or Codex authors when named in `registro`.\n5. All Antigravity and OpenCode Go roster mappings remain `provisional` until runtime evidence records provider, model, effort (`thought_level`), and effective permissions.\n6. Never merge pull requests via MCP (`github/merge_pull_request`, `t3-code/pull_request_merge`, `linear/merge_diff` are blocked): run `development-system listo` and merge via `gh pr merge --match-head-commit <sha>`.\n"
     },
     "codex": {
       "roles": {

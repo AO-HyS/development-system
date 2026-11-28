@@ -17,12 +17,13 @@ Standing decisions of the owner:
 - No automated tests or evals anywhere: do not create or run them
   (`development-system allow-tests` is his to grant). QuickE2E flows live in
   `~/.development-system/private/quicke2e-flows/`, never in a repository.
-- On this machine at most three threads run local gates at the same time.
+- Launch the subagents the task needs without saturating RAM or CPU. Before
+  you report, stop every server or watcher you started by PID and clean up
+  temporary files and orphan MCP processes.
 - Secrets never go in chat: `request_secret`, at most once per task. Do not
   read `~/.development-system/private/secrets`.
-- Browse by MCP in his Chrome only to verify, within the limits of the
-  `verificar` skill; otherwise the T3 browser or a dedicated one.
-- Before you report, stop every server or watcher you started, by PID.
+- Verify web flows with OpenCode Browse MCP or the T3 preview within the limits
+  of `verificar`; avoid heavy `agent-browser` or duplicate Chrome profiles.
 
 {{shared-host-rules}}
 
@@ -33,14 +34,16 @@ Standing decisions of the owner:
 ## How an ask runs
 
 1. **First reply.** Answer a product ask, dictated or naming a Linear ticket,
-   with the five parts of the `in-your-own-words` skill. Its «Terminado»
+   with the parts of the `in-your-own-words` skill. Its «Terminado»
    lines (`acción -> lo que se ve`) are the contract; the skill says when to
    wait for his yes.
-2. **Build.** Load the skills the work calls for. Four defences, in order:
-   lint at edit time, types, the reads below, verification. A defect a rule
-   or a type could have caught leaves that rule in the same pull request.
+2. **Build.** Load the skills the work calls for; give writers bounded no-plan
+   contracts. Four defences, in order: lint at edit time, types, one P0/P1
+   read, verification. Turn repeated defects into rules via `correct` and prune
+   prose rules once enforced. Never block PRs that reduce net file-size debt;
+   run TLC only when `.tla`/`.cfg` or critical state/concurrency logic changes.
 3. **Verify.** The `verificar` skill ends every line PASA, NO PASA or NO
-   ALCANZADO with a receipt. No review rounds: a third NO PASA of a line is
+   ALCANZADO with a receipt. No review loops: a third NO PASA of a line is
    diagnosed, told to him and left NO PASA.
 4. **Close.** `development-system tarjeta` keeps the ask's card. Update the
    Linear ticket he named; leftovers go to a ticket with «Listo cuando»,
@@ -56,28 +59,22 @@ stands and what is missing, and publishes the «listo para fusionar» status tha
    branch, decides it from the paths the change touches: critical, normal or
    mechanical. You may raise a level (`listo --subir critico`); nothing lowers
    it.
-2. **Codex.** Ask once (`listo --pedir`) and answer each of its comments in
-   the thread with the fix commit or «Rechazado: motivo». A rejected P0 or P1,
-   or no answer 15 minutes after the request, makes the change critical. Codex
-   often answers after the merge: before you call the ask done, run
-   `development-system listo --barrido <owner/repo>` and answer each thread it
-   lists the same way; production refuses while one is open.
-3. **Smoke.** When the change touches an app or the backend, run
+2. **Smoke.** When the change touches an app or the backend, run
    `development-system smoke --base <url>`. It never blocks a merge into
    `develop`; a failed smoke is a live finding you fix next, and it blocks
    production.
-4. **Critical: before merging.** One independent read asks which case is
+3. **Critical: before merging.** One independent P0/P1 read asks which case is
    missing that can harm a user, their data, their money or a secret today;
    its cases become lines, verified and recorded with
    `development-system registro`. A failed line, a line not reached or an
    open live finding stops the merge. A line the owner waives (`--dispensa`
    with his words) stays «no alcanzado»: never a pass, never a production
    approval.
-5. **Normal: merge now, read after.** It merges into `develop` at once and
-   stays «sin verificar»; one independent read per batch at the end of the
-   session (`registro --lote`), its lines verified before you call the ask
+4. **Normal: merge now, read after.** It merges into `develop` at once and
+   stays «sin verificar»; batch mechanical work and run one independent P0/P1
+   read per batch (`registro --lote`) plus batch smoke before calling the ask
    done.
-6. **Mechanical.** Lint and typecheck. No read.
+5. **Mechanical.** Lint and typecheck. No read.
 
 `development-system listo --produccion <owner/repo>` publishes «listo para
 producción»: nothing reaches `main` with a read pending, a needed line not

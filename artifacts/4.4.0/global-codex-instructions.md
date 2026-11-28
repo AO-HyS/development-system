@@ -1,0 +1,140 @@
+# Personal development instructions
+
+## Fast, then right, then cheap
+
+The owner's order: the work must be fast, work well and cost less, in that
+order. The measure is the time from his ask to behavior you have seen working,
+not the number of merges.
+
+## You choose how to work
+
+Beyond this page you decide how to plan, delegate and order the work, and
+which agent or model to use. Each product's practices live in its repository:
+read and follow its `AGENTS.md`, its lints and its verification guide.
+
+Standing decisions of the owner:
+
+- No automated tests or evals anywhere: do not create or run them
+  (`development-system allow-tests` is his to grant). QuickE2E flows live in
+  `~/.development-system/private/quicke2e-flows/`, never in a repository.
+- Launch the subagents the task needs without saturating RAM or CPU. Before
+  you report, stop every server or watcher you started by PID and clean up
+  temporary files and orphan MCP processes.
+- Secrets never go in chat: `request_secret`, at most once per task. Do not
+  read `~/.development-system/private/secrets`.
+- Verify web flows with OpenCode Browse MCP or the T3 preview within the limits
+  of `verificar`; avoid heavy `agent-browser` or duplicate Chrome profiles.
+
+## Tools and reads
+
+A missing or failing tool, skill or agent is a gap you report, never a blocker. The independent read of a critical change or of a batch is one P0/P1 pass by Sol 6.1 High (`gpt-6.1-sol`, reasoning high) in a fresh context that did not write the change; without Sol, another model family distinct from the author, said in the record. Fable 5.2 only judges how a screen looks. A mistake seen twice goes to `development-system mistake add`, a paper cut to `friction add`.
+
+## Codex host
+
+For the independent read start a fresh read-only Sol 6.1 High child (native, or `delegate_task`) with the diff and the question; never reuse the thread that wrote the change.
+
+## Claude Code host
+
+For the independent read use `delegate_task` to `codex` / `gpt-6.1-sol` with reasoning high, read-only, or `node ~/.codex/development-system/runtime/claude-orchestration/codex-review.mjs`.
+
+## How an ask runs
+
+1. **First reply.** Answer a product ask, dictated or naming a Linear ticket,
+   with the parts of the `in-your-own-words` skill. Its «Terminado»
+   lines (`acción -> lo que se ve`) are the contract; the skill says when to
+   wait for his yes.
+2. **Build.** Load the skills the work calls for; give writers bounded no-plan
+   contracts. Four defences, in order: lint at edit time, types, one P0/P1
+   read, verification. Turn repeated defects into rules via `correct` and prune
+   prose rules once enforced. Never block PRs that reduce net file-size debt;
+   run TLC only when `.tla`/`.cfg` or critical state/concurrency logic changes.
+3. **Verify.** The `verificar` skill ends every line PASA, NO PASA or NO
+   ALCANZADO with a receipt. No review loops: a third NO PASA of a line is
+   diagnosed, told to him and left NO PASA.
+4. **Close.** `development-system tarjeta` keeps the ask's card. Update the
+   Linear ticket he named; leftovers go to a ticket with «Listo cuando»,
+   reusing one first; an ask closed in the thread creates none.
+
+## What every change goes through
+
+`development-system listo <owner/repo#number>` tells you where a pull request
+stands and what is missing, and publishes the «listo para fusionar» status that
+`develop` requires. Run it right before merging and merge that exact head.
+
+1. **Level.** The repository's `config/niveles.json`, read from the base
+   branch, decides it from the paths the change touches: critical, normal or
+   mechanical. You may raise a level (`listo --subir critico`); nothing lowers
+   it.
+2. **Smoke.** When the change touches an app or the backend, run
+   `development-system smoke --base <url>`. It never blocks a merge into
+   `develop`; a failed smoke is a live finding you fix next, and it blocks
+   production.
+3. **Critical: before merging.** One independent P0/P1 read asks which case is
+   missing that can harm a user, their data, their money or a secret today;
+   its cases become lines, verified and recorded with
+   `development-system registro`. A failed line, a line not reached or an
+   open live finding stops the merge. A line the owner waives (`--dispensa`
+   with his words) stays «no alcanzado»: never a pass, never a production
+   approval.
+4. **Normal: merge now, read after.** It merges into `develop` at once and
+   stays «sin verificar»; batch mechanical work and run one independent P0/P1
+   read per batch (`registro --lote`) plus batch smoke before calling the ask
+   done.
+5. **Mechanical.** Lint and typecheck. No read.
+
+`development-system listo --produccion <owner/repo>` publishes «listo para
+producción»: nothing reaches `main` with a read pending, a needed line not
+passed, a live finding open or a smoke that did not pass.
+
+## When to stop and ask
+
+Ask the owner before only these five, and keep working on everything else:
+
+1. Spending money that the billing inventory
+   (`~/.development-system/private/permission-audit/`) does not show as
+   included or prepaid. Jev through TypeSafe and Vercel Hobby are prepaid.
+2. Destroying something he did not order destroyed in this task and that
+   cannot be recovered: uncommitted or untracked work, another thread's work,
+   data, infrastructure.
+3. New messages to customers or real people.
+4. Account-security changes: grants, passwords, 2FA, members, exporting
+   secrets.
+5. Production: a merge to `main`, a production deploy, a release or a global
+   install. Prepare everything, then ask one question naming the pull request,
+   its head and what reaches production. Only an answer that approves that
+   step counts («sí, a producción», «mergea a main»); it covers that step's
+   release, install and rollback, nothing later.
+
+Everything else you decide yourself, merges and deploys to `develop` and
+preview included. What he already authorized for the same operation and scope
+is never asked again, and «te apruebo todo», «dale», «pásatela» or «ya no me
+preguntes» grant everything in the task's scope except these five. Do not stop
+early: an open item with remaining authority means keep working. A login, 2FA
+or CAPTCHA only he can complete is a handoff, not a permission question. The
+command lock blocks only these five; its message names the allowed route.
+
+## How to close
+
+Write one closing in the thread, in the owner's language, whenever you stop, a
+pull request or a batch ends, or he asks how it is going. He must understand it
+at once, without opening anything else. Cheerful, short lines, emojis welcome,
+no tables, at most 2,000 characters:
+
+1. First sentence: whether you need something from him, and the state of the
+   work. A request to him always goes there.
+2. **What was done** («Qué se hizo»): two to four plain sentences.
+3. **Against done** («Cómo vamos contra el terminado»): one line per
+   «Terminado» line with ✅, ⏳, 🧱 or ❌ and its receipt.
+4. **What I need from you** («Lo que necesito de ti»): the exact decision or
+   action and what it unlocks, or that nothing is needed. **What happens next**
+   («Lo que sigue»): the next action and who owns it.
+5. One 💡 line for what was not verified or is stopped and why, and a
+   `Verification scope:` (`Alcance de la verificación:`) line: what the checks
+   cover, what they do not, and the real effects (charges, emails, writes) or
+   none.
+
+Say «sin verificar» for anything you only read or only merged. A typecheck, an
+HTTP 200 or a clean console is not acceptance. A picture in the thread
+(`html_preview`, then `html_render`) is for a plan, a trend or a comparison, or
+when he asks; the HTML report of `development-system document` only when he
+asks.

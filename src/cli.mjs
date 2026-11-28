@@ -66,6 +66,7 @@ import { planOrchestration } from "./orchestration-plan.mjs";
 import { verifyPathConfinement } from "./path-confinement.mjs";
 import { runSupervisedWorker } from "./supervised-worker.mjs";
 import { codexQuota } from "./codex-quota.mjs";
+import { formatMacHygiene, macHygiene } from "./mac-hygiene.mjs";
 import { formatSkillListing, skillListingReport } from "./skill-listing.mjs";
 import { auditSharedInstallation, rollbackSharedInstallation, setupSharedInstallation, withLegacyInstallationMutation } from "./shared-installation.mjs";
 import { updateSharedInstallation } from "./shared-update.mjs";
@@ -162,7 +163,10 @@ function formatHuman(result) {
       : `\nCodex weekly quota:${quota.accounts.map((item) => `\n- ${item.account}${item.plan ? ` (${item.plan})` : ""}: ${item.usedPercent}% used, observed ${item.observedAt} [${item.freshness}]${item.resetsAt ? `, resets ${item.resetsAt}` : ""}${item.warn ? " WARNING >= 80%" : ""}`).join("")}`;
     const listing = /** @type {Awaited<ReturnType<typeof skillListingReport>> | undefined} */ (result.skillListing);
     const listingLines = listing ? `\n${formatSkillListing(listing).join("\n")}` : "";
-    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}${listingLines}`;
+    const hygiene = /** @type {ReturnType<typeof macHygiene> | undefined} */ (result.hygiene);
+    const hygieneFormatted = hygiene ? formatMacHygiene(hygiene) : [];
+    const hygieneLines = hygieneFormatted.length ? `\n${hygieneFormatted.join("\n")}` : "";
+    return `${label}: ${result.ok ? "healthy" : "problems found"}.${problems.length ? `\n- ${problems.join("\n- ")}` : ""}${quotaLines}${listingLines}${hygieneLines}`;
   }
   if (result.operation === "install") {
     return `Installed Development System ${result.version} from ${result.sourceCommit}.`;
@@ -362,7 +366,7 @@ function parseThreadHealthArguments(argv) {
 const PR_REVIEW_USAGE = "<owner/repo#number | PR URL> [--request] [--gate] [--home <dir>] [--json] | --diagram";
 const COMMON_OPTIONS = "[--home <dir>] [--json]";
 const PROGRESS_USAGE = "<owner/repo#number | PR URL>... [--home <dir>] [--json] (facts only: GitHub state, gate step, Sol rounds, recorded evidence; unread = desconocido)";
-const LISTO_USAGE = "<owner/repo#n> [--subir critico] [--pedir] [--sin-estado] [--niveles <draft.json>] [--repo <checkout>] [--home <dir>] [--json] | --produccion <owner/repo> [--base main] [--head develop] [--sin-estado] [--niveles <draft.json>] [--json] | --barrido <owner/repo> [--head develop] [--dias 14] [--json] (3.1.0: level, Codex, checks, smoke and record; publishes «listo para fusionar» / «listo para producción» on the exact head; --barrido lists the unanswered Codex threads of recently merged PRs and publishes nothing; exit 0 listo, 1 falta, 2 espera)";
+const LISTO_USAGE = "<owner/repo#n> [--subir critico] [--sin-estado] [--niveles <draft.json>] [--repo <checkout>] [--home <dir>] [--json] | --produccion <owner/repo> [--base main] [--head develop] [--sin-estado] [--niveles <draft.json>] [--json] (4.4.0: level, checks, smoke, record and cycle time; publishes «listo para fusionar» / «listo para producción» on the exact head; exit 0 listo, 1 falta)";
 const REGISTRO_USAGE = "<owner/repo#n> --sha <head> | --lote <owner/repo> --prs 12,13; --entorno <url|local> --lector <model> --lectura <thread> --veredicto sin-vivos|vivos [--vivo \"V1: …\"]... [--cerrado \"V1: <fix>\"]... [--cubre codex:<id>]... [--necesario \"N1: <case>\"]... [--caso \"pass|fail: N1 <tried> => <observed>\"]... [--no-alcanzado \"N2: <why>\"]... [--dispensa \"<owner's words>\"] [--autor <model>] [--sin-publicar] [--json] (the read record, a PR comment)";
 const SMOKE_USAGE = "--base <url> [--repo <checkout>] [--flujo <flow.json>] [--sin-estado] [--home <dir>] [--json] (QuickE2E smoke; publishes the `smoke` status on a clean HEAD; never blocks develop)";
 
@@ -743,7 +747,7 @@ async function runCommand(argv) {
     result = await auditSharedInstallation({ home: options.home, root: repositoryRoot });
     // Descriptive, separate from `ok`: a nearly spent Codex week is a warning, never an installation problem.
     // The skill listing is descriptive too: what the newest session of each host announced and loaded.
-    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }), skillListing: await skillListingReport({ home: options.home }) };
+    if (command === "doctor") result = { ...result, codexQuota: codexQuota({ home: options.home }), skillListing: await skillListingReport({ home: options.home }), hygiene: macHygiene() };
   } else if (command === "recover-shared") {
     result = await rollbackSharedInstallation({ home: options.home, recover: true });
   } else if (command === "update") {

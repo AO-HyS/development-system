@@ -4,15 +4,14 @@ One shared installation supplies agent skills, instructions, roles, guards,
 reports and tools on this computer. A product repository owns its domain,
 architecture, commands, verification and release policy.
 
-Current source candidate: **3.1.0**, shared skill catalog **0.83.0**. 3.1.0 adds `development-system listo --barrido`,
-which lists the Codex threads still unanswered on recently merged pull requests (Codex often answers minutes after
-the merge), and `listo --produccion` holds while one exists. 3.0.0 lets the model choose how to work: the
-global instructions are one page, the roster guard and the stop gate are no longer wired, and the command lock
-blocks only production, destruction of uncommitted work, a forced push to develop or main, new spend and reading
-the secrets folder. What a change goes through is three commands ([docs/listo.md](docs/listo.md)):
-`development-system listo` (level from the repository's `config/niveles.json`, Codex answered, and for a critical
-change one independent read, its cases and a record), `development-system registro` and `development-system smoke`.
-The previous version, 2.15.0, put the cases before the review.
+Current source candidate: **4.4.0**, shared skill catalog **0.89.0**. 4.4.0 optimizes for fast, right, then cheap:
+`development-system listo` retires Codex GitHub waits and sweeps, records PR-to-merge cycle time, and pairs with
+one independent P0/P1 read when a change is critical or closes a batch (`registro --lote`). `check-file-size` never
+blocks a diff that strictly reduces net file-size debt without new over-budget files, and `doctor` reports read-only
+Mac hygiene alongside installation health. What a change goes through is three commands
+([docs/listo.md](docs/listo.md)): `development-system listo` (level from the repository's `config/niveles.json`,
+checks, smoke, and record), `development-system registro` and `development-system smoke`.
+Previous versions remain immutable in `artifacts/` and `manifests/`.
 
 The candidate is not a claim of publication or global installation. Browser
 resource preparation remains described in [the browser pool guide](docs/browser-pool/README.md).
